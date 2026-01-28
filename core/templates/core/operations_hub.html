@@ -1,0 +1,77 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Operations - FishTech{% endblock %}
+
+{% block extra_css %}
+<style>
+.main-title {
+    font-weight: bold;
+    color: #2c3e50;
+    margin-bottom: 30px;
+}
+
+.card-dashboard {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    margin-bottom: 20px;
+    height: 100%;
+    cursor: pointer;
+    border-width: 2px !important;
+}
+
+.card-dashboard:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+}
+
+.card-icon {
+    font-size: 3rem;
+    margin-bottom: 15px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="text-center mb-5">
+        <h1 class="main-title">Operations</h1>
+    </div>
+    
+    <div class="row justify-content-center">
+        <!-- HACCP Card -->
+        <div class="col-md-4 mb-3">
+            <div class="card card-dashboard bg-warning bg-opacity-10" style="border-color: #fd7e14 !important;" onclick="window.location.href='{% url 'haccp' %}'">
+                <div class="card-body text-center py-5">
+                    <i class="bi bi-shield-check card-icon" style="color: #fd7e14;"></i>
+                    <h3>HACCP</h3>
+                    <p class="text-muted">Food safety documentation and compliance</p>
+                    <a href="{% url 'haccp' %}" class="btn mt-2" style="background-color: #fd7e14; color: white;">View HACCP</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Daily Inspections Card -->
+        <div class="col-md-4 mb-3">
+            <div class="card card-dashboard bg-info bg-opacity-10 border-info">
+                <div class="card-body text-center py-5">
+                    <i class="bi bi-clipboard-check card-icon text-info"></i>
+                    <h3>Daily Inspections</h3>
+                    <p class="text-muted">Manage daily operational inspections</p>
+                    <button class="btn btn-info mt-2" disabled>Coming Soon</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Receiving Logs Card -->
+        <div class="col-md-4 mb-3">
+            <div class="card card-dashboard bg-success bg-opacity-10 border-success">
+                <div class="card-body text-center py-5">
+                    <i class="bi bi-truck card-icon text-success"></i>
+                    <h3>Receiving Logs</h3>
+                    <p class="text-muted">Track and verify product receiving</p>
+                    <button class="btn btn-success mt-2" disabled>Coming Soon</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

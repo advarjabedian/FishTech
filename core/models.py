@@ -65,13 +65,16 @@ class Company(TenantModel):
         return self.companyname
     
 
-class HACCPProductType(models.Model):
+class HACCPProductType(TenantModel):
     """Available HACCP product types"""
-    slug = models.CharField(max_length=100, unique=True)
+    slug = models.CharField(max_length=100)
     name = models.CharField(max_length=255)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        unique_together = [['tenant', 'slug']]
     
     def __str__(self):
         return self.name
@@ -90,7 +93,7 @@ class CompanyHACCPOwner(models.Model):
     company = models.OneToOneField(Company, on_delete=models.CASCADE)
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
 
-class HACCPDocument(models.Model):
+class HACCPDocument(TenantModel):
     """HACCP documents"""
     STATUS_CHOICES = [
         ('not_started', 'Not Started'),
@@ -98,6 +101,7 @@ class HACCPDocument(models.Model):
         ('completed', 'Completed'),
     ]
     
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, null=True, blank=True, help_text="NULL = tenant master set")
     product_type = models.CharField(max_length=100)
     document_type = models.CharField(max_length=100)
     year = models.IntegerField()
@@ -115,7 +119,7 @@ class HACCPDocument(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
-        unique_together = [['product_type', 'document_type', 'year', 'version']]
+        unique_together = [['tenant', 'company', 'product_type', 'document_type', 'year', 'version']]
 
 class CompanyCertificate(models.Model):
     """Company HACCP certificates"""

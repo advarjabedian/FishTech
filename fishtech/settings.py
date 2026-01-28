@@ -121,4 +121,6 @@ STATICFILES_DIRS = [
     BASE_DIR / 'core' / 'static',
 ]
 
-LOGIN_URL = '/admin/login/'
+LOGIN_URL = '/login/'
+LOGIN_REDIRECT_URL = '/operations/'
+LOGOUT_REDIRECT_URL = '/login/'
