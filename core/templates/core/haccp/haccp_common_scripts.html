@@ -1,0 +1,410 @@
+<script>
+// ========== COMMON VARIABLES ==========
+let canvas;
+let ctx;
+let modalCanvas;
+let modalCtx;
+let isDrawing = false;
+let hasUnsavedChanges = false;
+let signatureModal;
+
+// ========== INITIALIZATION ==========
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize canvas variables
+    canvas = document.getElementById('signature_canvas');
+    if (!canvas) {
+        console.error('Signature canvas not found');
+        return;
+    }
+    ctx = canvas.getContext('2d');
+    
+    // Initialize modal canvas
+    modalCanvas = document.getElementById('signature_canvas_modal');
+    if (modalCanvas) {
+        modalCtx = modalCanvas.getContext('2d');
+        signatureModal = new bootstrap.Modal(document.getElementById('signatureModal'));
+    }
+    
+    {% if document_type_slug == 'product_description' %}
+    loadTableData();
+    {% endif %}
+    
+    {% if document_type_slug == 'flow_chart' %}
+    initFlowChart();
+    {% endif %}
+    
+    {% if document_type_slug == 'hazard_analysis' %}
+    initHazardAnalysis();
+    {% endif %}
+    
+    {% if document_type_slug == 'ccp_summary' %}
+    initCCPSummary();
+    {% endif %}
+    
+    initializeSignature();
+    setupChangeTracking();
+});
+
+// ========== SIGNATURE FUNCTIONS ==========
+function initializeSignature() {
+    {% if document.approved_signature %}
+    const img = new Image();
+    img.onload = function() {
+        ctx.drawImage(img, 0, 0);
+    };
+    img.src = '{{ document.approved_signature }}';
+    {% endif %}
+    
+    // Click on main canvas opens modal
+    {% if not is_read_only %}
+    canvas.addEventListener('click', function(e) {
+        e.preventDefault();
+        openSignatureModal();
+    });
+    {% endif %}
+    
+    // Setup modal canvas drawing
+    if (modalCanvas) {
+        modalCanvas.addEventListener('mousedown', startModalDrawing);
+        modalCanvas.addEventListener('mousemove', drawModal);
+        modalCanvas.addEventListener('mouseup', stopModalDrawing);
+        modalCanvas.addEventListener('mouseout', stopModalDrawing);
+        
+        modalCanvas.addEventListener('touchstart', function(e) {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const rect = modalCanvas.getBoundingClientRect();
+            startModalDrawing({
+                clientX: touch.clientX,
+                clientY: touch.clientY
+            });
+        });
+        
+        modalCanvas.addEventListener('touchmove', function(e) {
+            e.preventDefault();
+            const touch = e.touches[0];
+            drawModal({
+                clientX: touch.clientX,
+                clientY: touch.clientY
+            });
+        });
+        
+        modalCanvas.addEventListener('touchend', function(e) {
+            e.preventDefault();
+            stopModalDrawing();
+        });
+    }
+}
+
+function openSignatureModal() {
+    // Copy current signature to modal canvas
+    modalCtx.clearRect(0, 0, modalCanvas.width, modalCanvas.height);
+    if (canvas.toDataURL() !== document.createElement('canvas').toDataURL()) {
+        // Scale the signature to fit modal canvas
+        const img = new Image();
+        img.onload = function() {
+            const scale = Math.min(
+                modalCanvas.width / canvas.width,
+                modalCanvas.height / canvas.height
+            );
+            const x = (modalCanvas.width - canvas.width * scale) / 2;
+            const y = (modalCanvas.height - canvas.height * scale) / 2;
+            modalCtx.drawImage(img, x, y, canvas.width * scale, canvas.height * scale);
+        };
+        img.src = canvas.toDataURL();
+    }
+    signatureModal.show();
+}
+
+function startModalDrawing(e) {
+    isDrawing = true;
+    const rect = modalCanvas.getBoundingClientRect();
+    modalCtx.beginPath();
+    modalCtx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
+}
+
+function drawModal(e) {
+    if (!isDrawing) return;
+    const rect = modalCanvas.getBoundingClientRect();
+    modalCtx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
+    modalCtx.strokeStyle = '#000';
+    modalCtx.lineWidth = 3;
+    modalCtx.stroke();
+}
+
+function stopModalDrawing() {
+    isDrawing = false;
+}
+
+function clearModalSignature() {
+    modalCtx.clearRect(0, 0, modalCanvas.width, modalCanvas.height);
+}
+
+function saveModalSignature() {
+    // Scale modal signature to main canvas
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const scale = Math.min(
+        canvas.width / modalCanvas.width,
+        canvas.height / modalCanvas.height
+    );
+    const x = (canvas.width - modalCanvas.width * scale) / 2;
+    const y = (canvas.height - modalCanvas.height * scale) / 2;
+    ctx.drawImage(modalCanvas, 0, 0, modalCanvas.width, modalCanvas.height,
+                  x, y, modalCanvas.width * scale, modalCanvas.height * scale);
+    
+    hasUnsavedChanges = true;
+    signatureModal.hide();
+}
+
+function clearSignature() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    hasUnsavedChanges = true;
+}
+
+// ========== CHANGE TRACKING ==========
+function setupChangeTracking() {
+    {% if not is_read_only %}
+    // Track all form inputs
+    document.querySelectorAll('input, textarea, select').forEach(element => {
+        element.addEventListener('change', () => {
+            hasUnsavedChanges = true;
+        });
+        element.addEventListener('input', () => {
+            hasUnsavedChanges = true;
+        });
+    });
+    
+    // Intercept internal navigation links
+    document.querySelectorAll('a:not([target="_blank"])').forEach(link => {
+        link.addEventListener('click', (e) => {
+            if (hasUnsavedChanges && !link.classList.contains('no-prompt')) {
+                e.preventDefault();
+                if (confirm('You have unsaved changes. Do you want to save before leaving?')) {
+                    saveDraft();
+                    // Give it time to save, then navigate
+                    setTimeout(() => {
+                        window.location.href = link.href;
+                    }, 500);
+                } else if (confirm('Leave without saving?')) {
+                    hasUnsavedChanges = false;
+                    window.location.href = link.href;
+                }
+            }
+        });
+    });
+    {% endif %}
+}
+
+// ========== PRINT FUNCTION ==========
+function prepareForPrint() {
+    document.querySelectorAll('textarea').forEach(textarea => {
+        // Trim whitespace
+        if (textarea.value) {
+            textarea.value = textarea.value.trim();
+        }
+        
+        // Force expand to full content height
+        textarea.style.setProperty('height', '0', 'important');
+        textarea.style.setProperty('min-height', '0', 'important');
+        textarea.style.setProperty('max-height', 'none', 'important');
+        textarea.style.setProperty('overflow', 'hidden', 'important');
+        
+        // Force reflow
+        void textarea.offsetHeight;
+        
+        // Set to full scrollHeight with extra padding
+        const fullHeight = textarea.scrollHeight + 20;
+        textarea.style.setProperty('height', fullHeight + 'px', 'important');
+        textarea.style.setProperty('overflow', 'visible', 'important');
+        textarea.style.setProperty('border', 'none', 'important');
+        textarea.style.setProperty('resize', 'none', 'important');
+        textarea.style.setProperty('-webkit-appearance', 'none', 'important');
+        textarea.style.setProperty('appearance', 'none', 'important');
+    });
+    
+    {% if document_type_slug == 'flow_chart' %}
+    // Turn off edit mode and arrow buttons permanently
+    if (typeof editMode !== 'undefined') editMode = false;
+    if (typeof showArrowButtons !== 'undefined') showArrowButtons = false;
+    
+    // Re-render with clean state
+    if (typeof renderFlowChart === 'function') {
+        renderFlowChart();
+    }
+    
+    // Wait for re-render, then capture
+    setTimeout(() => {
+        // Capture flow chart as image
+        const flowChartCanvas = document.getElementById('flowChartCanvas');
+        if (flowChartCanvas && typeof html2canvas !== 'undefined') {
+            html2canvas(flowChartCanvas, {
+                scale: 2,
+                logging: false,
+                useCORS: true,
+                allowTaint: true,
+                backgroundColor: '#ffffff'
+            }).then(canvas => {
+                // Store original content
+                const originalContent = flowChartCanvas.innerHTML;
+                const originalHeight = flowChartCanvas.style.height;
+                const originalOverflow = flowChartCanvas.style.overflow;
+                
+                // Replace with image
+                const img = canvas.toDataURL('image/png');
+                flowChartCanvas.innerHTML = `<img src="${img}" style="width: 100%; height: auto; display: block;">`;
+                flowChartCanvas.style.height = 'auto';
+                flowChartCanvas.style.overflow = 'visible';
+                
+                // Print
+                setTimeout(() => {
+                    window.print();
+                    
+                    // Restore original content but keep edit mode OFF
+                    setTimeout(() => {
+                        flowChartCanvas.innerHTML = originalContent;
+                        flowChartCanvas.style.height = originalHeight;
+                        flowChartCanvas.style.overflow = originalOverflow;
+                        
+                        // Re-render with edit mode and arrow buttons still OFF
+                        if (typeof renderFlowChart === 'function') {
+                            renderFlowChart();
+                        }
+                    }, 500);
+                }, 300);
+            });
+        } else {
+            // If html2canvas fails, still keep states OFF
+            if (typeof renderFlowChart === 'function') {
+                renderFlowChart();
+            }
+            
+            setTimeout(() => {
+                window.print();
+            }, 300);
+        }
+    }, 200);
+    {% else %}
+    // Give extra time for rendering
+    setTimeout(() => {
+        window.print();
+    }, 300);
+    {% endif %}
+}
+
+// ========== SAVE/SUBMIT FUNCTIONS ==========
+function saveDraft() {
+    {% if is_read_only %}
+    alert('Cannot save changes to {% if document.status == "completed" %}completed{% else %}historical{% endif %} document');
+    return;
+    {% endif %}
+    
+    const data = collectFormData();
+    data.status = 'in_progress';
+    saveDocument(data);
+}
+
+function submitDocument() {
+    {% if is_read_only %}
+    alert('Cannot submit {% if document.status == "completed" %}completed{% else %}historical{% endif %} document');
+    return;
+    {% endif %}
+    
+    const errors = validateDocument();
+    
+    if (errors.length > 0) {
+        alert('Cannot submit - please fix the following:\n\n• ' + errors.join('\n• '));
+        return;
+    }
+    
+    if (!confirm('Submit document for approval? This will mark it as complete.')) {
+        return;
+    }
+    
+    const data = collectFormData();
+    data.status = 'completed';
+    saveDocument(data);
+}
+
+function validateDocument() {
+    const errors = [];
+    
+    // Check originated date
+    const originatedDate = document.getElementById('originated_date').value;
+    if (!originatedDate) {
+        errors.push('Originated date is required');
+    }
+    
+    // Check originated by
+    const originatedBy = document.getElementById('originated_by').value.trim();
+    if (!originatedBy) {
+        errors.push('Originated By name is required');
+    }
+    
+    // Check approved by
+    const approvedBy = document.getElementById('approved_by').value.trim();
+    if (!approvedBy) {
+        errors.push('Approved By name is required');
+    }
+    
+    // Check approved date
+    const approvedDate = document.getElementById('approved_date').value;
+    if (!approvedDate) {
+        errors.push('Approved date is required');
+    }
+    
+    // Check signature
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const hasSignature = imageData.data.some(pixel => pixel !== 0);
+    if (!hasSignature) {
+        errors.push('Signature is required');
+    }
+    
+    // Document-specific validation will be added by individual scripts
+    return errors;
+}
+
+function collectFormData() {
+    const signature = canvas.toDataURL();
+    
+    return {
+        originated_date: document.getElementById('originated_date').value,
+        approved_date: document.getElementById('approved_date').value,
+        originated_by: document.getElementById('originated_by').value,
+        approved_by: document.getElementById('approved_by').value,
+        approved_signature: signature,
+        version: {{ document.version }},
+        year: {{ document.year }},
+        document_data: {}
+    };
+}
+
+function saveDocument(data) {
+    fetch('{% url "haccp_save_document" company.companyid product_type_slug document_type_slug %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            hasUnsavedChanges = false;
+            if (data.status === 'completed') {
+                alert('Document submitted successfully!');
+                window.location.href = '{% url "haccp_documents" company.companyid product_type_slug %}';
+            } else {
+                alert('Document saved successfully!');
+                location.reload();
+            }
+        } else {
+            alert('Error saving document: ' + result.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error saving document');
+    });
+}
+</script>

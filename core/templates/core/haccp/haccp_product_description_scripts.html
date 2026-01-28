@@ -1,0 +1,215 @@
+<script>
+// ========== PRODUCT DESCRIPTION ==========
+const defaultRows = [
+    { label: 'Category', value: '', type: 'input', placeholder: 'Raw, Not Ready-to-Eat Fish Products' },
+    { label: 'Common Name', value: '', type: 'textarea', placeholder: 'Bass, Branzino, Carp, Dover Sole...' },
+    { label: 'Use of Product', value: '', type: 'input', placeholder: 'Cooked and Consumed or Further Processed Only' },
+    { label: 'Packaging', value: '', type: 'textarea', placeholder: 'Styrofoam, Vacuum Packaged, or Bins Packed in Food Grade Ice' },
+    { label: 'Probable Consumers', value: '', type: 'input', placeholder: 'General Public' },
+    { label: 'Distribution', value: '', type: 'input', placeholder: 'Retail, HRI, Wholesale' },
+    { label: 'Storage & Shelf-Life', value: '', type: 'textarea', placeholder: 'Fresh: Varied (5 – 21 days) @ 40F or below\nFrozen: 1 Year @ 10F or below' },
+    { label: 'Labeling Instructions', value: '', type: 'textarea', placeholder: 'Product Name, Ingredients, Pack Date, Weight, and Keep Refrigerated or Keep Frozen' },
+    { label: 'Is Special Distribution Control Needed?', value: '', type: 'textarea', placeholder: 'Yes – Distribution (traceability) controls based on pack date' },
+    { label: 'Shipping', value: '', type: 'textarea', placeholder: 'Refrigerated or otherwise approved food transport vehicle: Locked/Sealed – Clean – Covered – Dry conditions' }
+];
+
+let tableRows = [];
+let dragSrcEl = null;
+let dragSrcIndex = null;
+
+function loadTableData() {
+    const savedData = {{ document_data_json|safe }};
+    
+    if (savedData && savedData.rows && savedData.rows.length > 0) {
+        tableRows = savedData.rows.map(row => ({
+            ...row,
+            value: (row.value || '').trim()
+        }));
+    } else {
+        tableRows = defaultRows.map(row => ({
+            ...row,
+            value: (savedData[row.label.toLowerCase().replace(/[^a-z0-9]/g, '_')] || row.value || '').trim()
+        }));
+    }
+    
+    renderTable();
+}
+
+function renderTable() {
+    const tbody = document.getElementById('tableBody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    
+    const isReadOnly = {% if is_read_only %}true{% else %}false{% endif %};
+    
+    tableRows.forEach((row, index) => {
+        const tr = document.createElement('tr');
+        tr.className = 'draggable-row';
+        tr.setAttribute('data-index', index);
+        
+        const labelCell = document.createElement('td');
+        labelCell.innerHTML = `
+            <div class="row-actions">
+                ${isReadOnly ? '' : '<i class="bi bi-grip-vertical drag-handle" style="cursor: grab;"></i>'}
+                <input type="text" class="form-control form-control-sm" 
+                       value="${row.label}" 
+                       onchange="updateRowLabel(${index}, this.value)"
+                       placeholder="Field Name"
+                       ${isReadOnly ? 'disabled' : ''}>
+            </div>
+        `;
+        
+        const valueCell = document.createElement('td');
+const textareaValue = (row.value || '').trim();
+valueCell.innerHTML = `<div class="d-flex gap-2"><textarea class="form-control auto-expand-textarea" onchange="updateRowValue(${index}, this.value)" oninput="autoExpandTextarea(this)" placeholder="${row.placeholder}" style="overflow: hidden;" ${isReadOnly ? 'disabled' : ''}>${textareaValue}</textarea>${isReadOnly ? '' : `<button type="button" class="btn btn-sm btn-outline-danger no-print" onclick="deleteRow(${index})" title="Delete Row"><i class="bi bi-trash"></i></button>`}</div>`;
+        
+        tr.appendChild(labelCell);
+        tr.appendChild(valueCell);
+        tbody.appendChild(tr);
+        
+        // Remove any whitespace from textarea
+        const textarea = valueCell.querySelector('textarea');
+        if (textarea && textarea.value) {
+            textarea.value = textarea.value.trim();
+        }
+        
+        if (!isReadOnly) {
+            const handle = tr.querySelector('.drag-handle');
+            if (handle) {
+                handle.setAttribute('draggable', 'true');
+                
+                handle.addEventListener('dragstart', function(e) {
+                    dragSrcEl = tr;
+                    dragSrcIndex = parseInt(tr.getAttribute('data-index'));
+                    tr.style.opacity = '0.4';
+                    e.dataTransfer.effectAllowed = 'move';
+                    e.dataTransfer.setData('text/html', tr.innerHTML);
+                });
+                
+                handle.addEventListener('dragend', function(e) {
+                    tr.style.opacity = '1';
+                    document.querySelectorAll('.draggable-row').forEach(row => {
+                        row.style.borderTop = '';
+                    });
+                });
+                
+                tr.addEventListener('dragover', function(e) {
+                    if (e.preventDefault) {
+                        e.preventDefault();
+                    }
+                    
+                    document.querySelectorAll('.draggable-row').forEach(row => {
+                        row.style.borderTop = '';
+                    });
+                    
+                    if (tr !== dragSrcEl) {
+                        tr.style.borderTop = '3px solid #0d6efd';
+                    }
+                    
+                    e.dataTransfer.dropEffect = 'move';
+                    return false;
+                });
+                
+                tr.addEventListener('drop', function(e) {
+                    if (e.stopPropagation) {
+                        e.stopPropagation();
+                    }
+                    if (e.preventDefault) {
+                        e.preventDefault();
+                    }
+                    
+                    document.querySelectorAll('.draggable-row').forEach(row => {
+                        row.style.borderTop = '';
+                    });
+                    
+                    if (dragSrcEl !== tr) {
+                        const dropIndex = parseInt(tr.getAttribute('data-index'));
+                        const movedItem = tableRows[dragSrcIndex];
+                        tableRows.splice(dragSrcIndex, 1);
+                        tableRows.splice(dropIndex, 0, movedItem);
+                        renderTable();
+                    }
+                    
+                    return false;
+                });
+                
+                tr.addEventListener('dragleave', function(e) {
+                    tr.style.borderTop = '';
+                });
+            }
+        }
+    });
+    
+    // Auto-expand textareas after rendering - multiple passes
+    setTimeout(() => {
+        document.querySelectorAll('.auto-expand-textarea').forEach(textarea => {
+            autoExpandTextarea(textarea);
+        });
+    }, 0);
+    
+    setTimeout(() => {
+        document.querySelectorAll('.auto-expand-textarea').forEach(textarea => {
+            autoExpandTextarea(textarea);
+        });
+    }, 100);
+}
+
+function addRow() {
+    tableRows.push({
+        label: 'New Field',
+        value: '',
+        type: 'input',
+        placeholder: 'Enter value'
+    });
+    renderTable();
+}
+
+function autoExpandTextarea(textarea) {
+    // Trim any whitespace
+    if (textarea.value) {
+        textarea.value = textarea.value.trim();
+    }
+    textarea.style.height = '0px';
+    textarea.style.height = textarea.scrollHeight + 'px';
+}
+function deleteRow(index) {
+    if (confirm('Are you sure you want to delete this row?')) {
+        tableRows.splice(index, 1);
+        renderTable();
+    }
+}
+
+function updateRowLabel(index, value) {
+    if (tableRows[index]) {
+        tableRows[index].label = value;
+    }
+}
+
+function updateRowValue(index, value) {
+    if (tableRows[index]) {
+        tableRows[index].value = value.trim();
+    }
+}
+
+// Override validation
+const originalValidateDocument = validateDocument;
+validateDocument = function() {
+    const errors = originalValidateDocument();
+    
+    for (let i = 0; i < tableRows.length; i++) {
+        if (!tableRows[i].value || !tableRows[i].value.trim()) {
+            errors.push(`Row "${tableRows[i].label}" is empty`);
+        }
+    }
+    
+    return errors;
+};
+
+// Override collectFormData
+const originalCollectFormData = collectFormData;
+collectFormData = function() {
+    const data = originalCollectFormData();
+    data.document_data = { rows: tableRows };
+    return data;
+};
+</script>

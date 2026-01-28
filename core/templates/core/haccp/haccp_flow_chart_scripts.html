@@ -1,0 +1,913 @@
+<script>
+// ========== FLOW CHART ==========
+let flowChartData = { boxes: [], arrows: [] };
+let circleBackMode = false;
+let circleBackFromBox = null;
+let isPanning = false;
+let panStartX = 0;
+let panStartY = 0;
+let originalBoxPositions = [];
+let layoutAdjustTimeout = null;
+let floatingBoxId = null;
+let isDraggingFloatingBox = false;
+let draggedFloatingBoxId = null;
+let floatingDragStartX = 0;
+let floatingDragStartY = 0;
+let floatingOriginalX = 0;
+let floatingOriginalY = 0;
+let showArrowButtons = true;
+let editMode = true; // ADD THIS LINE
+
+function startFloatingBoxDrag(e, boxId) {
+    e.preventDefault();
+    e.stopPropagation();
+    isDraggingFloatingBox = true;
+    draggedFloatingBoxId = boxId;
+    floatingDragStartX = e.clientX;
+    floatingDragStartY = e.clientY;
+    
+    const box = flowChartData.boxes.find(b => b.id === boxId);
+    if (box) {
+        floatingOriginalX = box.x;
+        floatingOriginalY = box.y;
+    }
+}
+
+function compactLayoutForPrint() {
+    // Temporarily reduce gaps for printing
+    const originalGap = 120;
+    const printGap = 60;
+    
+    // Reduce vertical spacing
+    flowChartData.boxes.forEach((box, index) => {
+        if (index > 0) {
+            const parent = flowChartData.arrows.find(a => a.to === box.id && !a.isCircleBack);
+            if (parent) {
+                const parentBox = flowChartData.boxes.find(b => b.id === parent.from);
+                if (parentBox && Math.abs(box.x - parentBox.x) < 100) {
+                    // This is a vertical connection
+                    box.y = box.y * (printGap / originalGap);
+                }
+            }
+        }
+    });
+}
+
+function initFlowChart() {
+    const savedData = {{ document_data_json|safe }};
+    if (savedData && savedData.flowChart) {
+        flowChartData = savedData.flowChart;
+        // Ensure all arrows have direction field
+        flowChartData.arrows.forEach(arrow => {
+            if (!arrow.direction) arrow.direction = 'forward';
+        });
+    } else {
+        flowChartData.boxes.push({
+            id: 'box-1',
+            x: 20,
+            y: 20,
+            label: 'Start'
+        });
+    }
+    renderFlowChart();
+}
+
+function addIndependentBox() {
+    const newBox = {
+        id: 'box-' + Date.now(),
+        x: 100,
+        y: 100,
+        label: 'New Step',
+        isFloating: true
+    };
+    
+    flowChartData.boxes.push(newBox);
+    floatingBoxId = newBox.id;
+    renderFlowChart();
+}
+
+function saveFloatingBox(boxId) {
+    const box = flowChartData.boxes.find(b => b.id === boxId);
+    if (box) {
+        delete box.isFloating;
+        floatingBoxId = null;
+        renderFlowChart();
+    }
+}
+
+function addStepDown(parentId) {
+    const parent = flowChartData.boxes.find(b => b.id === parentId);
+    if (!parent) return;
+    
+    const newBox = {
+        id: 'box-' + Date.now(),
+        x: parent.x,
+        y: parent.y + 200,
+        label: 'New Step',
+        isSideStep: false
+    };
+    
+    flowChartData.boxes.push(newBox);
+    flowChartData.arrows.push({
+        id: 'arrow-' + Date.now(),
+        from: parentId,
+        to: newBox.id,
+        direction: 'forward'
+    });
+    
+    renderFlowChart();
+    setTimeout(() => autoAdjustLayout(), 100);
+}
+
+function addSideStep(parentId) {
+    const parent = flowChartData.boxes.find(b => b.id === parentId);
+    if (!parent) return;
+    
+    const newBox = {
+        id: 'box-' + Date.now(),
+        x: parent.x + 350,
+        y: parent.y,
+        label: 'New Step',
+        isSideStep: true
+    };
+    
+    flowChartData.boxes.push(newBox);
+    flowChartData.arrows.push({
+        id: 'arrow-' + Date.now(),
+        from: parentId,
+        to: newBox.id,
+        direction: 'forward'
+    });
+    
+    renderFlowChart();
+    setTimeout(() => autoAdjustLayout(), 100);
+}
+
+function flipArrow(arrowId) {
+    const arrow = flowChartData.arrows.find(a => a.id === arrowId);
+    if (!arrow) return;
+    
+    if (arrow.direction === 'forward') {
+        // Flip to reverse
+        arrow.direction = 'reverse';
+    } else if (arrow.direction === 'reverse') {
+        // Make bidirectional
+        arrow.direction = 'bidirectional';
+    } else {
+        // Back to forward
+        arrow.direction = 'forward';
+    }
+    
+    renderFlowChart();
+}
+
+function adjustArrowLength(arrowId, increase) {
+    const arrow = flowChartData.arrows.find(a => a.id === arrowId);
+    if (!arrow) return;
+    
+    const adjustment = increase ? 50 : -50;
+    
+    // Handle circle-back arrows differently
+    if (arrow.isCircleBack) {
+        // Initialize offsets if they don't exist
+        if (!arrow.verticalOffset) arrow.verticalOffset = 30;
+        if (!arrow.horizontalOffset) arrow.horizontalOffset = 30;
+        
+        // Adjust both offsets
+        arrow.verticalOffset += adjustment;
+        arrow.horizontalOffset += adjustment;
+        
+        // Prevent negative offsets
+        if (arrow.verticalOffset < 20) arrow.verticalOffset = 20;
+        if (arrow.horizontalOffset < 20) arrow.horizontalOffset = 20;
+        
+        renderFlowChart();
+        return;
+    }
+    
+    const fromBox = flowChartData.boxes.find(b => b.id === arrow.from);
+    const toBox = flowChartData.boxes.find(b => b.id === arrow.to);
+    if (!fromBox || !toBox) return;
+    
+    // Determine if this is a vertical or horizontal arrow
+    const isVertical = Math.abs(toBox.y - fromBox.y) > Math.abs(toBox.x - fromBox.x);
+    
+    // Get all descendant boxes
+    function getDescendants(boxId) {
+        const descendants = [];
+        const queue = [boxId];
+        const visited = new Set();
+        
+        while (queue.length > 0) {
+            const currentId = queue.shift();
+            if (visited.has(currentId)) continue;
+            visited.add(currentId);
+            
+            flowChartData.arrows.forEach(a => {
+                if (a.from === currentId && !a.isCircleBack && a.to !== boxId) {
+                    descendants.push(a.to);
+                    queue.push(a.to);
+                }
+            });
+        }
+        
+        return descendants;
+    }
+    
+    const descendantIds = getDescendants(toBox.id);
+    const boxesToMove = [toBox.id, ...descendantIds];
+    
+    // Move boxes
+    if (isVertical) {
+        boxesToMove.forEach(boxId => {
+            const box = flowChartData.boxes.find(b => b.id === boxId);
+            if (box) {
+                box.y += adjustment;
+            }
+        });
+    } else {
+        boxesToMove.forEach(boxId => {
+            const box = flowChartData.boxes.find(b => b.id === boxId);
+            if (box) {
+                box.x += adjustment;
+            }
+        });
+    }
+    
+    renderFlowChart();
+}
+
+function startCircleBack(fromBoxId) {
+    circleBackMode = true;
+    circleBackFromBox = fromBoxId;
+    
+    let msgDiv = document.getElementById('circleBackMessage');
+    if (!msgDiv) {
+        msgDiv = document.createElement('div');
+        msgDiv.id = 'circleBackMessage';
+        msgDiv.style.cssText = 'position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: #ffc107; color: #000; padding: 15px 30px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.2); z-index: 9999; font-weight: bold;';
+        document.body.appendChild(msgDiv);
+    }
+    msgDiv.textContent = 'Click on the box you want to connect to (or click outside to cancel)';
+    msgDiv.style.display = 'block';
+    
+    document.querySelectorAll('.flow-box').forEach(box => {
+        if (box.id !== fromBoxId) {
+            box.style.border = '3px dashed #ffc107';
+            box.style.cursor = 'pointer';
+        }
+    });
+}
+
+function handleCircleBackClick(targetBoxId) {
+    if (!circleBackMode) return;
+    
+    if (targetBoxId === circleBackFromBox) {
+        cancelCircleBack();
+        return;
+    }
+    
+    flowChartData.arrows.push({
+        id: 'arrow-' + Date.now(),
+        from: circleBackFromBox,
+        to: targetBoxId,
+        isCircleBack: true,
+        direction: 'forward'
+    });
+    
+    cancelCircleBack();
+    renderFlowChart();
+}
+
+function cancelCircleBack() {
+    circleBackMode = false;
+    circleBackFromBox = null;
+    
+    const msgDiv = document.getElementById('circleBackMessage');
+    if (msgDiv) {
+        msgDiv.style.display = 'none';
+    }
+    
+    document.querySelectorAll('.flow-box').forEach(box => {
+        box.style.border = '2px solid #0d6efd';
+        box.style.cursor = 'default';
+    });
+}
+
+function deleteBox(boxId) {
+    if (flowChartData.boxes.length === 1) {
+        alert('Cannot delete the last box in the flow chart');
+        return;
+    }
+    
+    const hasChildren = flowChartData.arrows.some(arrow => 
+        arrow.from === boxId && !arrow.isCircleBack
+    );
+    
+    if (hasChildren) {
+        alert('Cannot delete this box. It has child boxes connected to it. Delete the child boxes first.');
+        return;
+    }
+    
+    if (!confirm('Delete this step?')) return;
+    
+    flowChartData.boxes = flowChartData.boxes.filter(b => b.id !== boxId);
+    flowChartData.arrows = flowChartData.arrows.filter(a => a.from !== boxId && a.to !== boxId);
+    renderFlowChart();
+}
+
+function toggleBoxActions(boxId) {
+    const box = flowChartData.boxes.find(b => b.id === boxId);
+    if (!box) return;
+    
+    box.isCollapsed = !box.isCollapsed;
+    
+    // Hide/show delete button
+    const deleteBtn = document.querySelector(`#${boxId} .flow-box-delete`);
+    if (deleteBtn) {
+        deleteBtn.style.display = box.isCollapsed ? 'none' : 'block';
+    }
+    
+    // Force full re-render to recalculate everything
+    renderFlowChart();
+    
+    // Then adjust layout to fix any overlaps
+    setTimeout(() => autoAdjustLayout(), 100);
+}
+
+function toggleArrowButtons() {
+    showArrowButtons = !showArrowButtons;
+    renderFlowChart();
+}
+
+function toggleEditMode() {
+    editMode = !editMode;
+    renderFlowChart();
+}
+
+function updateBoxLabel(boxId, element) {
+    const box = flowChartData.boxes.find(b => b.id === boxId);
+    if (box) {
+        box.label = element.innerHTML.trim();
+    }
+}
+
+function debouncedLayoutAdjust() {
+    if (layoutAdjustTimeout) {
+        clearTimeout(layoutAdjustTimeout);
+    }
+    layoutAdjustTimeout = setTimeout(() => {
+        autoAdjustLayout();
+    }, 5000);
+}
+
+function renderFlowChart() {
+    const canvas = document.getElementById('flowChartCanvas');
+    canvas.innerHTML = '';
+    
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.style.position = 'absolute';
+    svg.style.width = '100%';
+    svg.style.height = '100%';
+    svg.style.pointerEvents = 'none';
+    
+    svg.innerHTML = `
+        <defs>
+            <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+                <polygon points="0 0, 10 3.5, 0 7" fill="#6c757d" />
+            </marker>
+            <marker id="arrowhead-reverse" markerWidth="10" markerHeight="7" refX="0" refY="3.5" orient="auto">
+                <polygon points="10 0, 0 3.5, 10 7" fill="#6c757d" />
+            </marker>
+        </defs>
+    `;
+    canvas.appendChild(svg);
+    
+    const isReadOnly = {% if is_read_only %}true{% else %}false{% endif %};
+    
+    flowChartData.boxes.forEach(box => {
+        const boxDiv = document.createElement('div');
+        boxDiv.className = 'flow-box';
+        boxDiv.id = box.id;
+        boxDiv.style.left = box.x + 'px';
+        boxDiv.style.top = box.y + 'px';
+        
+        if (box.isFloating) {
+            boxDiv.style.border = '3px dashed #ffc107';
+        }
+        
+        const isLastBox = flowChartData.boxes.length === 1;
+        const hasChildren = flowChartData.arrows.some(arrow => 
+            arrow.from === box.id && !arrow.isCircleBack
+        );
+        const canDelete = !isLastBox && !hasChildren;
+        
+        const isCollapsed = box.isCollapsed || false;
+        const compactPadding = !editMode ? '6px' : '10px';
+        
+        boxDiv.style.padding = compactPadding;
+        
+        boxDiv.innerHTML = `
+            ${box.isFloating && !isReadOnly && editMode ? `<div class="flow-box-drag-handle-small no-print" style="position: absolute; top: -15px; left: 50%; transform: translateX(-50%); width: 30px; height: 30px; background: #ffc107; color: #000; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: grab; z-index: 50; box-shadow: 0 2px 8px rgba(0,0,0,0.2); font-size: 1rem;" onmousedown="startFloatingBoxDrag(event, '${box.id}')"><i class="bi bi-arrows-move"></i></div>` : ''}
+            ${(isReadOnly || !canDelete) ? '' : `<button class="flow-box-delete no-print" onclick="deleteBox('${box.id}')" style="display: ${isCollapsed ? 'none' : 'block'};">&times;</button>`}
+            ${!isReadOnly && editMode ? `<button class="flow-box-toggle no-print" onclick="toggleBoxActions('${box.id}')" style="position: absolute; top: 8px; right: ${(canDelete && !isCollapsed) ? '38px' : '8px'}; width: 24px; height: 24px; border-radius: 50%; background: #28a745; color: white; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px; z-index: 10; box-shadow: 0 2px 4px rgba(0,0,0,0.2);"><i class="bi bi-check"></i></button>` : ''}
+            <div class="flow-box-label" contenteditable="${!isReadOnly && editMode}" onblur="updateBoxLabel('${box.id}', this); autoAdjustLayout();" oninput="updateBoxLabel('${box.id}', this); debouncedLayoutAdjust();" style="padding-right: ${!isReadOnly && editMode ? ((canDelete && !isCollapsed) ? '68px' : '38px') : '10px'};">${box.label}</div>
+            ${isReadOnly ? '' : `
+                <div class="flow-box-actions no-print" id="actions-${box.id}" style="display: ${isCollapsed ? 'none' : 'block'};">
+                    ${box.isFloating ? `
+                        <button class="btn btn-sm btn-success w-100" onclick="saveFloatingBox('${box.id}')">
+                            <i class="bi bi-check-circle"></i> Save Position
+                        </button>
+                    ` : `
+                        <div style="display: flex; gap: 5px; justify-content: center;">
+                            <button class="btn btn-sm btn-primary" onclick="addStepDown('${box.id}')">
+                                <i class="bi bi-arrow-down"></i> Step Down
+                            </button>
+                            <button class="btn btn-sm btn-secondary" onclick="addSideStep('${box.id}')">
+                                <i class="bi bi-arrow-right"></i> Side Step
+                            </button>
+                        </div>
+                        <button class="btn btn-sm btn-warning w-100 mt-1" onclick="startCircleBack('${box.id}')">
+                            <i class="bi bi-arrow-repeat"></i> Connect To
+                        </button>
+                    `}
+                </div>
+            `}
+        `;
+        
+        if (!isReadOnly) {
+            boxDiv.addEventListener('click', function(e) {
+                if (circleBackMode && box.id !== circleBackFromBox) {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    handleCircleBackClick(box.id);
+                }
+            });
+        }
+        
+        canvas.appendChild(boxDiv);
+    });
+    
+    flowChartData.arrows.forEach(arrow => {
+        const fromBox = flowChartData.boxes.find(b => b.id === arrow.from);
+        const toBox = flowChartData.boxes.find(b => b.id === arrow.to);
+        if (!fromBox || !toBox) return;
+        
+        const fromElement = document.getElementById(arrow.from);
+        const toElement = document.getElementById(arrow.to);
+        if (!fromElement || !toElement) return;
+        
+        const fromWidth = fromElement.offsetWidth;
+        const fromHeight = fromElement.offsetHeight;
+        const toWidth = toElement.offsetWidth;
+        const toHeight = toElement.offsetHeight;
+        
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        
+        let fromX, fromY, toX, toY, pathD, buttonX, buttonY;
+        
+        if (arrow.isCircleBack) {
+            // Use stored offsets or defaults
+            const vertOffset = arrow.verticalOffset || 30;
+            const horizOffset = arrow.horizontalOffset || 30;
+            
+            fromX = fromBox.x + fromWidth / 2;
+            fromY = fromBox.y;
+            toX = toBox.x + toWidth;
+            toY = toBox.y + toHeight / 2;
+            
+            const cornerX = fromX;
+            const cornerY = fromY - vertOffset;
+            const corner2X = toX + horizOffset;
+            const corner2Y = cornerY;
+            pathD = `M ${fromX} ${fromY} L ${cornerX} ${cornerY} L ${corner2X} ${corner2Y} L ${corner2X} ${toY} L ${toX} ${toY}`;
+            buttonX = corner2X;
+            buttonY = corner2Y;
+        } else {
+            const isVertical = Math.abs(toBox.y - fromBox.y) > Math.abs(toBox.x - fromBox.x);
+            
+            if (isVertical) {
+                fromX = fromBox.x + fromWidth / 2;
+                fromY = fromBox.y + fromHeight;
+                toX = toBox.x + toWidth / 2;
+                toY = toBox.y;
+                
+                // Use 90-degree path
+                pathD = `M ${fromX} ${fromY} L ${fromX} ${toY}`;
+                buttonX = fromX;
+                buttonY = (fromY + toY) / 2;
+            } else {
+                fromX = fromBox.x + fromWidth;
+                fromY = fromBox.y + fromHeight / 2;
+                toX = toBox.x;
+                toY = toBox.y + toHeight / 2;
+                
+                // Use 90-degree path
+                pathD = `M ${fromX} ${fromY} L ${toX} ${fromY}`;
+                buttonX = (fromX + toX) / 2;
+                buttonY = fromY;
+            }
+        }
+        
+        // Set arrow markers based on direction
+        line.setAttribute('d', pathD);
+        line.setAttribute('class', 'flow-arrow-line');
+        
+        // Clear both markers first
+        line.removeAttribute('marker-end');
+        line.removeAttribute('marker-start');
+        
+        if (arrow.direction === 'forward') {
+            line.setAttribute('marker-end', 'url(#arrowhead)');
+        } else if (arrow.direction === 'reverse') {
+            line.setAttribute('marker-start', 'url(#arrowhead-reverse)');
+        } else if (arrow.direction === 'bidirectional') {
+            line.setAttribute('marker-start', 'url(#arrowhead-reverse)');
+            line.setAttribute('marker-end', 'url(#arrowhead)');
+        }
+        
+        svg.appendChild(line);
+        
+        // Add flip button
+       // Add flip button and length adjustment buttons
+        if (!isReadOnly && showArrowButtons) {
+            // Minus button (left)
+            const minusBtn = document.createElement('button');
+            minusBtn.className = 'flow-arrow-adjust-btn no-print';
+            minusBtn.innerHTML = '−';
+            minusBtn.style.cssText = `
+                position: absolute;
+                left: ${buttonX - 50}px;
+                top: ${buttonY - 12}px;
+                width: 24px;
+                height: 24px;
+                border-radius: 50%;
+                background: #fff;
+                border: 2px solid #28a745;
+                color: #28a745;
+                cursor: pointer;
+                font-size: 18px;
+                font-weight: bold;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 5;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            `;
+            minusBtn.onclick = () => adjustArrowLength(arrow.id, false);
+            canvas.appendChild(minusBtn);
+            
+            // Flip button (center)
+            const flipBtn = document.createElement('button');
+            flipBtn.className = 'flow-arrow-flip-btn no-print';
+            flipBtn.innerHTML = arrow.direction === 'bidirectional' ? '↕' : arrow.direction === 'reverse' ? '↑' : '↓';
+            flipBtn.style.cssText = `
+                position: absolute;
+                left: ${buttonX - 15}px;
+                top: ${buttonY - 15}px;
+                width: 30px;
+                height: 30px;
+                border-radius: 50%;
+                background: #fff;
+                border: 2px solid #0d6efd;
+                color: #0d6efd;
+                cursor: pointer;
+                font-size: 16px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 5;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            `;
+            flipBtn.onclick = () => flipArrow(arrow.id);
+            canvas.appendChild(flipBtn);
+            
+            // Plus button (right)
+            const plusBtn = document.createElement('button');
+            plusBtn.className = 'flow-arrow-adjust-btn no-print';
+            plusBtn.innerHTML = '+';
+            plusBtn.style.cssText = `
+                position: absolute;
+                left: ${buttonX + 20}px;
+                top: ${buttonY - 12}px;
+                width: 24px;
+                height: 24px;
+                border-radius: 50%;
+                background: #fff;
+                border: 2px solid #28a745;
+                color: #28a745;
+                cursor: pointer;
+                font-size: 18px;
+                font-weight: bold;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 5;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            `;
+            plusBtn.onclick = () => adjustArrowLength(arrow.id, true);
+            canvas.appendChild(plusBtn);
+        }
+    });
+    
+    canvas.addEventListener('click', function(e) {
+        if (circleBackMode && e.target === canvas) {
+            cancelCircleBack();
+        }
+    });
+    
+    if (flowChartData.boxes.length > 0) {
+        let maxX = 0;
+        let maxY = 0;
+        
+        flowChartData.boxes.forEach(box => {
+            const boxElement = document.getElementById(box.id);
+            if (boxElement) {
+                const boxWidth = boxElement.offsetWidth;
+                const boxHeight = boxElement.offsetHeight;
+                maxX = Math.max(maxX, box.x + boxWidth);
+                maxY = Math.max(maxY, box.y + boxHeight);
+            }
+        });
+        
+        canvas.style.height = (maxY + 100) + 'px';
+        canvas.style.minHeight = '400px';
+    }
+    
+    if (!isReadOnly && editMode && flowChartData.boxes.length > 0) {
+        const groups = findConnectedGroups();
+        
+        // Remove old handles
+        document.querySelectorAll('.flow-group-drag-handle').forEach(h => h.remove());
+        
+        // Create a drag handle for each group
+        groups.forEach((groupBoxIds, groupIndex) => {
+            // Find topmost/leftmost box in group
+            const groupBoxes = groupBoxIds.map(id => flowChartData.boxes.find(b => b.id === id)).filter(b => b);
+            const topBox = groupBoxes.reduce((top, box) => {
+                if (!top) return box;
+                if (box.y < top.y) return box;
+                if (box.y === top.y && box.x < top.x) return box;
+                return top;
+            }, null);
+            
+            if (!topBox) return;
+            
+            const dragHandle = document.createElement('div');
+            dragHandle.className = 'flow-group-drag-handle no-print';
+            dragHandle.innerHTML = '<i class="bi bi-arrows-move"></i>';
+            dragHandle.title = `Drag to move group ${groupIndex + 1}`;
+            dragHandle.style.cssText = `
+                position: absolute;
+                top: ${topBox.y}px;
+                left: ${topBox.x - 50}px;
+                width: 40px;
+                height: 40px;
+                background: #0d6efd;
+                color: white;
+                border-radius: 8px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                cursor: grab;
+                z-index: 100;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+                font-size: 1.5rem;
+            `;
+            dragHandle.dataset.groupIndex = groupIndex;
+            
+            dragHandle.addEventListener('mousedown', function(e) {
+                e.preventDefault();
+                isPanning = true;
+                panStartX = e.clientX;
+                panStartY = e.clientY;
+                dragHandle.dataset.dragging = 'true';
+                
+                // Store original positions for this group only
+                originalBoxPositions = groupBoxIds.map(id => {
+                    const box = flowChartData.boxes.find(b => b.id === id);
+                    return box ? { id: box.id, x: box.x, y: box.y } : null;
+                }).filter(b => b);
+                
+                dragHandle.style.cursor = 'grabbing';
+            });
+            
+            canvas.appendChild(dragHandle);
+        });
+    }
+}
+
+function autoAdjustLayout() {
+    if (flowChartData.boxes.length === 0) return;
+    
+    // First, align side-connected boxes vertically with their parents
+    flowChartData.arrows.forEach(arrow => {
+        if (arrow.isCircleBack) return; // Skip circle-back arrows
+        
+        const fromBox = flowChartData.boxes.find(b => b.id === arrow.from);
+        const toBox = flowChartData.boxes.find(b => b.id === arrow.to);
+        if (!fromBox || !toBox) return;
+        
+        // Check if this is a horizontal (side) connection
+        const isHorizontal = Math.abs(toBox.x - fromBox.x) > Math.abs(toBox.y - fromBox.y);
+        
+        if (isHorizontal && toBox.isSideStep) {
+            // Align side step with parent's vertical center
+            const fromEl = document.getElementById(fromBox.id);
+            const toEl = document.getElementById(toBox.id);
+            if (fromEl && toEl) {
+                const fromHeight = fromEl.offsetHeight;
+                const toHeight = toEl.offsetHeight;
+                // Center align
+                toBox.y = fromBox.y + (fromHeight / 2) - (toHeight / 2);
+            }
+        }
+    });
+    
+    // Check for overlaps and fix them
+    let hasOverlap = true;
+    let iterations = 0;
+    const maxIterations = 20;
+    
+    while (hasOverlap && iterations < maxIterations) {
+        hasOverlap = false;
+        iterations++;
+        
+        for (let i = 0; i < flowChartData.boxes.length; i++) {
+            const box1 = flowChartData.boxes[i];
+            const el1 = document.getElementById(box1.id);
+            if (!el1) continue;
+            
+            const width1 = el1.offsetWidth;
+            const height1 = el1.offsetHeight;
+            
+            for (let j = i + 1; j < flowChartData.boxes.length; j++) {
+                const box2 = flowChartData.boxes[j];
+                const el2 = document.getElementById(box2.id);
+                if (!el2) continue;
+                
+                const width2 = el2.offsetWidth;
+                const height2 = el2.offsetHeight;
+                
+                // Check if boxes overlap (with 20px buffer)
+                const buffer = 20;
+                if (box1.x < box2.x + width2 + buffer &&
+                    box1.x + width1 + buffer > box2.x &&
+                    box1.y < box2.y + height2 + buffer &&
+                    box1.y + height1 + buffer > box2.y) {
+                    
+                    hasOverlap = true;
+                    
+                    // Move box2 down
+                    box2.y = box1.y + height1 + 120;
+                }
+            }
+        }
+    }
+    
+    // Group by columns for final alignment
+    const columns = {};
+    flowChartData.boxes.forEach(box => {
+        if (box.isSideStep) return; // Skip side steps in column alignment
+        
+        const colKey = Math.round(box.x / 50) * 50;
+        if (!columns[colKey]) {
+            columns[colKey] = [];
+        }
+        columns[colKey].push(box);
+    });
+    
+    Object.keys(columns).forEach(colKey => {
+        columns[colKey].sort((a, b) => a.y - b.y);
+        
+        let currentY = columns[colKey][0].y;
+        columns[colKey].forEach((box, index) => {
+            if (index > 0) {
+                const prevBoxElement = document.getElementById(columns[colKey][index - 1].id);
+                if (prevBoxElement) {
+                    const prevHeight = prevBoxElement.offsetHeight;
+                    currentY = columns[colKey][index - 1].y + prevHeight + 120;
+                }
+            }
+            box.y = currentY;
+        });
+    });
+    
+    renderFlowChart();
+}
+
+function findConnectedGroups() {
+    const groups = [];
+    const visited = new Set();
+    
+    flowChartData.boxes.forEach(box => {
+        if (visited.has(box.id)) return;
+        
+        // BFS to find all connected boxes
+        const group = [];
+        const queue = [box.id];
+        
+        while (queue.length > 0) {
+            const currentId = queue.shift();
+            if (visited.has(currentId)) continue;
+            
+            visited.add(currentId);
+            group.push(currentId);
+            
+            // Find all boxes connected to this one (both directions, including circle-back)
+            flowChartData.arrows.forEach(arrow => {
+                if (arrow.from === currentId && !visited.has(arrow.to)) {
+                    queue.push(arrow.to);
+                }
+                if (arrow.to === currentId && !visited.has(arrow.from)) {
+                    queue.push(arrow.from);
+                }
+            });
+        }
+        
+        if (group.length > 0) {
+            groups.push(group);
+        }
+    });
+    
+    return groups;
+}
+
+const originalValidateDocument = validateDocument;
+validateDocument = function() {
+    const errors = originalValidateDocument();
+    
+    if (flowChartData.boxes.length === 0) {
+        errors.push('Flow chart must have at least one process step');
+    } else {
+        for (let i = 0; i < flowChartData.boxes.length; i++) {
+            const box = flowChartData.boxes[i];
+            if (!box.label || box.label.trim() === '' || box.label.trim() === 'New Step') {
+                errors.push(`Process step ${i + 1} needs a descriptive label (not "New Step")`);
+            }
+        }
+    }
+    
+    return errors;
+};
+
+const originalCollectFormData = collectFormData;
+collectFormData = function() {
+    const data = originalCollectFormData();
+    data.document_data = { flowChart: flowChartData };
+    return data;
+};
+
+document.addEventListener('mousemove', function(e) {
+    if (isDraggingFloatingBox && draggedFloatingBoxId) {
+        const deltaX = e.clientX - floatingDragStartX;
+        const deltaY = e.clientY - floatingDragStartY;
+        
+        const box = flowChartData.boxes.find(b => b.id === draggedFloatingBoxId);
+        if (box) {
+            box.x = floatingOriginalX + deltaX;
+            box.y = floatingOriginalY + deltaY;
+            
+            // Re-render to update arrow positions
+            renderFlowChart();
+        }
+    }
+    
+    if (isPanning) {
+        const deltaX = e.clientX - panStartX;
+        const deltaY = e.clientY - panStartY;
+        
+        // Update box positions for the group being dragged
+        originalBoxPositions.forEach(original => {
+            const box = flowChartData.boxes.find(b => b.id === original.id);
+            if (box) {
+                box.x = original.x + deltaX;
+                box.y = original.y + deltaY;
+            }
+        });
+        
+        // Re-render to update arrows
+        renderFlowChart();
+    }
+});
+
+document.addEventListener('mouseup', function(e) {
+    if (isDraggingFloatingBox) {
+        isDraggingFloatingBox = false;
+        draggedFloatingBoxId = null;
+    }
+    
+    if (isPanning) {
+        isPanning = false;
+        originalBoxPositions = [];
+        
+        // Reset all drag handles
+        document.querySelectorAll('.flow-group-drag-handle').forEach(handle => {
+            handle.style.cursor = 'grab';
+            delete handle.dataset.dragging;
+        });
+        
+        renderFlowChart();
+    }
+});
+</script>

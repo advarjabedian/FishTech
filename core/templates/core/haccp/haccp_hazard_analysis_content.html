@@ -1,0 +1,12 @@
+<div class="mb-3 no-print">
+    <button type="button" class="btn btn-info btn-sm" onclick="syncFromFlowChart()" {% if is_read_only %}disabled{% endif %}>
+        <i class="bi bi-arrow-repeat me-1"></i>Sync from Flow Chart
+    </button>
+    <button type="button" class="btn btn-success btn-sm" onclick="addHazardStep()" {% if is_read_only %}disabled{% endif %}>
+        <i class="bi bi-plus-circle me-1"></i>Add Manual Step
+    </button>
+</div>
+
+<div id="hazardAnalysisContainer">
+    <!-- Hazard analysis sections will be populated here -->
+</div>

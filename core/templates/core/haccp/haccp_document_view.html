@@ -1,0 +1,186 @@
+{% extends 'core/base.html' %}
+{% load static %}
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'core/css/haccp.css' %}">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="mb-3 no-print d-flex justify-content-between align-items-center">
+        <a href="{% url 'haccp_documents' company.companyid product_type_slug %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-2"></i>Back to Document Set
+        </a>
+        <div class="d-flex gap-2">
+            {% if document_type_slug == 'flow_chart' %}
+            <a href="{% url 'haccp_document_view' company.companyid product_type_slug 'product_description' %}?{% if request.GET.year %}year={{ request.GET.year }}&version={{ request.GET.version }}{% endif %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left me-2"></i>Previous
+            </a>
+            {% elif document_type_slug == 'hazard_analysis' %}
+            <a href="{% url 'haccp_document_view' company.companyid product_type_slug 'flow_chart' %}?{% if request.GET.year %}year={{ request.GET.year }}&version={{ request.GET.version }}{% endif %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left me-2"></i>Previous
+            </a>
+            {% elif document_type_slug == 'ccp_summary' %}
+            <a href="{% url 'haccp_document_view' company.companyid product_type_slug 'hazard_analysis' %}?{% if request.GET.year %}year={{ request.GET.year }}&version={{ request.GET.version }}{% endif %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left me-2"></i>Previous
+            </a>
+            {% endif %}
+            
+            {% if document_type_slug == 'product_description' %}
+            <a href="{% url 'haccp_document_view' company.companyid product_type_slug 'flow_chart' %}?{% if request.GET.year %}year={{ request.GET.year }}&version={{ request.GET.version }}{% endif %}" class="btn btn-outline-secondary">
+                Next<i class="bi bi-arrow-right ms-2"></i>
+            </a>
+            {% elif document_type_slug == 'flow_chart' %}
+            <a href="{% url 'haccp_document_view' company.companyid product_type_slug 'hazard_analysis' %}?{% if request.GET.year %}year={{ request.GET.year }}&version={{ request.GET.version }}{% endif %}" class="btn btn-outline-secondary">
+                Next<i class="bi bi-arrow-right ms-2"></i>
+            </a>
+            {% elif document_type_slug == 'hazard_analysis' %}
+            <a href="{% url 'haccp_document_view' company.companyid product_type_slug 'ccp_summary' %}?{% if request.GET.year %}year={{ request.GET.year }}&version={{ request.GET.version }}{% endif %}" class="btn btn-outline-secondary">
+                Next<i class="bi bi-arrow-right ms-2"></i>
+            </a>
+            {% endif %}
+            
+            <button type="button" class="btn btn-outline-primary" onclick="prepareForPrint()">
+    <i class="bi bi-printer me-2"></i>Print Document
+</button>
+        </div>
+    </div>
+    
+    <div class="document-container" style="{% if company.companyid == 0 %}border-color: #dc3545;{% endif %}">
+        <div class="metadata-section">
+        <!-- Header -->
+        <div class="document-header" style="padding-bottom: 15px; margin-bottom: 20px;">
+            <div style="display: grid; grid-template-columns: 1fr 2fr 1fr; gap: 20px; align-items: start;">
+                <!-- Left: Originated -->
+                <div>
+                    <div style="margin-bottom: 8px;">
+                        <strong>Originated:</strong>
+                        <input type="date" id="originated_date" value="{{ document.originated_date|date:'Y-m-d' }}" {% if is_read_only %}disabled{% endif %} style="border: none; border-bottom: 1px solid #000; width: 100%; padding: 2px;">
+                    </div>
+                    <div>
+                        <strong>Originated By:</strong>
+                        <input type="text" id="originated_by" value="{{ document.originated_by|default:'' }}" placeholder="Enter name" {% if is_read_only %}disabled{% endif %} style="border: none; border-bottom: 1px solid #000; width: 100%; padding: 2px;">
+                    </div>
+                </div>
+                
+                <!-- Center: Title -->
+                <div style="text-align: center;">
+                    <h3 class="mb-1">HACCP {{ document_type }}</h3>
+                    <h5 class="text-muted mb-1" style="text-transform: uppercase;">{{ product_type }}</h5>
+                    <div class="sqf-badge" style="display: inline-block; font-size: 0.9rem; padding: 4px 10px;">SQF – 2.4.3</div>
+                </div>
+                
+                <!-- Right: Version -->
+                <div style="text-align: right;">
+                    <div><strong>Version:</strong> {{ document.version }}</div>
+                    <div><strong>Year:</strong> {{ document.year }}</div>
+                    {% if is_read_only %}
+                    <div class="alert alert-warning mt-2 no-print" style="font-size: 0.85rem; padding: 8px;">
+                        <i class="bi bi-exclamation-triangle me-1"></i>
+                        {% if company.companyid != 0 %}
+                            Read-only - <a href="/haccp/0/{{ product_type_slug }}/{{ document_type_slug }}/" class="alert-link">Edit in Master</a>
+                        {% elif document.status == 'completed' %}
+                            Completed
+                        {% else %}
+                            Historical
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        
+        </div><!-- Close metadata-section -->
+        
+        <!-- Document Type Specific Content -->
+        {% if document_type_slug == 'product_description' %}
+            {% include 'core/haccp/haccp_product_description_content.html' %}
+        {% elif document_type_slug == 'flow_chart' %}
+            {% include 'core/haccp/haccp_flow_chart_content.html' %}
+        {% elif document_type_slug == 'hazard_analysis' %}
+            {% include 'core/haccp/haccp_hazard_analysis_content.html' %}
+        {% elif document_type_slug == 'ccp_summary' %}
+            {% include 'core/haccp/haccp_ccp_summary_content.html' %}
+        {% endif %}
+        
+        <!-- Approval Section -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr 2fr; gap: 20px; align-items: end; border-top: 2px solid #dee2e6; padding-top: 15px; margin-top: 30px;">
+            <div>
+                <strong>Approved By:</strong>
+                <input type="text" id="approved_by" value="{{ document.approved_by|default:'' }}" placeholder="Enter name" {% if is_read_only %}disabled{% endif %} style="border: none; border-bottom: 1px solid #000; width: 100%; padding: 2px;">
+            </div>
+            <div>
+                <strong>Date Approved:</strong>
+                <input type="date" id="approved_date" value="{{ document.approved_date|date:'Y-m-d' }}" {% if is_read_only %}disabled{% endif %} style="border: none; border-bottom: 1px solid #000; width: 100%; padding: 2px;">
+            </div>
+            <div style="text-align: center;">
+                <strong>Signature:</strong>
+                <canvas id="signature_canvas" class="signature-pad" width="280" height="80" style="display: block; margin: 5px auto 0; border: 1px solid #dee2e6;"></canvas>
+                <button type="button" class="btn btn-sm btn-outline-danger mt-1 no-print" onclick="clearSignature()" {% if is_read_only %}disabled{% endif %} style="font-size: 0.75rem; padding: 2px 8px;">
+                    <i class="bi bi-x-circle me-1"></i>Clear
+                </button>
+            </div>
+        </div>
+        
+        <!-- Action Buttons -->
+        {% if not is_read_only %}
+        <div class="d-flex justify-content-between mt-4 no-print">
+            <div>
+                <button type="button" class="btn btn-secondary" onclick="saveDraft()">
+                    <i class="bi bi-save me-2"></i>Save Draft
+                </button>
+            </div>
+            <div>
+                <button type="button" class="btn btn-success" onclick="submitDocument()">
+                    <i class="bi bi-check-circle me-2"></i>Submit for Approval
+                </button>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Signature Modal -->
+<div class="modal fade" id="signatureModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Draw Your Signature</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center">
+                <canvas id="signature_canvas_modal" class="signature-pad mx-auto" width="600" height="300" style="border: 2px solid #dee2e6; border-radius: 5px; background: #f8f9fa; cursor: crosshair; touch-action: none;"></canvas>
+            </div>
+            <div class="modal-footer d-flex justify-content-between">
+                <button type="button" class="btn btn-outline-danger" onclick="clearModalSignature()">
+                    <i class="bi bi-x-circle me-1"></i>Clear Signature
+                </button>
+                <button type="button" class="btn btn-success" onclick="saveModalSignature()">
+                    <i class="bi bi-check-circle me-1"></i>Save Signature
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+{% include 'core/haccp/haccp_common_scripts.html' %}
+{% if document_type_slug == 'product_description' %}
+    {% include 'core/haccp/haccp_product_description_scripts.html' %}
+{% elif document_type_slug == 'flow_chart' %}
+    {% include 'core/haccp/haccp_flow_chart_scripts.html' %}
+{% elif document_type_slug == 'hazard_analysis' %}
+    {% include 'core/haccp/haccp_hazard_analysis_scripts.html' %}
+{% elif document_type_slug == 'ccp_summary' %}
+    {% include 'core/haccp/haccp_ccp_summary_scripts.html' %}
+{% endif %}
+
+<script>
+// Print function now uses the common prepareForPrint() from haccp_common_scripts.html
+</script>
+
+
+{% endblock %}

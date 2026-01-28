@@ -1,0 +1,630 @@
+/* ========================================
+   HACCP STYLES - CONSOLIDATED
+   ======================================== */
+
+/* ==================== LANDING PAGE ==================== */
+.company-card {
+    cursor: pointer;
+    transition: all 0.3s ease;
+    height: 100%;
+}
+
+.company-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.15);
+}
+
+.product-type-badge {
+    font-size: 0.9rem;
+    padding: 0.5rem 1rem;
+    margin: 0.25rem;
+    transition: all 0.2s ease;
+}
+
+.product-type-badge:hover {
+    transform: scale(1.05);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+.master-plan-card {
+    cursor: pointer;
+    transition: all 0.3s ease;
+    height: 100%;
+    border: 2px solid #dc3545;
+}
+
+.master-plan-card:hover {
+    transform: translateY(-8px) scale(1.03);
+    box-shadow: 0 12px 24px rgba(220, 53, 69, 0.3);
+    border-color: #bb2d3b;
+}
+
+.master-plan-card .card-body {
+    padding: 1.5rem;
+}
+
+.master-plan-card .document-count {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #dc3545;
+}
+
+.master-plan-card i {
+    font-size: 2.5rem;
+    color: #dc3545;
+}
+
+.product-type-card {
+    cursor: pointer;
+    transition: all 0.3s ease;
+    height: 100%;
+    min-height: 150px;
+}
+
+.product-type-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.15);
+}
+
+.document-count {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #fd7e14;
+}
+
+.document-card {
+    cursor: pointer;
+    transition: all 0.3s ease;
+    height: 100%;
+}
+
+.document-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.15);
+}
+
+.document-icon {
+    font-size: 4rem;
+    color: #fd7e14;
+}
+
+.status-badge {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+}
+
+.status-badge-large {
+    font-size: 1rem;
+    padding: 0.5rem 1rem;
+}
+
+.collapse-icon {
+    transition: transform 0.3s ease;
+}
+
+[aria-expanded="true"] .collapse-icon {
+    transform: rotate(90deg);
+}
+
+/* ==================== MODALS ==================== */
+#masterVersionHistoryModal .modal-body,
+#allVersionHistoryModal .modal-body {
+    color: #000;
+}
+
+#masterVersionHistoryModal table,
+#allVersionHistoryModal table {
+    color: #000;
+}
+
+#masterVersionHistoryModal .badge,
+#allVersionHistoryModal .badge {
+    color: #fff !important;
+}
+
+#masterYearNavigation .year-btn.active,
+#yearNavigation .year-btn.active {
+    background-color: #0d6efd;
+    color: white;
+    border-color: #0d6efd;
+}
+
+.version-table {
+    width: 100%;
+}
+
+.version-table th {
+    background-color: #f8f9fa;
+    padding: 12px;
+    text-align: left;
+    border: 1px solid #dee2e6;
+}
+
+.version-table td {
+    padding: 12px;
+    border: 1px solid #dee2e6;
+}
+
+.version-table tr:hover {
+    background-color: #f8f9fa;
+    cursor: pointer;
+}
+
+/* ==================== DOCUMENT VIEW ==================== */
+.document-container {
+    background: white;
+    border: 2px solid #fd7e14;
+    border-radius: 10px;
+    padding: 30px;
+    margin-bottom: 30px;
+    max-width: 1200px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.document-header {
+    border-bottom: 3px solid #fd7e14;
+    padding-bottom: 20px;
+    margin-bottom: 30px;
+}
+
+.header-grid {
+    display: grid;
+    grid-template-columns: 200px 1fr 200px;
+    gap: 20px;
+    align-items: start;
+}
+
+.company-logo-box {
+    width: 150px;
+    height: 150px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.company-logo-box img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+}
+
+.header-center {
+    text-align: center;
+}
+
+.header-right {
+    text-align: right;
+}
+
+.sqf-badge {
+    background-color: #fd7e14;
+    color: white;
+    padding: 8px 15px;
+    border-radius: 5px;
+    font-weight: bold;
+    display: inline-block;
+    margin-bottom: 10px;
+}
+
+.form-section {
+    margin-bottom: 30px;
+}
+
+.approval-grid {
+    display: grid;
+    grid-template-columns: 1fr 300px 1fr;
+    gap: 20px;
+    align-items: end;
+}
+
+.signature-pad {
+    border: 2px solid #dee2e6;
+    border-radius: 5px;
+    background: #f8f9fa;
+    cursor: crosshair;
+    display: block;
+}
+
+/* ==================== TABLES ==================== */
+.content-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+}
+
+.content-table td {
+    padding: 12px;
+    border: 1px solid #dee2e6;
+    vertical-align: top;
+}
+
+.content-table td:first-child {
+    width: 30% !important;
+    background-color: #f0f0f0 !important;
+    font-weight: bold !important;
+}
+
+.auto-expand-textarea {
+    overflow: hidden !important;
+    resize: none !important;
+    min-height: 0 !important;
+    height: auto !important;
+    box-sizing: border-box;
+    padding: 6px 12px !important;
+    line-height: 1.5 !important;
+}
+
+/* ==================== DRAG & DROP ==================== */
+.draggable-row {
+    cursor: move;
+}
+
+.draggable-row:hover {
+    background-color: #f8f9fa;
+}
+
+.drag-handle {
+    cursor: grab;
+    color: #6c757d;
+    margin-right: 8px;
+}
+
+.drag-handle:active {
+    cursor: grabbing;
+}
+
+.row-actions {
+    display: flex;
+    gap: 5px;
+    align-items: center;
+}
+
+/* ==================== FLOW CHART ==================== */
+#flowChartCanvas {
+    position: relative;
+    width: 100%;
+    min-height: 400px;
+    height: auto;
+    border: 2px solid #dee2e6;
+    background: white;
+    overflow: visible;
+    cursor: default;
+}
+
+.flow-box {
+    position: absolute;
+    min-width: 150px;
+    max-width: 300px;
+    min-height: 60px;
+    padding: 10px;
+    background: #fff;
+    border: 2px solid #0d6efd;
+    border-radius: 8px;
+    z-index: 10;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    width: auto;
+    height: auto;
+}
+
+.flow-box:hover {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+.flow-box-label {
+    font-size: 14px;
+    text-align: center;
+    word-wrap: break-word;
+    white-space: pre-wrap;
+}
+
+.flow-box-delete {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    width: 20px;
+    height: 20px;
+    background: #dc3545;
+    color: white;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    font-size: 12px;
+    line-height: 1;
+}
+
+.flow-box-actions {
+    margin-top: 10px;
+}
+
+.flow-box-actions .btn {
+    font-size: 0.75rem;
+    padding: 3px 8px;
+}
+
+.flow-arrow-line {
+    stroke: #6c757d;
+    stroke-width: 2;
+    fill: none;
+}
+
+.flow-drag-handle {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    width: 40px;
+    height: 40px;
+    background: #0d6efd;
+    color: white;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: grab;
+    z-index: 100;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    font-size: 1.5rem;
+}
+
+.flow-drag-handle:hover {
+    background: #0b5ed7;
+}
+
+.flow-drag-handle:active {
+    cursor: grabbing;
+}
+
+/* ==================== HAZARD ANALYSIS ==================== */
+.hazard-step {
+    border: 2px solid #fd7e14;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+    background: #fff;
+}
+
+.hazard-step-header {
+    background: #fd7e14;
+    color: white;
+    padding: 10px;
+    margin: -20px -20px 20px -20px;
+    border-radius: 6px 6px 0 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    user-select: none;
+}
+
+.hazard-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+
+.hazard-table th {
+    background: #f8f9fa;
+    padding: 10px;
+    border: 1px solid #dee2e6;
+    font-size: 0.9rem;
+}
+
+.hazard-table td {
+    padding: 10px;
+    border: 1px solid #dee2e6;
+    vertical-align: top;
+}
+
+.hazard-type {
+    font-weight: bold;
+    width: 15%;
+}
+
+.hazard-description {
+    width: 25%;
+}
+
+.hazard-significant {
+    width: 8%;
+    text-align: center;
+}
+
+.hazard-justification {
+    width: 30%;
+}
+
+.hazard-controls {
+    width: 17%;
+}
+
+.hazard-ccp {
+    width: 5%;
+    text-align: center;
+}
+
+/* ==================== CCP SUMMARY ==================== */
+#ccpSummaryTable {
+    font-size: 0.75rem;
+    table-layout: fixed;
+    width: 100%;
+}
+
+#ccpSummaryTable th {
+    font-size: 0.7rem;
+    padding: 4px 6px;
+    vertical-align: middle;
+    line-height: 1.2;
+    font-weight: 600;
+}
+
+#ccpSummaryTable td {
+    padding: 2px 4px;
+    vertical-align: top;
+    line-height: 1.2;
+}
+
+#ccpSummaryTable textarea {
+    width: 100%;
+    min-height: 60px;
+    font-size: 0.7rem;
+    border: 1px solid #dee2e6;
+    padding: 3px 4px;
+    line-height: 1.3;
+    resize: vertical;
+    font-family: inherit;
+}
+
+#ccpSummaryTable input[type="text"] {
+    width: 100%;
+    font-size: 0.7rem;
+    padding: 2px 4px;
+    line-height: 1.2;
+    border: 1px solid #dee2e6;
+}
+
+#ccpSummaryTable .btn-sm {
+    padding: 2px 6px;
+    font-size: 0.7rem;
+}
+
+.ccp-row {
+    background: #fff;
+    user-select: none;
+}
+
+.ccp-row:nth-child(even) {
+    background: #f8f9fa;
+}
+
+/* ==================== PRINT STYLES ==================== */
+@media print {
+    @page {
+        margin: 0.3in 0.3in;
+    }
+    
+    .no-print,
+    button,
+    .btn,
+    nav,
+    .navbar,
+    header {
+        display: none !important;
+    }
+    
+    body {
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+    
+    .container {
+        padding: 0 !important;
+        margin: 0 !important;
+        max-width: 100% !important;
+        width: 100% !important;
+    }
+    
+    .document-container {
+        padding: 10px !important;
+        margin: 0 !important;
+        max-width: 100% !important;
+    }
+    
+    .content-table textarea,
+    .auto-expand-textarea {
+        border: none !important;
+        background: transparent !important;
+        -webkit-appearance: none !important;
+        -moz-appearance: none !important;
+        appearance: none !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        overflow: visible !important;
+        overflow-y: visible !important;
+        overflow-x: visible !important;
+        white-space: pre-wrap !important;
+        word-wrap: break-word !important;
+        page-break-inside: avoid;
+        height: auto !important;
+        min-height: 0 !important;
+        max-height: none !important;
+        resize: none !important;
+        padding: 4px !important;
+        box-sizing: content-box !important;
+    }
+    
+    .content-table textarea::-webkit-scrollbar {
+        display: none !important;
+        width: 0 !important;
+        height: 0 !important;
+    }
+    
+    /* CCP Summary & Hazard Analysis tables */
+    #ccpSummaryTable textarea,
+    .hazard-table textarea,
+    .hazard-table select {
+        border: 1px solid #dee2e6 !important;
+        background: transparent !important;
+        overflow: visible !important;
+        height: auto !important;
+        min-height: 0 !important;
+        max-height: none !important;
+        resize: none !important;
+        padding: 4px !important;
+    }
+    
+    #ccpSummaryTable textarea::-webkit-scrollbar,
+    .hazard-table textarea::-webkit-scrollbar {
+        display: none !important;
+    }
+    
+    .content-table td {
+        page-break-inside: avoid;
+    }
+    
+    .content-table {
+        page-break-inside: auto;
+    }
+    
+    .document-container {
+        border: none !important;
+        box-shadow: none !important;
+    }
+    
+    .hazard-step {
+        page-break-inside: avoid;
+    }
+    
+    #ccpSummaryTable textarea {
+        height: auto !important;
+        min-height: auto !important;
+        overflow: visible !important;
+    }
+    
+
+    
+    .flow-box {
+        page-break-inside: avoid;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        min-width: 120px !important;
+        max-width: 250px !important;
+        padding: 6px !important;
+        font-size: 11px !important;
+    }
+    
+    .flow-box-label {
+        overflow: visible !important;
+        height: auto !important;
+        font-size: 11px !important;
+    }
+    
+    .flow-arrow-line {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+
+ 
+    
+}

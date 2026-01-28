@@ -1,0 +1,778 @@
+{% extends 'core/base.html' %}
+{% load static %}
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'core/css/haccp.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4"><i class="bi bi-shield-check me-2"></i>HACCP Documentation</h1>
+    
+    <div class="alert alert-info mb-4" role="alert">
+        <i class="bi bi-info-circle me-2"></i>
+        <strong>Note:</strong> For each product type and year, all companies share the same set of HACCP documents. 
+        When you view or print a document through a specific company, only the company logo will differ.
+    </div>
+    
+    <!-- Master Set Section -->
+    <!-- Master Set Section --> 
+<div class="card border-danger mb-4">
+    <div class="card-header bg-danger text-white" style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#masterPlansCollapse">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h4 class="mb-0">
+                    <i class="bi bi-chevron-right me-2 collapse-icon"></i>
+                    <i class="bi bi-star-fill me-2"></i>Master HACCP Plans
+                </h4>
+                <small>Edit and manage the master documents for all companies</small>
+            </div>
+            <div class="text-end">
+                <h5 class="mb-0">Year: {% now "Y" %}</h5>
+            </div>
+        </div>
+    </div>
+    <div id="masterPlansCollapse" class="collapse">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+    <p class="text-muted mb-0">Available HACCP PLANS:</p>
+    <div class="d-flex gap-2">
+        <button type="button" class="btn btn-sm btn-secondary" onclick="openRecycleBin()">
+            <i class="bi bi-trash me-1"></i>Recycle Bin
+        </button>
+        <button type="button" class="btn btn-sm btn-danger" onclick="openManageProductTypesModal()">
+            <i class="bi bi-gear me-1"></i>Manage Product Types
+        </button>
+    </div>
+</div>
+            <div class="row" id="master-product-types">
+                <!-- Product types will be loaded via JS -->
+            </div>
+        </div>
+    </div>
+    
+    <div class="card border-secondary mb-4">
+    <div class="card-header bg-secondary text-white" style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#companyViewsCollapse">
+        <h3 class="mb-0">
+            <i class="bi bi-chevron-right me-2 collapse-icon"></i>
+            Company-Specific Views
+        </h3>
+    </div>
+    <div id="companyViewsCollapse" class="collapse">
+        <div class="card-body">
+            <div class="row">
+       {% for company in companies %}
+        <div class="col-md-6 col-lg-4 mb-4">
+            <div class="card company-card border-warning">
+                <div class="card-header bg-warning text-white">
+                    <h5 class="mb-0">{{ company.companyname }}</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted mb-3">Product Types:</p>
+                    <div class="d-flex flex-wrap" id="product-types-{{ company.companyid }}">
+                        <!-- Product types will be loaded via JS -->
+                    </div>
+                    <div class="mt-3">
+                        <button class="btn btn-warning btn-sm w-100" onclick="toggleProductTypeManager({{ company.companyid }})">
+                            <i class="bi bi-gear me-1"></i>Manage Product Types
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Product Type Manager Modal -->
+<div class="modal fade" id="productTypeModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Manage Product Types</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="productTypeModalBody">
+                <!-- Content loaded dynamically -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Master Version History Modal -->
+<div class="modal fade" id="masterVersionHistoryModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="masterVersionModalTitle">Version History</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3 d-flex justify-content-between align-items-center">
+                    <div class="d-flex gap-2" id="masterYearNavigation">
+                        <!-- Year buttons -->
+                    </div>
+                    <button type="button" class="btn btn-success" id="masterNewVersionBtn" style="display:none;" onclick="createMasterNewVersion()">
+                        <i class="bi bi-plus-circle me-2"></i>New Version
+                    </button>
+                </div>
+                <div id="masterVersionTableContent"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Manage Master Product Types Modal -->
+<div class="modal fade" id="manageProductTypesModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Manage Product Types</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <h6>Add New Product Type</h6>
+                    <div class="input-group">
+                        <input type="text" class="form-control" id="newProductTypeName" placeholder="Enter product type name">
+                        <button class="btn btn-success" onclick="addNewProductType()">
+                            <i class="bi bi-plus-circle me-1"></i>Add
+                        </button>
+                    </div>
+                </div>
+                <hr>
+                <h6>Existing Product Types</h6>
+                <div id="productTypesList">
+                    <!-- Will be populated by JS -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recycle Bin Modal -->
+<div class="modal fade" id="recycleBinModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-trash me-2"></i>Recycle Bin</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="recycleBinList">
+                    <!-- Will be populated by JS -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+let productTypes = [];
+let productTypeModal;
+let masterVersionHistoryModal;
+let manageProductTypesModal;
+let recycleBinModal;
+let currentMasterProductType = '';
+let currentMasterProductName = '';
+let masterSelectedYear = {% now "Y" %};
+let masterAllYears = [];
+
+document.addEventListener('DOMContentLoaded', function() {
+    productTypeModal = new bootstrap.Modal(document.getElementById('productTypeModal'));
+    masterVersionHistoryModal = new bootstrap.Modal(document.getElementById('masterVersionHistoryModal'));
+    manageProductTypesModal = new bootstrap.Modal(document.getElementById('manageProductTypesModal'));
+    recycleBinModal = new bootstrap.Modal(document.getElementById('recycleBinModal'));
+    
+    // Load all product types first
+    loadAllProductTypes().then(() => {
+        // Then load master product types
+        loadMasterProductTypes();
+        
+        {% for company in companies %}
+        loadProductTypes({{ company.companyid }});
+        {% endfor %}
+    });
+});  // <-- These closing braces are important
+
+function loadAllProductTypes() {
+    return fetch('/api/haccp-all-product-types/')
+        .then(r => r.json())
+        .then(data => {
+            productTypes = data.product_types;
+        })
+        .catch(err => {
+            console.error('Error loading product types:', err);
+        });
+}
+
+function openManageProductTypesModal() {
+    renderProductTypesList();
+    manageProductTypesModal.show();
+}
+
+function renderProductTypesList() {
+    const container = document.getElementById('productTypesList');
+    container.innerHTML = '';
+    
+    if (productTypes.length === 0) {
+        container.innerHTML = '<p class="text-muted">No product types defined</p>';
+        return;
+    }
+    
+    productTypes.forEach(pt => {
+        const div = document.createElement('div');
+        div.className = 'border rounded p-2 mb-2 d-flex justify-content-between align-items-center';
+        div.innerHTML = `
+            <span>${pt.name}</span>
+            <button class="btn btn-sm btn-outline-danger" onclick="deleteProductType('${pt.slug}', '${pt.name}')">
+                <i class="bi bi-trash"></i>
+            </button>
+        `;
+        container.appendChild(div);
+    });
+}
+
+function addNewProductType() {
+    const nameInput = document.getElementById('newProductTypeName');
+    const name = nameInput.value.trim();
+    
+    if (!name) {
+        alert('Please enter a product type name');
+        return;
+    }
+    
+    fetch('/api/haccp-add-product-type/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({ name: name })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            productTypes.push({ slug: data.slug, name: data.name });
+            nameInput.value = '';
+            renderProductTypesList();
+            loadMasterProductTypes();
+            alert('Product type added successfully');
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(err => {
+        console.error('Error adding product type:', err);
+        alert('Error adding product type');
+    });
+}
+
+function deleteProductType(slug, name) {
+    if (!confirm(`Delete product type "${name}"? This cannot be undone if there are no documents using it.`)) {
+        return;
+    }
+    
+    fetch('/api/haccp-delete-product-type/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({ slug: slug })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            productTypes = productTypes.filter(pt => pt.slug !== slug);
+            renderProductTypesList();
+            loadMasterProductTypes();
+            alert('Product type deleted successfully');
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(err => {
+        console.error('Error deleting product type:', err);
+        alert('Error deleting product type');
+    });
+}
+
+function openRecycleBin() {
+    loadRecycleBin();
+    recycleBinModal.show();
+}
+
+function loadRecycleBin() {
+    const container = document.getElementById('recycleBinList');
+    container.innerHTML = '<div class="text-center"><div class="spinner-border text-primary" role="status"></div></div>';
+    
+    fetch('/api/haccp-inactive-product-types/')
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                renderRecycleBin(data.product_types);
+            } else {
+                container.innerHTML = '<div class="alert alert-danger">Error loading recycle bin</div>';
+            }
+        })
+        .catch(err => {
+            console.error('Error loading recycle bin:', err);
+            container.innerHTML = '<div class="alert alert-danger">Error loading recycle bin</div>';
+        });
+}
+
+function renderRecycleBin(inactiveTypes) {
+    const container = document.getElementById('recycleBinList');
+    
+    if (inactiveTypes.length === 0) {
+        container.innerHTML = '<p class="text-muted text-center">Recycle bin is empty</p>';
+        return;
+    }
+    
+    container.innerHTML = '';
+    
+    inactiveTypes.forEach(pt => {
+        const div = document.createElement('div');
+        div.className = 'border rounded p-3 mb-2 d-flex justify-content-between align-items-center';
+        div.innerHTML = `
+            <div>
+                <strong>${pt.name}</strong>
+                <br>
+                <small class="text-muted">Deleted: ${new Date(pt.updated_at).toLocaleDateString()}</small>
+            </div>
+            <button class="btn btn-sm btn-success" onclick="restoreProductType('${pt.slug}', '${pt.name}')">
+                <i class="bi bi-arrow-clockwise me-1"></i>Restore
+            </button>
+        `;
+        container.appendChild(div);
+    });
+}
+
+function restoreProductType(slug, name) {
+    if (!confirm(`Restore product type "${name}"?`)) {
+        return;
+    }
+    
+    fetch('/api/haccp-restore-product-type/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({ slug: slug })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            alert('Product type restored successfully');
+            loadRecycleBin();
+            loadAllProductTypes().then(() => {
+                loadMasterProductTypes();
+                renderProductTypesList();
+            });
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(err => {
+        console.error('Error restoring product type:', err);
+        alert('Error restoring product type');
+    });
+}
+
+function loadMasterProductTypes() {
+    fetch('/api/haccp-master-product-types/')
+        .then(r => r.json())
+        .then(data => {
+            const container = document.getElementById('master-product-types');
+            container.innerHTML = '';
+            
+            if (data.active_types.length === 0) {
+                container.innerHTML = '<div class="col-12"><span class="text-muted">No product types activated yet</span></div>';
+                return;
+            }
+            
+            data.active_types.forEach(slug => {
+                const pt = productTypes.find(p => p.slug === slug);
+                if (pt) {
+                    const col = document.createElement('div');
+                    col.className = 'col-md-4 col-lg-3 mb-3';
+                    col.innerHTML = `
+                        <div class="card master-plan-card" onclick="showMasterVersionHistory('${slug}', '${pt.name}')">
+                            <div class="card-body text-center">
+                                <i class="bi bi-folder2-open mb-2"></i>
+                                <h6 class="card-title mb-2">${pt.name}</h6>
+                                <div class="document-count">4</div>
+                                <small class="text-muted">Documents</small>
+                            </div>
+                        </div>
+                    `;
+                    container.appendChild(col);
+                }
+            });
+        })
+        .catch(err => {
+            console.error('Error loading master product types:', err);
+        });
+}
+
+function loadProductTypes(companyId) {
+    fetch(`/api/company-product-types/${companyId}/`)
+        .then(r => r.json())
+        .then(data => {
+            const container = document.getElementById(`product-types-${companyId}`);
+            container.innerHTML = '';
+            
+            let renderedCount = 0;
+            let allComplete = true;
+            
+            productTypes.forEach(pt => {
+                const isActive = data.active_types.includes(pt.slug);
+                if (isActive) {
+                    renderedCount++;
+                    const isCompleted = data.completed_types.includes(pt.slug);
+                    
+                    if (!isCompleted) {
+                        allComplete = false;
+                    }
+                    
+                    const badge = document.createElement('span');
+                    badge.className = 'badge product-type-badge ' + (isCompleted ? 'bg-success' : 'bg-secondary');
+                    badge.style.cursor = 'pointer';
+                    badge.innerHTML = isCompleted 
+                        ? `<i class="bi bi-check-circle-fill me-1"></i>${pt.name}`
+                        : pt.name;
+                    badge.onclick = (e) => {
+                        e.stopPropagation();
+                        window.location.href = `/haccp/${companyId}/${pt.slug}/`;
+                    };
+                    container.appendChild(badge);
+                }
+            });
+            
+            if (renderedCount === 0) {
+                container.innerHTML = '<span class="text-muted small">No product types activated</span>';
+                allComplete = false;
+            }
+            
+            // Update compliance status
+            const companyCard = container.closest('.card');
+            const companyHeader = companyCard.querySelector('.card-header h5');
+            let complianceBadge = companyHeader.querySelector('.compliance-badge');
+            let certIcons = companyHeader.querySelector('.cert-icons');
+            
+            if (allComplete && renderedCount > 0) {
+                if (!complianceBadge) {
+                    complianceBadge = document.createElement('span');
+                    complianceBadge.className = 'badge bg-success ms-2 compliance-badge';
+                    complianceBadge.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i>In Compliance';
+                    companyHeader.appendChild(complianceBadge);
+                }
+                
+                // Load certificate icons
+                if (!certIcons) {
+                    loadCertificateIcons(companyId, companyHeader);
+                }
+            } else {
+                if (complianceBadge) {
+                    complianceBadge.remove();
+                }
+                if (certIcons) {
+                    certIcons.remove();
+                }
+            }
+        })
+        .catch(err => {
+            console.error('Error loading product types:', err);
+        });
+}
+
+function loadCertificateIcons(companyId, companyHeader) {
+    fetch(`/api/company-certificates/${companyId}/`)
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                let certIcons = companyHeader.querySelector('.cert-icons');
+                if (!certIcons) {
+                    certIcons = document.createElement('span');
+                    certIcons.className = 'cert-icons ms-2';
+                    companyHeader.appendChild(certIcons);
+                }
+                
+                certIcons.innerHTML = '';
+                
+                const haccpCert = data.certificates.haccp_certificate;
+                const logCert = data.certificates.letter_of_guarantee;
+                
+                // HACCP Certificate icon
+                const haccpIcon = document.createElement('i');
+                haccpIcon.className = 'bi bi-file-earmark-text-fill ms-1';
+                haccpIcon.style.fontSize = '1.2rem';
+                haccpIcon.style.cursor = 'pointer';
+                haccpIcon.style.color = haccpCert.is_completed ? '#198754' : '#6c757d';
+                haccpIcon.title = 'HACCP Certificate';
+                haccpIcon.onclick = () => window.location.href = `/haccp/certificate/${companyId}/haccp_certificate/`;
+                certIcons.appendChild(haccpIcon);
+                
+                // Letter of Guarantee icon
+                const logIcon = document.createElement('i');
+                logIcon.className = 'bi bi-file-earmark-check-fill ms-1';
+                logIcon.style.fontSize = '1.2rem';
+                logIcon.style.cursor = 'pointer';
+                logIcon.style.color = logCert.is_completed ? '#198754' : '#6c757d';
+                logIcon.title = 'Letter of Guarantee';
+                logIcon.onclick = () => window.location.href = `/haccp/certificate/${companyId}/letter_of_guarantee/`;
+                certIcons.appendChild(logIcon);
+            }
+        })
+        .catch(err => {
+            console.error('Error loading certificates:', err);
+        });
+}
+
+function toggleProductTypeManager(companyId) {
+    fetch(`/api/company-product-types/${companyId}/`)
+        .then(r => r.json())
+        .then(data => {
+            let html = '';
+            
+            productTypes.forEach(pt => {
+                const isActive = data.active_types.includes(pt.slug);
+                html += `
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" 
+                               id="pt-${companyId}-${pt.slug}" 
+                               ${isActive ? 'checked' : ''}
+                               onchange="toggleProductType(${companyId}, '${pt.slug}', this.checked)">
+                        <label class="form-check-label" for="pt-${companyId}-${pt.slug}">
+                            ${pt.name}
+                        </label>
+                    </div>
+                `;
+            });
+            
+            document.getElementById('productTypeModalBody').innerHTML = html;
+            productTypeModal.show();
+        })
+        .catch(err => {
+            console.error('Error loading product type manager:', err);
+            alert('Error loading product type manager');
+        });
+}
+
+function toggleProductType(companyId, productType, isActive) {
+    fetch(`/api/company-product-types/${companyId}/toggle/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({
+            product_type: productType,
+            is_active: isActive
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            loadProductTypes(companyId);
+        } else {
+            alert('Error updating product type');
+            document.getElementById(`pt-${companyId}-${productType}`).checked = !isActive;
+        }
+    })
+    .catch(err => {
+        console.error('Error toggling product type:', err);
+        alert('Error updating product type');
+        document.getElementById(`pt-${companyId}-${productType}`).checked = !isActive;
+    });
+}
+
+function showMasterVersionHistory(productTypeSlug, productTypeName) {
+    currentMasterProductType = productTypeSlug;
+    currentMasterProductName = productTypeName;
+    masterSelectedYear = {% now "Y" %};
+    
+    document.getElementById('masterVersionModalTitle').textContent = `Version History - ${productTypeName}`;
+    
+    fetch(`/api/haccp-version-history/0/${productTypeSlug}/product_description/`)
+        .then(r => r.json())
+        .then(data => {
+            masterAllYears = data.years;
+            renderMasterYearNavigation();
+            loadMasterVersionsForYear(masterSelectedYear);
+            masterVersionHistoryModal.show();
+        })
+        .catch(err => {
+            console.error('Error loading version history:', err);
+            alert('Error loading version history');
+        });
+}
+
+function renderMasterYearNavigation() {
+    const nav = document.getElementById('masterYearNavigation');
+    nav.innerHTML = '<strong style="margin-right: 15px; align-self: center;">Years:</strong>';
+    
+    if (masterAllYears.length === 0) {
+        nav.innerHTML += '<span class="text-muted">No versions found</span>';
+        return;
+    }
+    
+    masterAllYears.forEach(year => {
+        const btn = document.createElement('button');
+        btn.className = 'btn btn-sm btn-outline-primary year-btn';
+        if (year === masterSelectedYear) {
+            btn.classList.add('active');
+        }
+        btn.textContent = year;
+        btn.onclick = () => {
+            masterSelectedYear = year;
+            renderMasterYearNavigation();
+            loadMasterVersionsForYear(year);
+        };
+        nav.appendChild(btn);
+    });
+}
+
+function loadMasterVersionsForYear(year) {
+    const contentDiv = document.getElementById('masterVersionTableContent');
+    contentDiv.innerHTML = '<div class="text-center"><div class="spinner-border text-primary" role="status"></div></div>';
+    
+    fetch(`/api/haccp-version-history/0/${currentMasterProductType}/product_description/?year=${year}`)
+        .then(r => r.json())
+        .then(data => {
+            renderMasterVersionTable(data.versions);
+        })
+        .catch(err => {
+            console.error('Error loading versions:', err);
+            contentDiv.innerHTML = '<div class="alert alert-danger">Error loading versions</div>';
+        });
+}
+
+function renderMasterVersionTable(versions) {
+    const contentDiv = document.getElementById('masterVersionTableContent');
+    const newVersionBtn = document.getElementById('masterNewVersionBtn');
+    
+    if (versions.length === 0) {
+        contentDiv.innerHTML = '<div class="alert alert-info">No versions found for this year. Click "New Version" to create the first version.</div>';
+        newVersionBtn.style.display = 'block';
+        return;
+    }
+    
+    const completedSets = versions.filter(v => v.status === 'completed' && v.total_docs === 4 && v.completed_docs === 4);
+    const activeSet = completedSets.length > 0 ? completedSets[0] : null;
+    const inProgressSet = versions.find(v => v.status === 'in_progress' || v.completed_docs < 4);
+    
+    newVersionBtn.style.display = (!inProgressSet && (activeSet || versions.length === 0)) ? 'block' : 'none';
+    
+    let html = `
+        <table class="version-table">
+            <thead>
+                <tr>
+                    <th>Year</th>
+                    <th>Version</th>
+                    <th>Status</th>
+                    <th>Last Updated</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+    
+    versions.forEach(v => {
+        const isActiveSet = activeSet && v.year === activeSet.year && v.version === activeSet.version;
+        const isInProgress = inProgressSet && v.year === inProgressSet.year && v.version === inProgressSet.version;
+        
+        let badgeColor = 'secondary';
+        let versionLabel = v.version;
+        let rowClass = '';
+        
+        if (v.status === 'completed' && v.total_docs === 4 && v.completed_docs === 4) {
+            badgeColor = 'success';
+            if (isActiveSet) {
+                versionLabel += ' <span class="badge bg-success ms-2">Active Version</span>';
+                rowClass = 'table-success fw-bold';
+            } else {
+                versionLabel += ' <span class="text-danger ms-2">Archive Version</span>';
+            }
+        } else if (isInProgress) {
+            badgeColor = 'warning';
+            rowClass = 'table-warning';
+        }
+        
+        html += `
+            <tr class="${rowClass}" onclick="viewMasterVersion(${v.year}, ${v.version})" style="cursor: pointer;">
+                <td>${v.year}</td>
+                <td>${versionLabel}</td>
+                <td><span class="badge bg-${badgeColor}">${v.status_display}</span></td>
+                <td>${new Date(v.updated_at).toLocaleDateString()}</td>
+            </tr>
+        `;
+    });
+    
+    html += `</tbody></table>`;
+    contentDiv.innerHTML = html;
+}
+
+function viewMasterVersion(year, version) {
+    window.location.href = `/haccp/0/${currentMasterProductType}/?year=${year}&version=${version}`;
+}
+
+function createMasterNewVersion() {
+    if (!confirm('Create a new version of all 4 documents based on the last completed set?')) {
+        return;
+    }
+    
+    fetch(`/api/haccp-generate-version/0/${currentMasterProductType}/product_description/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message || 'New version created successfully');
+            masterVersionHistoryModal.hide();
+            window.location.href = `/haccp/0/${currentMasterProductType}/`;
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(err => {
+        console.error('Error:', err);
+        alert('Error creating new version');
+    });
+}
+
+
+function setHACCPOwner(companyId, userId) {
+    fetch(`/api/haccp-set-owner/${companyId}/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({
+            user_id: userId || null
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            console.log('Owner updated successfully');
+        } else {
+            alert('Error updating owner: ' + data.error);
+        }
+    })
+    .catch(err => {
+        console.error('Error updating owner:', err);
+        alert('Error updating owner');
+    });
+}
+</script>
+{% endblock %}

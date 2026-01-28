@@ -1,0 +1,303 @@
+<script>
+// ========== CCP SUMMARY ==========
+let ccpData = { ccps: [] };
+let dragSrcCCP = null;
+let dragSrcCCPIndex = null;
+
+function initCCPSummary() {
+    const savedData = {{ document_data_json|safe }};
+    if (savedData && savedData.ccps && savedData.ccps.length > 0) {
+        ccpData = savedData;
+    }
+    renderCCPSummary();
+}
+
+function syncCCPsFromHazardAnalysis() {
+    if (!confirm('Sync CCPs from Hazard Analysis? This will add new CCPs but keep existing data.')) return;
+    
+    fetch('/api/haccp-hazard-analysis-data/{{ company.companyid }}/{{ product_type_slug }}/')
+        .then(r => r.json())
+        .then(data => {
+            if (!data.success) {
+                alert('Error: ' + data.error);
+                return;
+            }
+            
+            const hazardSteps = data.steps || [];
+            
+            if (hazardSteps.length === 0) {
+                alert('No hazard analysis steps found. Please complete the Hazard Analysis document first.');
+                return;
+            }
+            
+            let ccpNumber = 1;
+            const newCCPs = [];
+            
+            hazardSteps.forEach(step => {
+                if (step.isCCP) {
+                    const existingCCP = ccpData.ccps.find(c => 
+                        c.processStep === step.stepName
+                    );
+                    
+                    if (!existingCCP) {
+                        const ccpNumberStr = String(ccpNumber).padStart(2, '0');
+                        
+                        // Collect significant hazards
+                        const hazards = [];
+                        if (step.biological && step.biological.significant === 'yes') {
+                            hazards.push('Biological: ' + (step.biological.description || ''));
+                        }
+                        if (step.physical && step.physical.significant === 'yes') {
+                            hazards.push('Physical: ' + (step.physical.description || ''));
+                        }
+                        if (step.chemical && step.chemical.significant === 'yes') {
+                            hazards.push('Chemical: ' + (step.chemical.description || ''));
+                        }
+                        
+                        newCCPs.push({
+                            id: 'ccp-' + Date.now() + '-' + ccpNumber,
+                            ccpNumber: ccpNumberStr,
+                            processStep: step.stepName || '',
+                            hazard: hazards.join('\n'),
+                            criticalLimit: '',
+                            monitoring: step.controls || '',
+                            correctiveActions: '',
+                            verification: '',
+                            records: ''
+                        });
+                        
+                        ccpNumber++;
+                    }
+                }
+            });
+            
+            if (newCCPs.length === 0) {
+                alert('No new CCPs found. Make sure you have checked the "CCP?" checkbox in the Hazard Analysis.');
+                return;
+            }
+            
+            ccpData.ccps = [...ccpData.ccps, ...newCCPs];
+            renderCCPSummary();
+            
+            alert(`Added ${newCCPs.length} CCP(s) from Hazard Analysis`);
+        })
+        .catch(err => {
+            console.error('Error syncing CCPs:', err);
+            alert('Error syncing CCPs from Hazard Analysis');
+        });
+}
+function renderCCPSummary() {
+    const container = document.getElementById('ccpSummaryContainer');
+    container.innerHTML = '';
+    const isReadOnly = {% if is_read_only %}true{% else %}false{% endif %};
+    
+    if (ccpData.ccps.length === 0) {
+        container.innerHTML = `
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle me-2"></i>
+                No CCPs yet. Click "Sync CCPs from Hazard Analysis" to import CCPs.
+            </div>
+        `;
+        return;
+    }
+    
+    ccpData.ccps.forEach((ccp, index) => {
+        const ccpDiv = document.createElement('div');
+        ccpDiv.className = 'hazard-step mb-4';
+        ccpDiv.setAttribute('data-index', index);
+        
+        ccpDiv.innerHTML = `
+            <div class="hazard-step-header" ${isReadOnly ? '' : 'draggable="true"'} style="${isReadOnly ? '' : 'cursor: move;'}">
+                <h5 class="mb-0">
+                    ${isReadOnly ? '' : '<i class="bi bi-grip-vertical me-2"></i>'}
+                    <span>CCP #${ccp.ccpNumber} - </span><span contenteditable="${!isReadOnly}" onblur="updateCCPProcessStep(${index}, this.innerText)" style="outline: none;">${ccp.processStep}</span>
+                </h5>
+                ${isReadOnly ? '' : `
+                <button class="btn btn-sm btn-danger no-print" onclick="deleteCCP(${index})">
+                    <i class="bi bi-trash"></i>
+                </button>
+                `}
+            </div>
+            
+            <table class="hazard-table">
+                <thead>
+                    <tr>
+                        <th style="width: 15%;">Hazard</th>
+                        <th style="width: 15%;">Critical Limit</th>
+                        <th style="width: 20%;">Monitoring</th>
+                        <th style="width: 20%;">Corrective Actions</th>
+                        <th style="width: 15%;">Records</th>
+                        <th style="width: 15%;">Verification</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>
+                            <textarea class="form-control form-control-sm" rows="4" 
+                                      onchange="updateCCPField(${index}, 'hazard', this.value)"
+                                      ${isReadOnly ? 'disabled' : 'required'}>${ccp.hazard || ''}</textarea>
+                        </td>
+                        <td>
+                            <textarea class="form-control form-control-sm" rows="4" 
+                                      onchange="updateCCPField(${index}, 'criticalLimit', this.value)"
+                                      ${isReadOnly ? 'disabled' : 'required'}>${ccp.criticalLimit || ''}</textarea>
+                        </td>
+                        <td>
+                            <textarea class="form-control form-control-sm" rows="4" 
+                                      onchange="updateCCPField(${index}, 'monitoring', this.value)"
+                                      ${isReadOnly ? 'disabled' : 'required'}>${ccp.monitoring || ''}</textarea>
+                        </td>
+                        <td>
+                            <textarea class="form-control form-control-sm" rows="4" 
+                                      onchange="updateCCPField(${index}, 'correctiveActions', this.value)"
+                                      ${isReadOnly ? 'disabled' : 'required'}>${ccp.correctiveActions || ''}</textarea>
+                        </td>
+                        <td>
+                            <textarea class="form-control form-control-sm" rows="4" 
+                                      onchange="updateCCPField(${index}, 'records', this.value)"
+                                      ${isReadOnly ? 'disabled' : 'required'}>${ccp.records || ''}</textarea>
+                        </td>
+                        <td>
+                            <textarea class="form-control form-control-sm" rows="4" 
+                                      onchange="updateCCPField(${index}, 'verification', this.value)"
+                                      ${isReadOnly ? 'disabled' : 'required'}>${ccp.verification || ''}</textarea>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        `;
+        
+        container.appendChild(ccpDiv);
+        
+        // Add drag and drop event listeners
+        if (!isReadOnly) {
+            const header = ccpDiv.querySelector('.hazard-step-header');
+            
+            header.addEventListener('dragstart', function(e) {
+                dragSrcCCP = ccpDiv;
+                dragSrcCCPIndex = parseInt(ccpDiv.getAttribute('data-index'));
+                ccpDiv.style.opacity = '0.4';
+                e.dataTransfer.effectAllowed = 'move';
+            });
+            
+            header.addEventListener('dragend', function(e) {
+                ccpDiv.style.opacity = '1';
+                document.querySelectorAll('.hazard-step').forEach(div => {
+                    div.style.borderTop = '';
+                });
+            });
+            
+            ccpDiv.addEventListener('dragover', function(e) {
+                if (e.preventDefault) {
+                    e.preventDefault();
+                }
+                
+                document.querySelectorAll('.hazard-step').forEach(div => {
+                    div.style.borderTop = '';
+                });
+                
+                if (ccpDiv !== dragSrcCCP) {
+                    ccpDiv.style.borderTop = '3px solid #0d6efd';
+                }
+                
+                e.dataTransfer.dropEffect = 'move';
+                return false;
+            });
+            
+            ccpDiv.addEventListener('drop', function(e) {
+                if (e.stopPropagation) {
+                    e.stopPropagation();
+                }
+                if (e.preventDefault) {
+                    e.preventDefault();
+                }
+                
+                document.querySelectorAll('.hazard-step').forEach(div => {
+                    div.style.borderTop = '';
+                });
+                
+                if (dragSrcCCP !== ccpDiv) {
+                    const dropIndex = parseInt(ccpDiv.getAttribute('data-index'));
+                    const movedItem = ccpData.ccps[dragSrcCCPIndex];
+                    ccpData.ccps.splice(dragSrcCCPIndex, 1);
+                    ccpData.ccps.splice(dropIndex, 0, movedItem);
+                    renderCCPSummary();
+                }
+                
+                return false;
+            });
+            
+            ccpDiv.addEventListener('dragleave', function(e) {
+                ccpDiv.style.borderTop = '';
+            });
+        }
+    });
+}
+
+function deleteCCP(index) {
+    if (!confirm('Delete this CCP?')) return;
+    
+    ccpData.ccps.splice(index, 1);
+    renderCCPSummary();
+}
+
+function updateCCPField(index, field, value) {
+    if (!ccpData.ccps[index]) return;
+    ccpData.ccps[index][field] = value;
+}
+function updateCCPProcessStep(index, newName) {
+    if (ccpData.ccps[index]) {
+        ccpData.ccps[index].processStep = newName.trim();
+    }
+}
+
+// Override validation
+const originalValidateDocument = validateDocument;
+validateDocument = function() {
+    const errors = originalValidateDocument();
+    
+    if (ccpData.ccps.length === 0) {
+        errors.push('CCP Summary must have at least one CCP');
+    } else {
+        for (let i = 0; i < ccpData.ccps.length; i++) {
+            const ccp = ccpData.ccps[i];
+            const ccpNum = i + 1;
+            
+            if (!ccp.processStep || !ccp.processStep.trim()) {
+                errors.push(`CCP ${ccpNum}: Process Step is required`);
+            }
+            if (!ccp.ccpNumber || !ccp.ccpNumber.trim()) {
+                errors.push(`CCP ${ccpNum}: CCP # is required`);
+            }
+            if (!ccp.hazard || !ccp.hazard.trim()) {
+                errors.push(`CCP ${ccpNum}: Hazard is required`);
+            }
+            if (!ccp.criticalLimit || !ccp.criticalLimit.trim()) {
+                errors.push(`CCP ${ccpNum}: Critical Limit is required`);
+            }
+            if (!ccp.monitoring || !ccp.monitoring.trim()) {
+                errors.push(`CCP ${ccpNum}: Monitoring is required`);
+            }
+            if (!ccp.correctiveActions || !ccp.correctiveActions.trim()) {
+                errors.push(`CCP ${ccpNum}: Corrective Actions is required`);
+            }
+            if (!ccp.verification || !ccp.verification.trim()) {
+                errors.push(`CCP ${ccpNum}: Verification is required`);
+            }
+            if (!ccp.records || !ccp.records.trim()) {
+                errors.push(`CCP ${ccpNum}: Records is required`);
+            }
+        }
+    }
+    
+    return errors;
+};
+
+// Override collectFormData
+const originalCollectFormData = collectFormData;
+collectFormData = function() {
+    const data = originalCollectFormData();
+    data.document_data = { ccps: ccpData.ccps };
+    return data;
+};
+</script>

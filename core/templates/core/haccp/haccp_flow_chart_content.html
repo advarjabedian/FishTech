@@ -1,0 +1,15 @@
+<div class="mb-3 no-print">
+    <button type="button" class="btn btn-info btn-sm" onclick="addIndependentBox()" {% if is_read_only %}disabled{% endif %}>
+        <i class="bi bi-plus-circle me-1"></i>Add Independent Step
+    </button>
+    <button type="button" class="btn btn-secondary btn-sm ms-2" onclick="toggleArrowButtons()" {% if is_read_only %}disabled{% endif %}>
+        <i class="bi bi-eye-slash me-1"></i>Hide/Show Arrow Buttons
+    </button>
+    <button type="button" class="btn btn-primary btn-sm ms-2" onclick="toggleEditMode()" {% if is_read_only %}disabled{% endif %}>
+        <i class="bi bi-pencil me-1"></i>Toggle Edit Mode
+    </button>
+</div>  
+
+<div id="flowChartCanvas" style="position: relative; width: 100%; height: 1000px; border: 2px solid #dee2e6; background: white; overflow: hidden;">
+    <!-- Flow chart elements will be added here -->
+</div>

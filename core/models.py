@@ -1,5 +1,34 @@
 from django.db import models
 from django.contrib.auth.models import User
+from threading import local
+
+_thread_locals = local()
+
+def get_current_tenant():
+    return getattr(_thread_locals, 'tenant', None)
+
+def set_current_tenant(tenant):
+    _thread_locals.tenant = tenant
+
+class TenantManager(models.Manager):
+    """Manager that automatically filters by current tenant"""
+    
+    def get_queryset(self):
+        qs = super().get_queryset()
+        tenant = get_current_tenant()
+        if tenant:
+            return qs.filter(tenant=tenant)
+        return qs
+
+class TenantModel(models.Model):
+    """Abstract base model for tenant-scoped models"""
+    tenant = models.ForeignKey('Tenant', on_delete=models.CASCADE)
+    
+    objects = TenantManager()
+    all_objects = models.Manager()  # Access all tenants if needed
+    
+    class Meta:
+        abstract = True
 
 class Tenant(models.Model):
     """Represents each fish factory customer"""
@@ -19,9 +48,8 @@ class TenantUser(models.Model):
     def __str__(self):
         return f"{self.user.username} - {self.tenant.name}"
 
-class Company(models.Model):
+class Company(TenantModel):
     """Company/facility within a tenant"""
-    tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE)
     companyid = models.AutoField(primary_key=True)
     companyname = models.CharField(max_length=255)
     address = models.CharField(max_length=255, blank=True)

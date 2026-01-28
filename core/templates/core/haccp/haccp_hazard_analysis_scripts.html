@@ -1,0 +1,337 @@
+<script>
+// ========== HAZARD ANALYSIS ==========
+let hazardData = { steps: [] };
+let dragSrcStep = null;
+let dragSrcIndex = null;
+
+function initHazardAnalysis() {
+    const savedData = {{ document_data_json|safe }};
+    if (savedData && savedData.steps && savedData.steps.length > 0) {
+        hazardData = savedData;
+    }
+    renderHazardAnalysis();
+}
+
+function syncFromFlowChart() {
+    if (!confirm('Sync process steps from Flow Chart? This will REPLACE all existing hazard analysis data.')) return;
+    
+    fetch('/api/haccp-flow-chart-data/{{ company.companyid }}/{{ product_type_slug }}/')
+        .then(r => r.json())
+        .then(data => {
+            if (data.success && data.boxes) {
+                const sortedBoxes = data.boxes.sort((a, b) => a.y - b.y);
+                hazardData.steps = [];
+                
+                sortedBoxes.forEach((box, index) => {
+                    hazardData.steps.push({
+                        id: 'step-' + Date.now() + '-' + index,
+                        flowChartId: box.id,
+                        stepNumber: index + 1,
+                        stepName: box.label,
+                        controls: '',
+                        isCCP: false,
+                        biological: { description: '', significant: '', justification: '' },
+                        physical: { description: '', significant: '', justification: '' },
+                        chemical: { description: '', significant: '', justification: '' }
+                    });
+                });
+                
+                renderHazardAnalysis();
+                alert('Replaced with ' + sortedBoxes.length + ' steps from Flow Chart');
+            } else {
+                alert('No Flow Chart data found. Please create a Flow Chart first.');
+            }
+        })
+        .catch(err => {
+            console.error('Error syncing from flow chart:', err);
+            alert('Error syncing from Flow Chart');
+        });
+}
+
+function addHazardStep() {
+    const stepName = prompt('Enter step name:');
+    if (!stepName) return;
+    
+    hazardData.steps.push({
+        id: 'step-' + Date.now(),
+        flowChartId: null,
+        stepNumber: hazardData.steps.length + 1,
+        stepName: stepName,
+        controls: '',
+        isCCP: false,
+        biological: { description: '', significant: '', justification: '' },
+        physical: { description: '', significant: '', justification: '' },
+        chemical: { description: '', significant: '', justification: '' }
+    });
+    
+    renderHazardAnalysis();
+}
+
+function deleteHazardStep(stepId) {
+    if (!confirm('Delete this hazard analysis step?')) return;
+    
+    hazardData.steps = hazardData.steps.filter(s => s.id !== stepId);
+    hazardData.steps.forEach((step, index) => {
+        step.stepNumber = index + 1;
+    });
+    renderHazardAnalysis();
+}
+
+function updateHazardField(stepId, hazardType, field, value) {
+    const step = hazardData.steps.find(s => s.id === stepId);
+    if (step && step[hazardType]) {
+        step[hazardType][field] = value;
+    }
+}
+
+function updateStepField(stepId, field, value) {
+    const step = hazardData.steps.find(s => s.id === stepId);
+    if (step) {
+        step[field] = value;
+    }
+}
+
+function updateStepName(stepId, newName) {
+    const step = hazardData.steps.find(s => s.id === stepId);
+    if (step) {
+        step.stepName = newName.trim();
+    }
+}
+
+function renderHazardAnalysis() {
+    const container = document.getElementById('hazardAnalysisContainer');
+    container.innerHTML = '';
+    
+    if (hazardData.steps.length === 0) {
+        container.innerHTML = `
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle me-2"></i>
+                No hazard analysis steps yet. Click "Sync from Flow Chart" to import process steps, or "Add Manual Step" to create one manually.
+            </div>
+        `;
+        return;
+    }
+    
+    hazardData.steps.forEach(step => {
+        const stepDiv = document.createElement('div');
+        stepDiv.className = 'hazard-step';
+        
+        const isReadOnly = {% if is_read_only %}true{% else %}false{% endif %};
+        
+        stepDiv.innerHTML = `
+            <div class="hazard-step-header" ${isReadOnly ? '' : 'draggable="true"'} style="${isReadOnly ? '' : 'cursor: move;'}">
+                <h5 class="mb-0">
+                    ${isReadOnly ? '' : '<i class="bi bi-grip-vertical me-2"></i>'}
+                    <span>${step.stepNumber}. </span><span contenteditable="${!isReadOnly}" onblur="updateStepName('${step.id}', this.innerText)" style="outline: none;">${step.stepName}</span>
+                </h5>
+                ${isReadOnly ? '' : `
+                <button class="btn btn-sm btn-danger no-print" onclick="deleteHazardStep('${step.id}')">
+                    <i class="bi bi-trash"></i>
+                </button>
+                `}
+            </div>
+            
+            <table class="hazard-table">
+                <thead>
+                    <tr>
+                        <th class="hazard-type">Hazard Type</th>
+                        <th class="hazard-description">Hazard Description</th>
+                        <th class="hazard-significant">Significant?</th>
+                        <th class="hazard-justification">Justification</th>
+                        <th class="hazard-controls">Control Measures/Programs</th>
+                        <th class="hazard-ccp">CCP?</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${renderHazardRow(step, 'biological', 'Biological', true)}
+                    ${renderHazardRow(step, 'physical', 'Physical', false)}
+                    ${renderHazardRow(step, 'chemical', 'Chemical', false)}
+                </tbody>
+            </table>
+        `;
+        
+        container.appendChild(stepDiv);
+        
+        // Add drag and drop event listeners
+        if (!isReadOnly) {
+            const header = stepDiv.querySelector('.hazard-step-header');
+            
+            header.addEventListener('dragstart', function(e) {
+                dragSrcStep = stepDiv;
+                dragSrcIndex = hazardData.steps.findIndex(s => s.id === step.id);
+                stepDiv.style.opacity = '0.4';
+                e.dataTransfer.effectAllowed = 'move';
+            });
+            
+            header.addEventListener('dragend', function(e) {
+                stepDiv.style.opacity = '1';
+                document.querySelectorAll('.hazard-step').forEach(div => {
+                    div.style.borderTop = '';
+                });
+            });
+            
+            stepDiv.addEventListener('dragover', function(e) {
+                if (e.preventDefault) {
+                    e.preventDefault();
+                }
+                
+                document.querySelectorAll('.hazard-step').forEach(div => {
+                    div.style.borderTop = '';
+                });
+                
+                if (stepDiv !== dragSrcStep) {
+                    stepDiv.style.borderTop = '3px solid #0d6efd';
+                }
+                
+                e.dataTransfer.dropEffect = 'move';
+                return false;
+            });
+            
+            stepDiv.addEventListener('drop', function(e) {
+                if (e.stopPropagation) {
+                    e.stopPropagation();
+                }
+                if (e.preventDefault) {
+                    e.preventDefault();
+                }
+                
+                document.querySelectorAll('.hazard-step').forEach(div => {
+                    div.style.borderTop = '';
+                });
+                
+                if (dragSrcStep !== stepDiv) {
+                    const dropIndex = hazardData.steps.findIndex(s => s.id === step.id);
+                    const movedItem = hazardData.steps[dragSrcIndex];
+                    hazardData.steps.splice(dragSrcIndex, 1);
+                    hazardData.steps.splice(dropIndex, 0, movedItem);
+                    
+                    // Update step numbers
+                    hazardData.steps.forEach((s, index) => {
+                        s.stepNumber = index + 1;
+                    });
+                    
+                    renderHazardAnalysis();
+                }
+                
+                return false;
+            });
+            
+            stepDiv.addEventListener('dragleave', function(e) {
+                stepDiv.style.borderTop = '';
+            });
+        }
+    });
+}
+
+function renderHazardRow(step, hazardType, label, isFirst) {
+    const hazard = step[hazardType];
+    const isReadOnly = {% if is_read_only %}true{% else %}false{% endif %};
+    
+    let html = `
+        <tr>
+            <td class="hazard-type">${label}</td>
+            <td class="hazard-description">
+                <textarea class="form-control form-control-sm" rows="2" 
+                          onchange="updateHazardField('${step.id}', '${hazardType}', 'description', this.value)"
+                          placeholder="Describe potential ${label.toLowerCase()} hazards"
+                          ${isReadOnly ? 'disabled' : 'required'}>${hazard.description || ''}</textarea>
+            </td>
+            <td class="hazard-significant">
+                <select class="form-select form-select-sm" 
+                        onchange="updateHazardField('${step.id}', '${hazardType}', 'significant', this.value)"
+                        ${isReadOnly ? 'disabled' : 'required'}>
+                    <option value="">Select...</option>
+                    <option value="na" ${hazard.significant === 'na' ? 'selected' : ''}>N/A</option>
+                    <option value="no" ${hazard.significant === 'no' ? 'selected' : ''}>No</option>
+                    <option value="yes" ${hazard.significant === 'yes' ? 'selected' : ''}>Yes</option>
+                </select>
+            </td>
+            <td class="hazard-justification">
+                <textarea class="form-control form-control-sm" rows="2" 
+                          onchange="updateHazardField('${step.id}', '${hazardType}', 'justification', this.value)"
+                          placeholder="Justify why hazard is/isn't significant"
+                          ${isReadOnly ? 'disabled' : 'required'}>${hazard.justification || ''}</textarea>
+            </td>
+    `;
+    
+   if (isFirst) {
+    html += `
+        <td class="hazard-controls" rowspan="3">
+            <textarea class="form-control form-control-sm" rows="6" 
+                      onchange="updateStepField('${step.id}', 'controls', this.value)"
+                      placeholder="SOPs, programs, or CCPs"
+                      ${isReadOnly ? 'disabled' : 'required'}>${step.controls || ''}</textarea>
+        </td>
+        <td class="hazard-ccp" rowspan="3">
+            <input type="checkbox" class="form-check-input" 
+                   style="border: 2px solid #000; width: 24px; height: 24px;"
+                   ${step.isCCP ? 'checked' : ''}
+                   onchange="updateStepField('${step.id}', 'isCCP', this.checked)"
+                   ${isReadOnly ? 'disabled' : ''}>
+        </td>
+    `;
+}
+    
+    html += `</tr>`;
+    return html;
+}
+
+// Override validation
+const originalValidateDocument = validateDocument;
+validateDocument = function() {
+    const errors = originalValidateDocument();
+    
+    if (hazardData.steps.length === 0) {
+        errors.push('Hazard analysis must have at least one step');
+    } else {
+        for (let i = 0; i < hazardData.steps.length; i++) {
+            const step = hazardData.steps[i];
+            const stepNum = i + 1;
+            
+            if (!step.biological.description || !step.biological.description.trim()) {
+                errors.push(`Step ${stepNum} (${step.stepName}): Biological hazard description is required`);
+            }
+            if (!step.biological.significant || step.biological.significant === '' || step.biological.significant === 'select') {
+                errors.push(`Step ${stepNum} (${step.stepName}): Biological hazard significance must be selected`);
+            }
+            if (!step.biological.justification || !step.biological.justification.trim()) {
+                errors.push(`Step ${stepNum} (${step.stepName}): Biological hazard justification is required`);
+            }
+            
+            if (!step.physical.description || !step.physical.description.trim()) {
+                errors.push(`Step ${stepNum} (${step.stepName}): Physical hazard description is required`);
+            }
+            if (!step.physical.significant || step.physical.significant === '' || step.physical.significant === 'select') {
+                errors.push(`Step ${stepNum} (${step.stepName}): Physical hazard significance must be selected`);
+            }
+            if (!step.physical.justification || !step.physical.justification.trim()) {
+                errors.push(`Step ${stepNum} (${step.stepName}): Physical hazard justification is required`);
+            }
+            
+            if (!step.chemical.description || !step.chemical.description.trim()) {
+                errors.push(`Step ${stepNum} (${step.stepName}): Chemical hazard description is required`);
+            }
+            if (!step.chemical.significant || step.chemical.significant === '' || step.chemical.significant === 'select') {
+                errors.push(`Step ${stepNum} (${step.stepName}): Chemical hazard significance must be selected`);
+            }
+            if (!step.chemical.justification || !step.chemical.justification.trim()) {
+                errors.push(`Step ${stepNum} (${step.stepName}): Chemical hazard justification is required`);
+            }
+            
+            if (!step.controls || !step.controls.trim()) {
+                errors.push(`Step ${stepNum} (${step.stepName}): Control measures are required`);
+            }
+        }
+    }
+    
+    return errors;
+};
+
+// Override collectFormData
+const originalCollectFormData = collectFormData;
+collectFormData = function() {
+    const data = originalCollectFormData();
+    data.document_data = { steps: hazardData.steps };
+    return data;
+};
+</script>
