@@ -169,8 +169,280 @@ function getCookie(name) {
 }
 
 // SOP Editor functionality
+// SOP Editor functionality
 function openSOPEditor() {
-    alert('SOP Editor will be implemented');
+    const select = document.getElementById('sop-company-select');
+    select.innerHTML = '<option value="">-- Loading companies --</option>';
+    
+    // Fetch companies from API
+    fetch('/api/operations/get-companies/')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                select.innerHTML = '<option value="">-- Select Company --</option>';
+                data.companies.forEach(company => {
+                    const option = document.createElement('option');
+                    option.value = company.id;
+                    option.textContent = company.name;
+                    select.appendChild(option);
+                });
+            } else {
+                select.innerHTML = '<option value="">-- Error loading companies --</option>';
+                console.error('Failed to load companies:', data.error);
+            }
+        })
+        .catch(error => {
+            select.innerHTML = '<option value="">-- Error loading companies --</option>';
+            console.error('Error fetching companies:', error);
+        });
+    
+    new bootstrap.Modal(document.getElementById('sopEditorModal')).show();
+}
+
+function loadSOPList() {
+    const companyId = document.getElementById('sop-company-select').value;
+    if (!companyId) {
+        document.getElementById('sop-tbody').innerHTML = '<tr><td colspan="9" class="text-center">Select a company to load SOPs</td></tr>';
+        return;
+    }
+    
+    // Load zones for filter dropdown
+    fetch(`/api/operations/zones/?company_id=${companyId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (!data.success) {
+                console.error('Failed to load zones');
+                return;
+            }
+            
+            const filterSelect = document.getElementById('sop-zone-filter');
+            const newSopZone = document.getElementById('new-sop-zone');
+            
+            filterSelect.innerHTML = '<option value="">All Zones</option>';
+            newSopZone.innerHTML = '<option value="">-- Select Zone --</option>';
+            
+            data.zones.forEach(zone => {
+                const filterOption = document.createElement('option');
+                filterOption.value = zone.id;
+                filterOption.textContent = zone.name;
+                filterSelect.appendChild(filterOption);
+                
+                const newOption = filterOption.cloneNode(true);
+                newSopZone.appendChild(newOption);
+            });
+        });
+    
+    // Load SOPs
+    fetch(`/api/operations/sop-list/?company_id=${companyId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (!data.success) {
+                console.error('Failed to load SOPs');
+                return;
+            }
+            
+            const tbody = document.getElementById('sop-tbody');
+            if (data.sops.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="9" class="text-center">No SOPs found</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = '';
+            data.sops.forEach(sop => {
+                const row = document.createElement('tr');
+                row.dataset.zoneId = sop.zone_id || '';
+                row.innerHTML = `
+                    <td>${sop.sop_did}</td>
+                    <td>${sop.description || ''}</td>
+                    <td data-zone-id="${sop.zone_id || ''}">${sop.zone_name || '--'}</td>
+                    <td class="text-center">${sop.pre ? '<i class="bi bi-check-lg text-success"></i>' : ''}</td>
+                    <td class="text-center">${sop.mid ? '<i class="bi bi-check-lg text-success"></i>' : ''}</td>
+                    <td class="text-center">${sop.post ? '<i class="bi bi-check-lg text-success"></i>' : ''}</td>
+                    <td class="text-center">${sop.input_required ? '<i class="bi bi-check-lg text-success"></i>' : ''}</td>
+                    <td class="text-center">${sop.image_required ? '<i class="bi bi-check-lg text-success"></i>' : ''}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-danger" onclick="deleteSOP(${sop.sop_did})"><i class="bi bi-trash"></i></button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        });
+}
+
+function filterSOPByZone() {
+    const zoneId = document.getElementById('sop-zone-filter').value;
+    const rows = document.querySelectorAll('#sop-tbody tr');
+    
+    rows.forEach(row => {
+        if (!zoneId) {
+            row.style.display = '';
+        } else {
+            const rowZoneId = row.dataset.zoneId;
+            if (rowZoneId === zoneId) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        }
+    });
+}
+
+function showAddSOPForm() {
+    const companyId = document.getElementById('sop-company-select').value;
+    if (!companyId) {
+        alert('Please select a company first');
+        return;
+    }
+    
+    document.getElementById('add-sop-form').style.display = 'block';
+    document.getElementById('add-zone-form').style.display = 'none';
+}
+
+function hideAddSOPForm() {
+    document.getElementById('add-sop-form').style.display = 'none';
+    // Clear form
+    document.getElementById('new-sop-id').value = '';
+    document.getElementById('new-sop-description').value = '';
+    document.getElementById('new-sop-zone').value = '';
+    document.getElementById('new-sop-pre').checked = false;
+    document.getElementById('new-sop-mid').checked = false;
+    document.getElementById('new-sop-post').checked = false;
+    document.getElementById('new-sop-input-required').checked = false;
+    document.getElementById('new-sop-image-required').checked = false;
+}
+
+function saveNewSOP() {
+    const companyId = document.getElementById('sop-company-select').value;
+    const sopId = document.getElementById('new-sop-id').value;
+    const description = document.getElementById('new-sop-description').value;
+    const zoneId = document.getElementById('new-sop-zone').value;
+    const pre = document.getElementById('new-sop-pre').checked;
+    const mid = document.getElementById('new-sop-mid').checked;
+    const post = document.getElementById('new-sop-post').checked;
+    const inputRequired = document.getElementById('new-sop-input-required').checked;
+    const imageRequired = document.getElementById('new-sop-image-required').checked;
+    
+    if (!sopId) {
+        alert('Please enter an SOP ID');
+        return;
+    }
+    
+    if (!zoneId) {
+        alert('Please select a zone');
+        return;
+    }
+    
+    const csrfToken = getCookie('csrftoken');
+    
+    fetch('/api/operations/sop-create/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
+        },
+        body: JSON.stringify({
+            company_id: companyId,
+            sop_did: sopId,
+            description: description,
+            zone_id: zoneId,
+            pre: pre,
+            mid: mid,
+            post: post,
+            input_required: inputRequired,
+            image_required: imageRequired
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            hideAddSOPForm();
+            loadSOPList();
+        } else {
+            alert('Error: ' + (data.error || 'Failed to save SOP'));
+        }
+    })
+    .catch(error => {
+        alert('Error saving SOP: ' + error);
+    });
+}
+
+function deleteSOP(sopId) {
+    if (!confirm('Are you sure you want to delete this SOP?')) {
+        return;
+    }
+    
+    const csrfToken = getCookie('csrftoken');
+    
+    fetch('/api/operations/sop-delete/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
+        },
+        body: JSON.stringify({
+            sop_did: sopId
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            loadSOPList();
+        } else {
+            alert('Error: ' + (data.error || 'Failed to delete SOP'));
+        }
+    });
+}
+
+function showAddZoneForm() {
+    const companyId = document.getElementById('sop-company-select').value;
+    if (!companyId) {
+        alert('Please select a company first');
+        return;
+    }
+    
+    document.getElementById('add-zone-form').style.display = 'block';
+    document.getElementById('add-sop-form').style.display = 'none';
+}
+
+function hideAddZoneForm() {
+    document.getElementById('add-zone-form').style.display = 'none';
+    document.getElementById('new-zone-name').value = '';
+}
+
+function saveNewZone() {
+    const companyId = document.getElementById('sop-company-select').value;
+    const zoneName = document.getElementById('new-zone-name').value.trim();
+    
+    if (!zoneName) {
+        alert('Please enter a zone name');
+        return;
+    }
+    
+    const csrfToken = getCookie('csrftoken');
+    
+    fetch('/api/operations/zone-create/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
+        },
+        body: JSON.stringify({
+            company_id: companyId,
+            zone_name: zoneName
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            hideAddZoneForm();
+            loadSOPList(); // Reload to refresh zone dropdowns
+        } else {
+            alert('Error: ' + (data.error || 'Failed to save zone'));
+        }
+    })
+    .catch(error => {
+        alert('Error saving zone: ' + error);
+    });
 }
 
 function openBulkReportModal() {

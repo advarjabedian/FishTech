@@ -341,16 +341,26 @@ def create_sop(request):
         
         zone = Zone.objects.get(id=data['zone_id'])
         
-        # Get next SOP ID
-        max_id = SOP.objects.aggregate(Max('sop_did'))['sop_did__max'] or 0
-        new_id = max_id + 1
+        # Use provided SOP ID or generate next one
+        if 'sop_did' in data and data['sop_did']:
+            sop_did = int(data['sop_did'])
+            # Check if this ID already exists
+            if SOP.objects.filter(sop_did=sop_did, company_id=data['company_id']).exists():
+                return JsonResponse({'success': False, 'error': f'SOP ID {sop_did} already exists for this company'})
+        else:
+            # Get next SOP ID for this company
+            max_id = SOP.objects.filter(company_id=data['company_id']).aggregate(Max('sop_did'))['sop_did__max'] or 0
+            sop_did = max_id + 1
+        
+        from core.models import Company
+        company = Company.objects.get(companyid=data['company_id'])
         
         sop = SOP.objects.create(
             tenant=request.tenant,
-            sop_did=new_id,
-            description=data['description'],
+            sop_did=sop_did,
+            description=data.get('description', ''),
             zone=zone,
-            company_id=data['company_id'],
+            company=company,
             pre=data.get('pre', False),
             mid=data.get('mid', False),
             post=data.get('post', False),
@@ -359,6 +369,10 @@ def create_sop(request):
         )
         
         return JsonResponse({'success': True, 'sop_id': sop.sop_did})
+    except Company.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Company not found'})
+    except Zone.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Zone not found'})
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)})
 
@@ -557,5 +571,23 @@ def get_inspection_images(request, parent_id):
             })
         
         return JsonResponse({'success': True, 'images': images})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+    
+
+@require_http_methods(["GET"])
+@login_required
+def get_companies(request):
+    """Get all companies for current tenant"""
+    if not request.tenant:
+        return JsonResponse({'success': False, 'error': 'Not authenticated'})
+    
+    try:
+        from core.models import Company
+        companies = Company.objects.all().order_by('companyname').values('companyid', 'companyname')
+        
+        company_list = [{'id': c['companyid'], 'name': c['companyname']} for c in companies]
+        
+        return JsonResponse({'success': True, 'companies': company_list})
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)})

@@ -21,7 +21,7 @@ from .views import (
     submit_verification, save_verifier_signature, get_verifier_signature,
     save_monitor_signature, get_monitor_signature, get_operations_config,
     get_sop_list, create_sop, update_sop, delete_sop, get_zones, create_zone,
-    delete_zone, get_calendar_data, get_inspection_images
+    delete_zone, get_calendar_data, get_inspection_images, get_companies
 )
 
 urlpatterns = [
@@ -102,6 +102,7 @@ urlpatterns = [
     path('api/operations/zone-delete/', delete_zone, name='delete_zone'),
     path('api/operations/get-calendar-data/', get_calendar_data, name='get_calendar_data'),
     path('api/operations/get-inspection-images/<int:parent_id>/', get_inspection_images, name='get_inspection_images'),
+    path('api/operations/get-companies/', get_companies, name='get_companies'),
 
     path('api/update-company-logo/<int:company_id>/', update_company_logo, name='update_company_logo'),
 ]

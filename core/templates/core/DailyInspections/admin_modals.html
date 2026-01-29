@@ -86,3 +86,112 @@
         </div>
     </div>
 </div>
+
+<!-- SOP Editor Modal -->
+<div class="modal fade" id="sopEditorModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-xl" style="max-width: 95vw;">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="bi bi-list-check me-2"></i>SOP Editor</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" style="max-height: 75vh; overflow-y: auto;">
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <label class="form-label"><strong>Company:</strong></label>
+                        <select class="form-select" id="sop-company-select" onchange="loadSOPList()">
+                            <option value="">-- Select Company --</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label"><strong>Filter by Zone:</strong></label>
+                        <select class="form-select" id="sop-zone-filter" onchange="filterSOPByZone()">
+                            <option value="">All Zones</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4 d-flex align-items-end">
+                        <button class="btn btn-success me-2" onclick="showAddSOPForm()"><i class="bi bi-plus-lg"></i> Add SOP</button>
+                        <button class="btn btn-outline-secondary" onclick="showAddZoneForm()"><i class="bi bi-folder-plus"></i> Add Zone</button>
+                    </div>
+                </div>
+                
+                <!-- Add SOP Form -->
+                <div id="add-sop-form" class="card mb-3" style="display: none; background-color: #e8f5e9;">
+                    <div class="card-body">
+                        <h6 class="card-title text-success">Add New SOP</h6>
+                        <div class="row">
+                            <div class="col-md-3">
+                                <label class="form-label">SOP ID:</label>
+                                <input type="number" class="form-control" id="new-sop-id" placeholder="e.g., 101">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Zone:</label>
+                                <select class="form-select" id="new-sop-zone"></select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Description:</label>
+                                <textarea class="form-control" id="new-sop-description" rows="2"></textarea>
+                            </div>
+                        </div>
+                        <div class="row mt-2">
+                            <div class="col-md-12">
+                                <label class="form-label">Shifts & Requirements:</label>
+                                <div class="d-flex gap-4">
+                                    <div class="form-check"><input class="form-check-input" type="checkbox" id="new-sop-pre"><label class="form-check-label" for="new-sop-pre">Pre-Op</label></div>
+                                    <div class="form-check"><input class="form-check-input" type="checkbox" id="new-sop-mid"><label class="form-check-label" for="new-sop-mid">Mid-Day</label></div>
+                                    <div class="form-check"><input class="form-check-input" type="checkbox" id="new-sop-post"><label class="form-check-label" for="new-sop-post">Post-Op</label></div>
+                                    <div class="form-check"><input class="form-check-input" type="checkbox" id="new-sop-input-required"><label class="form-check-label" for="new-sop-input-required"><strong>Data Required</strong></label></div>
+                                    <div class="form-check"><input class="form-check-input" type="checkbox" id="new-sop-image-required"><label class="form-check-label" for="new-sop-image-required"><strong>Image Required</strong></label></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-2">
+                            <button class="btn btn-success btn-sm" onclick="saveNewSOP()">Save</button>
+                            <button class="btn btn-secondary btn-sm" onclick="hideAddSOPForm()">Cancel</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Add Zone Form -->
+                <div id="add-zone-form" class="card mb-3" style="display: none; background-color: #fff3e0;">
+                    <div class="card-body">
+                        <h6 class="card-title text-warning">Add New Zone</h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <label class="form-label">Zone Name:</label>
+                                <input type="text" class="form-control" id="new-zone-name" placeholder="e.g., Cooler 3">
+                            </div>
+                            <div class="col-md-6 d-flex align-items-end">
+                                <button class="btn btn-warning btn-sm me-2" onclick="saveNewZone()">Save Zone</button>
+                                <button class="btn btn-secondary btn-sm" onclick="hideAddZoneForm()">Cancel</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- SOP List Table -->
+                <table class="table table-sm table-hover" id="sop-table">
+                    <thead class="table-dark">
+                        <tr>
+                            <th style="width: 60px;">ID</th>
+                            <th>Description</th>
+                            <th style="width: 120px;">Zone</th>
+                            <th style="width: 60px;" class="text-center">Pre</th>
+                            <th style="width: 60px;" class="text-center">Mid</th>
+                            <th style="width: 60px;" class="text-center">Post</th>
+                            <th style="width: 80px;" class="text-center">Data Req</th>
+                            <th style="width: 80px;" class="text-center">Img Req</th>
+                            <th style="width: 100px;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="sop-tbody">
+                        <tr><td colspan="9" class="text-center">Select a company to load SOPs</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
