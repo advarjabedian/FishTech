@@ -12,6 +12,9 @@ from .views import (
     set_haccp_owner, get_company_certificates, save_company_certificate,
     view_company_certificate, login_view, logout_view, operations_hub,
     manage_users, add_user, edit_user, delete_user,
+    login_view, logout_view, operations_hub, register_view,
+    set_haccp_owner, get_company_certificates, save_company_certificate,
+    view_company_certificate, add_company, edit_company, delete_company
 )
 
 urlpatterns = [
@@ -71,4 +74,14 @@ urlpatterns = [
     path('api/delete-user/<int:user_id>/', delete_user, name='delete_user'),
     
     # HACCP main routes
+
+    path('', login_view, name='login'),
+    path('login/', login_view, name='login'),
+    path('register/', register_view, name='register'),
+    path('logout/', logout_view, name='logout'),
+
+     # Company management
+    path('api/add-company/', add_company, name='add_company'),
+    path('api/edit-company/<int:company_id>/', edit_company, name='edit_company'),
+    path('api/delete-company/<int:company_id>/', delete_company, name='delete_company'),
 ]

@@ -1,9 +1,9 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login, logout
-from django.contrib import messages
-from core.models import TenantUser
+from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required
-
+from django.contrib import messages
+from core.models import TenantUser, Tenant
 
 def login_view(request):
     """Login page for all tenants"""
@@ -51,3 +51,73 @@ def operations_hub(request):
         return redirect('admin:index')
     
     return render(request, 'core/operations_hub.html')
+
+
+def register_view(request):
+    """Public registration page for new tenants"""
+    if request.user.is_authenticated:
+        return redirect('operations_hub')
+    
+    if request.method == 'POST':
+        # Tenant info
+        company_name = request.POST.get('company_name', '').strip()
+        subdomain = request.POST.get('subdomain', '').strip()
+        
+        # Admin user info
+        username = request.POST.get('username', '').strip()
+        email = request.POST.get('email', '').strip()
+        first_name = request.POST.get('first_name', '').strip()
+        last_name = request.POST.get('last_name', '').strip()
+        password = request.POST.get('password', '').strip()
+        password_confirm = request.POST.get('password_confirm', '').strip()
+        
+        # Validation
+        if not all([company_name, subdomain, username, password]):
+            messages.error(request, 'All required fields must be filled out.')
+            return render(request, 'core/register.html')
+        
+        if password != password_confirm:
+            messages.error(request, 'Passwords do not match.')
+            return render(request, 'core/register.html')
+        
+        # Check if subdomain already exists
+        if Tenant.objects.filter(subdomain=subdomain).exists():
+            messages.error(request, 'This subdomain is already taken.')
+            return render(request, 'core/register.html')
+        
+        # Check if username already exists
+        if User.objects.filter(username=username).exists():
+            messages.error(request, 'This username is already taken.')
+            return render(request, 'core/register.html')
+        
+        try:
+            # Create tenant
+            tenant = Tenant.objects.create(
+                name=company_name,
+                subdomain=subdomain,
+                is_active=True
+            )
+            
+            # Create admin user
+            user = User.objects.create_user(
+                username=username,
+                email=email,
+                first_name=first_name,
+                last_name=last_name,
+                password=password
+            )
+            
+            # Link user to tenant
+            TenantUser.objects.create(user=user, tenant=tenant)
+            
+            # Log them in
+            login(request, user)
+            
+            messages.success(request, f'Welcome to FishTech! Your account has been created.')
+            return redirect('operations_hub')
+            
+        except Exception as e:
+            messages.error(request, f'Registration failed: {str(e)}')
+            return render(request, 'core/register.html')
+    
+    return render(request, 'core/register.html')

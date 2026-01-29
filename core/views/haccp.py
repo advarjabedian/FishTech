@@ -18,9 +18,7 @@ def haccp(request):
     if not request.tenant:
         return redirect('admin:index')
     
-    companies = list(Company.objects.filter(
-        companyname__in=['FRS', 'GSS', 'NCF', 'PFF', 'CPI', 'USG']
-    ).order_by('companyname'))
+    companies = Company.objects.all().order_by('companyname')
     
     users = User.objects.all().order_by('username')
     
@@ -194,6 +192,7 @@ def haccp_documents(request, company_id, product_type):
             has_in_progress_set = True
             break
     
+    # Get documents for current version
     # Get documents for current version
     documents = []
     completed_count = 0
@@ -1027,6 +1026,81 @@ def save_company_certificate(request, company_id):
         cert.signature = data.get('signature', '')
         cert.is_completed = data.get('is_completed', False)
         cert.save()
+        
+        return JsonResponse({'success': True})
+        
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+    
+
+@require_http_methods(["POST"])
+def add_company(request):
+    """Add a new company to the tenant"""
+    if not request.tenant:
+        return JsonResponse({'success': False, 'error': 'Not authenticated'})
+    
+    try:
+        data = json.loads(request.body)
+        companyname = data.get('companyname', '').strip()
+        address = data.get('address', '').strip()
+        city = data.get('city', '').strip()
+        state = data.get('state', '').strip()
+        zipcode = data.get('zipcode', '').strip()
+        
+        if not companyname:
+            return JsonResponse({'success': False, 'error': 'Company name is required'})
+        
+        # Check if company name already exists for this tenant
+        if Company.objects.filter(companyname=companyname, tenant=request.tenant).exists():
+            return JsonResponse({'success': False, 'error': 'Company name already exists'})
+        
+        company = Company.objects.create(
+            tenant=request.tenant,
+            companyname=companyname,
+            address=address,
+            city=city,
+            state=state,
+            zipcode=zipcode
+        )
+        
+        return JsonResponse({'success': True, 'company_id': company.companyid})
+        
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+
+@require_http_methods(["POST"])
+def edit_company(request, company_id):
+    """Edit an existing company"""
+    if not request.tenant:
+        return JsonResponse({'success': False, 'error': 'Not authenticated'})
+    
+    try:
+        company = get_object_or_404(Company, companyid=company_id)
+        
+        data = json.loads(request.body)
+        company.companyname = data.get('companyname', company.companyname)
+        company.address = data.get('address', company.address)
+        company.city = data.get('city', company.city)
+        company.state = data.get('state', company.state)
+        company.zipcode = data.get('zipcode', company.zipcode)
+        company.save()
+        
+        return JsonResponse({'success': True})
+        
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+
+@require_http_methods(["POST"])
+def delete_company(request, company_id):
+    """Delete a company"""
+    if not request.tenant:
+        return JsonResponse({'success': False, 'error': 'Not authenticated'})
+    
+    try:
+        company = get_object_or_404(Company, companyid=company_id)
+        company.delete()
         
         return JsonResponse({'success': True})
         
