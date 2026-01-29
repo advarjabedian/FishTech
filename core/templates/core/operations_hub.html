@@ -61,7 +61,8 @@
             </div>
         </div>
 
-        <!-- Manage Users & Companies Card -->
+        <!-- Manage Users & Companies Card (Admin Only) -->
+        {% if is_admin %}
         <div class="col-md-4 mb-3">
             <div class="card card-dashboard bg-success bg-opacity-10" style="border-color: #198754 !important;" onclick="window.location.href='{% url 'manage_users' %}'">
                 <div class="card-body text-center py-5">
@@ -72,6 +73,7 @@
                 </div>
             </div>
         </div>
+        {% endif %}
     </div>
 </div>
 {% endblock %}

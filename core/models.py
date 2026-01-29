@@ -1,5 +1,5 @@
 from django.db import models
-from django.contrib.auth.models import User
+from django.contrib.auth.models import User as DjangoUser
 from threading import local
 
 _thread_locals = local()
@@ -42,8 +42,9 @@ class Tenant(models.Model):
 
 class TenantUser(models.Model):
     """Links Django users to tenants"""
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    user = models.OneToOneField(DjangoUser, on_delete=models.CASCADE)
     tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE)
+    is_admin = models.BooleanField(default=False)
     
     def __str__(self):
         return f"{self.user.username} - {self.tenant.name}"
@@ -64,6 +65,22 @@ class Company(TenantModel):
     
     def __str__(self):
         return self.companyname
+
+
+class User(TenantModel):
+    """Custom user model for business logic"""
+    userid = models.IntegerField(null=True, blank=True)
+    name = models.CharField(max_length=255, null=True, blank=True)
+    email = models.CharField(max_length=255, null=True, blank=True)
+    cellnumber = models.CharField(max_length=50, null=True, blank=True)
+    usercode = models.CharField(max_length=100, null=True, blank=True)
+    commission = models.IntegerField(null=True, blank=True)
+
+    class Meta:
+        db_table = 'core_user'
+    
+    def __str__(self):
+        return self.name if self.name else f"User #{self.id}"
     
 
 class HACCPProductType(TenantModel):
@@ -92,7 +109,7 @@ class CompanyProductType(TenantModel):
 class CompanyHACCPOwner(TenantModel):
     """HACCP process owner for each company"""
     company = models.OneToOneField(Company, on_delete=models.CASCADE)
-    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    user = models.ForeignKey(DjangoUser, on_delete=models.SET_NULL, null=True)
 
 class HACCPDocument(TenantModel):
     """HACCP documents"""
@@ -171,8 +188,8 @@ class SOPParent(TenantModel):
     time = models.TimeField()
     shift = models.CharField(max_length=20, choices=SHIFT_CHOICES)
     company = models.ForeignKey(Company, on_delete=models.CASCADE)
-    user_inspected = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='inspections')
-    user_verified = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='verifications')
+    user_inspected = models.ForeignKey(DjangoUser, on_delete=models.SET_NULL, null=True, blank=True, related_name='inspections')
+    user_verified = models.ForeignKey(DjangoUser, on_delete=models.SET_NULL, null=True, blank=True, related_name='verifications')
     completed = models.BooleanField(default=False)
     
     # Inspector signature
@@ -223,8 +240,8 @@ class CompanyOperationConfig(TenantModel):
     friday = models.BooleanField(default=True)
     saturday = models.BooleanField(default=False)
     sunday = models.BooleanField(default=False)
-    monitor_user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='monitored_companies')
-    verifier_user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='verified_companies')
+    monitor_user = models.ForeignKey(DjangoUser, on_delete=models.SET_NULL, null=True, blank=True, related_name='monitored_companies')
+    verifier_user = models.ForeignKey(DjangoUser, on_delete=models.SET_NULL, null=True, blank=True, related_name='verified_companies')
     verifier_signature = models.TextField(blank=True)
     monitor_signature = models.TextField(blank=True)
     
@@ -261,3 +278,12 @@ class CompanyCertificate(TenantModel):
     
     class Meta:
         unique_together = [['tenant', 'company', 'year', 'certificate_type']]
+
+
+class UserCompany(TenantModel):
+    """Associates users with companies"""
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    company = models.ForeignKey(Company, on_delete=models.CASCADE)
+    
+    class Meta:
+        unique_together = [['tenant', 'user', 'company']]

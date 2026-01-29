@@ -50,7 +50,16 @@ def operations_hub(request):
     if not request.tenant:
         return redirect('admin:index')
     
-    return render(request, 'core/operations_hub.html')
+    # Check if user is admin
+    try:
+        tenant_user = TenantUser.objects.get(user=request.user, tenant=request.tenant)
+        is_admin = tenant_user.is_admin
+    except TenantUser.DoesNotExist:
+        is_admin = False
+    
+    return render(request, 'core/operations_hub.html', {
+        'is_admin': is_admin
+    })
 
 
 def register_view(request):
@@ -107,8 +116,8 @@ def register_view(request):
                 password=password
             )
             
-            # Link user to tenant
-            TenantUser.objects.create(user=user, tenant=tenant)
+            # Link user to tenant as admin
+            TenantUser.objects.create(user=user, tenant=tenant, is_admin=True)
             
             # Log them in
             login(request, user)

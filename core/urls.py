@@ -13,6 +13,7 @@ from .views import (
     view_company_certificate, add_company, edit_company, delete_company,
     # User management
     manage_users, add_user, edit_user, delete_user, update_company_logo,
+    toggle_user_company, toggle_user_admin,
     # Operations views
     operations_dashboard, inspection_form, operations_admin, print_sop_schedule,
     # Operations API
@@ -66,6 +67,8 @@ urlpatterns = [
     path('api/add-user/', add_user, name='add_user'),
     path('api/edit-user/<int:user_id>/', edit_user, name='edit_user'),
     path('api/delete-user/<int:user_id>/', delete_user, name='delete_user'),
+    path('api/toggle-user-company/', toggle_user_company, name='toggle_user_company'),
+    path('api/toggle-user-admin/', toggle_user_admin, name='toggle_user_admin'),
     
     # Company management
     path('api/add-company/', add_company, name='add_company'),

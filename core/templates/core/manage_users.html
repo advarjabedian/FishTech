@@ -1,9 +1,21 @@
 {% extends 'core/base.html' %}
+{% load dict_filters %}
 
 {% block title %}Administration - FishTech{% endblock %}
 
 {% block content %}
 <div class="container mt-4">
+    <!-- Companies Filter -->
+    <div class="mb-4">
+        <h5>Filter by Company</h5>
+        <div class="btn-group flex-wrap" role="group">
+            <button class="btn btn-outline-primary active" onclick="filterByCompany(null)">All Users</button>
+            {% for company in companies %}
+            <button class="btn btn-outline-primary" onclick="filterByCompany({{ company.companyid }})">{{ company.companyname }}</button>
+            {% endfor %}
+        </div>
+    </div>
+
     <!-- Users Section -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2>Manage Users</h2>
@@ -17,25 +29,35 @@
             <table class="table table-hover">
                 <thead>
                     <tr>
-                        <th>Username</th>
+                        <th>Name</th>
                         <th>Email</th>
-                        <th>First Name</th>
-                        <th>Last Name</th>
+                        <th>Admin</th>
+                        <th>Companies</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody id="userTable">
                     {% for user in users %}
-                    <tr>
-                        <td>{{ user.username }}</td>
+                    <tr data-user-id="{{ user.id }}" data-companies="{% if user.id in user_companies %}{% for cid in user_companies|lookup:user.id %}{{ cid }},{% endfor %}{% endif %}">
+                        <td>{{ user.name }}</td>
                         <td>{{ user.email }}</td>
-                        <td>{{ user.first_name }}</td>
-                        <td>{{ user.last_name }}</td>
                         <td>
-                            <button class="btn btn-sm btn-warning" onclick="editUser({{ user.id }}, '{{ user.username }}', '{{ user.email }}', '{{ user.first_name }}', '{{ user.last_name }}')">Edit</button>
-                            {% if user.id != request.user.id %}
-                            <button class="btn btn-sm btn-danger" onclick="deleteUser({{ user.id }}, '{{ user.username }}')">Delete</button>
-                            {% endif %}
+                            <button class="btn btn-sm {% if user.id in user_admins and user_admins|lookup:user.id %}btn-primary{% else %}btn-outline-secondary{% endif %}" 
+                                    onclick="toggleUserAdmin({{ user.id }}, this)">
+                                {% if user.id in user_admins and user_admins|lookup:user.id %}Admin{% else %}User{% endif %}
+                            </button>
+                        </td>
+                        <td>
+                            {% for company in companies %}
+                            <button class="btn btn-sm {% if user.id in user_companies and company.companyid in user_companies|lookup:user.id %}btn-success{% else %}btn-outline-secondary{% endif %}" 
+                                    onclick="toggleUserCompany({{ user.id }}, {{ company.companyid }}, this)">
+                                {{ company.companyname }}
+                            </button>
+                            {% endfor %}
+                        </td>
+                        <td>
+                            <button class="btn btn-sm btn-warning" onclick="editUser({{ user.id }}, '{{ user.name }}', '{{ user.email }}')">Edit</button>
+                            <button class="btn btn-sm btn-danger" onclick="deleteUser({{ user.id }}, '{{ user.name }}')">Delete</button>
                         </td>
                     </tr>
                     {% empty %}
@@ -109,24 +131,12 @@
             <div class="modal-body">
                 <form id="addUserForm">
                     <div class="mb-3">
-                        <label class="form-label">Username *</label>
-                        <input type="text" class="form-control" id="add_username" required>
+                        <label class="form-label">Name *</label>
+                        <input type="text" class="form-control" id="add_name" required>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Email</label>
                         <input type="email" class="form-control" id="add_email">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">First Name</label>
-                        <input type="text" class="form-control" id="add_first_name">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Last Name</label>
-                        <input type="text" class="form-control" id="add_last_name">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Password *</label>
-                        <input type="password" class="form-control" id="add_password" required>
                     </div>
                 </form>
             </div>
@@ -192,24 +202,12 @@
                 <form id="editUserForm">
                     <input type="hidden" id="edit_user_id">
                     <div class="mb-3">
-                        <label class="form-label">Username</label>
-                        <input type="text" class="form-control" id="edit_username" disabled>
+                        <label class="form-label">Name</label>
+                        <input type="text" class="form-control" id="edit_name">
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Email</label>
                         <input type="email" class="form-control" id="edit_email">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">First Name</label>
-                        <input type="text" class="form-control" id="edit_first_name">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Last Name</label>
-                        <input type="text" class="form-control" id="edit_last_name">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">New Password (leave blank to keep current)</label>
-                        <input type="password" class="form-control" id="edit_password">
                     </div>
                 </form>
             </div>
@@ -235,6 +233,93 @@ function getCookie(name) {
         }
     }
     return cookieValue;
+}
+
+function filterByCompany(companyId) {
+    // Update button states
+    document.querySelectorAll('.btn-group button').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    event.target.classList.add('active');
+    
+    // Filter table rows
+    const rows = document.querySelectorAll('#userTable tr');
+    rows.forEach(row => {
+        // Skip rows without data-companies attribute
+        if (!row.dataset.companies) {
+            row.style.display = companyId ? 'none' : '';
+            return;
+        }
+        
+        if (!companyId) {
+            row.style.display = '';
+        } else {
+            const companies = row.dataset.companies.split(',').filter(c => c).map(c => parseInt(c));
+            row.style.display = companies.includes(companyId) ? '' : 'none';
+        }
+    });
+}
+
+function toggleUserCompany(userId, companyId, button) {
+    fetch('{% url "toggle_user_company" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({ user_id: userId, company_id: companyId })
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            if (result.associated) {
+                button.classList.remove('btn-outline-secondary');
+                button.classList.add('btn-success');
+            } else {
+                button.classList.remove('btn-success');
+                button.classList.add('btn-outline-secondary');
+            }
+            // Update data attribute
+            const row = button.closest('tr');
+            const companies = row.dataset.companies.split(',').filter(c => c).map(c => parseInt(c));
+            if (result.associated && !companies.includes(companyId)) {
+                companies.push(companyId);
+            } else if (!result.associated) {
+                const idx = companies.indexOf(companyId);
+                if (idx > -1) companies.splice(idx, 1);
+            }
+            row.dataset.companies = companies.join(',') + ',';
+        } else {
+            alert('Error: ' + result.error);
+        }
+    });
+}
+
+function toggleUserAdmin(userId, button) {
+    fetch('{% url "toggle_user_admin" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({ user_id: userId })
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            if (result.is_admin) {
+                button.classList.remove('btn-outline-secondary');
+                button.classList.add('btn-primary');
+                button.textContent = 'Admin';
+            } else {
+                button.classList.remove('btn-primary');
+                button.classList.add('btn-outline-secondary');
+                button.textContent = 'User';
+            }
+        } else {
+            alert('Error: ' + result.error);
+        }
+    });
 }
 
 function submitAddCompany() {
@@ -264,28 +349,10 @@ function submitAddCompany() {
     });
 }
 
-function getCookie(name) {
-    let cookieValue = null;
-    if (document.cookie && document.cookie !== '') {
-        const cookies = document.cookie.split(';');
-        for (let i = 0; i < cookies.length; i++) {
-            const cookie = cookies[i].trim();
-            if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                break;
-            }
-        }
-    }
-    return cookieValue;
-}
-
 function submitAddUser() {
     const data = {
-        username: document.getElementById('add_username').value,
-        email: document.getElementById('add_email').value,
-        first_name: document.getElementById('add_first_name').value,
-        last_name: document.getElementById('add_last_name').value,
-        password: document.getElementById('add_password').value
+        name: document.getElementById('add_name').value,
+        email: document.getElementById('add_email').value
     };
     
     fetch('{% url "add_user" %}', {
@@ -306,13 +373,10 @@ function submitAddUser() {
     });
 }
 
-function editUser(id, username, email, first_name, last_name) {
+function editUser(id, name, email) {
     document.getElementById('edit_user_id').value = id;
-    document.getElementById('edit_username').value = username;
+    document.getElementById('edit_name').value = name;
     document.getElementById('edit_email').value = email;
-    document.getElementById('edit_first_name').value = first_name;
-    document.getElementById('edit_last_name').value = last_name;
-    document.getElementById('edit_password').value = '';
     
     new bootstrap.Modal(document.getElementById('editUserModal')).show();
 }
@@ -320,10 +384,8 @@ function editUser(id, username, email, first_name, last_name) {
 function submitEditUser() {
     const userId = document.getElementById('edit_user_id').value;
     const data = {
-        email: document.getElementById('edit_email').value,
-        first_name: document.getElementById('edit_first_name').value,
-        last_name: document.getElementById('edit_last_name').value,
-        password: document.getElementById('edit_password').value
+        name: document.getElementById('edit_name').value,
+        email: document.getElementById('edit_email').value
     };
     
     fetch(`/api/edit-user/${userId}/`, {
@@ -344,8 +406,8 @@ function submitEditUser() {
     });
 }
 
-function deleteUser(id, username) {
-    if (confirm(`Are you sure you want to delete user "${username}"?`)) {
+function deleteUser(id, name) {
+    if (confirm(`Are you sure you want to delete user "${name}"?`)) {
         fetch(`/api/delete-user/${id}/`, {
             method: 'POST',
             headers: {
