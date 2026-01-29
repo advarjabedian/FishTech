@@ -6,7 +6,7 @@ from django.db.models import Q, Count
 from django.contrib.auth.models import User
 from core.models import (
     SOP, SOPParent, SOPChild, Company, CompanyOperationConfig, 
-    CompanyHoliday, Zone
+    CompanyHoliday, Zone, TenantUser
 )
 from datetime import datetime, timedelta, date
 import json
@@ -81,8 +81,14 @@ def operations_dashboard(request):
             midday_data = shift_data
         else:
             postop_data = shift_data
-    
-    users = User.objects.all().order_by('first_name', 'last_name')
+   
+
+    # Get users for current tenant only
+    tenant_users = TenantUser.objects.filter(
+        tenant=request.tenant
+    ).select_related('user').order_by('user__first_name', 'user__last_name')
+
+    users = [{'userid': tu.user.id, 'name': tu.user.get_full_name() or tu.user.username} for tu in tenant_users]
     
     # Get incomplete/unverified counts
     incomplete_count = 0
@@ -203,7 +209,12 @@ def inspection_form(request, parent_id):
             'existing_image': child.image if child else '',
         })
     
-    users = User.objects.all().order_by('first_name', 'last_name')
+    # Get users for current tenant only
+    tenant_users = TenantUser.objects.filter(
+        tenant=request.tenant
+    ).select_related('user').order_by('user__first_name', 'user__last_name')
+
+    users = [{'userid': tu.user.id, 'name': tu.user.get_full_name() or tu.user.username} for tu in tenant_users]
     
     # Check if current user is the monitor
     config = CompanyOperationConfig.objects.filter(company_id=sop_parent.company_id).first()
@@ -228,7 +239,12 @@ def operations_admin(request):
         return redirect('login')
     
     companies = Company.objects.all().order_by('companyname')
-    users = User.objects.all().order_by('first_name', 'last_name')
+    # Get users for current tenant only
+    tenant_users = TenantUser.objects.filter(
+        tenant=request.tenant
+    ).select_related('user').order_by('user__first_name', 'user__last_name')
+
+    users = [{'userid': tu.user.id, 'name': tu.user.get_full_name() or tu.user.username} for tu in tenant_users]
     
     selected_company_id = request.GET.get('company_id')
     filter_type = request.GET.get('filter', 'incomplete')
