@@ -12,7 +12,7 @@ from .views import (
     set_haccp_owner, get_company_certificates, save_company_certificate,
     view_company_certificate, add_company, edit_company, delete_company,
     # User management
-    manage_users, add_user, edit_user, delete_user,
+    manage_users, add_user, edit_user, delete_user, update_company_logo,
     # Operations views
     operations_dashboard, inspection_form, operations_admin, print_sop_schedule,
     # Operations API
@@ -102,4 +102,6 @@ urlpatterns = [
     path('api/operations/zone-delete/', delete_zone, name='delete_zone'),
     path('api/operations/get-calendar-data/', get_calendar_data, name='get_calendar_data'),
     path('api/operations/get-inspection-images/<int:parent_id>/', get_inspection_images, name='get_inspection_images'),
+
+    path('api/update-company-logo/<int:company_id>/', update_company_logo, name='update_company_logo'),
 ]

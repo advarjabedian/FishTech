@@ -26,8 +26,12 @@ def operations_dashboard(request):
     selected_date = request.GET.get('date', datetime.now().strftime('%Y-%m-%d'))
     selected_company_id = request.GET.get('company_id')
     
+    selected_company = None
     if not selected_company_id and companies.exists():
         selected_company_id = companies.first().companyid
+        selected_company = companies.first()
+    elif selected_company_id:
+        selected_company = companies.filter(companyid=selected_company_id).first()
     
     # Get SOPs for the selected company
     sops = SOP.objects.filter(company_id=selected_company_id).order_by('sop_did') if selected_company_id else []
@@ -152,6 +156,7 @@ def operations_dashboard(request):
     
     context = {
         'companies': companies,
+        'selected_company': selected_company,
         'selected_company_id': int(selected_company_id) if selected_company_id else None,
         'selected_date': selected_date,
         'pre_op_count': pre_op_count,

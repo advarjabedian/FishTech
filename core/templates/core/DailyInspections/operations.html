@@ -66,11 +66,11 @@
 {% endblock %}
 
 {% block content %}
-<div class="operations-container">
-    <!-- Title and Admin Button -->
-    <div class="d-flex justify-content-between align-items-center mb-2">
-        <div style="width: 250px;"></div>
-        <h2 class="mb-0 text-center">Daily Inspection</h2>
+<div class="container-fluid mt-4">
+    <div class="row mb-3">
+        <div class="col-md-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <h2>Daily Inspections</h2>
         <div style="width: 250px; text-align: right;">
             <button type="button" class="btn btn-success btn-sm me-2" onclick="openBulkReportModal()">
                 <i class="bi bi-printer"></i> Bulk Reports
@@ -117,27 +117,15 @@ function checkAdminPassword(e) {
         <div class="header-controls">
             <!-- Company Display -->
             <div id="company-display" class="text-center mb-3">
-                {% if selected_company_id %}
+                {% if selected_company %}
                     <div class="company-box shadow-sm mx-auto" style="width: auto; height: 140px; cursor: pointer; display: inline-block;" onclick="window.location.href='/'">
-                        {% for company in companies %}
-                            {% if company.companyid == selected_company_id %}
-                                {% if company.companyname == "FRS" %}
-                                <img src="/static/images/company3.png" alt="{{ company.companyname }}" style="height: 100%; object-fit: contain; padding: 10px;">
-                                {% elif company.companyname == "GSS" %}
-                                <img src="/static/images/company5.png" alt="{{ company.companyname }}" style="height: 100%; object-fit: contain; padding: 10px;">
-                                {% elif company.companyname == "NCF" %}
-                                <img src="/static/images/company4.png" alt="{{ company.companyname }}" style="height: 100%; object-fit: contain; padding: 10px;">
-                                {% elif company.companyname == "PFF" %}
-                                <img src="/static/images/company6.png" alt="{{ company.companyname }}" style="height: 100%; object-fit: contain; padding: 10px;">
-                                {% elif company.companyname == "CPV" %}
-                                <img src="/static/images/company7.png" alt="{{ company.companyname }}" style="height: 100%; object-fit: contain; padding: 10px;">
-                                {% elif company.companyname == "CPI" %}
-                                <img src="/static/images/company8.png" alt="{{ company.companyname }}" style="height: 100%; object-fit: contain; padding: 10px;">
-                                {% elif company.companyname == "USG" %}
-                                <img src="/static/images/Unified_Logo.png" alt="{{ company.companyname }}" style="height: 100%; object-fit: contain; padding: 10px;">
-                                {% endif %}
-                            {% endif %}
-                        {% endfor %}
+                        {% if selected_company.logo %}
+                            <img src="{{ selected_company.logo }}" alt="{{ selected_company.companyname }}" style="height: 100%; object-fit: contain; padding: 10px;">
+                        {% else %}
+                            <div style="height: 100%; display: flex; align-items: center; justify-content: center; padding: 10px;">
+                                <h4 class="text-muted mb-0">{{ selected_company.companyname }}</h4>
+                            </div>
+                        {% endif %}
                     </div>
                 {% else %}
                     <div class="text-center">

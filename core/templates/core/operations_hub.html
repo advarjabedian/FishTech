@@ -61,7 +61,17 @@
             </div>
         </div>
 
-        
+        <!-- Manage Users & Companies Card -->
+        <div class="col-md-4 mb-3">
+            <div class="card card-dashboard bg-success bg-opacity-10" style="border-color: #198754 !important;" onclick="window.location.href='{% url 'manage_users' %}'">
+                <div class="card-body text-center py-5">
+                    <i class="bi bi-people card-icon text-success"></i>
+                    <h3>Administration</h3>
+                    <p class="text-muted">Manage users and companies</p>
+                    <a href="{% url 'manage_users' %}" class="btn btn-success mt-2">Manage</a>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %}

@@ -18,8 +18,13 @@ def manage_users(request):
     tenant_users = TenantUser.objects.filter(tenant=request.tenant).select_related('user')
     users = [tu.user for tu in tenant_users]
     
+    # Get all companies for this tenant
+    from core.models import Company
+    companies = Company.objects.all().order_by('companyname')
+    
     return render(request, 'core/manage_users.html', {
-        'users': users
+        'users': users,
+        'companies': companies
     })
 
 
@@ -55,6 +60,26 @@ def add_user(request):
         
         # Link to tenant
         TenantUser.objects.create(user=user, tenant=request.tenant)
+        
+        return JsonResponse({'success': True})
+        
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+
+@require_http_methods(["POST"])
+def update_company_logo(request, company_id):
+    """Update company logo"""
+    if not request.tenant:
+        return JsonResponse({'success': False, 'error': 'Not authenticated'})
+    
+    try:
+        from core.models import Company
+        company = get_object_or_404(Company, companyid=company_id)
+        
+        data = json.loads(request.body)
+        company.logo = data.get('logo', '')
+        company.save()
         
         return JsonResponse({'success': True})
         

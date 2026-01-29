@@ -56,6 +56,7 @@ class Company(TenantModel):
     city = models.CharField(max_length=100, blank=True)
     state = models.CharField(max_length=2, blank=True)
     zipcode = models.CharField(max_length=10, blank=True)
+    logo = models.TextField(blank=True)  # Base64 encoded logo
     
     class Meta:
         db_table = 'company'
