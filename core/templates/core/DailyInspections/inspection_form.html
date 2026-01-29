@@ -1,0 +1,1114 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'core/css/inspection_form.css' %}">
+<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="saving-indicator" id="savingIndicator">Saving...</div>
+
+<div class="inspection-container {% if sop_parent.completed %}completed{% endif %}">
+    <h2>{{ sop_parent.shift }} Inspection</h2>
+    
+    <!-- Deviation Reason Modal -->
+    <div class="modal fade" id="deviationModal" tabindex="-1" role="dialog">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Deviation Reason</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Please provide a reason for the deviation:</p>
+                    <textarea id="deviationReasonText" class="form-control" rows="4" placeholder="Enter deviation reason..."></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="cancelDeviation()">Cancel</button>
+                    <button type="button" class="btn btn-danger" id="confirmDeviationBtn" onclick="confirmDeviation()" disabled>Confirm Fail</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="header-info">
+    <div class="row">
+        <div class="col-md-3">
+            <strong>Company:</strong> {{ company_name }}
+        </div>
+        <div class="col-md-3">
+            <strong>Date:</strong> {{ sop_parent.date }}
+        </div>
+        <div class="col-md-3">
+            <strong>Time:</strong> 
+            <input type="time" 
+                   id="inspection-time" 
+                   class="time-input-header" 
+                   value="{{ sop_parent.time|time:'H:i' }}"
+                   onchange="updateTime(this.value)"
+                   {% if sop_parent.completed %}disabled{% endif %}>
+        </div>
+        <div class="col-md-3">
+            <strong>Inspector:</strong> 
+            <select id="inspection-inspector" 
+                    class="inspector-select-header" 
+                    onchange="updateInspector(this.value)"
+                    {% if sop_parent.completed %}disabled{% endif %}>
+                {% for user in users %}
+                    <option value="{{ user.userid }}" {% if user.userid == sop_parent.user_inspected %}selected{% endif %}>
+                        {{ user.name }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+</div>
+    
+    <form id="inspectionForm">
+        <div class="inspection-header">
+            <div>#</div>
+            <div>Description</div>
+            <div>Pass</div>
+            <div>Fail</div>
+            <div>Notes</div>
+        </div>
+        
+        {% regroup sops by Zones_Zone as zone_list %}
+        {% for zone in zone_list %}
+            {% if zone.grouper %}
+                <div class="zone-header" onclick="toggleZone(this)">
+                    <div class="zone-header-left">
+                        <span>Zone: {{ zone.grouper }}</span>
+                    </div>
+                    <div class="zone-header-right">
+                        <span class="completion-indicator" id="completion-{{ zone.grouper|slugify }}">
+                            <span class="completion-count">0</span>/<span class="completion-total">{{ zone.list|length }}</span>
+                        </span>
+                        <span class="collapse-icon">&#9660;</span>
+                    </div>
+                </div>
+                <div class="zone-content" data-zone="{{ zone.grouper }}">
+            {% endif %}
+            
+           {% for sop in zone.list %}
+                <div class="inspection-item" data-sop-id="{{ sop.SopDId }}" data-zone="{{ zone.grouper }}">
+                    <div>{{ sop.SopDId }}</div>
+                    <div>{{ sop.Description }}</div>
+                    <div>
+                            <button type="button" class="pass-btn {% if sop.existing_passed %}active{% endif %}" 
+                                    onclick="setStatus({{ sop.SopDId }}, 'pass')"
+                                    data-input-required="{{ sop.Input }}"
+                                    data-image-required="{{ sop.ImageRequired }}">
+                                Pass
+                            </button>
+                        </div>
+                        <div>
+                            <button type="button" class="fail-btn {% if sop.existing_failed %}active{% endif %}" 
+                                    onclick="setStatus({{ sop.SopDId }}, 'fail')"
+                                    data-deviation="{{ sop.existing_deviation_reason|default:'' }}"
+                                    data-input-required="{{ sop.Input }}"
+                                    data-image-required="{{ sop.ImageRequired }}">
+                                Fail
+                            </button>
+                        </div>
+                        <div>
+                            {% if sop.Input == 1 %}
+                            <div style="display: flex; align-items: center; gap: 4px;">
+                                <button type="button" class="btn btn-outline-secondary btn-sm" 
+                                        style="padding: 2px 8px; font-weight: bold;" 
+                                        onclick="toggleNegative({{ sop.SopDId }})">−</button>
+                                <input type="text" inputmode="decimal" pattern="[-0-9.]*" class="notes-input" id="notes-{{ sop.SopDId }}" 
+                                    value="{{ sop.existing_notes }}"
+                                    placeholder="Enter temp (required)"
+                                    onblur="saveItem({{ sop.SopDId }})"
+                                    oninput="checkNotesRequirement({{ sop.SopDId }})"
+                                    style="flex: 1;"
+                                >
+                            </div>
+                            {% endif %}
+                            {% if sop.ImageRequired == 1 %}
+                            <div style="margin-top: 8px;">
+                                <input type="file" id="image-input-{{ sop.SopDId }}" accept="image/*,image/jpeg,image/jpg,image/png,image/gif,image/webp" style="display: none;" onchange="handleImageCapture({{ sop.SopDId }}, this)">
+                                <button type="button" class="btn btn-sm btn-outline-primary" 
+        id="image-btn-{{ sop.SopDId }}"
+        onclick="console.log('Button clicked for sopId: {{ sop.SopDId }}'); document.getElementById('image-input-{{ sop.SopDId }}').click();"
+        {% if isCompleted %}disabled{% endif %}>
+    <i class="bi bi-camera"></i> <span id="image-btn-text-{{ sop.SopDId }}">Take Photo</span>
+</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" 
+        id="view-btn-{{ sop.SopDId }}"
+        onclick="viewInspectionImage(event, {{ sop.SopDId }})"
+        style="display: {% if sop.existing_image %}inline-block{% else %}none{% endif %};">
+    <i class="bi bi-eye"></i> View
+</button>
+                            </div>
+                            {% endif %}
+                            <div class="deviation-display" id="deviation-{{ sop.SopDId }}" style="color: red; font-size: 12px; margin-top: 4px; {% if not sop.existing_deviation_reason %}display: none;{% endif %}">
+                                Deviation: <span class="deviation-text">{{ sop.existing_deviation_reason }}</span>
+                            </div>
+                        </div>
+                </div>
+                {% endfor %}
+            
+            {% if zone.grouper %}
+                </div>
+            {% endif %}
+        {% endfor %}
+        
+        <div class="action-buttons">
+            <button type="button" class="btn {% if sop_parent.completed %}btn-success{% else %}btn-danger{% endif %}" 
+                id="completeBtn" 
+                onclick="{% if sop_parent.completed %}toggleComplete(){% else %}showCompleteSignatureModal(){% endif %}">
+            {% if sop_parent.completed %}Complete{% else %}Incomplete{% endif %}
+        </button>
+            <button type="button" class="btn btn-secondary" onclick="saveForLater()">Back</button>
+        </div>
+    </form>
+    
+    <!-- Inspector Signature Modal -->
+    <div class="modal fade" id="inspectorSignatureModal" tabindex="-1" data-bs-backdrop="static">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Inspector Signature Required</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <p>Please sign below to complete this inspection.</p>
+                    <div class="mb-3">
+                        <label class="form-label"><strong>Your Name:</strong></label>
+                        <input type="text" class="form-control" id="inspector-name-input" value="{{ current_user_name }}" placeholder="Enter your name">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label"><strong>Signature:</strong></label>
+                        <canvas id="inspector-signature-pad" width="700" height="250" style="border: 2px solid #000; border-radius: 4px; cursor: crosshair; display: block; width: 100%;"></canvas>
+                        <div class="mt-2">
+                            <button type="button" class="btn btn-sm btn-secondary" onclick="clearInspectorSignature()">Clear Signature</button>
+                            {% if is_monitor %}
+                            <button type="button" class="btn btn-sm btn-primary" id="use-saved-inspector-sig-btn" onclick="useSavedInspectorSignature()" style="display: none;">Use Saved Signature</button>
+                            <button type="button" class="btn btn-sm btn-outline-success" id="save-signature-btn" onclick="saveSignatureForFuture()">
+                                Save Signature <span id="save-sig-check" style="display: none;">✓</span>
+                            </button>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-success" onclick="submitWithSignature()">Complete Inspection</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+</div>
+
+<script>
+    const inspectionData = {};
+    let saveTimeout = null;
+    let pendingSopId = null;
+    let isCompleted = {{ sop_parent.completed|yesno:"true,false" }};
+
+    // Initialize when DOM is loaded
+    document.addEventListener('DOMContentLoaded', function() {
+        // Add listener to deviation reason textarea
+        const deviationTextarea = document.getElementById('deviationReasonText');
+        const confirmBtn = document.getElementById('confirmDeviationBtn');
+        
+        if (deviationTextarea && confirmBtn) {
+            deviationTextarea.addEventListener('input', function() {
+                confirmBtn.disabled = this.value.trim().length === 0;
+            });
+        }
+        
+        // Load existing inspection data from Django template
+        {% for sop in sops %}
+            {% if sop.existing_passed == True or sop.existing_failed == True %}
+            inspectionData[{{ sop.SopDId }}] = {
+                passed: {{ sop.existing_passed|yesno:"true,false" }},
+                failed: {{ sop.existing_failed|yesno:"true,false" }},
+                deviation_reason: "{{ sop.existing_deviation_reason|default:''|escapejs }}"
+                {% if sop.existing_image %}, image: "{{ sop.existing_image|escapejs }}"{% endif %}
+            };
+            
+            {% if sop.existing_image %}
+            // Update button text for existing images
+            const btnText = document.getElementById('image-btn-text-{{ sop.SopDId }}');
+            if (btnText) {
+                btnText.textContent = 'Retake Photo';
+            }
+            {% endif %}
+            {% endif %}
+        {% endfor %}
+        
+        // Update all completion indicators
+        // Update all completion indicators
+        updateAllCompletionIndicators();
+
+        // Collapse all zones by default
+        // Collapse all zones by default
+        document.querySelectorAll('.zone-header').forEach(header => {
+            if (!header.classList.contains('collapsed')) {
+                toggleZone(header);
+            }
+        });
+        
+        // Disable all inputs if completed
+        updateFormState();
+    });
+
+    function toggleZone(header) {
+        header.classList.toggle('collapsed');
+        const content = header.nextElementSibling;
+        if (content) {
+            content.classList.toggle('collapsed');
+        }
+    }
+    
+    function slugify(text) {
+        return text.toString().toLowerCase()
+            .replace(/\s+/g, '-')           // Replace spaces with -
+            .replace(/[^\w\-]+/g, '')       // Remove all non-word chars
+            .replace(/\-\-+/g, '-')         // Replace multiple - with single -
+            .replace(/^-+/, '')             // Trim - from start of text
+            .replace(/-+$/, '');            // Trim - from end of text
+    }
+    
+    function updateCompletionIndicator(zoneName) {
+        const zoneItems = document.querySelectorAll(`.inspection-item[data-zone="${zoneName}"]`);
+        let completedCount = 0;
+        const totalCount = zoneItems.length;
+        
+        zoneItems.forEach(item => {
+            const sopId = item.dataset.sopId;
+            const data = inspectionData[sopId];
+            if (data && (data.passed || data.failed)) {
+                completedCount++;
+            }
+        });
+        
+        const indicatorId = `completion-${slugify(zoneName)}`;
+        const indicator = document.getElementById(indicatorId);
+        if (indicator) {
+            const countSpan = indicator.querySelector('.completion-count');
+            if (countSpan) {
+                countSpan.textContent = completedCount;
+            }
+            
+            if (completedCount === totalCount && totalCount > 0) {
+                indicator.classList.add('complete');
+                // Auto-collapse the zone when complete
+                const zoneHeader = indicator.closest('.zone-header');
+                if (zoneHeader && !zoneHeader.classList.contains('collapsed')) {
+                    toggleZone(zoneHeader);
+                }
+            } else {
+                indicator.classList.remove('complete');
+            }
+        }
+        
+        // Return whether this zone is complete
+        return completedCount === totalCount && totalCount > 0;
+    }
+    
+    function updateAllCompletionIndicators() {
+        // Get all unique zones
+        const zones = new Set();
+        let allZonesComplete = true;
+        
+        document.querySelectorAll('.inspection-item').forEach(item => {
+            if (item.dataset.zone) {
+                zones.add(item.dataset.zone);
+            }
+        });
+        
+        // Update each zone's indicator and check if all complete
+        zones.forEach(zone => {
+            const isComplete = updateCompletionIndicator(zone);
+            if (!isComplete) {
+                allZonesComplete = false;
+            }
+        });
+        
+        // Enable/disable complete button based on all zones being complete
+        const completeBtn = document.getElementById('completeBtn');
+        if (completeBtn) {
+            completeBtn.disabled = !allZonesComplete;
+        }
+    }
+
+    function setStatus(sopId, status) {
+        // Prevent changes if completed
+        if (isCompleted) return;
+        
+        const item = document.querySelector(`[data-sop-id="${sopId}"]`);
+        if (!item) return;
+        
+        const passBtn = item.querySelector('.pass-btn');
+        const failBtn = item.querySelector('.fail-btn');
+        const zoneName = item.dataset.zone;
+        const inputRequired = passBtn.dataset.inputRequired === '1';
+        const imageRequired = passBtn.dataset.imageRequired === '1';
+        
+        // Check if notes are required and present
+        if (inputRequired) {
+            const notesInput = document.getElementById(`notes-${sopId}`);
+            if (notesInput && notesInput.value.trim() === '') {
+                alert('Please enter notes before selecting Pass or Fail for this item.');
+                return;
+            }
+        }
+        
+        // Check if image is required and present
+        if (imageRequired && !inspectionData[sopId]?.image) {
+            alert('Please take a photo before selecting Pass or Fail for this item.');
+            return;
+        }
+        
+        if (status === 'pass') {
+            passBtn.classList.add('active');
+            failBtn.classList.remove('active');
+            inspectionData[sopId] = { 
+                passed: true, 
+                failed: false,
+                deviation_reason: ''  // Clear deviation reason if switching to pass
+            };
+            
+            // Hide deviation display when switching to pass
+            const deviationDisplay = document.getElementById(`deviation-${sopId}`);
+            if (deviationDisplay) {
+                deviationDisplay.style.display = 'none';
+            }
+            
+            // Auto-save this item immediately
+            saveItem(sopId);
+            
+            // Update the completion indicator for this zone
+            updateCompletionIndicator(zoneName);
+            
+            // Check if all zones are complete
+            updateAllCompletionIndicators();
+        } else if (status === 'fail') {
+            // Store the sopId for the modal
+            pendingSopId = sopId;
+            
+            // Get existing deviation reason if any
+            const existingDeviation = inspectionData[sopId]?.deviation_reason || failBtn.dataset.deviation || '';
+            document.getElementById('deviationReasonText').value = existingDeviation;
+            
+            // Update confirm button state based on existing text
+            document.getElementById('confirmDeviationBtn').disabled = existingDeviation.trim().length === 0;
+            
+            // Show the modal
+            new bootstrap.Modal(document.getElementById('deviationModal')).show();
+        }
+    }
+    
+    function checkNotesRequirement(sopId) {
+    // No longer clear status - just prevent saving incomplete data
+    return;
+}
+
+
+
+    function confirmDeviation() {
+        if (pendingSopId) {
+            const item = document.querySelector(`[data-sop-id="${pendingSopId}"]`);
+            if (!item) return;
+            
+            const passBtn = item.querySelector('.pass-btn');
+            const failBtn = item.querySelector('.fail-btn');
+            const zoneName = item.dataset.zone;
+            const deviationReason = document.getElementById('deviationReasonText').value.trim();
+            
+            // Update buttons
+            failBtn.classList.add('active');
+            passBtn.classList.remove('active');
+            
+            // Show deviation reason in the form
+            const deviationDisplay = document.getElementById(`deviation-${pendingSopId}`);
+            if (deviationDisplay) {
+                deviationDisplay.style.display = 'block';
+                const deviationText = deviationDisplay.querySelector('.deviation-text');
+                if (deviationText) {
+                    deviationText.textContent = deviationReason;
+                }
+            }
+            
+            // Store in inspectionData with deviation reason
+            inspectionData[pendingSopId] = { 
+                passed: false, 
+                failed: true,
+                deviation_reason: deviationReason
+            };
+            
+            // Store deviation in button data attribute for future reference
+            failBtn.dataset.deviation = deviationReason;
+            
+            // Update the completion indicator for this zone
+            updateCompletionIndicator(zoneName);
+            // Check if all zones are complete
+            updateAllCompletionIndicators();
+            
+            // Auto-save this item
+            saveItem(pendingSopId);
+            
+            // Close modal and reset
+            bootstrap.Modal.getInstance(document.getElementById('deviationModal')).hide();
+            pendingSopId = null;
+        }
+    }
+
+    function cancelDeviation() {
+        $('#deviationModal').modal('hide');
+        pendingSopId = null;
+        document.getElementById('deviationReasonText').value = '';
+        document.getElementById('confirmDeviationBtn').disabled = true;
+    }
+    
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    
+    function showSavingIndicator() {
+        const indicator = document.getElementById('savingIndicator');
+        if (indicator) {
+            indicator.classList.add('show');
+            setTimeout(() => {
+                indicator.classList.remove('show');
+            }, 1000);
+        }
+    }
+    
+    function saveItem(sopId) {
+        const notesElement = document.getElementById(`notes-${sopId}`);
+        const notes = notesElement ? notesElement.value : '';
+        const data = inspectionData[sopId];
+        
+        // Don't save if no status is set
+        if (!data || (data.passed !== true && data.failed !== true)) {
+            return;
+        }
+        
+        const items = [{
+            sop_did: parseInt(sopId),
+            passed: data.passed,
+            failed: data.failed,
+            notes: notes,
+            deviation_reason: data.deviation_reason || '',
+            image: data.image || ''
+        }];
+        
+        showSavingIndicator();
+        
+        fetch(`/api/operations/save-inspection/{{ sop_parent.id }}/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({ items: items, auto_save: true })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (!data.success) {
+                console.error('Error saving item');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+        });
+    }
+    
+    function toggleComplete() {
+    const newState = !isCompleted;
+    
+    // If trying to mark complete, check all items are done
+    if (newState) {
+        let allComplete = true;
+        let incompleteItems = [];
+        let notesOnlyItems = [];
+        
+        document.querySelectorAll('.inspection-item').forEach(item => {
+            const sopId = item.dataset.sopId;
+            const data = inspectionData[sopId];
+            const passBtn = item.querySelector('.pass-btn');
+            const notesInput = document.getElementById(`notes-${sopId}`);
+            const inputRequired = passBtn?.dataset.inputRequired === '1';
+            
+            // Check if item has notes but no status
+            if (notesInput && notesInput.value.trim() !== '' && 
+                (!data || (data.passed !== true && data.failed !== true))) {
+                allComplete = false;
+                notesOnlyItems.push(sopId);
+            }
+            // Check if item has a definitive status
+            else if (!data || (data.passed !== true && data.failed !== true)) {
+                allComplete = false;
+                incompleteItems.push(sopId);
+            }
+            // If status is set but notes are required and empty
+            else if (inputRequired && notesInput && notesInput.value.trim() === '') {
+                allComplete = false;
+                incompleteItems.push(sopId);
+            }
+        });
+        
+        if (notesOnlyItems.length > 0) {
+            alert(`Cannot complete: ${notesOnlyItems.length} items have notes but no Pass/Fail status. Please select Pass or Fail for these items.`);
+            return;
+        }
+        
+        if (!allComplete) {
+            alert(`Cannot complete: ${incompleteItems.length} items need Pass/Fail status or required notes`);
+            return;
+        }
+    }
+        
+        fetch(`/api/operations/save-inspection/{{ sop_parent.id }}/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({ toggle_complete: newState })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                isCompleted = data.completed;
+                updateFormState();
+            } else {
+                alert('Error updating completion status');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error updating completion status');
+        });
+    }
+    
+    function updateFormState() {
+        const completeBtn = document.getElementById('completeBtn');
+        const container = document.querySelector('.inspection-container');
+        
+        if (isCompleted) {
+            completeBtn.textContent = 'Complete';
+            completeBtn.className = 'btn btn-success';
+            container.classList.add('completed');
+            
+            // Disable all inputs
+            // Disable all inputs
+            document.querySelectorAll('.pass-btn, .fail-btn, .notes-input').forEach(el => {
+                el.disabled = true;
+            });
+            document.getElementById('inspection-time').disabled = true;
+            document.getElementById('inspection-inspector').disabled = true;
+        } else {
+            completeBtn.textContent = 'Incomplete';
+            completeBtn.className = 'btn btn-danger';
+            container.classList.remove('completed');
+            
+            // Enable all inputs
+            // Enable all inputs
+            document.querySelectorAll('.pass-btn, .fail-btn, .notes-input').forEach(el => {
+                el.disabled = false;
+            });
+            document.getElementById('inspection-time').disabled = false;
+            document.getElementById('inspection-inspector').disabled = false;
+            
+            // Check if all zones complete to enable button
+            updateAllCompletionIndicators();
+        }
+    }
+    
+    function saveForLater() {
+        // Just redirect immediately without saving completion status
+        window.location.href = '/operations/?date={{ sop_parent.date|date:"Y-m-d" }}&company_id={{ sop_parent.company_id }}';
+    }
+
+    function updateTime(timeValue) {
+    if (isCompleted) return;
+    
+    fetch(`/api/operations/update-time/{{ sop_parent.id }}/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({ time: timeValue })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showSavingIndicator();
+        } else {
+            alert('Error updating time');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error updating time');
+    });
+}
+
+function updateInspector(userId) {
+    if (isCompleted) return;
+    
+    fetch(`/api/operations/update-inspector/{{ sop_parent.id }}/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({ user_id: userId })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showSavingIndicator();
+        } else {
+            alert('Error updating inspector');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error updating inspector');
+    });
+}
+
+function toggleNegative(sopId) {
+    const input = document.getElementById(`notes-${sopId}`);
+    if (!input) return;
+    
+    if (input.value.startsWith('-')) {
+        input.value = input.value.substring(1);
+    } else {
+        input.value = '-' + input.value;
+    }
+    input.focus();
+}
+
+// Inspector Signature Functions
+let inspectorIsDrawing = false;
+
+function showCompleteSignatureModal() {
+    console.log('showCompleteSignatureModal called');
+    console.log('inspectionData:', inspectionData);
+    
+    // First check if all items are complete
+    let allComplete = true;
+    let incompleteItems = [];
+    let notesOnlyItems = [];
+    
+    document.querySelectorAll('.inspection-item').forEach(item => {
+        const sopId = item.dataset.sopId;
+        const data = inspectionData[sopId];
+        const passBtn = item.querySelector('.pass-btn');
+        const notesInput = document.getElementById(`notes-${sopId}`);
+        const inputRequired = passBtn?.dataset.inputRequired === '1';
+        
+        console.log(`Item ${sopId}: data=`, data, 'inputRequired=', inputRequired);
+        
+        if (notesInput && notesInput.value.trim() !== '' && 
+            (!data || (data.passed !== true && data.failed !== true))) {
+            allComplete = false;
+            notesOnlyItems.push(sopId);
+        }
+        else if (!data || (data.passed !== true && data.failed !== true)) {
+            allComplete = false;
+            incompleteItems.push(sopId);
+        }
+        else if (inputRequired && notesInput && notesInput.value.trim() === '') {
+            allComplete = false;
+            incompleteItems.push(sopId);
+        }
+    });
+    
+    console.log('allComplete:', allComplete, 'incompleteItems:', incompleteItems, 'notesOnlyItems:', notesOnlyItems);
+    
+    if (notesOnlyItems.length > 0) {
+        alert(`Cannot complete: ${notesOnlyItems.length} items have notes but no Pass/Fail status.`);
+        return;
+    }
+    
+    if (!allComplete) {
+        alert(`Cannot complete: ${incompleteItems.length} items need Pass/Fail status or required notes`);
+        return;
+    }
+    
+    // Show signature modal
+    console.log('Showing modal...');
+    new bootstrap.Modal(document.getElementById('inspectorSignatureModal')).show();
+    setTimeout(initInspectorSignaturePad, 300);
+    
+    // Check if current inspector has a saved signature
+    checkForSavedInspectorSignature();
+}
+
+function initInspectorSignaturePad() {
+    const canvas = document.getElementById('inspector-signature-pad');
+    if (!canvas) return;
+    
+    const ctx = canvas.getContext('2d');
+    
+    ctx.fillStyle = 'white';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    
+    // Remove old listeners
+    canvas.replaceWith(canvas.cloneNode(true));
+    const newCanvas = document.getElementById('inspector-signature-pad');
+    const newCtx = newCanvas.getContext('2d');
+    newCtx.fillStyle = 'white';
+    newCtx.fillRect(0, 0, newCanvas.width, newCanvas.height);
+    newCtx.strokeStyle = '#000';
+    newCtx.lineWidth = 2;
+    newCtx.lineCap = 'round';
+    
+    newCanvas.addEventListener('mousedown', inspectorStartDrawing);
+    newCanvas.addEventListener('mousemove', inspectorDraw);
+    newCanvas.addEventListener('mouseup', inspectorStopDrawing);
+    newCanvas.addEventListener('mouseout', inspectorStopDrawing);
+    
+    // Touch support
+    newCanvas.addEventListener('touchstart', inspectorHandleTouch);
+    newCanvas.addEventListener('touchmove', inspectorHandleTouchMove);
+    newCanvas.addEventListener('touchend', inspectorStopDrawing);
+}
+
+function inspectorStartDrawing(e) {
+    inspectorIsDrawing = true;
+    const canvas = document.getElementById('inspector-signature-pad');
+    const ctx = canvas.getContext('2d');
+    const rect = canvas.getBoundingClientRect();
+    ctx.beginPath();
+    ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
+}
+
+function inspectorDraw(e) {
+    if (!inspectorIsDrawing) return;
+    const canvas = document.getElementById('inspector-signature-pad');
+    const ctx = canvas.getContext('2d');
+    const rect = canvas.getBoundingClientRect();
+    ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
+    ctx.stroke();
+}
+
+function inspectorStopDrawing() {
+    inspectorIsDrawing = false;
+}
+
+function inspectorHandleTouch(e) {
+    e.preventDefault();
+    const touch = e.touches[0];
+    const mouseEvent = new MouseEvent('mousedown', {
+        clientX: touch.clientX,
+        clientY: touch.clientY
+    });
+    document.getElementById('inspector-signature-pad').dispatchEvent(mouseEvent);
+}
+
+function inspectorHandleTouchMove(e) {
+    e.preventDefault();
+    const touch = e.touches[0];
+    const mouseEvent = new MouseEvent('mousemove', {
+        clientX: touch.clientX,
+        clientY: touch.clientY
+    });
+    document.getElementById('inspector-signature-pad').dispatchEvent(mouseEvent);
+}
+
+function clearInspectorSignature() {
+    const canvas = document.getElementById('inspector-signature-pad');
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = 'white';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+}
+
+function saveSignatureForFuture() {
+    const canvas = document.getElementById('inspector-signature-pad');
+    const ctx = canvas.getContext('2d');
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    let isBlank = true;
+    for (let i = 0; i < imageData.data.length; i += 4) {
+        if (imageData.data[i] < 250 || imageData.data[i+1] < 250 || imageData.data[i+2] < 250) {
+            isBlank = false;
+            break;
+        }
+    }
+    
+    if (isBlank) {
+        alert('Please draw a signature first');
+        return;
+    }
+    
+    const signature = canvas.toDataURL('image/png');
+    
+    fetch('/api/operations/save-monitor-signature/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({
+            company_id: '{{ sop_parent.company_id }}',
+            signature: signature
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            const btn = document.getElementById('save-signature-btn');
+            btn.classList.remove('btn-outline-success');
+            btn.classList.add('btn-success');
+            document.getElementById('save-sig-check').style.display = 'inline';
+        }
+    });
+}
+
+function submitWithSignature() {
+    const name = document.getElementById('inspector-name-input').value.trim();
+    if (!name) {
+        alert('Please enter your name');
+        return;
+    }
+    
+    const canvas = document.getElementById('inspector-signature-pad');
+    const signature = canvas.toDataURL('image/png');
+    
+    // Check if signature is blank
+    const ctx = canvas.getContext('2d');
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    let isBlank = true;
+    for (let i = 0; i < imageData.data.length; i += 4) {
+        if (imageData.data[i] < 250 || imageData.data[i+1] < 250 || imageData.data[i+2] < 250) {
+            isBlank = false;
+            break;
+        }
+    }
+    
+    if (isBlank) {
+        alert('Please sign before completing');
+        return;
+    }
+    
+    // Submit completion with signature
+    fetch(`/api/operations/save-inspection/{{ sop_parent.id }}/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({ 
+            toggle_complete: true,
+            inspector_name: name,
+            inspector_signature: signature
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            window.location.href = '/operations/?date={{ sop_parent.date|date:"Y-m-d" }}&company_id={{ sop_parent.company_id }}';
+        } else {
+            alert('Error completing inspection');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error completing inspection');
+    });
+}
+
+const isMonitor = {{ is_monitor|yesno:"true,false" }};
+
+function checkForSavedInspectorSignature() {
+    if (!isMonitor) return;
+    
+    const companyId = '{{ sop_parent.company }}';
+    
+    fetch(`/api/operations/get-monitor-signature/?company_id=${companyId}`)
+        .then(r => r.json())
+        .then(data => {
+            const btn = document.getElementById('use-saved-inspector-sig-btn');
+            if (btn && data.has_signature) {
+                btn.style.display = 'inline-block';
+            }
+        })
+        .catch(() => {});
+}
+
+function useSavedInspectorSignature() {
+    if (!isMonitor) return;
+    
+    const companyId = '{{ sop_parent.company }}';
+    
+    fetch(`/api/operations/get-monitor-signature/?company_id=${companyId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.signature) {
+                const canvas = document.getElementById('inspector-signature-pad');
+                const ctx = canvas.getContext('2d');
+                const img = new Image();
+                img.onload = function() {
+                    ctx.fillStyle = 'white';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                };
+                img.src = data.signature;
+            } else {
+                alert('No saved signature found.');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error loading saved signature');
+        });
+}
+
+function handleImageCapture(sopId, input) {
+    console.log('handleImageCapture called for sopId:', sopId);
+    console.log('Files:', input.files);
+    
+    const file = input.files[0];
+    if (!file) {
+        console.log('No file selected');
+        return;
+    }
+    
+    console.log('File selected:', file.name, file.type, file.size);
+    
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+        alert('Please select an image file');
+        input.value = '';
+        return;
+    }
+    
+    // Check file size (limit to 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+        alert('Image file is too large. Please select an image under 10MB');
+        input.value = '';
+        return;
+    }
+    
+    const reader = new FileReader();
+    
+    reader.onerror = function(error) {
+        console.error('FileReader error:', error);
+        alert('Error reading file. Please try again.');
+    };
+    
+    reader.onload = function(e) {
+        console.log('File loaded successfully');
+        const imageData = e.target.result;
+        
+        // Store image in inspectionData
+        if (!inspectionData[sopId]) {
+            inspectionData[sopId] = {};
+        }
+        inspectionData[sopId].image = imageData;
+        
+        console.log('Image stored in inspectionData for sopId:', sopId);
+        
+        // Update button text
+        const btnText = document.getElementById(`image-btn-text-${sopId}`);
+        if (btnText) {
+            btnText.textContent = 'Retake Photo';
+        }
+        
+        // Show view button
+        const viewBtn = document.getElementById(`view-btn-${sopId}`);
+        if (viewBtn) {
+            viewBtn.style.display = 'inline-block';
+        }
+        
+        // Save immediately
+        saveItem(sopId);
+        
+        console.log('Image capture complete for sopId:', sopId);
+    };
+    
+    reader.readAsDataURL(file);
+    
+    // Clear the input so the same file can be selected again
+    input.value = '';
+}
+
+function viewInspectionImage(event, sopId) {
+    // Stop event propagation to prevent other handlers
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+    }
+    
+    console.log('viewInspectionImage called for sopId:', sopId);
+    
+    const imageData = inspectionData[sopId]?.image;
+    if (!imageData) {
+        console.log('No image data found for sopId:', sopId);
+        alert('No image available');
+        return;
+    }
+    
+    console.log('Opening image in new window');
+    
+    // Open image in new window with better styling
+    const win = window.open('', '_blank');
+    if (!win) {
+        alert('Please allow popups to view the image');
+        return;
+    }
+    
+    win.document.write(`
+        <html>
+            <head>
+                <title>Inspection Image - Item ${sopId}</title>
+                <style>
+                    body { 
+                        margin: 0; 
+                        display: flex; 
+                        justify-content: center; 
+                        align-items: center; 
+                        min-height: 100vh; 
+                        background: #000; 
+                    }
+                    img { 
+                        max-width: 100%; 
+                        max-height: 100vh; 
+                        object-fit: contain; 
+                    }
+                </style>
+            </head>
+            <body>
+                <img src="${imageData}" alt="Inspection Image">
+            </body>
+        </html>
+    `);
+    
+    return false;
+}
+</script>
+{% endblock %}

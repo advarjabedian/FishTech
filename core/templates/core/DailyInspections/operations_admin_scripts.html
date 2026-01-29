@@ -1,0 +1,258 @@
+<script>
+// Calendar functionality
+var currentDate = new Date();
+var incompleteDays = window.incompleteDays || [];
+
+function renderCalendar() {
+    const monthYear = document.getElementById('calendar-month-year');
+    const calendarBody = document.getElementById('calendar-body');
+    
+    if (!monthYear || !calendarBody) return;
+    
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+    
+    monthYear.textContent = new Date(year, month, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    
+    calendarBody.innerHTML = '';
+    
+    let dayCount = 1;
+    for (let i = 0; i < 6; i++) {
+        const row = document.createElement('div');
+        row.className = 'calendar-row';
+        
+        for (let j = 0; j < 7; j++) {
+            const cell = document.createElement('div');
+            cell.className = 'calendar-day';
+            
+            if (i === 0 && j < firstDay) {
+                cell.classList.add('empty');
+            } else if (dayCount > daysInMonth) {
+                cell.classList.add('empty');
+            } else {
+                const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(dayCount).padStart(2, '0')}`;
+                const dayData = incompleteDays.find(d => d.date === dateStr);
+                
+                cell.innerHTML = `<div class="day-number">${dayCount}</div>`;
+                
+                if (dayData) {
+                    const statusDiv = document.createElement('div');
+                    statusDiv.className = 'day-status';
+                    
+                    // Check verification status first (purple)
+                    if ((dayData.preop && dayData.preop_verified) || 
+                        (dayData.midday && dayData.midday_verified) || 
+                        (dayData.postop && dayData.postop_verified)) {
+                        statusDiv.style.backgroundColor = '#6f42c1';
+                    }
+                    // Then check completion (green)
+                    else if (dayData.preop === true || dayData.midday === true || dayData.postop === true) {
+                        statusDiv.style.backgroundColor = '#28a745';
+                    }
+                    // In progress (yellow)
+                    else if (dayData.preop === false || dayData.midday === false || dayData.postop === false) {
+                        statusDiv.style.backgroundColor = '#ffc107';
+                    }
+                    // Not started (gray)
+                    else {
+                        statusDiv.style.backgroundColor = '#6c757d';
+                    }
+                    
+                    cell.appendChild(statusDiv);
+                    cell.style.cursor = 'pointer';
+                    cell.onclick = () => {
+                        window.location.href = `/operations/daily/?date=${dateStr}&company_id=${window.companyId}`;
+                    };
+                }
+                
+                dayCount++;
+            }
+            
+            row.appendChild(cell);
+        }
+        
+        calendarBody.appendChild(row);
+        if (dayCount > daysInMonth) break;
+    }
+}
+
+function changeMonth(delta) {
+    currentDate.setMonth(currentDate.getMonth() + delta);
+    renderCalendar();
+}
+
+function setFilter(filter) {
+    window.currentFilter = filter;
+    
+    const filters = ['incomplete', 'unverified', 'all'];
+    filters.forEach(f => {
+        const btn = document.getElementById('filter-' + f);
+        if (btn) btn.classList.remove('active');
+    });
+    
+    const activeBtn = document.getElementById('filter-' + filter);
+    if (activeBtn) activeBtn.classList.add('active');
+    
+    const rows = document.querySelectorAll('.day-row');
+    let visibleCount = 0;
+    
+    rows.forEach(row => {
+        const incomplete = row.dataset.incomplete === 'true';
+        const unverified = row.dataset.unverified === 'true';
+        
+        let show = false;
+        if (filter === 'all') show = true;
+        else if (filter === 'incomplete') show = incomplete;
+        else if (filter === 'unverified') show = unverified;
+        
+        row.style.display = show ? '' : 'none';
+        if (show) visibleCount++;
+    });
+    
+    const emptyRow = document.getElementById('empty-row');
+    if (emptyRow) emptyRow.style.display = visibleCount === 0 ? '' : 'none';
+}
+
+// Signature canvas functionality
+var signatureCanvas, signatureCtx;
+
+function initSignatureCanvas() {
+    const canvases = document.querySelectorAll('.signature-canvas');
+    canvases.forEach(canvas => {
+        const ctx = canvas.getContext('2d');
+        let isDrawing = false;
+        
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        canvas.addEventListener('mousedown', (e) => {
+            isDrawing = true;
+            ctx.beginPath();
+            ctx.moveTo(e.offsetX, e.offsetY);
+        });
+        
+        canvas.addEventListener('mousemove', (e) => {
+            if (!isDrawing) return;
+            ctx.lineWidth = 2;
+            ctx.lineCap = 'round';
+            ctx.strokeStyle = 'black';
+            ctx.lineTo(e.offsetX, e.offsetY);
+            ctx.stroke();
+        });
+        
+        canvas.addEventListener('mouseup', () => {
+            isDrawing = false;
+        });
+        
+        canvas.addEventListener('mouseout', () => {
+            isDrawing = false;
+        });
+    });
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// SOP Editor functionality
+function openSOPEditor() {
+    alert('SOP Editor will be implemented');
+}
+
+function openBulkReportModal() {
+    alert('Bulk Reports will be implemented');
+}
+</script>
+
+<style>
+/* Calendar styles */
+.calendar-container {
+    background: white;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.calendar-header {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 10px;
+    margin-bottom: 10px;
+    font-weight: bold;
+    text-align: center;
+}
+
+.calendar-body {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.calendar-row {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 10px;
+}
+
+.calendar-day {
+    aspect-ratio: 1;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    padding: 5px;
+    position: relative;
+    background: white;
+}
+
+.calendar-day.empty {
+    background: #f8f9fa;
+    border-color: #e9ecef;
+}
+
+.day-number {
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.day-status {
+    position: absolute;
+    bottom: 5px;
+    left: 5px;
+    right: 5px;
+    height: 8px;
+    border-radius: 2px;
+}
+
+.calendar-legend {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.legend-color {
+    width: 20px;
+    height: 20px;
+    border-radius: 3px;
+    border: 1px solid #dee2e6;
+}
+</style>

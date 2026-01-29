@@ -1,0 +1,33 @@
+<!-- Summary view: show all companies and their status -->
+<div class="row">
+    {% for company in companies %}
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex align-items-center mb-3">
+                    <h5 class="mb-0">{{ company.companyname }}</h5>
+                </div>
+                
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between">
+                        <span>Incomplete Days:</span>
+                        <strong class="text-warning">{{ company.incomplete_count }}</strong>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span>Unverified Logs:</span>
+                        <strong class="text-primary">{{ company.unverified_count }}</strong>
+                    </div>
+                </div>
+                
+                <a href="{% url 'operations_admin' %}?company_id={{ company.companyid }}" class="btn btn-primary btn-sm">
+                    View Details
+                </a>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-12">
+        <div class="alert alert-info">No companies configured yet.</div>
+    </div>
+    {% endfor %}
+</div>

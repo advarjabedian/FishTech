@@ -1,0 +1,342 @@
+.inspection-container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.header-info {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.inspection-item {
+    display: grid;
+    grid-template-columns: 50px 1fr 100px 100px 2fr;
+    gap: 15px;
+    align-items: center;
+    padding: 15px;
+    border: 1px solid #dee2e6;
+    margin-bottom: 10px;
+    background: white;
+    border-radius: 4px;
+}
+
+.time-input-header,
+.inspector-select-header {
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 14px;
+}
+
+.time-input-header:disabled,
+.inspector-select-header:disabled {
+    background-color: #e9ecef;
+    cursor: not-allowed;
+}
+
+.inspection-header {
+    display: grid;
+    grid-template-columns: 50px 1fr 100px 100px 2fr;
+    gap: 15px;
+    padding: 10px 15px;
+    font-weight: bold;
+    background: #f8f9fa;
+    border-radius: 4px;
+    margin-bottom: 10px;
+}
+
+
+.notes-input {
+    width: 100%;
+    padding: 10px;
+    border: 2px solid #0d6efd;
+    border-radius: 6px;
+    font-size: 15px;
+    font-weight: 500;
+    background: #f8f9fa;
+    transition: all 0.2s ease;
+}
+
+.notes-input:focus {
+    outline: none;
+    border-color: #0b5ed7;
+    background: white;
+    box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.25);
+}
+
+.notes-input::placeholder {
+    color: #6c757d;
+    font-weight: normal;
+}
+
+.action-buttons {
+    margin-top: 20px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    width: 100%;
+}
+
+.action-buttons .btn {
+    padding: 15px 20px;
+    font-size: 16px;
+    font-weight: 600;
+    border-radius: 4px;
+    width: 100%;
+}
+
+.zone-header {
+    background: #e9ecef;
+    padding: 10px;
+    margin: 15px 0 10px 0;
+    border-radius: 4px;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    user-select: none;
+}
+
+.zone-header:hover {
+    background: #dee2e6;
+}
+
+.zone-header-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.zone-header-right {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.completion-indicator {
+    background: white;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: normal;
+    transition: all 0.3s;
+}
+
+.completion-indicator.complete {
+    background: #28a745;
+    color: white;
+    font-weight: bold;
+}
+
+.zone-content {
+    overflow: hidden;
+    transition: all 0.3s ease-out;
+}
+
+.zone-content.collapsed {
+    display: none;
+}
+
+.collapse-icon {
+    transition: transform 0.3s;
+}
+
+.zone-header.collapsed .collapse-icon {
+    transform: rotate(-90deg);
+}
+
+.saving-indicator {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: #28a745;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 4px;
+    display: none;
+    z-index: 1000;
+}
+
+.saving-indicator.show {
+    display: block;
+}
+
+#completeBtn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+#completeBtn:not(:disabled) {
+    animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.7);
+    }
+    70% {
+        box-shadow: 0 0 0 10px rgba(40, 167, 69, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(40, 167, 69, 0);
+    }
+}
+
+/* Mobile Responsive Styles */
+@media (max-width: 768px) {
+    .inspection-container {
+        padding: 10px;
+    }
+    
+    .header-info .row {
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .header-info .col-md-3 {
+        width: 100%;
+        margin-bottom: 8px;
+        font-size: 14px;
+    }
+    
+    .inspection-header {
+        display: none;
+    }
+    
+    .inspection-item {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        padding: 12px;
+    }
+    
+    /* Hide the ID on mobile */
+    .inspection-item > div:first-child {
+        display: none;
+    }
+    
+    /* Description */
+    .inspection-item > div:nth-child(2) {
+        font-size: 14px;
+        font-weight: 500;
+        width: 100%;
+        margin-bottom: 5px;
+    }
+    
+    /* Pass button container */
+    .inspection-item > div:nth-child(3) {
+        width: 100%;
+    }
+    
+    /* Fail button container */
+    .inspection-item > div:nth-child(4) {
+        width: 100%;
+    }
+    
+    .pass-btn, .fail-btn {
+        width: 100%;
+        padding: 10px;
+        font-size: 14px;
+    }
+    
+    /* Notes container */
+    .inspection-item > div:nth-child(5) {
+        width: 100%;
+    }
+    
+    .notes-input {
+        font-size: 14px;
+        padding: 8px;
+    }
+    
+    .zone-header {
+        padding: 10px;
+        font-size: 14px;
+    }
+    
+    .completion-indicator {
+        font-size: 12px;
+        padding: 3px 8px;
+    }
+    
+    .action-buttons {
+        grid-template-columns: 1fr;
+        gap: 12px;
+        padding: 0 5px;
+    }
+    
+    .action-buttons .btn {
+        padding: 16px;
+        font-size: 16px;
+    }
+    
+    .modal-dialog {
+        margin: 10px;
+    }
+    
+    .deviation-display {
+        font-size: 11px !important;
+    }
+}
+
+
+
+.pass-btn, .fail-btn {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 15px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    width: 100%;
+    background: #0d6efd;
+    color: white;
+}
+
+.pass-btn:hover, .fail-btn:hover {
+    background: #0b5ed7;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.pass-btn.active {
+    background: #28a745;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.pass-btn.active:hover {
+    background: #218838;
+}
+
+.fail-btn.active {
+    background: #dc3545;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.fail-btn.active:hover {
+    background: #c82333;
+}
+
+/* When one button is active, make the other white */
+.inspection-item:has(.pass-btn.active) .fail-btn:not(.active),
+.inspection-item:has(.fail-btn.active) .pass-btn:not(.active) {
+    background: white;
+    color: #6c757d;
+    border: 1px solid #dee2e6;
+}
+
+.inspection-item:has(.pass-btn.active) .fail-btn:not(.active):hover,
+.inspection-item:has(.fail-btn.active) .pass-btn:not(.active):hover {
+    background: #f8f9fa;
+    color: #495057;
+}
+
+.pass-btn:disabled, .fail-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}

@@ -51,27 +51,17 @@
 
         <!-- Daily Inspections Card -->
         <div class="col-md-4 mb-3">
-            <div class="card card-dashboard bg-info bg-opacity-10 border-info">
+            <div class="card card-dashboard bg-info bg-opacity-10" style="border-color: #0dcaf0 !important;" onclick="window.location.href='{% url 'operations_dashboard' %}'">
                 <div class="card-body text-center py-5">
                     <i class="bi bi-clipboard-check card-icon text-info"></i>
                     <h3>Daily Inspections</h3>
                     <p class="text-muted">Manage daily operational inspections</p>
-                    <button class="btn btn-info mt-2" disabled>Coming Soon</button>
+                    <a href="{% url 'operations_dashboard' %}" class="btn btn-info mt-2">View Inspections</a>
                 </div>
             </div>
         </div>
 
-        <!-- Receiving Logs Card -->
-        <div class="col-md-4 mb-3">
-            <div class="card card-dashboard bg-success bg-opacity-10 border-success">
-                <div class="card-body text-center py-5">
-                    <i class="bi bi-truck card-icon text-success"></i>
-                    <h3>Receiving Logs</h3>
-                    <p class="text-muted">Track and verify product receiving</p>
-                    <button class="btn btn-success mt-2" disabled>Coming Soon</button>
-                </div>
-            </div>
-        </div>
+        
     </div>
 </div>
 {% endblock %}

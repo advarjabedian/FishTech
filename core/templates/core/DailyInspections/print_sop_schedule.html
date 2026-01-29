@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SOP Schedule - {{ company.companyname }}</title>
+    <style>
+        @media print {
+            @page { margin: 0.5in; }
+            .no-print { display: none; }
+        }
+        body { font-family: Arial, sans-serif; font-size: 12px; }
+        h1 { text-align: center; margin-bottom: 10px; }
+        h2 { text-align: center; margin-top: 0; color: #666; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #000; padding: 6px; text-align: left; }
+        th { background-color: #f0f0f0; font-weight: bold; }
+        .text-center { text-align: center; }
+        .check { color: green; font-weight: bold; }
+        .zone-header { background-color: #e0e0e0; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <button class="no-print" onclick="window.print()" style="margin: 10px; padding: 10px;">Print</button>
+    
+    <h1>SOP Schedule</h1>
+    <h2>{{ company.companyname }}</h2>
+    
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 50px;">ID</th>
+                <th>Description</th>
+                <th style="width: 120px;">Zone</th>
+                <th style="width: 60px;" class="text-center">Pre-Op</th>
+                <th style="width: 60px;" class="text-center">Mid-Day</th>
+                <th style="width: 60px;" class="text-center">Post-Op</th>
+                <th style="width: 80px;" class="text-center">Data Req</th>
+                <th style="width: 80px;" class="text-center">Image Req</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% regroup sops by zone.name as zone_list %}
+            {% for zone in zone_list %}
+                <tr class="zone-header">
+                    <td colspan="8">{{ zone.grouper }}</td>
+                </tr>
+                {% for sop in zone.list %}
+                <tr>
+                    <td>{{ sop.sop_did }}</td>
+                    <td>{{ sop.description }}</td>
+                    <td>{{ sop.zone.name }}</td>
+                    <td class="text-center">{% if sop.pre %}<span class="check">✓</span>{% endif %}</td>
+                    <td class="text-center">{% if sop.mid %}<span class="check">✓</span>{% endif %}</td>
+                    <td class="text-center">{% if sop.post %}<span class="check">✓</span>{% endif %}</td>
+                    <td class="text-center">{% if sop.input_required %}<span class="check">✓</span>{% endif %}</td>
+                    <td class="text-center">{% if sop.image_required %}<span class="check">✓</span>{% endif %}</td>
+                </tr>
+                {% endfor %}
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>

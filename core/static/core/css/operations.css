@@ -1,0 +1,272 @@
+.operations-container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.header-section {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.inspection-container.completed .pass-btn,
+.inspection-container.completed .fail-btn,
+.inspection-container.completed .notes-input {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.date-navigation {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.date-input {
+    padding: 10px 20px;
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    font-size: 16px;
+    font-weight: bold;
+    text-align: center;
+    cursor: pointer;
+    width: 100%;
+    max-width: 250px;
+}
+
+.date-input:focus {
+    outline: none;
+    border-color: #007bff;
+    box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
+}
+
+.shift-row {
+    display: grid;
+    grid-template-columns: 120px 100px 100px 250px 150px;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 10px;
+    padding: 10px;
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+}
+
+.shift-header {
+    display: grid;
+    grid-template-columns: 120px 100px 100px 250px 150px;
+    gap: 10px;
+    margin-bottom: 10px;
+    font-weight: bold;
+    padding: 0 10px;
+}
+
+.shift-label {
+    background: #333;
+    color: white;
+    padding: 8px;
+    text-align: center;
+    font-weight: bold;
+    border-radius: 4px;
+}
+
+.shift-label.clickable {
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.shift-label.clickable:hover {
+    background: #555;
+}
+
+.shift-label.completed {
+    background: #6c757d;
+    cursor: not-allowed;
+}
+
+.deviations {
+    padding: 5px;
+    text-align: center;
+    border-radius: 4px;
+    font-size: 12px;
+}
+
+.inspector-section {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.action-btn {
+    padding: 5px 10px;
+    background: #28a745;
+    color: white;
+    border: 1px solid #28a745;
+    cursor: pointer;
+    border-radius: 3px;
+    transition: background-color 0.2s;
+    font-size: 14px;
+}
+
+.action-btn:hover {
+    background: #218838;
+}
+
+.completion-status {
+    display: flex;
+    flex-direction: column;
+    font-size: 12px;
+    gap: 2px;
+}
+
+.completion-badge {
+    background: #e9ecef;
+    padding: 3px 8px;
+    border-radius: 3px;
+    text-align: center;
+}
+
+.completion-badge.complete {
+    background: #d4edda;
+    color: #155724;
+    font-weight: bold;
+}
+
+.completion-badge.incomplete {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.company-select {
+    padding: 10px;
+    border: 1px solid #dee2e6;
+    background: white;
+    font-size: 16px;
+    border-radius: 4px;
+    width: 100%;
+}
+
+.time-display {
+    font-family: monospace;
+    font-size: 14px;
+}
+
+.time-input {
+    border: 1px solid #dee2e6;
+    padding: 2px 5px;
+    border-radius: 3px;
+    font-family: monospace;
+    font-size: 14px;
+}
+
+.user-input {
+    font-size: 14px;
+    padding: 4px 8px;
+    flex: 1;
+}
+
+.header-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.company-box {
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border-radius: 8px;
+    overflow: hidden;
+    position: relative;
+    height: 120px;
+    border: 2px solid #dee2e6;
+    background: white;
+}
+
+.company-box:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 12px rgba(0,0,0,0.1) !important;
+    border-color: #0d6efd;
+}
+
+.company-box.selected {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 3px rgba(13,110,253,0.25);
+}
+
+.company-box img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    padding: 10px;
+}
+
+#company-selection .row {
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+@media (max-width: 768px) {
+    .operations-container {
+        padding: 10px;
+    }
+    
+    .header-section {
+        padding: 12px;
+    }
+    
+    .shift-header {
+        display: none;
+    }
+    
+    .shift-row {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        padding: 12px;
+    }
+    
+    .shift-row > div {
+        width: 100%;
+    }
+    
+    .shift-label {
+        font-size: 16px;
+        padding: 10px;
+    }
+    
+    .inspector-section {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .user-input {
+        width: 100%;
+    }
+    
+    .action-btn {
+        width: 100%;
+        padding: 10px;
+        font-size: 16px;
+    }
+    
+    .date-navigation {
+        width: 100%;
+    }
+    
+    .date-display {
+        flex: 1;
+    }
+    
+    .completion-status {
+        flex-direction: row;
+        justify-content: space-around;
+        gap: 8px;
+    }
+    
+    .completion-badge {
+        flex: 1;
+    }
+}

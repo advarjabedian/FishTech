@@ -1,0 +1,111 @@
+<!-- Drill-down view: show incomplete dates for selected company -->
+<div class="d-flex align-items-center mb-3">
+    <h4 class="mb-0">Days for {{ selected_company.companyname }}</h4>
+</div>
+
+<p class="text-muted">Since {{ config.start_date|default:"Setup Date" }}</p>
+
+<!-- Filter Buttons -->
+<div class="btn-group mb-3" role="group">
+    <button type="button" class="btn btn-outline-secondary active" id="filter-incomplete" onclick="setFilter('incomplete')">Incomplete Days</button>
+    <button type="button" class="btn btn-outline-secondary" id="filter-unverified" onclick="setFilter('unverified')">Unverified Logs</button>
+    <button type="button" class="btn btn-outline-secondary" id="filter-all" onclick="setFilter('all')">All Days</button>
+</div>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Date</th>
+            <th>Pre-Op</th>
+            <th>Mid-Day</th>
+            <th>Post-Op</th>
+        </tr>
+    </thead>
+    <tbody id="grid-tbody">
+        {% for day in incomplete_days %}
+        <tr class="day-row" 
+            data-incomplete="{% if not day.preop_complete or not day.midday_complete or not day.postop_complete %}true{% else %}false{% endif %}"
+            data-unverified="{% if day.preop_complete and not day.preop_verified or day.midday_complete and not day.midday_verified or day.postop_complete and not day.postop_verified %}true{% else %}false{% endif %}"
+            style="cursor: pointer;">
+            <td><strong>{{ day.date }}</strong></td>
+            <td>
+                {% if day.preop_complete %}
+                    <span class="badge bg-success">Complete</span>
+                    {% if day.preop_verified %}
+                        <span class="badge bg-primary">Verified</span>
+                    {% else %}
+                        <span class="badge bg-outline-primary">Not Verified</span>
+                    {% endif %}
+                {% else %}
+                    <span class="badge bg-warning text-dark">In Progress</span>
+                {% endif %}
+            </td>
+            <td>
+                {% if day.midday_complete %}
+                    <span class="badge bg-success">Complete</span>
+                    {% if day.midday_verified %}
+                        <span class="badge bg-primary">Verified</span>
+                    {% else %}
+                        <span class="badge bg-outline-primary">Not Verified</span>
+                    {% endif %}
+                {% else %}
+                    <span class="badge bg-warning text-dark">In Progress</span>
+                {% endif %}
+            </td>
+            <td>
+                {% if day.postop_complete %}
+                    <span class="badge bg-success">Complete</span>
+                    {% if day.postop_verified %}
+                        <span class="badge bg-primary">Verified</span>
+                    {% else %}
+                        <span class="badge bg-outline-primary">Not Verified</span>
+                    {% endif %}
+                {% else %}
+                    <span class="badge bg-warning text-dark">In Progress</span>
+                {% endif %}
+            </td>
+        </tr>
+        {% empty %}
+        <tr id="empty-row">
+            <td colspan="4" class="text-center">All days complete!</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<script>
+function setFilter(filter) {
+    const filters = ['incomplete', 'unverified', 'all'];
+    filters.forEach(f => {
+        const btn = document.getElementById('filter-' + f);
+        if (btn) btn.classList.remove('active');
+    });
+    
+    const activeBtn = document.getElementById('filter-' + filter);
+    if (activeBtn) activeBtn.classList.add('active');
+    
+    const rows = document.querySelectorAll('.day-row');
+    let visibleCount = 0;
+    
+    rows.forEach(row => {
+        const incomplete = row.dataset.incomplete === 'true';
+        const unverified = row.dataset.unverified === 'true';
+        
+        let show = false;
+        if (filter === 'all') show = true;
+        else if (filter === 'incomplete') show = incomplete;
+        else if (filter === 'unverified') show = unverified;
+        
+        row.style.display = show ? '' : 'none';
+        if (show) visibleCount++;
+    });
+    
+    const emptyRow = document.getElementById('empty-row');
+    if (emptyRow) emptyRow.style.display = visibleCount === 0 ? '' : 'none';
+}
+
+// Initialize with incomplete filter
+document.addEventListener('DOMContentLoaded', function() {
+    setFilter('incomplete');
+});
+</script>

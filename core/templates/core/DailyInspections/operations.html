@@ -1,0 +1,1242 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'core/css/operations.css' %}">
+<style>
+/* Bulk Calendar Styles */
+.bulk-calendar-container {
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    overflow: hidden;
+}
+.bulk-calendar-header {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+    font-weight: bold;
+    text-align: center;
+    padding: 8px 0;
+}
+.bulk-calendar-body {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+}
+.bulk-calendar-day {
+    min-height: 70px;
+    border: 1px solid #eee;
+    padding: 4px;
+    cursor: default;
+}
+.bulk-calendar-day.empty {
+    background-color: #f8f9fa;
+}
+.bulk-calendar-day.no-data {
+    background-color: #f8f9fa;
+    opacity: 0.6;
+}
+.bulk-calendar-day.has-completed {
+    background-color: #d4edda;
+    cursor: pointer;
+}
+.bulk-calendar-day.has-verified {
+    background-color: #e2d9f3;
+    cursor: pointer;
+}
+.bulk-calendar-day.selected {
+    background-color: #0d6efd !important;
+    color: white;
+    cursor: pointer;
+}
+.bulk-calendar-day .day-number {
+    font-weight: bold;
+    margin-bottom: 4px;
+}
+.bulk-calendar-day .day-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px;
+}
+.bulk-calendar-day .day-badges .badge {
+    font-size: 0.65em;
+    padding: 2px 4px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="operations-container">
+    <!-- Title and Admin Button -->
+    <div class="d-flex justify-content-between align-items-center mb-2">
+        <div style="width: 250px;"></div>
+        <h2 class="mb-0 text-center">Daily Inspection</h2>
+        <div style="width: 250px; text-align: right;">
+            <button type="button" class="btn btn-success btn-sm me-2" onclick="openBulkReportModal()">
+                <i class="bi bi-printer"></i> Bulk Reports
+            </button>
+            <a href="#" class="btn btn-outline-secondary btn-sm" onclick="checkAdminPassword(event)">Operations Admin</a>
+        </div>
+    </div>
+    
+    <!-- Notifications -->
+    <div class="text-center mb-3">
+        {% if selected_company_id and incomplete_count > 0 %}
+        <div>
+            <a href="/operations/admin/?company_id={{ selected_company_id }}&filter=incomplete" style="text-decoration: none;">
+                <span style="color: #dc3545; font-weight: bold;">
+                    {{ monitor_name|default:"Unassigned" }} has {{ incomplete_count }} incomplete day{{ incomplete_count|pluralize }}
+                </span>
+            </a>
+        </div>
+        {% endif %}
+        {% if selected_company_id and unverified_count > 0 %}
+        <div>
+            <a href="/operations/admin/?company_id={{ selected_company_id }}&filter=unverified" style="text-decoration: none;">
+                <span style="color: #0d6efd; font-weight: bold;">
+                    {{ verifier_name|default:"Unassigned" }} has {{ unverified_count }} unverified log{{ unverified_count|pluralize }}
+                </span>
+            </a>
+        </div>
+        {% endif %}
+    </div>
+
+<script>
+function checkAdminPassword(e) {
+    e.preventDefault();
+    const password = prompt('Enter admin password:');
+    if (password === '123') {
+        window.location.href = '/operations/admin/';
+    } else if (password !== null) {
+        alert('Incorrect password');
+    }
+}
+</script>
+    
+    <div class="header-section">
+        <div class="header-controls">
+            <!-- Company Display -->
+            <div id="company-display" class="text-center mb-3">
+                {% if selected_company_id %}
+                    <div class="company-box shadow-sm mx-auto" style="width: auto; height: 140px; cursor: pointer; display: inline-block;" onclick="window.location.href='/'">
+                        {% for company in companies %}
+                            {% if company.companyid == selected_company_id %}
+                                {% if company.companyname == "FRS" %}
+                                <img src="/static/images/company3.png" alt="{{ company.companyname }}" style="height: 100%; object-fit: contain; padding: 10px;">
+                                {% elif company.companyname == "GSS" %}
+                                <img src="/static/images/company5.png" alt="{{ company.companyname }}" style="height: 100%; object-fit: contain; padding: 10px;">
+                                {% elif company.companyname == "NCF" %}
+                                <img src="/static/images/company4.png" alt="{{ company.companyname }}" style="height: 100%; object-fit: contain; padding: 10px;">
+                                {% elif company.companyname == "PFF" %}
+                                <img src="/static/images/company6.png" alt="{{ company.companyname }}" style="height: 100%; object-fit: contain; padding: 10px;">
+                                {% elif company.companyname == "CPV" %}
+                                <img src="/static/images/company7.png" alt="{{ company.companyname }}" style="height: 100%; object-fit: contain; padding: 10px;">
+                                {% elif company.companyname == "CPI" %}
+                                <img src="/static/images/company8.png" alt="{{ company.companyname }}" style="height: 100%; object-fit: contain; padding: 10px;">
+                                {% elif company.companyname == "USG" %}
+                                <img src="/static/images/Unified_Logo.png" alt="{{ company.companyname }}" style="height: 100%; object-fit: contain; padding: 10px;">
+                                {% endif %}
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center">
+                        <p class="text-muted">No company selected</p>
+                        <a href="/" class="btn btn-primary btn-sm">Select Company</a>
+                    </div>
+                {% endif %}
+            </div>
+            
+            <!-- Date and Holiday on same line -->
+            <div class="text-center mb-2">
+                <input type="date" 
+                    id="dateInput" 
+                    class="date-input" 
+                    value="{{ selected_date }}"
+                    min="2025-09-16"
+                    onchange="handleDateChange(this.value)"
+                    style="display: inline-block; vertical-align: middle;">
+                
+                <button type="button" 
+                        class="btn btn-sm {% if is_holiday %}btn-warning{% else %}btn-outline-secondary{% endif %}"
+                        onclick="toggleHoliday()"
+                        id="holidayBtn"
+                        style="display: inline-block; vertical-align: middle; margin-left: 10px;">
+                    {% if is_holiday %}🎄 Holiday{% else %}Mark as Holiday{% endif %}
+                </button>
+            </div>
+            
+            <!-- Display SOP counts -->
+            <div class="text-center mb-3">
+                <small class="text-muted">
+                    Items to inspect - Pre-Op: {{ pre_op_count }}, Mid-Day: {{ mid_day_count }}, Post-Op: {{ post_op_count }}
+                </small>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Pre-Op Shift -->
+    <div class="shift-row">
+        {% if preop_data %}
+            <div class="shift-label clickable" onclick="editInspection({{ preop_data.parent_id }})" title="Click to edit">Pre-Op</div>
+        {% else %}
+            <div class="shift-label clickable" onclick="handleShiftClick('Pre-Op')" title="Click to start">Pre-Op</div>
+        {% endif %}
+        <div class="time-display">
+            {% if preop_data %}
+                {{ preop_data.time }}
+            {% else %}
+                --:-- --
+            {% endif %}
+        </div>
+        <div class="deviations">
+            {% if preop_data %}
+                Deviations: {{ preop_data.deviations }}
+            {% else %}
+                Deviations: -
+            {% endif %}
+        </div>
+        <div class="inspector-section">
+            {% if preop_data %}
+                <select class="form-control user-input" disabled>
+                    <option>{{ preop_data.inspected_name }}</option>
+                </select>
+            {% else %}
+                <select class="form-control user-input" id="preop-inspector">
+                    <option value="">Select Inspector</option>
+                    {% for user in users %}
+                        <option value="{{ user.userid }}" {% if user.userid == current_user_id %}selected{% endif %}>
+                            {{ user.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            {% endif %}
+        </div>
+        <div class="completion-status">
+            {% if preop_data %}
+                <div class="completion-badge">
+                    {{ preop_data.items_completed }}/{{ preop_data.items_total }} items
+                </div>
+                {% if preop_data.completed %}
+                    <div class="completion-badge complete">COMPLETE</div>
+                    {% if preop_data.verified %}
+                        <div class="completion-badge" style="background-color: #6f42c1; color: white;">VERIFIED</div>
+                        <button class="btn btn-sm btn-outline-secondary mt-1" onclick="openReportsModal({{ preop_data.parent_id }}, 'Pre-Op')">📄 Reports</button>
+                    {% else %}
+                        <button class="btn btn-sm btn-outline-primary mt-1" 
+                                onclick="startVerification({{ preop_data.parent_id }}, 'Pre-Op')">
+                            Verify
+                        </button>
+                    {% endif %}
+                {% else %}
+                    <div class="completion-badge incomplete">IN PROGRESS</div>
+                {% endif %}
+            {% else %}
+                <div class="completion-badge">Not Started</div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Mid-Day Shift -->
+    <div class="shift-row">
+        {% if midday_data %}
+            <div class="shift-label clickable" onclick="editInspection({{ midday_data.parent_id }})" title="Click to edit">Mid-Day</div>
+        {% else %}
+            <div class="shift-label clickable" onclick="handleShiftClick('Mid-Day')" title="Click to start">Mid-Day</div>
+        {% endif %}
+        <div class="time-display">
+            {% if midday_data %}
+                {{ midday_data.time }}
+            {% else %}
+                --:-- --
+            {% endif %}
+        </div>
+        <div class="deviations">
+            {% if midday_data %}
+                Deviations: {{ midday_data.deviations }}
+            {% else %}
+                Deviations: -
+            {% endif %}
+        </div>
+        <div class="inspector-section">
+            {% if midday_data %}
+                <select class="form-control user-input" disabled>
+                    <option>{{ midday_data.inspected_name }}</option>
+                </select>
+            {% else %}
+                <select class="form-control user-input" id="midday-inspector">
+                    <option value="">Select Inspector</option>
+                    {% for user in users %}
+                        <option value="{{ user.userid }}" {% if user.userid == current_user_id %}selected{% endif %}>
+                            {{ user.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            {% endif %}
+        </div>
+        <div class="completion-status">
+            {% if midday_data %}
+                <div class="completion-badge">
+                    {{ midday_data.items_completed }}/{{ midday_data.items_total }} items
+                </div>
+                {% if midday_data.completed %}
+                    <div class="completion-badge complete">COMPLETE</div>
+                    {% if midday_data.verified %}
+                        <div class="completion-badge" style="background-color: #6f42c1; color: white;">VERIFIED</div>
+                        <button class="btn btn-sm btn-outline-secondary mt-1" onclick="openReportsModal({{ midday_data.parent_id }}, 'Mid-Day')">📄 Reports</button>
+                    {% else %}
+                        <button class="btn btn-sm btn-outline-primary mt-1" 
+                                onclick="startVerification({{ midday_data.parent_id }}, 'Mid-Day')"
+                                {% if verifier_user_id and current_user_id != verifier_user_id %}disabled title="Only the assigned verifier can verify"{% endif %}>
+                            Verify
+                        </button>
+                    {% endif %}
+                {% else %}
+                    <div class="completion-badge incomplete">IN PROGRESS</div>
+                {% endif %}
+            {% else %}
+                <div class="completion-badge">Not Started</div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Post-Op Shift -->
+    <div class="shift-row">
+        {% if postop_data %}
+            <div class="shift-label clickable" onclick="editInspection({{ postop_data.parent_id }})" title="Click to edit">Post-Op</div>
+        {% else %}
+            <div class="shift-label clickable" onclick="handleShiftClick('Post-Op')" title="Click to start">Post-Op</div>
+        {% endif %}
+        <div class="time-display">
+            {% if postop_data %}
+                {{ postop_data.time }}
+            {% else %}
+                --:-- --
+            {% endif %}
+        </div>
+        <div class="deviations">
+            {% if postop_data %}
+                Deviations: {{ postop_data.deviations }}
+            {% else %}
+                Deviations: -
+            {% endif %}
+        </div>
+        <div class="inspector-section">
+            {% if postop_data %}
+                <select class="form-control user-input" disabled>
+                    <option>{{ postop_data.inspected_name }}</option>
+                </select>
+            {% else %}
+                <select class="form-control user-input" id="postop-inspector">
+                    <option value="">Select Inspector</option>
+                    {% for user in users %}
+                        <option value="{{ user.userid }}" {% if user.userid == current_user_id %}selected{% endif %}>
+                            {{ user.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            {% endif %}
+        </div>
+        <div class="completion-status">
+            {% if postop_data %}
+                <div class="completion-badge">
+                    {{ postop_data.items_completed }}/{{ postop_data.items_total }} items
+                </div>
+                {% if postop_data.completed %}
+                    <div class="completion-badge complete">COMPLETE</div>
+                    {% if postop_data.verified %}
+                        <div class="completion-badge" style="background-color: #6f42c1; color: white;">VERIFIED</div>
+                        <button class="btn btn-sm btn-outline-secondary mt-1" onclick="openReportsModal({{ postop_data.parent_id }}, 'Post-Op')">📄 Reports</button>
+                    {% else %}
+                        <button class="btn btn-sm btn-outline-primary mt-1" 
+                                onclick="startVerification({{ postop_data.parent_id }}, 'Post-Op')"
+                                {% if verifier_user_id and current_user_id != verifier_user_id %}disabled title="Only the assigned verifier can verify"{% endif %}>
+                            Verify
+                        </button>
+                    {% endif %}
+                {% else %}
+                    <div class="completion-badge incomplete">IN PROGRESS</div>
+                {% endif %}
+            {% else %}
+                <div class="completion-badge">Not Started</div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Verification Modal -->
+    <div class="modal fade" id="verificationModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable" style="max-width: 900px;">
+            <div class="modal-content" style="max-height: 90vh;">
+                <div class="modal-header">
+                    <h5 class="modal-title">Verify <span id="verify-shift-name"></span> Inspection</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Step 1: Corrective Actions (if deviations exist) -->
+                    <div id="corrective-actions-section" style="display: none;">
+                        <h6 class="text-danger mb-3">Deviations Require Corrective Actions</h6>
+                        <div id="deviations-list"></div>
+                        <button class="btn btn-primary mt-3" onclick="proceedToReview()">Continue to Review</button>
+                    </div>
+                    
+                    <!-- Step 2: Review -->
+                    <div id="review-section" style="display: none;">
+                        <h6 class="mb-3">Review Inspection Summary</h6>
+                        <div id="review-content" style="max-height: 70vh; overflow-y: auto;"></div>
+                        <hr>
+                        <button class="btn btn-primary" onclick="proceedToSignature()">Proceed to Sign</button>
+                    </div>
+                    
+                    <!-- Step 3: Signature -->
+                    <div id="signature-section" style="display: none;">
+                        <div class="mb-3">
+                            <label class="form-label"><strong>Your Name:</strong></label>
+                            <input type="text" class="form-control" id="verifier-name" placeholder="Enter your name">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label"><strong>Signature:</strong></label>
+                            <canvas id="signature-pad" width="700" height="250" style="border: 2px solid #000; border-radius: 4px; cursor: crosshair; width: 100%;"></canvas>
+                            <br>
+                            <button class="btn btn-sm btn-secondary mt-2" onclick="clearSignature()">Clear Signature</button>
+                            <button class="btn btn-sm btn-primary mt-2" id="use-saved-sig-btn" onclick="useSavedSignature()">Use Saved Signature</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    
+                    <button type="button" class="btn btn-success" id="submit-verification-btn" style="display: none;" onclick="submitVerification()">Submit Verification</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reports Modal -->
+    <div class="modal fade" id="reportsModal" tabindex="-1">
+        <div class="modal-dialog modal-xl" style="max-width: 95vw; height: 90vh; margin: 5vh auto;">
+            <div class="modal-content" style="height: 100%;">
+                <div class="modal-header">
+                    <h5 class="modal-title"><span id="reports-shift-name"></span> Reports</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" style="flex: 1; overflow: hidden; padding: 0.5rem;">
+                    <!-- Report selector tabs -->
+                    <ul class="nav nav-tabs mb-2" id="reportTabs">
+                        <li class="nav-item">
+                            <button class="nav-link active" onclick="showReport('operational')">Operational Report</button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link" onclick="showReport('deviations')">Deviations Report</button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link" onclick="showReport('images')">Images</button>
+                        </li>
+                    </ul>
+                    
+                    <!-- PDF Viewer -->
+                    <div id="pdf-viewer-container" style="height: calc(100% - 50px); border: 1px solid #ddd; display: block;">
+                        <iframe id="pdf-iframe" style="width: 100%; height: 100%; border: none;"></iframe>
+                    </div>
+                    
+                    <!-- Images Viewer -->
+                    <div id="images-viewer-container" style="height: calc(100% - 50px); overflow-y: auto; display: none;">
+                        <div id="images-content"></div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" onclick="downloadCurrentReport()">
+                        <i class="bi bi-download"></i> Download PDF
+                    </button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bulk Report Modal -->
+<div class="modal fade" id="bulkReportModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="bi bi-printer me-2"></i>Bulk Report Generator</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label"><strong>Select Company:</strong></label>
+                        <select class="form-select" id="bulk-report-company" onchange="loadBulkReportCalendar()">
+                            <option value="">-- Select Company --</option>
+                            {% for company in companies %}
+                            <option value="{{ company.companyid }}" {% if company.companyid == selected_company_id %}selected{% endif %}>{{ company.companyname }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label"><strong>Report Types:</strong></label>
+                        <div class="form-check"><input class="form-check-input" type="checkbox" id="include-operational" checked><label class="form-check-label" for="include-operational">Operational Reports</label></div>
+                        <div class="form-check"><input class="form-check-input" type="checkbox" id="include-deviations" checked><label class="form-check-label" for="include-deviations">Deviations Reports</label></div>
+                    </div>
+                </div>
+                
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <button class="btn btn-outline-secondary btn-sm" onclick="changeBulkMonth(-1)">&lt; Prev</button>
+                    <h5 id="bulk-calendar-month-year" class="mb-0"></h5>
+                    <button class="btn btn-outline-secondary btn-sm" onclick="changeBulkMonth(1)">Next &gt;</button>
+                </div>
+                
+                <div class="mb-2">
+                    <button class="btn btn-sm btn-outline-primary me-2" onclick="selectAllDays()">Select All Verified</button>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="clearAllDays()">Clear All</button>
+                    <span class="ms-3 text-muted" id="selected-days-count">0 days selected</span>
+                </div>
+                
+                <div class="bulk-calendar-container">
+                    <div class="bulk-calendar-header">
+                        <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
+                    </div>
+                    <div class="bulk-calendar-body" id="bulk-calendar-body">
+                        <div class="text-center text-muted p-4" style="grid-column: span 7;">Select a company to load calendar</div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success" onclick="generateBulkReports()" id="generate-btn" disabled><i class="bi bi-printer"></i> Generate Reports</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentReportParentId = null;
+    let currentReportType = 'operational';
+    
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    
+    function handleDateChange(dateValue) {
+    const selectedCompanyId = '{{ selected_company_id }}';
+    window.location.href = `/operations/?date=${dateValue}&company_id=${selectedCompanyId}`;
+}
+    
+    function handleShiftClick(shift) {
+        // Get inspector from dropdown
+        let inspectorId;
+        if (shift === 'Pre-Op') {
+            inspectorId = document.getElementById('preop-inspector').value;
+        } else if (shift === 'Mid-Day') {
+            inspectorId = document.getElementById('midday-inspector').value;
+        } else if (shift === 'Post-Op') {
+            inspectorId = document.getElementById('postop-inspector').value;
+        }
+        
+        if (!inspectorId) {
+            alert('Please select an inspector');
+            return;
+        }
+        
+        startInspection(shift, inspectorId);
+    }
+    
+    function startInspection(shift, inspectorId) {
+        const companyId = '{{ selected_company_id }}';
+        const date = '{{ selected_date }}';
+        
+        fetch('/api/operations/start-inspection/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                shift: shift,
+                company_id: companyId,
+                date: date,
+                user_id: inspectorId
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                window.location.href = data.redirect_url;
+            } else {
+                alert('Error starting inspection');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error starting inspection');
+        });
+    }
+    
+    function editInspection(parentId) {
+    window.location.href = `/operations/inspection/${parentId}/`;
+}
+
+    function toggleHoliday() {
+        const companyId = '{{ selected_company_id }}';
+        const date = '{{ selected_date }}';
+        
+        fetch('/api/operations/toggle-holiday/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                company_id: companyId,
+                date: date
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Error toggling holiday');
+            }
+        });
+    }
+
+    // Reports Modal Functions
+    function openReportsModal(parentId, shiftName) {
+        currentReportParentId = parentId;
+        document.getElementById('reports-shift-name').textContent = shiftName;
+        
+        // Reset tabs
+        document.querySelectorAll('#reportTabs .nav-link').forEach(tab => tab.classList.remove('active'));
+        document.querySelector('#reportTabs .nav-link').classList.add('active');
+        
+        // Load operational report by default
+        showReport('operational');
+        
+        new bootstrap.Modal(document.getElementById('reportsModal')).show();
+    }
+    
+    function showReport(type) {
+        currentReportType = type;
+        
+        // Update active tab
+        document.querySelectorAll('#reportTabs .nav-link').forEach(tab => {
+            tab.classList.remove('active');
+            if ((type === 'operational' && tab.textContent.includes('Operational')) ||
+                (type === 'deviations' && tab.textContent.includes('Deviations')) ||
+                (type === 'images' && tab.textContent.includes('Images'))) {
+                tab.classList.add('active');
+            }
+        });
+        
+        const pdfContainer = document.getElementById('pdf-viewer-container');
+        const imagesContainer = document.getElementById('images-viewer-container');
+        
+        if (type === 'images') {
+            // Show images, hide PDF
+            pdfContainer.style.display = 'none';
+            imagesContainer.style.display = 'block';
+            loadInspectionImages();
+        } else {
+            // Show PDF, hide images
+            pdfContainer.style.display = 'block';
+            imagesContainer.style.display = 'none';
+            
+            // Load PDF into iframe with 125% zoom
+            const iframe = document.getElementById('pdf-iframe');
+            if (type === 'operational') {
+    iframe.src = `/operations/report/operational/${currentReportParentId}/#zoom=125`;
+} else {
+    iframe.src = `/operations/report/deviations/${currentReportParentId}/#zoom=125`;
+}
+        }
+    }
+    
+    function loadInspectionImages() {
+        fetch(`/api/operations/get-inspection-images/${currentReportParentId}/`)
+            .then(response => response.json())
+            .then(data => {
+                const container = document.getElementById('images-content');
+                
+                if (!data.success || !data.images || data.images.length === 0) {
+                    container.innerHTML = '<div class="text-center text-muted p-5">No images captured for this inspection</div>';
+                    return;
+                }
+                
+                let html = '<div class="row g-3 p-3">';
+                
+                data.images.forEach(img => {
+                    const statusBadge = img.passed ? 
+                        '<span class="badge bg-success">PASS</span>' : 
+                        '<span class="badge bg-danger">FAIL</span>';
+                    
+                    html += `
+                        <div class="col-md-6 col-lg-4">
+                            <div class="card h-100">
+                                <img src="${img.image}" class="card-img-top" style="height: 300px; object-fit: contain; background: #f8f9fa; cursor: pointer;" onclick="viewFullImage(event, '${img.image}')">
+                                <div class="card-body">
+                                    <h6 class="card-title">ID: ${img.sop_did} ${statusBadge}</h6>
+                                    <p class="card-text">${img.description}</p>
+                                    ${img.notes ? `<p class="card-text"><small class="text-muted">Notes: ${img.notes}</small></p>` : ''}
+                                    ${img.deviation_reason ? `<p class="card-text text-danger"><small>Deviation: ${img.deviation_reason}</small></p>` : ''}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                html += '</div>';
+                container.innerHTML = html;
+            })
+            .catch(error => {
+                console.error('Error loading images:', error);
+                document.getElementById('images-content').innerHTML = '<div class="text-center text-danger p-5">Error loading images</div>';
+            });
+    }
+    
+    function viewFullImage(event, imageSrc) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    
+    const win = window.open('', '_blank');
+    if (!win) {
+        alert('Please allow popups to view the image');
+        return;
+    }
+    
+    win.document.write(`
+        <html>
+            <head>
+                <title>Inspection Image</title>
+                <style>
+                    body { margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; background: #000; }
+                    img { max-width: 100%; max-height: 100vh; object-fit: contain; }
+                </style>
+            </head>
+            <body>
+                <img src="${imageSrc}">
+            </body>
+        </html>
+    `);
+    
+    return false;
+}
+    
+    function downloadCurrentReport() {
+    let url;
+    if (currentReportType === 'operational') {
+        url = `/operations/report/operational/${currentReportParentId}/?download=1`;
+    } else {
+        url = `/operations/report/deviations/${currentReportParentId}/?download=1`;
+    }
+    window.open(url, '_blank');
+}
+
+    // Verification Modal Functions
+    let currentVerificationParentId = null;
+    let currentDeviations = [];
+    let isDrawing = false;
+
+    let isAssignedVerifier = false;
+    
+    function startVerification(parentId, shiftName) {
+        const currentUserId = {{ current_user_id|default:"null" }};
+        const verifierUserId = {{ verifier_user_id|default:"null" }};
+        
+        isAssignedVerifier = (verifierUserId && currentUserId === verifierUserId);
+        
+        // If not the assigned verifier, prompt for HACCP certification
+        if (!isAssignedVerifier) {
+            if (!confirm('Are you HACCP certified and would you like to verify this record?')) {
+                return;
+            }
+        }
+        
+        currentVerificationParentId = parentId;
+        document.getElementById('verify-shift-name').textContent = shiftName;
+        
+        // Fetch deviations for this inspection
+        fetch(`/api/operations/get-deviations/${parentId}/`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    currentDeviations = data.deviations;
+                    
+                    // Hide all sections first
+                    document.getElementById('corrective-actions-section').style.display = 'none';
+                    document.getElementById('review-section').style.display = 'none';
+                    document.getElementById('signature-section').style.display = 'none';
+                    document.getElementById('submit-verification-btn').style.display = 'none';
+                    
+                    if (currentDeviations.length > 0) {
+                        // Show corrective actions section
+                        showCorrectiveActions();
+                    } else {
+                        // Skip to review
+                        showReview(data.all_items);
+                    }
+                    
+                    // Show modal
+                    new bootstrap.Modal(document.getElementById('verificationModal')).show();
+                } else {
+                    alert('Error loading inspection data');
+                }
+            });
+    }
+
+    function showCorrectiveActions() {
+        const container = document.getElementById('deviations-list');
+        container.innerHTML = '';
+        
+        currentDeviations.forEach((dev, index) => {
+            const existingAction = dev.corrective_action || '';
+            container.innerHTML += `
+                <div class="card mb-2">
+                    <div class="card-body">
+                        <p class="mb-1"><strong>${dev.description}</strong></p>
+                        <p class="text-danger mb-2">Deviation: ${dev.deviation_reason}</p>
+                        <textarea class="form-control corrective-action-input" 
+                                  data-child-id="${dev.child_id}" 
+                                  placeholder="Enter corrective action..."
+                                  rows="2">${existingAction}</textarea>
+                    </div>
+                </div>
+            `;
+        });
+        
+        document.getElementById('corrective-actions-section').style.display = 'block';
+    }
+
+    function proceedToReview() {
+        // Validate all corrective actions are filled
+        const inputs = document.querySelectorAll('.corrective-action-input');
+        let allFilled = true;
+        
+        inputs.forEach(input => {
+            if (!input.value.trim()) {
+                allFilled = false;
+                input.classList.add('is-invalid');
+            } else {
+                input.classList.remove('is-invalid');
+            }
+        });
+        
+        if (!allFilled) {
+            alert('Please enter corrective actions for all deviations');
+            return;
+        }
+        
+        // Save corrective actions
+        const actions = [];
+        inputs.forEach(input => {
+            actions.push({
+                child_id: input.dataset.childId,
+                corrective_action: input.value.trim()
+            });
+        });
+        
+        fetch('/api/operations/save-corrective-actions/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                parent_id: currentVerificationParentId,
+                actions: actions
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Load review
+                fetch(`/api/operations/get-deviations/${currentVerificationParentId}/`)
+                    .then(response => response.json())
+                    .then(data => {
+                        showReview(data.all_items);
+                    });
+            }
+        });
+    }
+
+    function showReview(items) {
+        document.getElementById('corrective-actions-section').style.display = 'none';
+        
+        const container = document.getElementById('review-content');
+        let html = '<table class="table table-sm"><thead><tr><th>Item</th><th>Status</th><th>Notes</th></tr></thead><tbody>';
+        
+        items.forEach(item => {
+            const status = item.passed ? '<span class="text-success">Pass</span>' : 
+                           item.failed ? '<span class="text-danger">Fail</span>' : '-';
+            html += `<tr>
+                <td>${item.description}</td>
+                <td>${status}</td>
+                <td>${item.notes || ''}</td>
+            </tr>`;
+            
+            if (item.failed && item.deviation_reason) {
+                html += `<tr class="table-warning">
+                    <td colspan="3">
+                        <small><strong>Deviation:</strong> ${item.deviation_reason}</small><br>
+                        <small><strong>Corrective Action:</strong> ${item.corrective_action || 'N/A'}</small>
+                    </td>
+                </tr>`;
+            }
+        });
+        
+        html += '</tbody></table>';
+        container.innerHTML = html;
+        
+        document.getElementById('review-section').style.display = 'block';
+    }
+
+    function proceedToSignature() {
+        document.getElementById('review-section').style.display = 'none';
+        document.getElementById('signature-section').style.display = 'block';
+        document.getElementById('submit-verification-btn').style.display = 'inline-block';
+        
+        // Auto-populate verifier name with logged-in user's name
+        const verifierNameInput = document.getElementById('verifier-name');
+        if (verifierNameInput && !verifierNameInput.value) {
+            verifierNameInput.value = '{{ request.session.user_name|default:""|escapejs }}';
+        }
+        
+        // Hide "Use Saved Signature" button if not the assigned verifier
+        const savedSigBtn = document.getElementById('use-saved-sig-btn');
+        if (savedSigBtn) {
+            savedSigBtn.style.display = isAssignedVerifier ? 'inline-block' : 'none';
+        }
+        
+        initSignaturePad();
+    }
+
+    function initSignaturePad() {
+        const canvas = document.getElementById('signature-pad');
+        const ctx = canvas.getContext('2d');
+        
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 2;
+        ctx.lineCap = 'round';
+        
+        canvas.addEventListener('mousedown', startDrawing);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', stopDrawing);
+        canvas.addEventListener('mouseout', stopDrawing);
+        
+        // Touch support
+        canvas.addEventListener('touchstart', handleTouch);
+        canvas.addEventListener('touchmove', handleTouchMove);
+        canvas.addEventListener('touchend', stopDrawing);
+    }
+
+    function startDrawing(e) {
+        isDrawing = true;
+        const canvas = document.getElementById('signature-pad');
+        const ctx = canvas.getContext('2d');
+        const rect = canvas.getBoundingClientRect();
+        ctx.beginPath();
+        ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
+    }
+
+    function draw(e) {
+        if (!isDrawing) return;
+        const canvas = document.getElementById('signature-pad');
+        const ctx = canvas.getContext('2d');
+        const rect = canvas.getBoundingClientRect();
+        ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
+        ctx.stroke();
+    }
+
+    function stopDrawing() {
+        isDrawing = false;
+    }
+
+    function handleTouch(e) {
+        e.preventDefault();
+        const touch = e.touches[0];
+        const mouseEvent = new MouseEvent('mousedown', {
+            clientX: touch.clientX,
+            clientY: touch.clientY
+        });
+        document.getElementById('signature-pad').dispatchEvent(mouseEvent);
+    }
+
+    function handleTouchMove(e) {
+        e.preventDefault();
+        const touch = e.touches[0];
+        const mouseEvent = new MouseEvent('mousemove', {
+            clientX: touch.clientX,
+            clientY: touch.clientY
+        });
+        document.getElementById('signature-pad').dispatchEvent(mouseEvent);
+    }
+
+    function clearSignature() {
+        const canvas = document.getElementById('signature-pad');
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    function useSavedSignature() {
+        const companyId = '{{ selected_company_id }}';
+        
+        // Double-check (button should already be hidden for non-verifiers)
+        if (!isAssignedVerifier) {
+            alert('Only the assigned verifier can use the saved signature.');
+            return;
+        }
+        
+        fetch(`/api/operations/get-verifier-signature/?company_id=${companyId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.signature) {
+                    const canvas = document.getElementById('signature-pad');
+                    const ctx = canvas.getContext('2d');
+                    const img = new Image();
+                    img.onload = function() {
+                        ctx.fillStyle = 'white';
+                        ctx.fillRect(0, 0, canvas.width, canvas.height);
+                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    };
+                    img.src = data.signature;
+                } else {
+                    alert('No saved signature found. Please capture one in Operations Admin first.');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error loading saved signature');
+            });
+    }
+
+    function submitVerification() {
+        const name = document.getElementById('verifier-name').value.trim();
+        if (!name) {
+            alert('Please enter your name');
+            return;
+        }
+        
+        const canvas = document.getElementById('signature-pad');
+        const signature = canvas.toDataURL('image/png');
+        
+        // Check if signature is blank (just white)
+        const ctx = canvas.getContext('2d');
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        let isBlank = true;
+        for (let i = 0; i < imageData.data.length; i += 4) {
+            if (imageData.data[i] < 250 || imageData.data[i+1] < 250 || imageData.data[i+2] < 250) {
+                isBlank = false;
+                break;
+            }
+        }
+        
+        if (isBlank) {
+            alert('Please sign before submitting');
+            return;
+        }
+        
+        fetch('/api/operations/submit-verification/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                parent_id: currentVerificationParentId,
+                verifier_name: name,
+                verifier_signature: signature
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                bootstrap.Modal.getInstance(document.getElementById('verificationModal')).hide();
+                location.reload();
+            } else {
+                alert('Error submitting verification');
+            }
+        });
+    }
+
+    // Bulk Report Functions
+    var bulkCurrentDate = new Date();
+    var bulkCalendarData = {};
+    var selectedDays = new Set();
+
+    function openBulkReportModal() {
+        selectedDays.clear();
+        updateSelectedCount();
+        const companySelect = document.getElementById('bulk-report-company');
+        if (companySelect.value) {
+            loadBulkReportCalendar();
+        }
+        new bootstrap.Modal(document.getElementById('bulkReportModal')).show();
+    }
+
+    function loadBulkReportCalendar() {
+        const companyId = document.getElementById('bulk-report-company').value;
+        if (!companyId) {
+            document.getElementById('bulk-calendar-body').innerHTML = '<div class="text-center text-muted p-4" style="grid-column: span 7;">Select a company to load calendar</div>';
+            return;
+        }
+        
+        fetch(`/api/operations/get-calendar-data/?company_id=${companyId}`)
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    bulkCalendarData = data.calendar_data;
+                    renderBulkCalendar();
+                }
+            });
+    }
+
+    function renderBulkCalendar() {
+        const year = bulkCurrentDate.getFullYear();
+        const month = bulkCurrentDate.getMonth();
+        
+        const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                            'July', 'August', 'September', 'October', 'November', 'December'];
+        
+        document.getElementById('bulk-calendar-month-year').textContent = `${monthNames[month]} ${year}`;
+        
+        const firstDay = new Date(year, month, 1);
+        const lastDay = new Date(year, month + 1, 0);
+        const startingDay = firstDay.getDay();
+        const totalDays = lastDay.getDate();
+        
+        let html = '';
+        
+        for (let i = 0; i < startingDay; i++) {
+            html += '<div class="bulk-calendar-day empty"></div>';
+        }
+        
+        for (let day = 1; day <= totalDays; day++) {
+            const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            const dayData = bulkCalendarData[dateStr] || {};
+            const hasCompleted = dayData.preop === true || dayData.midday === true || dayData.postop === true;
+            const hasVerified = dayData.preop_verified || dayData.midday_verified || dayData.postop_verified;
+            const isSelected = selectedDays.has(dateStr);
+            const isOperatingDay = dayData.is_operating_day;
+            
+            let classes = 'bulk-calendar-day';
+            if (isSelected) classes += ' selected';
+            else if (hasVerified) classes += ' has-verified';
+            else if (hasCompleted) classes += ' has-completed';
+            if (!isOperatingDay) classes += ' no-data';
+            
+            let badges = '<div class="day-badges">';
+            if (dayData.preop_verified) badges += '<span class="badge bg-purple" style="background-color: #6f42c1 !important;">Pre</span>';
+            else if (dayData.preop === true) badges += '<span class="badge bg-success">Pre</span>';
+            else if (dayData.preop === false) badges += '<span class="badge bg-warning text-dark">Pre</span>';
+            else if (isOperatingDay) badges += '<span class="badge bg-secondary">Pre</span>';
+            
+            if (dayData.midday_verified) badges += '<span class="badge bg-purple" style="background-color: #6f42c1 !important;">Mid</span>';
+            else if (dayData.midday === true) badges += '<span class="badge bg-success">Mid</span>';
+            else if (dayData.midday === false) badges += '<span class="badge bg-warning text-dark">Mid</span>';
+            else if (isOperatingDay) badges += '<span class="badge bg-secondary">Mid</span>';
+            
+            if (dayData.postop_verified) badges += '<span class="badge bg-purple" style="background-color: #6f42c1 !important;">Post</span>';
+            else if (dayData.postop === true) badges += '<span class="badge bg-success">Post</span>';
+            else if (dayData.postop === false) badges += '<span class="badge bg-warning text-dark">Post</span>';
+            else if (isOperatingDay) badges += '<span class="badge bg-secondary">Post</span>';
+            badges += '</div>';
+            
+            const clickable = hasCompleted ? `onclick="toggleDaySelection('${dateStr}')"` : '';
+            
+            html += `<div class="${classes}" data-date="${dateStr}" ${clickable}>
+                <div class="day-number">${day}</div>
+                ${badges}
+            </div>`;
+        }
+        
+        const remainingCells = (7 - ((startingDay + totalDays) % 7)) % 7;
+        for (let i = 0; i < remainingCells; i++) {
+            html += '<div class="bulk-calendar-day empty"></div>';
+        }
+        
+        document.getElementById('bulk-calendar-body').innerHTML = html;
+    }
+
+    function changeBulkMonth(delta) {
+        bulkCurrentDate.setMonth(bulkCurrentDate.getMonth() + delta);
+        renderBulkCalendar();
+    }
+
+    function toggleDaySelection(dateStr) {
+        const dayData = bulkCalendarData[dateStr];
+        if (!dayData || (!dayData.preop && !dayData.midday && !dayData.postop)) return;
+        
+        if (selectedDays.has(dateStr)) selectedDays.delete(dateStr);
+        else selectedDays.add(dateStr);
+        
+        const el = document.querySelector(`.bulk-calendar-day[data-date="${dateStr}"]`);
+        if (el) el.classList.toggle('selected');
+        
+        updateSelectedCount();
+    }
+
+    function selectAllDays() {
+        Object.keys(bulkCalendarData).forEach(dateStr => {
+            const dayData = bulkCalendarData[dateStr];
+            if (dayData.preop === true || dayData.midday === true || dayData.postop === true) {
+                selectedDays.add(dateStr);
+            }
+        });
+        renderBulkCalendar();
+        updateSelectedCount();
+    }
+
+    function clearAllDays() {
+        selectedDays.clear();
+        renderBulkCalendar();
+        updateSelectedCount();
+    }
+
+    function updateSelectedCount() {
+        const count = selectedDays.size;
+        document.getElementById('selected-days-count').textContent = `${count} day${count !== 1 ? 's' : ''} selected`;
+        document.getElementById('generate-btn').disabled = count === 0;
+    }
+
+    function generateBulkReports() {
+        const companyId = document.getElementById('bulk-report-company').value;
+        const includeOperational = document.getElementById('include-operational').checked;
+        const includeDeviations = document.getElementById('include-deviations').checked;
+        
+        if (!companyId || selectedDays.size === 0) {
+            alert('Please select a company and at least one day');
+            return;
+        }
+        
+        if (!includeOperational && !includeDeviations) {
+            alert('Please select at least one report type');
+            return;
+        }
+        
+        const dates = Array.from(selectedDays).sort();
+        const params = new URLSearchParams({
+            company_id: companyId,
+            dates: dates.join(','),
+            include_operational: includeOperational ? '1' : '0',
+            include_deviations: includeDeviations ? '1' : '0'
+        });
+        
+        window.open(`/operations/bulk-report/?${params.toString()}`, '_blank');
+    }
+</script>
+{% endblock %}
