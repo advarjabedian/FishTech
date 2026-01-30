@@ -9,6 +9,7 @@ from .views import (
     get_hazard_analysis_data, delete_haccp_version, get_haccp_version,
     get_master_product_types, get_all_product_types, add_product_type,
     delete_product_type, get_inactive_product_types, restore_product_type,
+    update_product_type,
     set_haccp_owner, get_company_certificates, save_company_certificate,
     view_company_certificate, add_company, edit_company, delete_company,
     # User management
@@ -58,6 +59,7 @@ urlpatterns = [
     path('api/haccp-delete-product-type/', delete_product_type, name='api_haccp_delete_product_type'),
     path('api/haccp-inactive-product-types/', get_inactive_product_types, name='api_haccp_inactive_product_types'),
     path('api/haccp-restore-product-type/', restore_product_type, name='api_haccp_restore_product_type'),
+    path('api/haccp-update-product-type/', update_product_type, name='api_haccp_update_product_type'),  
     path('api/haccp-set-owner/<int:company_id>/', set_haccp_owner, name='haccp_set_owner'),
     path('api/company-certificates/<int:company_id>/', get_company_certificates, name='get_company_certificates'),
     path('api/company-certificates/<int:company_id>/save/', save_company_certificate, name='save_company_certificate'),

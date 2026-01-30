@@ -55,6 +55,9 @@
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <p class="text-muted mb-0">Available HACCP Product Types:</p>
                     <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-sm btn-success" onclick="addNewProductTypePrompt()">
+                            <i class="bi bi-plus-circle me-1"></i>Add Product Type
+                        </button>
                         <button type="button" class="btn btn-sm btn-secondary" onclick="openRecycleBin()">
                             <i class="bi bi-trash me-1"></i>Recycle Bin
                         </button>
@@ -161,17 +164,6 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <div class="mb-3">
-                    <h6>Add New Product Type</h6>
-                    <div class="input-group">
-                        <input type="text" class="form-control" id="newProductTypeName" placeholder="Enter product type name">
-                        <button class="btn btn-success" onclick="addNewProductType()">
-                            <i class="bi bi-plus-circle me-1"></i>Add
-                        </button>
-                    </div>
-                </div>
-                <hr>
-                <h6>Existing Product Types</h6>
                 <div id="productTypesList">
                     <!-- Will be populated by JS -->
                 </div>
@@ -305,14 +297,6 @@ function loadProductTypes(companyId) {
             const container = document.getElementById(`product-types-${companyId}`);
             container.innerHTML = '';
             
-            const productTypeMap = {
-                'box-in-box-out': 'Box In - Box Out',
-                'live-molluscan': 'Live Molluscan',
-                'non-scombroid': 'Non-Scombroid',
-                'scombroid-haccp': 'Scombroid HACCP',
-                'smoked-fish': 'Smoked Fish'
-            };
-            
             if (data.active_types.length === 0) {
                 container.innerHTML = '<span class="text-muted">No product types assigned</span>';
                 return;
@@ -320,7 +304,8 @@ function loadProductTypes(companyId) {
             
             data.active_types.forEach(slug => {
                 const isCompleted = data.completed_types.includes(slug);
-                const name = productTypeMap[slug] || slug;
+                const pt = productTypes.find(p => p.slug === slug);
+                const name = pt ? pt.name : slug;
                 const badge = document.createElement('span');
                 badge.className = `badge ${isCompleted ? 'bg-success' : 'bg-secondary'} me-2 mb-2`;
                 badge.style.cursor = 'pointer';
@@ -579,27 +564,37 @@ function loadAndRenderProductTypesList() {
             container.innerHTML = '';
             
             if (data.product_types.length === 0) {
-                container.innerHTML = '<div class="alert alert-info">No product types found.</div>';
+                container.innerHTML = '<div class="alert alert-info">No product types found. Click "Add Product Type" to create one.</div>';
                 return;
             }
             
-            const productTypeMap = {
-                'box-in-box-out': 'Box In - Box Out',
-                'live-molluscan': 'Live Molluscan',
-                'non-scombroid': 'Non-Scombroid',
-                'scombroid-haccp': 'Scombroid HACCP',
-                'smoked-fish': 'Smoked Fish'
-            };
-            
             data.product_types.forEach(pt => {
-                const displayName = productTypeMap[pt.slug] || pt.name;
                 const div = document.createElement('div');
-                div.className = 'list-group-item d-flex justify-content-between align-items-center';
+                div.className = 'list-group-item';
+                div.id = `pt-row-${pt.slug}`;
                 div.innerHTML = `
-                    <span>${displayName}</span>
-                    <button class="btn btn-sm btn-danger" onclick="deleteProductType('${pt.slug}', '${displayName}')">
-                        <i class="bi bi-trash"></i>
-                    </button>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span id="pt-display-${pt.slug}">${pt.name}</span>
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn btn-outline-primary" onclick="startEditProductType('${pt.slug}', '${pt.name.replace(/'/g, "\\'")}')">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <button class="btn btn-outline-danger" onclick="deleteProductType('${pt.slug}', '${pt.name.replace(/'/g, "\\'")}')">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div id="pt-edit-${pt.slug}" style="display: none;" class="mt-2">
+                        <div class="input-group">
+                            <input type="text" class="form-control form-control-sm" id="pt-input-${pt.slug}" value="${pt.name}">
+                            <button class="btn btn-success btn-sm" onclick="saveProductTypeName('${pt.slug}')">
+                                <i class="bi bi-check-lg"></i>
+                            </button>
+                            <button class="btn btn-secondary btn-sm" onclick="cancelEditProductType('${pt.slug}', '${pt.name.replace(/'/g, "\\'")}')">
+                                <i class="bi bi-x-lg"></i>
+                            </button>
+                        </div>
+                    </div>
                 `;
                 container.appendChild(div);
             });
@@ -607,10 +602,52 @@ function loadAndRenderProductTypesList() {
         .catch(err => console.error('Error loading product types:', err));
 }
 
-function addNewProductType() {
-    const name = document.getElementById('newProductTypeName').value.trim();
-    if (!name) {
-        alert('Please enter a product type name');
+function startEditProductType(slug, currentName) {
+    document.getElementById(`pt-display-${slug}`).parentElement.style.display = 'none';
+    document.getElementById(`pt-edit-${slug}`).style.display = 'block';
+    document.getElementById(`pt-input-${slug}`).value = currentName;
+    document.getElementById(`pt-input-${slug}`).focus();
+}
+
+function cancelEditProductType(slug, originalName) {
+    document.getElementById(`pt-display-${slug}`).parentElement.style.display = 'flex';
+    document.getElementById(`pt-edit-${slug}`).style.display = 'none';
+    document.getElementById(`pt-input-${slug}`).value = originalName;
+}
+
+function saveProductTypeName(slug) {
+    const newName = document.getElementById(`pt-input-${slug}`).value.trim();
+    
+    if (!newName) {
+        alert('Name cannot be empty');
+        return;
+    }
+    
+    fetch('/api/haccp-update-product-type/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({ slug: slug, name: newName })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(err => {
+        console.error('Error updating product type:', err);
+        alert('Error updating product type');
+    });
+}
+
+function addNewProductTypePrompt() {
+    const name = prompt('Enter new product type name:');
+    if (!name || !name.trim()) {
         return;
     }
     
@@ -620,14 +657,12 @@ function addNewProductType() {
             'Content-Type': 'application/json',
             'X-CSRFToken': getCookie('csrftoken')
         },
-        body: JSON.stringify({ name: name })
+        body: JSON.stringify({ name: name.trim() })
     })
     .then(r => r.json())
     .then(data => {
         if (data.success) {
-            document.getElementById('newProductTypeName').value = '';
-            loadAndRenderProductTypesList();
-            loadMasterProductTypes();
+            location.reload();
         } else {
             alert('Error: ' + data.error);
         }

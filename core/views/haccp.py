@@ -487,6 +487,7 @@ def toggle_company_product_type(request, company_id):
         company = get_object_or_404(Company, companyid=company_id)
         
         obj, created = CompanyProductType.objects.update_or_create(
+            tenant=request.tenant,
             company=company,
             product_type=product_type,
             defaults={'is_active': is_active}
@@ -831,10 +832,10 @@ def get_haccp_version(request, company_id, product_type, document_type):
 
 
 def get_master_product_types(request):
-    """Get all product types that are active on at least one company"""
-    active_types = CompanyProductType.objects.filter(
+    """Get all active product types for the master set"""
+    active_types = HACCPProductType.objects.filter(
         is_active=True
-    ).values_list('product_type', flat=True).distinct()
+    ).values_list('slug', flat=True)
     
     return JsonResponse({
         'success': True,
@@ -944,6 +945,31 @@ def restore_product_type(request):
             return JsonResponse({'success': False, 'error': 'Slug is required'})
         
         HACCPProductType.objects.filter(slug=slug).update(is_active=True)
+        
+        return JsonResponse({'success': True})
+        
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+
+@require_http_methods(["POST"])
+def update_product_type(request):
+    """Update a product type name"""
+    if not request.tenant:
+        return JsonResponse({'success': False, 'error': 'Not authenticated'})
+    
+    try:
+        data = json.loads(request.body)
+        slug = data.get('slug')
+        name = data.get('name', '').strip()
+        
+        if not slug:
+            return JsonResponse({'success': False, 'error': 'Slug is required'})
+        
+        if not name:
+            return JsonResponse({'success': False, 'error': 'Name is required'})
+        
+        HACCPProductType.objects.filter(slug=slug).update(name=name)
         
         return JsonResponse({'success': True})
         
