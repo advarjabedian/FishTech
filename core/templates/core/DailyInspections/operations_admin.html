@@ -14,6 +14,9 @@
                 <i class="bi bi-arrow-left"></i> Back to Summary
             </a>
             {% endif %}
+            <button type="button" class="btn btn-success me-2" onclick="openBulkReportModal()">
+                <i class="bi bi-printer"></i> Bulk Reports
+            </button>
             <button class="btn btn-primary me-2" onclick="openSOPEditor()">
                 <i class="bi bi-list-check"></i> Manage SOPs
             </button>
@@ -29,8 +32,37 @@
 </div>
 
 {% include 'core/DailyInspections/admin_modals.html' %}
+{% endblock %}
 
 {% block extra_js %}
 {% include 'core/DailyInspections/operations_admin_scripts.html' %}
-{% endblock %}
+<script>
+// Pass Django template variables to JS
+window.companyId = '{{ selected_company.companyid|default:"" }}';
+window.currentFilter = 'incomplete';
+
+{% if selected_company %}
+window.incompleteDays = [
+    {% for day in incomplete_days %}
+    {
+        date: '{{ day.date|date:"Y-m-d" }}',
+        preop: {% if day.preop is None %}null{% elif day.preop %}true{% else %}false{% endif %},
+        midday: {% if day.midday is None %}null{% elif day.midday %}true{% else %}false{% endif %},
+        postop: {% if day.postop is None %}null{% elif day.postop %}true{% else %}false{% endif %},
+        preop_verified: {% if day.preop_verified %}true{% else %}false{% endif %},
+        midday_verified: {% if day.midday_verified %}true{% else %}false{% endif %},
+        postop_verified: {% if day.postop_verified %}true{% else %}false{% endif %}
+    }{% if not forloop.last %},{% endif %}
+    {% endfor %}
+];
+
+document.addEventListener('DOMContentLoaded', function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const filterParam = urlParams.get('filter');
+    if (filterParam === 'unverified') setFilter('unverified');
+    else if (filterParam === 'all') setFilter('all');
+    else setFilter('incomplete');
+});
+{% endif %}
+</script>
 {% endblock %}

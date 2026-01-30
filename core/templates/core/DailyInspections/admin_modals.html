@@ -1,87 +1,80 @@
-<!-- Help Modal -->
-<div class="modal fade" id="infoModal" tabindex="-1">
+<!-- Operating Days Modal -->
+<div class="modal fade" id="daysModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Operations Admin Help</h5>
+                <h5 class="modal-title">Operating Days - <span id="modal-company-name"></span></h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <h6>Overview</h6>
-                <p>This page helps you monitor daily inspection compliance across all your facilities.</p>
-                
-                <h6>Status Indicators</h6>
-                <ul>
-                    <li><span class="badge bg-success">Complete</span> - All SOPs completed for this shift</li>
-                    <li><span class="badge bg-warning text-dark">In Progress</span> - Inspection started but not finished</li>
-                    <li><span class="badge bg-primary">Verified</span> - Inspection has been verified by supervisor</li>
-                </ul>
-                
-                <h6>Filters</h6>
-                <ul>
-                    <li><strong>Incomplete Days</strong> - Shows days with unfinished inspections</li>
-                    <li><strong>Unverified Logs</strong> - Shows completed but unverified inspections</li>
-                    <li><strong>All Days</strong> - Shows all inspection days</li>
-                </ul>
+                <input type="hidden" id="modal-company-id">
+                <div class="row">
+                    <div class="col-6">
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" id="modal-mon">
+                            <label class="form-check-label" for="modal-mon">Monday</label>
+                        </div>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" id="modal-tue">
+                            <label class="form-check-label" for="modal-tue">Tuesday</label>
+                        </div>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" id="modal-wed">
+                            <label class="form-check-label" for="modal-wed">Wednesday</label>
+                        </div>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" id="modal-thu">
+                            <label class="form-check-label" for="modal-thu">Thursday</label>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" id="modal-fri">
+                            <label class="form-check-label" for="modal-fri">Friday</label>
+                        </div>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" id="modal-sat">
+                            <label class="form-check-label" for="modal-sat">Saturday</label>
+                        </div>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" id="modal-sun">
+                            <label class="form-check-label" for="modal-sun">Sunday</label>
+                        </div>
+                    </div>
+                </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="saveDays()">Save</button>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Configuration Modal -->
-<div class="modal fade" id="configModal" tabindex="-1">
+<!-- Signature Capture Modal -->
+<div class="modal fade" id="signatureModal" tabindex="-1" data-bs-backdrop="static">
     <div class="modal-dialog">
         <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Configure Company</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            <div class="modal-header" id="signatureModalHeader" style="background-color: #0d6efd; color: white;">
+                <h5 class="modal-title"><i class="bi bi-pen me-2"></i><span id="signatureModalTitle">Capture Signature</span></h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <form id="configForm">
-                    <div class="mb-3">
-                        <label class="form-label">Start Date</label>
-                        <input type="date" class="form-control" id="config_start_date">
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label class="form-label">Operating Days</label>
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="config_monday">
-                            <label class="form-check-label" for="config_monday">Monday</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="config_tuesday">
-                            <label class="form-check-label" for="config_tuesday">Tuesday</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="config_wednesday">
-                            <label class="form-check-label" for="config_wednesday">Wednesday</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="config_thursday">
-                            <label class="form-check-label" for="config_thursday">Thursday</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="config_friday">
-                            <label class="form-check-label" for="config_friday">Friday</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="config_saturday">
-                            <label class="form-check-label" for="config_saturday">Saturday</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="config_sunday">
-                            <label class="form-check-label" for="config_sunday">Sunday</label>
-                        </div>
-                    </div>
-                </form>
+                <p class="text-muted mb-3">Please sign below for <strong id="signatureUserName"></strong></p>
+                <div class="border rounded" style="background: #fff;">
+                    <canvas id="signatureCanvas" width="450" height="200" style="width: 100%; cursor: crosshair;"></canvas>
+                </div>
+                <div class="mt-2 text-end">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="clearSignature()">
+                        <i class="bi bi-eraser"></i> Clear
+                    </button>
+                </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary">Save Configuration</button>
+                <button type="button" class="btn btn-primary" onclick="saveSignature()">
+                    <i class="bi bi-check-lg"></i> Save Signature
+                </button>
             </div>
         </div>
     </div>
@@ -109,9 +102,16 @@
                             <option value="">All Zones</option>
                         </select>
                     </div>
-                    <div class="col-md-4 d-flex align-items-end">
-                        <button class="btn btn-success me-2" onclick="showAddSOPForm()"><i class="bi bi-plus-lg"></i> Add SOP</button>
-                        <button class="btn btn-outline-secondary" onclick="showAddZoneForm()"><i class="bi bi-folder-plus"></i> Add Zone</button>
+                    <div class="col-md-4 d-flex align-items-end gap-2">
+                        <button class="btn btn-success" onclick="showAddSOPForm()">
+                            <i class="bi bi-plus-lg"></i> Add SOP
+                        </button>
+                        <button class="btn btn-outline-secondary" onclick="showAddZoneForm()">
+                            <i class="bi bi-folder-plus"></i> Add Zone
+                        </button>
+                        <button class="btn btn-outline-primary" onclick="printSOPSchedule()">
+                            <i class="bi bi-printer"></i> Print
+                        </button>
                     </div>
                 </div>
                 
@@ -120,33 +120,54 @@
                     <div class="card-body">
                         <h6 class="card-title text-success">Add New SOP</h6>
                         <div class="row">
-                            <div class="col-md-3">
+                            <div class="col-md-2">
                                 <label class="form-label">SOP ID:</label>
-                                <input type="number" class="form-control" id="new-sop-id" placeholder="e.g., 101">
+                                <input type="number" class="form-control" id="new-sop-id" placeholder="Auto if blank">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Description:</label>
+                                <input type="text" class="form-control" id="new-sop-description">
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label">Zone:</label>
-                                <select class="form-select" id="new-sop-zone"></select>
+                                <select class="form-select" id="new-sop-zone">
+                                    <option value="">-- Select Zone --</option>
+                                </select>
                             </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Description:</label>
-                                <textarea class="form-control" id="new-sop-description" rows="2"></textarea>
+                            <div class="col-md-3">
+                                <label class="form-label">Start Date:</label>
+                                <input type="date" class="form-control" id="new-sop-start-date">
                             </div>
                         </div>
                         <div class="row mt-2">
                             <div class="col-md-12">
                                 <label class="form-label">Shifts & Requirements:</label>
-                                <div class="d-flex gap-4">
-                                    <div class="form-check"><input class="form-check-input" type="checkbox" id="new-sop-pre"><label class="form-check-label" for="new-sop-pre">Pre-Op</label></div>
-                                    <div class="form-check"><input class="form-check-input" type="checkbox" id="new-sop-mid"><label class="form-check-label" for="new-sop-mid">Mid-Day</label></div>
-                                    <div class="form-check"><input class="form-check-input" type="checkbox" id="new-sop-post"><label class="form-check-label" for="new-sop-post">Post-Op</label></div>
-                                    <div class="form-check"><input class="form-check-input" type="checkbox" id="new-sop-input-required"><label class="form-check-label" for="new-sop-input-required"><strong>Data Required</strong></label></div>
-                                    <div class="form-check"><input class="form-check-input" type="checkbox" id="new-sop-image-required"><label class="form-check-label" for="new-sop-image-required"><strong>Image Required</strong></label></div>
+                                <div class="d-flex gap-4 flex-wrap">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="new-sop-pre">
+                                        <label class="form-check-label" for="new-sop-pre">Pre-Op</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="new-sop-mid">
+                                        <label class="form-check-label" for="new-sop-mid">Mid-Day</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="new-sop-post">
+                                        <label class="form-check-label" for="new-sop-post">Post-Op</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="new-sop-input-required">
+                                        <label class="form-check-label" for="new-sop-input-required"><strong>Data Required</strong></label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="new-sop-image-required">
+                                        <label class="form-check-label" for="new-sop-image-required"><strong>Image Required</strong></label>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                        <div class="mt-2">
-                            <button class="btn btn-success btn-sm" onclick="saveNewSOP()">Save</button>
+                        <div class="mt-3">
+                            <button class="btn btn-success btn-sm" onclick="saveNewSOP()">Save SOP</button>
                             <button class="btn btn-secondary btn-sm" onclick="hideAddSOPForm()">Cancel</button>
                         </div>
                     </div>
@@ -161,8 +182,8 @@
                                 <label class="form-label">Zone Name:</label>
                                 <input type="text" class="form-control" id="new-zone-name" placeholder="e.g., Cooler 3">
                             </div>
-                            <div class="col-md-6 d-flex align-items-end">
-                                <button class="btn btn-warning btn-sm me-2" onclick="saveNewZone()">Save Zone</button>
+                            <div class="col-md-6 d-flex align-items-end gap-2">
+                                <button class="btn btn-warning btn-sm" onclick="saveNewZone()">Save Zone</button>
                                 <button class="btn btn-secondary btn-sm" onclick="hideAddZoneForm()">Cancel</button>
                             </div>
                         </div>
@@ -176,21 +197,90 @@
                             <th style="width: 60px;">ID</th>
                             <th>Description</th>
                             <th style="width: 120px;">Zone</th>
+                            <th style="width: 110px;">Start Date</th>
                             <th style="width: 60px;" class="text-center">Pre</th>
                             <th style="width: 60px;" class="text-center">Mid</th>
                             <th style="width: 60px;" class="text-center">Post</th>
-                            <th style="width: 80px;" class="text-center">Data Req</th>
-                            <th style="width: 80px;" class="text-center">Img Req</th>
-                            <th style="width: 100px;">Actions</th>
+                            <th style="width: 80px;" class="text-center">Data</th>
+                            <th style="width: 80px;" class="text-center">Image</th>
+                            <th style="width: 80px;">Actions</th>
                         </tr>
                     </thead>
                     <tbody id="sop-tbody">
-                        <tr><td colspan="9" class="text-center">Select a company to load SOPs</td></tr>
+                        <tr><td colspan="10" class="text-center">Select a company to load SOPs</td></tr>
                     </tbody>
                 </table>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bulk Report Modal -->
+<div class="modal fade" id="bulkReportModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="bi bi-printer me-2"></i>Bulk Report Generator</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label"><strong>Select Company:</strong></label>
+                        <select class="form-select" id="bulk-report-company" onchange="loadBulkReportCalendar()">
+                            <option value="">-- Select Company --</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label"><strong>Report Types:</strong></label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="include-operational" checked>
+                            <label class="form-check-label" for="include-operational">Operational Reports</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="include-deviations" checked>
+                            <label class="form-check-label" for="include-deviations">Deviations Reports</label>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <button class="btn btn-outline-secondary btn-sm" onclick="changeBulkMonth(-1)">&lt; Prev</button>
+                    <h5 id="bulk-calendar-month-year" class="mb-0"></h5>
+                    <button class="btn btn-outline-secondary btn-sm" onclick="changeBulkMonth(1)">Next &gt;</button>
+                </div>
+                
+                <div class="mb-2">
+                    <button class="btn btn-sm btn-outline-primary me-2" onclick="selectAllDays()">Select All Verified</button>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="clearAllDays()">Clear All</button>
+                    <span class="ms-3 text-muted" id="selected-days-count">0 days selected</span>
+                </div>
+                
+                <div class="bulk-calendar-container">
+                    <div class="bulk-calendar-header">
+                        <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
+                    </div>
+                    <div class="bulk-calendar-body" id="bulk-calendar-body">
+                        <div class="text-center text-muted p-4" style="grid-column: span 7;">Select a company to load calendar</div>
+                    </div>
+                </div>
+                
+                <div class="mt-3">
+                    <small class="text-muted">
+                        <span class="badge" style="background-color: #6f42c1;">Purple</span> = Verified &nbsp;
+                        <span class="badge bg-success">Green</span> = Complete &nbsp;
+                        <span class="badge bg-warning text-dark">Yellow</span> = In Progress
+                    </small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success" onclick="generateBulkReports()" id="generate-btn" disabled>
+                    <i class="bi bi-printer"></i> Generate Reports
+                </button>
             </div>
         </div>
     </div>

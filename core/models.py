@@ -35,7 +35,7 @@ class Tenant(models.Model):
     name = models.CharField(max_length=255)  # Company name
     subdomain = models.CharField(max_length=63, unique=True)  # e.g., 'goldenstateseafood'
     is_active = models.BooleanField(default=True)
-    created_at = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateField(null=True, blank=True, help_text="SOP effective date - only shows in inspections on/after this date")
     
     def __str__(self):
         return self.name

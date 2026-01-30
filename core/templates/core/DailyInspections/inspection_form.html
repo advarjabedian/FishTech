@@ -58,15 +58,15 @@
         <div class="col-md-3">
             <strong>Inspector:</strong> 
             <select id="inspection-inspector" 
-                    class="inspector-select-header" 
-                    onchange="updateInspector(this.value)"
-                    {% if sop_parent.completed %}disabled{% endif %}>
-                {% for user in users %}
-                    <option value="{{ user.userid }}" {% if user.userid == sop_parent.user_inspected %}selected{% endif %}>
-                        {{ user.name }}
-                    </option>
-                {% endfor %}
-            </select>
+                        class="inspector-select-header" 
+                        onchange="updateInspector(this.value)"
+                        {% if sop_parent.completed %}disabled{% endif %}>
+                    {% for user in users %}
+                        <option value="{{ user.id }}" {% if user.id == sop_parent.user_inspected_id %}selected{% endif %}>
+                            {{ user.name }}
+                        </option>
+                    {% endfor %}
+                </select>
         </div>
     </div>
 </div>
@@ -643,7 +643,7 @@
     
     function saveForLater() {
         // Just redirect immediately without saving completion status
-        window.location.href = '/operations/?date={{ sop_parent.date|date:"Y-m-d" }}&company_id={{ sop_parent.company_id }}';
+        window.location.href = '/operations/daily/?date={{ sop_parent.date|date:"Y-m-d" }}&company_id={{ sop_parent.company_id }}';
     }
 
     function updateTime(timeValue) {
@@ -946,7 +946,7 @@ const isMonitor = {{ is_monitor|yesno:"true,false" }};
 function checkForSavedInspectorSignature() {
     if (!isMonitor) return;
     
-    const companyId = '{{ sop_parent.company }}';
+    const companyId = '{{ sop_parent.company_id }}';
     
     fetch(`/api/operations/get-monitor-signature/?company_id=${companyId}`)
         .then(r => r.json())
@@ -962,7 +962,7 @@ function checkForSavedInspectorSignature() {
 function useSavedInspectorSignature() {
     if (!isMonitor) return;
     
-    const companyId = '{{ sop_parent.company }}';
+    const companyId = '{{ sop_parent.company_id }}';
     
     fetch(`/api/operations/get-monitor-signature/?company_id=${companyId}`)
         .then(response => response.json())

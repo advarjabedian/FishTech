@@ -12,68 +12,187 @@
     <button type="button" class="btn btn-outline-secondary" id="filter-all" onclick="setFilter('all')">All Days</button>
 </div>
 
-<table class="table table-striped">
-    <thead>
-        <tr>
-            <th>Date</th>
-            <th>Pre-Op</th>
-            <th>Mid-Day</th>
-            <th>Post-Op</th>
-        </tr>
-    </thead>
-    <tbody id="grid-tbody">
-        {% for day in incomplete_days %}
-        <tr class="day-row" 
-            data-incomplete="{% if not day.preop_complete or not day.midday_complete or not day.postop_complete %}true{% else %}false{% endif %}"
-            data-unverified="{% if day.preop_complete and not day.preop_verified or day.midday_complete and not day.midday_verified or day.postop_complete and not day.postop_verified %}true{% else %}false{% endif %}"
-            style="cursor: pointer;">
-            <td><strong>{{ day.date }}</strong></td>
-            <td>
-                {% if day.preop_complete %}
-                    <span class="badge bg-success">Complete</span>
-                    {% if day.preop_verified %}
-                        <span class="badge bg-primary">Verified</span>
-                    {% else %}
-                        <span class="badge bg-outline-primary">Not Verified</span>
-                    {% endif %}
-                {% else %}
-                    <span class="badge bg-warning text-dark">In Progress</span>
-                {% endif %}
-            </td>
-            <td>
-                {% if day.midday_complete %}
-                    <span class="badge bg-success">Complete</span>
-                    {% if day.midday_verified %}
-                        <span class="badge bg-primary">Verified</span>
-                    {% else %}
-                        <span class="badge bg-outline-primary">Not Verified</span>
-                    {% endif %}
-                {% else %}
-                    <span class="badge bg-warning text-dark">In Progress</span>
-                {% endif %}
-            </td>
-            <td>
-                {% if day.postop_complete %}
-                    <span class="badge bg-success">Complete</span>
-                    {% if day.postop_verified %}
-                        <span class="badge bg-primary">Verified</span>
-                    {% else %}
-                        <span class="badge bg-outline-primary">Not Verified</span>
-                    {% endif %}
-                {% else %}
-                    <span class="badge bg-warning text-dark">In Progress</span>
-                {% endif %}
-            </td>
-        </tr>
-        {% empty %}
-        <tr id="empty-row">
-            <td colspan="4" class="text-center">All days complete!</td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
+<!-- View Toggle Tabs -->
+<ul class="nav nav-tabs mb-3" id="viewTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="grid-tab" data-bs-toggle="tab" data-bs-target="#grid-view" type="button" role="tab">Grid View</button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="calendar-tab" data-bs-toggle="tab" data-bs-target="#calendar-view" type="button" role="tab">Calendar View</button>
+    </li>
+</ul>
+
+<div class="tab-content" id="viewTabContent">
+    <!-- Grid View -->
+    <div class="tab-pane fade show active" id="grid-view" role="tabpanel">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Pre-Op</th>
+                    <th>Mid-Day</th>
+                    <th>Post-Op</th>
+                </tr>
+            </thead>
+            <tbody id="grid-tbody">
+                {% for day in incomplete_days %}
+                <tr class="day-row" 
+                    data-incomplete="{% if not day.preop_complete or not day.midday_complete or not day.postop_complete %}true{% else %}false{% endif %}"
+                    data-unverified="{% if day.preop_complete and not day.preop_verified or day.midday_complete and not day.midday_verified or day.postop_complete and not day.postop_verified %}true{% else %}false{% endif %}"
+                    style="cursor: pointer;"
+                    onclick="window.location.href='{% url 'operations_dashboard' %}?date={{ day.date|date:'Y-m-d' }}&company_id={{ selected_company.companyid }}'">
+                    <td><strong>{{ day.date }}</strong></td>
+                    <td>
+                        {% if day.preop_complete is None %}
+                            <span class="badge bg-secondary">Not Started</span>
+                        {% elif day.preop_complete %}
+                            <span class="badge bg-success">Complete</span>
+                            {% if day.preop_verified %}
+                                <span class="badge" style="background-color: #6f42c1;">Verified</span>
+                            {% else %}
+                                <span class="badge" style="background-color: white; color: #0d6efd; border: 1px solid #0d6efd;">Not Verified</span>
+                            {% endif %}
+                        {% else %}
+                            <span class="badge bg-warning text-dark">In Progress</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if day.midday_complete is None %}
+                            <span class="badge bg-secondary">Not Started</span>
+                        {% elif day.midday_complete %}
+                            <span class="badge bg-success">Complete</span>
+                            {% if day.midday_verified %}
+                                <span class="badge" style="background-color: #6f42c1;">Verified</span>
+                            {% else %}
+                                <span class="badge" style="background-color: white; color: #0d6efd; border: 1px solid #0d6efd;">Not Verified</span>
+                            {% endif %}
+                        {% else %}
+                            <span class="badge bg-warning text-dark">In Progress</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if day.postop_complete is None %}
+                            <span class="badge bg-secondary">Not Started</span>
+                        {% elif day.postop_complete %}
+                            <span class="badge bg-success">Complete</span>
+                            {% if day.postop_verified %}
+                                <span class="badge" style="background-color: #6f42c1;">Verified</span>
+                            {% else %}
+                                <span class="badge" style="background-color: white; color: #0d6efd; border: 1px solid #0d6efd;">Not Verified</span>
+                            {% endif %}
+                        {% else %}
+                            <span class="badge bg-warning text-dark">In Progress</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr id="empty-row">
+                    <td colspan="4" class="text-center">All days complete!</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    
+    <!-- Calendar View -->
+    <div class="tab-pane fade" id="calendar-view" role="tabpanel">
+        <div class="calendar-nav d-flex justify-content-between align-items-center mb-3">
+            <button class="btn btn-outline-secondary" onclick="changeMonth(-1)">&lt; Prev</button>
+            <h5 id="calendar-month-year" class="mb-0"></h5>
+            <button class="btn btn-outline-secondary" onclick="changeMonth(1)">Next &gt;</button>
+        </div>
+        <div class="calendar-container">
+            <div class="calendar-header">
+                <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
+            </div>
+            <div class="calendar-body" id="calendar-body"></div>
+        </div>
+        <div class="calendar-legend mt-3">
+            <span class="legend-item"><span class="legend-color" style="background-color: #6f42c1;"></span> Verified</span>
+            <span class="legend-item"><span class="legend-color" style="background-color: #28a745;"></span> Complete</span>
+            <span class="legend-item"><span class="legend-color" style="background-color: #ffc107;"></span> In Progress</span>
+            <span class="legend-item"><span class="legend-color" style="background-color: #6c757d;"></span> Not Started</span>
+        </div>
+    </div>
+</div>
+
+<a href="{% url 'operations_admin' %}" class="btn btn-outline-primary mt-3">Back to Summary</a>
+
+<style>
+.calendar-container {
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    overflow: hidden;
+}
+.calendar-header {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+    font-weight: bold;
+    text-align: center;
+    padding: 8px 0;
+}
+.calendar-body {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+}
+.calendar-day {
+    min-height: 80px;
+    border: 1px solid #eee;
+    padding: 4px;
+    cursor: pointer;
+}
+.calendar-day.empty {
+    background-color: #f8f9fa;
+    cursor: default;
+}
+.calendar-day .day-number {
+    font-weight: bold;
+    margin-bottom: 4px;
+}
+.calendar-day .shift-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px;
+}
+.calendar-day .shift-badges .badge {
+    font-size: 0.7em;
+}
+.calendar-legend {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+}
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+.legend-color {
+    width: 16px;
+    height: 16px;
+    border-radius: 3px;
+}
+</style>
 
 <script>
+var currentDate = new Date();
+var incompleteDays = [
+    {% for day in incomplete_days %}
+    {
+        date: '{{ day.date|date:"Y-m-d" }}',
+        preop: {% if day.preop_complete is None %}null{% elif day.preop_complete %}true{% else %}false{% endif %},
+        midday: {% if day.midday_complete is None %}null{% elif day.midday_complete %}true{% else %}false{% endif %},
+        postop: {% if day.postop_complete is None %}null{% elif day.postop_complete %}true{% else %}false{% endif %},
+        preop_verified: {{ day.preop_verified|yesno:"true,false" }},
+        midday_verified: {{ day.midday_verified|yesno:"true,false" }},
+        postop_verified: {{ day.postop_verified|yesno:"true,false" }}
+    }{% if not forloop.last %},{% endif %}
+    {% endfor %}
+];
+var companyId = '{{ selected_company.companyid }}';
+
 function setFilter(filter) {
     const filters = ['incomplete', 'unverified', 'all'];
     filters.forEach(f => {
@@ -104,8 +223,77 @@ function setFilter(filter) {
     if (emptyRow) emptyRow.style.display = visibleCount === 0 ? '' : 'none';
 }
 
-// Initialize with incomplete filter
+function changeMonth(delta) {
+    currentDate.setMonth(currentDate.getMonth() + delta);
+    renderCalendar();
+}
+
+function renderCalendar() {
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+    
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                        'July', 'August', 'September', 'October', 'November', 'December'];
+    
+    document.getElementById('calendar-month-year').textContent = `${monthNames[month]} ${year}`;
+    
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const startingDay = firstDay.getDay();
+    const totalDays = lastDay.getDate();
+    
+    let html = '';
+    
+    for (let i = 0; i < startingDay; i++) {
+        html += '<div class="calendar-day empty"></div>';
+    }
+    
+    for (let day = 1; day <= totalDays; day++) {
+        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const dayData = incompleteDays.find(d => d.date === dateStr);
+        
+        let content = `<div class="day-number">${day}</div>`;
+        
+        if (dayData) {
+            content += '<div class="shift-badges">';
+            
+            if (dayData.preop_verified) content += '<span class="badge" style="background-color: #6f42c1;">Pre</span>';
+            else if (dayData.preop === true) content += '<span class="badge bg-success">Pre</span>';
+            else if (dayData.preop === false) content += '<span class="badge bg-warning text-dark">Pre</span>';
+            else content += '<span class="badge bg-secondary">Pre</span>';
+            
+            if (dayData.midday_verified) content += '<span class="badge" style="background-color: #6f42c1;">Mid</span>';
+            else if (dayData.midday === true) content += '<span class="badge bg-success">Mid</span>';
+            else if (dayData.midday === false) content += '<span class="badge bg-warning text-dark">Mid</span>';
+            else content += '<span class="badge bg-secondary">Mid</span>';
+            
+            if (dayData.postop_verified) content += '<span class="badge" style="background-color: #6f42c1;">Post</span>';
+            else if (dayData.postop === true) content += '<span class="badge bg-success">Post</span>';
+            else if (dayData.postop === false) content += '<span class="badge bg-warning text-dark">Post</span>';
+            else content += '<span class="badge bg-secondary">Post</span>';
+            
+            content += '</div>';
+        }
+        
+        html += `<div class="calendar-day" onclick="window.location.href='/operations/daily/?date=${dateStr}&company_id=${companyId}'">${content}</div>`;
+    }
+    
+    const remainingCells = (7 - ((startingDay + totalDays) % 7)) % 7;
+    for (let i = 0; i < remainingCells; i++) {
+        html += '<div class="calendar-day empty"></div>';
+    }
+    
+    document.getElementById('calendar-body').innerHTML = html;
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     setFilter('incomplete');
+    
+    const calendarTab = document.getElementById('calendar-tab');
+    if (calendarTab) {
+        calendarTab.addEventListener('shown.bs.tab', function() {
+            renderCalendar();
+        });
+    }
 });
 </script>

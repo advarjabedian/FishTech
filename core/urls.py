@@ -17,6 +17,7 @@ from .views import (
     toggle_user_company, toggle_user_admin,
     # Operations views
     operations_dashboard, inspection_form, operations_admin, print_sop_schedule,
+    generate_operational_report, generate_deviations_report, generate_bulk_report,
     # Operations API
     start_inspection, save_inspection, update_inspection_time, update_inspection_inspector,
     update_company_config, toggle_holiday, get_deviations, save_corrective_actions,
@@ -82,6 +83,11 @@ urlpatterns = [
     path('operations/inspection/<int:parent_id>/', inspection_form, name='inspection_form'),
     path('operations/admin/', operations_admin, name='operations_admin'),
     path('operations/print-sop-schedule/', print_sop_schedule, name='print_sop_schedule'),
+    
+    # Operations Reports
+    path('operations/report/operational/<int:parent_id>/', generate_operational_report, name='generate_operational_report'),
+    path('operations/report/deviations/<int:parent_id>/', generate_deviations_report, name='generate_deviations_report'),
+    path('operations/bulk-report/', generate_bulk_report, name='generate_bulk_report'),
     
     # Operations API
     path('api/operations/start-inspection/', start_inspection, name='start_inspection'),

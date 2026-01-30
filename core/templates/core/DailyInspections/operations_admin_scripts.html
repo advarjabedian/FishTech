@@ -1,5 +1,254 @@
 <script>
-// Calendar functionality
+// ============================================
+// UTILITY FUNCTIONS
+// ============================================
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// ============================================
+// CONFIG MANAGEMENT
+// ============================================
+function updateConfig(companyId, field, value) {
+    fetch('/api/operations/update-config/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({
+            company_id: companyId,
+            field: field,
+            value: value
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (!data.success) {
+            alert('Error updating config');
+        }
+    });
+}
+
+// ============================================
+// OPERATING DAYS MODAL
+// ============================================
+function showDaysModal(companyId, companyName, mon, tue, wed, thu, fri, sat, sun) {
+    document.getElementById('modal-company-id').value = companyId;
+    document.getElementById('modal-company-name').textContent = companyName;
+    
+    document.getElementById('modal-mon').checked = mon;
+    document.getElementById('modal-tue').checked = tue;
+    document.getElementById('modal-wed').checked = wed;
+    document.getElementById('modal-thu').checked = thu;
+    document.getElementById('modal-fri').checked = fri;
+    document.getElementById('modal-sat').checked = sat;
+    document.getElementById('modal-sun').checked = sun;
+    
+    new bootstrap.Modal(document.getElementById('daysModal')).show();
+}
+
+function saveDays() {
+    const companyId = document.getElementById('modal-company-id').value;
+    
+    const days = {
+        monday: document.getElementById('modal-mon').checked,
+        tuesday: document.getElementById('modal-tue').checked,
+        wednesday: document.getElementById('modal-wed').checked,
+        thursday: document.getElementById('modal-thu').checked,
+        friday: document.getElementById('modal-fri').checked,
+        saturday: document.getElementById('modal-sat').checked,
+        sunday: document.getElementById('modal-sun').checked
+    };
+    
+    fetch('/api/operations/update-config/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({
+            company_id: companyId,
+            field: 'operating_days',
+            value: days
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            bootstrap.Modal.getInstance(document.getElementById('daysModal')).hide();
+            location.reload();
+        } else {
+            alert('Error saving days');
+        }
+    });
+}
+
+// ============================================
+// SIGNATURE CAPTURE
+// ============================================
+var signatureCanvas, signatureCtx;
+var isDrawing = false;
+var currentSignatureCompanyId = null;
+var currentSignatureType = null;
+
+function initSignatureCanvas() {
+    signatureCanvas = document.getElementById('signatureCanvas');
+    if (!signatureCanvas) return;
+    
+    signatureCtx = signatureCanvas.getContext('2d');
+    
+    signatureCtx.fillStyle = 'white';
+    signatureCtx.fillRect(0, 0, signatureCanvas.width, signatureCanvas.height);
+    
+    // Mouse events
+    signatureCanvas.addEventListener('mousedown', startDrawing);
+    signatureCanvas.addEventListener('mousemove', draw);
+    signatureCanvas.addEventListener('mouseup', stopDrawing);
+    signatureCanvas.addEventListener('mouseout', stopDrawing);
+    
+    // Touch events
+    signatureCanvas.addEventListener('touchstart', handleTouchStart);
+    signatureCanvas.addEventListener('touchmove', handleTouchMove);
+    signatureCanvas.addEventListener('touchend', stopDrawing);
+}
+
+function startDrawing(e) {
+    isDrawing = true;
+    signatureCtx.beginPath();
+    const rect = signatureCanvas.getBoundingClientRect();
+    signatureCtx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
+}
+
+function draw(e) {
+    if (!isDrawing) return;
+    const rect = signatureCanvas.getBoundingClientRect();
+    signatureCtx.lineWidth = 2;
+    signatureCtx.lineCap = 'round';
+    signatureCtx.strokeStyle = 'black';
+    signatureCtx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
+    signatureCtx.stroke();
+    signatureCtx.beginPath();
+    signatureCtx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
+}
+
+function stopDrawing() {
+    isDrawing = false;
+    signatureCtx.beginPath();
+}
+
+function handleTouchStart(e) {
+    e.preventDefault();
+    const touch = e.touches[0];
+    const rect = signatureCanvas.getBoundingClientRect();
+    isDrawing = true;
+    signatureCtx.beginPath();
+    signatureCtx.moveTo(touch.clientX - rect.left, touch.clientY - rect.top);
+}
+
+function handleTouchMove(e) {
+    e.preventDefault();
+    if (!isDrawing) return;
+    const touch = e.touches[0];
+    const rect = signatureCanvas.getBoundingClientRect();
+    signatureCtx.lineWidth = 2;
+    signatureCtx.lineCap = 'round';
+    signatureCtx.strokeStyle = 'black';
+    signatureCtx.lineTo(touch.clientX - rect.left, touch.clientY - rect.top);
+    signatureCtx.stroke();
+    signatureCtx.beginPath();
+    signatureCtx.moveTo(touch.clientX - rect.left, touch.clientY - rect.top);
+}
+
+function clearSignature() {
+    if (!signatureCanvas) return;
+    signatureCtx.fillStyle = 'white';
+    signatureCtx.fillRect(0, 0, signatureCanvas.width, signatureCanvas.height);
+}
+
+function openSignatureCapture(companyId, type) {
+    currentSignatureCompanyId = companyId;
+    currentSignatureType = type;
+    
+    const select = document.getElementById(`${type}-select-${companyId}`);
+    const userName = select ? select.options[select.selectedIndex].text : 'User';
+    
+    document.getElementById('signatureUserName').textContent = userName;
+    document.getElementById('signatureModalTitle').textContent = 
+        type === 'verifier' ? 'Capture Verifier Signature' : 'Capture Monitor Signature';
+    
+    const header = document.getElementById('signatureModalHeader');
+    header.style.backgroundColor = type === 'verifier' ? '#0d6efd' : '#dc3545';
+    header.style.color = 'white';
+    
+    clearSignature();
+    new bootstrap.Modal(document.getElementById('signatureModal')).show();
+    setTimeout(initSignatureCanvas, 300);
+}
+
+function saveSignature() {
+    if (!signatureCanvas) return;
+    
+    const imageData = signatureCtx.getImageData(0, 0, signatureCanvas.width, signatureCanvas.height);
+    let isBlank = true;
+    for (let i = 0; i < imageData.data.length; i += 4) {
+        if (imageData.data[i] < 250 || imageData.data[i+1] < 250 || imageData.data[i+2] < 250) {
+            isBlank = false;
+            break;
+        }
+    }
+    
+    if (isBlank) {
+        alert('Please draw a signature first');
+        return;
+    }
+    
+    const signature = signatureCanvas.toDataURL('image/png');
+    const endpoint = currentSignatureType === 'verifier' 
+        ? '/api/operations/save-verifier-signature/'
+        : '/api/operations/save-monitor-signature/';
+    
+    fetch(endpoint, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({
+            company_id: currentSignatureCompanyId,
+            signature: signature
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            bootstrap.Modal.getInstance(document.getElementById('signatureModal')).hide();
+            const indicatorId = currentSignatureType === 'verifier' 
+                ? `sig-indicator-${currentSignatureCompanyId}`
+                : `monitor-sig-indicator-${currentSignatureCompanyId}`;
+            const indicator = document.getElementById(indicatorId);
+            if (indicator) indicator.style.display = 'inline';
+            alert('Signature saved successfully');
+        } else {
+            alert('Error saving signature');
+        }
+    });
+}
+
+// ============================================
+// CALENDAR VIEW (DRILLDOWN)
+// ============================================
 var currentDate = new Date();
 var incompleteDays = window.incompleteDays || [];
 
@@ -12,71 +261,78 @@ function renderCalendar() {
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
     
-    monthYear.textContent = new Date(year, month, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                        'July', 'August', 'September', 'October', 'November', 'December'];
+    monthYear.textContent = `${monthNames[month]} ${year}`;
     
     const firstDay = new Date(year, month, 1).getDay();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
     
-    calendarBody.innerHTML = '';
+    let html = '';
     
-    let dayCount = 1;
-    for (let i = 0; i < 6; i++) {
-        const row = document.createElement('div');
-        row.className = 'calendar-row';
+    // Empty cells before first day
+    for (let i = 0; i < firstDay; i++) {
+        html += '<div class="calendar-day empty"></div>';
+    }
+    
+    // Days of month
+    for (let day = 1; day <= daysInMonth; day++) {
+        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const dayData = incompleteDays.find(d => d.date === dateStr);
         
-        for (let j = 0; j < 7; j++) {
-            const cell = document.createElement('div');
-            cell.className = 'calendar-day';
+        let classes = 'calendar-day';
+        let content = `<div class="day-number">${day}</div>`;
+        
+        if (dayData) {
+            content += '<div class="shift-badges">';
             
-            if (i === 0 && j < firstDay) {
-                cell.classList.add('empty');
-            } else if (dayCount > daysInMonth) {
-                cell.classList.add('empty');
+            // Pre-Op
+            if (dayData.preop_verified) {
+                content += '<span class="badge" style="background-color: #6f42c1;">Pre</span>';
+            } else if (dayData.preop === true) {
+                content += '<span class="badge bg-success">Pre</span>';
+            } else if (dayData.preop === false) {
+                content += '<span class="badge bg-warning text-dark">Pre</span>';
             } else {
-                const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(dayCount).padStart(2, '0')}`;
-                const dayData = incompleteDays.find(d => d.date === dateStr);
-                
-                cell.innerHTML = `<div class="day-number">${dayCount}</div>`;
-                
-                if (dayData) {
-                    const statusDiv = document.createElement('div');
-                    statusDiv.className = 'day-status';
-                    
-                    // Check verification status first (purple)
-                    if ((dayData.preop && dayData.preop_verified) || 
-                        (dayData.midday && dayData.midday_verified) || 
-                        (dayData.postop && dayData.postop_verified)) {
-                        statusDiv.style.backgroundColor = '#6f42c1';
-                    }
-                    // Then check completion (green)
-                    else if (dayData.preop === true || dayData.midday === true || dayData.postop === true) {
-                        statusDiv.style.backgroundColor = '#28a745';
-                    }
-                    // In progress (yellow)
-                    else if (dayData.preop === false || dayData.midday === false || dayData.postop === false) {
-                        statusDiv.style.backgroundColor = '#ffc107';
-                    }
-                    // Not started (gray)
-                    else {
-                        statusDiv.style.backgroundColor = '#6c757d';
-                    }
-                    
-                    cell.appendChild(statusDiv);
-                    cell.style.cursor = 'pointer';
-                    cell.onclick = () => {
-                        window.location.href = `/operations/daily/?date=${dateStr}&company_id=${window.companyId}`;
-                    };
-                }
-                
-                dayCount++;
+                content += '<span class="badge bg-secondary">Pre</span>';
             }
             
-            row.appendChild(cell);
+            // Mid-Day
+            if (dayData.midday_verified) {
+                content += '<span class="badge" style="background-color: #6f42c1;">Mid</span>';
+            } else if (dayData.midday === true) {
+                content += '<span class="badge bg-success">Mid</span>';
+            } else if (dayData.midday === false) {
+                content += '<span class="badge bg-warning text-dark">Mid</span>';
+            } else {
+                content += '<span class="badge bg-secondary">Mid</span>';
+            }
+            
+            // Post-Op
+            if (dayData.postop_verified) {
+                content += '<span class="badge" style="background-color: #6f42c1;">Post</span>';
+            } else if (dayData.postop === true) {
+                content += '<span class="badge bg-success">Post</span>';
+            } else if (dayData.postop === false) {
+                content += '<span class="badge bg-warning text-dark">Post</span>';
+            } else {
+                content += '<span class="badge bg-secondary">Post</span>';
+            }
+            
+            content += '</div>';
+            classes += ' clickable';
         }
         
-        calendarBody.appendChild(row);
-        if (dayCount > daysInMonth) break;
+        html += `<div class="${classes}" onclick="window.location.href='/operations/daily/?date=${dateStr}&company_id=${window.companyId}'">${content}</div>`;
     }
+    
+    // Empty cells after last day
+    const remainingCells = (7 - ((firstDay + daysInMonth) % 7)) % 7;
+    for (let i = 0; i < remainingCells; i++) {
+        html += '<div class="calendar-day empty"></div>';
+    }
+    
+    calendarBody.innerHTML = html;
 }
 
 function changeMonth(delta) {
@@ -84,6 +340,9 @@ function changeMonth(delta) {
     renderCalendar();
 }
 
+// ============================================
+// FILTER FUNCTIONS (DRILLDOWN)
+// ============================================
 function setFilter(filter) {
     window.currentFilter = filter;
     
@@ -116,65 +375,13 @@ function setFilter(filter) {
     if (emptyRow) emptyRow.style.display = visibleCount === 0 ? '' : 'none';
 }
 
-// Signature canvas functionality
-var signatureCanvas, signatureCtx;
-
-function initSignatureCanvas() {
-    const canvases = document.querySelectorAll('.signature-canvas');
-    canvases.forEach(canvas => {
-        const ctx = canvas.getContext('2d');
-        let isDrawing = false;
-        
-        ctx.fillStyle = 'white';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        
-        canvas.addEventListener('mousedown', (e) => {
-            isDrawing = true;
-            ctx.beginPath();
-            ctx.moveTo(e.offsetX, e.offsetY);
-        });
-        
-        canvas.addEventListener('mousemove', (e) => {
-            if (!isDrawing) return;
-            ctx.lineWidth = 2;
-            ctx.lineCap = 'round';
-            ctx.strokeStyle = 'black';
-            ctx.lineTo(e.offsetX, e.offsetY);
-            ctx.stroke();
-        });
-        
-        canvas.addEventListener('mouseup', () => {
-            isDrawing = false;
-        });
-        
-        canvas.addEventListener('mouseout', () => {
-            isDrawing = false;
-        });
-    });
-}
-
-function getCookie(name) {
-    let cookieValue = null;
-    if (document.cookie && document.cookie !== '') {
-        const cookies = document.cookie.split(';');
-        for (let i = 0; i < cookies.length; i++) {
-            const cookie = cookies[i].trim();
-            if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                break;
-            }
-        }
-    }
-    return cookieValue;
-}
-
-// SOP Editor functionality
-// SOP Editor functionality
+// ============================================
+// SOP EDITOR
+// ============================================
 function openSOPEditor() {
     const select = document.getElementById('sop-company-select');
     select.innerHTML = '<option value="">-- Loading companies --</option>';
     
-    // Fetch companies from API
     fetch('/api/operations/get-companies/')
         .then(response => response.json())
         .then(data => {
@@ -188,7 +395,6 @@ function openSOPEditor() {
                 });
             } else {
                 select.innerHTML = '<option value="">-- Error loading companies --</option>';
-                console.error('Failed to load companies:', data.error);
             }
         })
         .catch(error => {
@@ -202,7 +408,7 @@ function openSOPEditor() {
 function loadSOPList() {
     const companyId = document.getElementById('sop-company-select').value;
     if (!companyId) {
-        document.getElementById('sop-tbody').innerHTML = '<tr><td colspan="9" class="text-center">Select a company to load SOPs</td></tr>';
+        document.getElementById('sop-tbody').innerHTML = '<tr><td colspan="10" class="text-center">Select a company to load SOPs</td></tr>';
         return;
     }
     
@@ -210,10 +416,7 @@ function loadSOPList() {
     fetch(`/api/operations/zones/?company_id=${companyId}`)
         .then(response => response.json())
         .then(data => {
-            if (!data.success) {
-                console.error('Failed to load zones');
-                return;
-            }
+            if (!data.success) return;
             
             const filterSelect = document.getElementById('sop-zone-filter');
             const newSopZone = document.getElementById('new-sop-zone');
@@ -222,13 +425,8 @@ function loadSOPList() {
             newSopZone.innerHTML = '<option value="">-- Select Zone --</option>';
             
             data.zones.forEach(zone => {
-                const filterOption = document.createElement('option');
-                filterOption.value = zone.id;
-                filterOption.textContent = zone.name;
-                filterSelect.appendChild(filterOption);
-                
-                const newOption = filterOption.cloneNode(true);
-                newSopZone.appendChild(newOption);
+                filterSelect.innerHTML += `<option value="${zone.id}">${zone.name}</option>`;
+                newSopZone.innerHTML += `<option value="${zone.id}">${zone.name}</option>`;
             });
         });
     
@@ -236,35 +434,39 @@ function loadSOPList() {
     fetch(`/api/operations/sop-list/?company_id=${companyId}`)
         .then(response => response.json())
         .then(data => {
-            if (!data.success) {
-                console.error('Failed to load SOPs');
-                return;
-            }
+            if (!data.success) return;
             
             const tbody = document.getElementById('sop-tbody');
             if (data.sops.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="9" class="text-center">No SOPs found</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="10" class="text-center">No SOPs found</td></tr>';
                 return;
             }
             
             tbody.innerHTML = '';
             data.sops.forEach(sop => {
+                const startDate = sop.created_at ? sop.created_at.split('T')[0] : '';
                 const row = document.createElement('tr');
                 row.dataset.zoneId = sop.zone_id || '';
                 row.innerHTML = `
-                    <td>${sop.sop_did}</td>
-                    <td>${sop.description || ''}</td>
-                    <td data-zone-id="${sop.zone_id || ''}">${sop.zone_name || '--'}</td>
-                    <td class="text-center">${sop.pre ? '<i class="bi bi-check-lg text-success"></i>' : ''}</td>
-                    <td class="text-center">${sop.mid ? '<i class="bi bi-check-lg text-success"></i>' : ''}</td>
-                    <td class="text-center">${sop.post ? '<i class="bi bi-check-lg text-success"></i>' : ''}</td>
-                    <td class="text-center">${sop.input_required ? '<i class="bi bi-check-lg text-success"></i>' : ''}</td>
-                    <td class="text-center">${sop.image_required ? '<i class="bi bi-check-lg text-success"></i>' : ''}</td>
-                    <td>
-                        <button class="btn btn-sm btn-outline-danger" onclick="deleteSOP(${sop.sop_did})"><i class="bi bi-trash"></i></button>
-                    </td>
+                    <td>${sop.sop_did || ''}</td>
+                    <td contenteditable="true" class="editable-cell" data-field="description" data-sop-id="${sop.sop_did}">${sop.description || ''}</td>
+                    <td>${sop.zone_name || ''}</td>
+                    <td><input type="date" class="form-control form-control-sm" value="${startDate}" onchange="updateSOPField(${sop.sop_did}, 'created_at', this.value)"></td>
+                    <td class="text-center"><input type="checkbox" ${sop.pre ? 'checked' : ''} onchange="toggleSOPField(${sop.sop_did}, 'pre', this.checked)"></td>
+                    <td class="text-center"><input type="checkbox" ${sop.mid ? 'checked' : ''} onchange="toggleSOPField(${sop.sop_did}, 'mid', this.checked)"></td>
+                    <td class="text-center"><input type="checkbox" ${sop.post ? 'checked' : ''} onchange="toggleSOPField(${sop.sop_did}, 'post', this.checked)"></td>
+                    <td class="text-center"><input type="checkbox" ${sop.input_required ? 'checked' : ''} onchange="toggleSOPField(${sop.sop_did}, 'input_required', this.checked)"></td>
+                    <td class="text-center"><input type="checkbox" ${sop.image_required ? 'checked' : ''} onchange="toggleSOPField(${sop.sop_did}, 'image_required', this.checked)"></td>
+                    <td><button class="btn btn-sm btn-outline-danger" onclick="deleteSOP(${sop.sop_did})"><i class="bi bi-trash"></i></button></td>
                 `;
                 tbody.appendChild(row);
+            });
+            
+            // Add blur event for editable cells
+            document.querySelectorAll('.editable-cell').forEach(cell => {
+                cell.addEventListener('blur', function() {
+                    updateSOPField(this.dataset.sopId, this.dataset.field, this.textContent.trim());
+                });
             });
         });
 }
@@ -274,16 +476,59 @@ function filterSOPByZone() {
     const rows = document.querySelectorAll('#sop-tbody tr');
     
     rows.forEach(row => {
-        if (!zoneId) {
+        if (!zoneId || row.dataset.zoneId === zoneId) {
             row.style.display = '';
         } else {
-            const rowZoneId = row.dataset.zoneId;
-            if (rowZoneId === zoneId) {
-                row.style.display = '';
-            } else {
-                row.style.display = 'none';
-            }
+            row.style.display = 'none';
         }
+    });
+}
+
+function toggleSOPField(sopId, field, checked) {
+    fetch('/api/operations/sop-update/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({ sop_did: sopId, field: field, value: checked })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (!data.success) alert('Error updating SOP');
+    });
+}
+
+function updateSOPField(sopId, field, value) {
+    fetch('/api/operations/sop-update/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({ sop_did: sopId, field: field, value: value })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (!data.success) alert('Error updating SOP');
+    });
+}
+
+function deleteSOP(sopId) {
+    if (!confirm('Are you sure you want to delete this SOP?')) return;
+    
+    fetch('/api/operations/sop-delete/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({ sop_did: sopId })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) loadSOPList();
+        else alert('Error: ' + (data.error || 'Failed to delete SOP'));
     });
 }
 
@@ -293,14 +538,12 @@ function showAddSOPForm() {
         alert('Please select a company first');
         return;
     }
-    
     document.getElementById('add-sop-form').style.display = 'block';
     document.getElementById('add-zone-form').style.display = 'none';
 }
 
 function hideAddSOPForm() {
     document.getElementById('add-sop-form').style.display = 'none';
-    // Clear form
     document.getElementById('new-sop-id').value = '';
     document.getElementById('new-sop-description').value = '';
     document.getElementById('new-sop-zone').value = '';
@@ -309,6 +552,8 @@ function hideAddSOPForm() {
     document.getElementById('new-sop-post').checked = false;
     document.getElementById('new-sop-input-required').checked = false;
     document.getElementById('new-sop-image-required').checked = false;
+    const startDate = document.getElementById('new-sop-start-date');
+    if (startDate) startDate.value = '';
 }
 
 function saveNewSOP() {
@@ -316,40 +561,31 @@ function saveNewSOP() {
     const sopId = document.getElementById('new-sop-id').value;
     const description = document.getElementById('new-sop-description').value;
     const zoneId = document.getElementById('new-sop-zone').value;
-    const pre = document.getElementById('new-sop-pre').checked;
-    const mid = document.getElementById('new-sop-mid').checked;
-    const post = document.getElementById('new-sop-post').checked;
-    const inputRequired = document.getElementById('new-sop-input-required').checked;
-    const imageRequired = document.getElementById('new-sop-image-required').checked;
-    
-    if (!sopId) {
-        alert('Please enter an SOP ID');
-        return;
-    }
     
     if (!zoneId) {
         alert('Please select a zone');
         return;
     }
     
-    const csrfToken = getCookie('csrftoken');
+    const startDateEl = document.getElementById('new-sop-start-date');
     
     fetch('/api/operations/sop-create/', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'X-CSRFToken': csrfToken
+            'X-CSRFToken': getCookie('csrftoken')
         },
         body: JSON.stringify({
             company_id: companyId,
-            sop_did: sopId,
+            sop_did: sopId || null,
             description: description,
             zone_id: zoneId,
-            pre: pre,
-            mid: mid,
-            post: post,
-            input_required: inputRequired,
-            image_required: imageRequired
+            pre: document.getElementById('new-sop-pre').checked,
+            mid: document.getElementById('new-sop-mid').checked,
+            post: document.getElementById('new-sop-post').checked,
+            input_required: document.getElementById('new-sop-input-required').checked,
+            image_required: document.getElementById('new-sop-image-required').checked,
+            start_date: startDateEl ? startDateEl.value : null
         })
     })
     .then(response => response.json())
@@ -360,36 +596,6 @@ function saveNewSOP() {
         } else {
             alert('Error: ' + (data.error || 'Failed to save SOP'));
         }
-    })
-    .catch(error => {
-        alert('Error saving SOP: ' + error);
-    });
-}
-
-function deleteSOP(sopId) {
-    if (!confirm('Are you sure you want to delete this SOP?')) {
-        return;
-    }
-    
-    const csrfToken = getCookie('csrftoken');
-    
-    fetch('/api/operations/sop-delete/', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': csrfToken
-        },
-        body: JSON.stringify({
-            sop_did: sopId
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            loadSOPList();
-        } else {
-            alert('Error: ' + (data.error || 'Failed to delete SOP'));
-        }
     });
 }
 
@@ -399,7 +605,6 @@ function showAddZoneForm() {
         alert('Please select a company first');
         return;
     }
-    
     document.getElementById('add-zone-form').style.display = 'block';
     document.getElementById('add-sop-form').style.display = 'none';
 }
@@ -418,13 +623,11 @@ function saveNewZone() {
         return;
     }
     
-    const csrfToken = getCookie('csrftoken');
-    
     fetch('/api/operations/zone-create/', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'X-CSRFToken': csrfToken
+            'X-CSRFToken': getCookie('csrftoken')
         },
         body: JSON.stringify({
             company_id: companyId,
@@ -435,19 +638,206 @@ function saveNewZone() {
     .then(data => {
         if (data.success) {
             hideAddZoneForm();
-            loadSOPList(); // Reload to refresh zone dropdowns
+            loadSOPList();
         } else {
             alert('Error: ' + (data.error || 'Failed to save zone'));
         }
-    })
-    .catch(error => {
-        alert('Error saving zone: ' + error);
     });
 }
 
-function openBulkReportModal() {
-    alert('Bulk Reports will be implemented');
+function printSOPSchedule() {
+    const companyId = document.getElementById('sop-company-select').value;
+    if (!companyId) {
+        alert('Please select a company first');
+        return;
+    }
+    window.open(`/operations/print-sop-schedule/?company_id=${companyId}`, '_blank');
 }
+
+// ============================================
+// BULK REPORTS
+// ============================================
+var bulkCurrentDate = new Date();
+var bulkCalendarData = {};
+var selectedDays = new Set();
+
+function openBulkReportModal() {
+    selectedDays.clear();
+    updateSelectedCount();
+    
+    const select = document.getElementById('bulk-report-company');
+    select.innerHTML = '<option value="">-- Loading companies --</option>';
+    
+    fetch('/api/operations/get-companies/')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                select.innerHTML = '<option value="">-- Select Company --</option>';
+                data.companies.forEach(company => {
+                    select.innerHTML += `<option value="${company.id}">${company.name}</option>`;
+                });
+            }
+        });
+    
+    new bootstrap.Modal(document.getElementById('bulkReportModal')).show();
+}
+
+function loadBulkReportCalendar() {
+    const companyId = document.getElementById('bulk-report-company').value;
+    if (!companyId) {
+        document.getElementById('bulk-calendar-body').innerHTML = '<div class="text-center text-muted p-4" style="grid-column: span 7;">Select a company</div>';
+        return;
+    }
+    
+    fetch(`/api/operations/get-calendar-data/?company_id=${companyId}`)
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                bulkCalendarData = data.calendar_data;
+                renderBulkCalendar();
+            }
+        });
+}
+
+function renderBulkCalendar() {
+    const year = bulkCurrentDate.getFullYear();
+    const month = bulkCurrentDate.getMonth();
+    
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                        'July', 'August', 'September', 'October', 'November', 'December'];
+    
+    document.getElementById('bulk-calendar-month-year').textContent = `${monthNames[month]} ${year}`;
+    
+    const firstDay = new Date(year, month, 1).getDay();
+    const totalDays = new Date(year, month + 1, 0).getDate();
+    
+    let html = '';
+    
+    for (let i = 0; i < firstDay; i++) {
+        html += '<div class="bulk-calendar-day empty"></div>';
+    }
+    
+    for (let day = 1; day <= totalDays; day++) {
+        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const dayData = bulkCalendarData[dateStr] || {};
+        const hasCompleted = dayData.preop === true || dayData.midday === true || dayData.postop === true;
+        const hasVerified = dayData.preop_verified || dayData.midday_verified || dayData.postop_verified;
+        const isSelected = selectedDays.has(dateStr);
+        
+        let classes = 'bulk-calendar-day';
+        if (isSelected) classes += ' selected';
+        else if (hasVerified) classes += ' has-verified';
+        else if (hasCompleted) classes += ' has-completed';
+        if (!dayData.is_operating_day) classes += ' no-data';
+        
+        let badges = '<div class="day-badges">';
+        if (dayData.preop_verified) badges += '<span class="badge" style="background-color: #6f42c1;">Pre</span>';
+        else if (dayData.preop === true) badges += '<span class="badge bg-success">Pre</span>';
+        else if (dayData.preop === false) badges += '<span class="badge bg-warning text-dark">Pre</span>';
+        
+        if (dayData.midday_verified) badges += '<span class="badge" style="background-color: #6f42c1;">Mid</span>';
+        else if (dayData.midday === true) badges += '<span class="badge bg-success">Mid</span>';
+        else if (dayData.midday === false) badges += '<span class="badge bg-warning text-dark">Mid</span>';
+        
+        if (dayData.postop_verified) badges += '<span class="badge" style="background-color: #6f42c1;">Post</span>';
+        else if (dayData.postop === true) badges += '<span class="badge bg-success">Post</span>';
+        else if (dayData.postop === false) badges += '<span class="badge bg-warning text-dark">Post</span>';
+        badges += '</div>';
+        
+        const clickable = hasCompleted ? `onclick="toggleDaySelection('${dateStr}')"` : '';
+        
+        html += `<div class="${classes}" data-date="${dateStr}" ${clickable}>
+            <div class="day-number">${day}</div>
+            ${badges}
+        </div>`;
+    }
+    
+    const remainingCells = (7 - ((firstDay + totalDays) % 7)) % 7;
+    for (let i = 0; i < remainingCells; i++) {
+        html += '<div class="bulk-calendar-day empty"></div>';
+    }
+    
+    document.getElementById('bulk-calendar-body').innerHTML = html;
+}
+
+function changeBulkMonth(delta) {
+    bulkCurrentDate.setMonth(bulkCurrentDate.getMonth() + delta);
+    renderBulkCalendar();
+}
+
+function toggleDaySelection(dateStr) {
+    if (selectedDays.has(dateStr)) selectedDays.delete(dateStr);
+    else selectedDays.add(dateStr);
+    
+    const el = document.querySelector(`.bulk-calendar-day[data-date="${dateStr}"]`);
+    if (el) el.classList.toggle('selected');
+    
+    updateSelectedCount();
+}
+
+function selectAllDays() {
+    Object.keys(bulkCalendarData).forEach(dateStr => {
+        const dayData = bulkCalendarData[dateStr];
+        if (dayData.preop_verified || dayData.midday_verified || dayData.postop_verified) {
+            selectedDays.add(dateStr);
+        }
+    });
+    renderBulkCalendar();
+    updateSelectedCount();
+}
+
+function clearAllDays() {
+    selectedDays.clear();
+    renderBulkCalendar();
+    updateSelectedCount();
+}
+
+function updateSelectedCount() {
+    const count = selectedDays.size;
+    document.getElementById('selected-days-count').textContent = `${count} day${count !== 1 ? 's' : ''} selected`;
+    document.getElementById('generate-btn').disabled = count === 0;
+}
+
+function generateBulkReports() {
+    const companyId = document.getElementById('bulk-report-company').value;
+    const includeOperational = document.getElementById('include-operational').checked;
+    const includeDeviations = document.getElementById('include-deviations').checked;
+    
+    if (!companyId || selectedDays.size === 0) {
+        alert('Please select a company and at least one day');
+        return;
+    }
+    
+    if (!includeOperational && !includeDeviations) {
+        alert('Please select at least one report type');
+        return;
+    }
+    
+    const dates = Array.from(selectedDays).sort();
+    const params = new URLSearchParams({
+        company_id: companyId,
+        dates: dates.join(','),
+        include_operational: includeOperational ? '1' : '0',
+        include_deviations: includeDeviations ? '1' : '0'
+    });
+    
+    window.open(`/operations/bulk-report/?${params.toString()}`, '_blank');
+}
+
+// ============================================
+// INITIALIZE ON PAGE LOAD
+// ============================================
+document.addEventListener('DOMContentLoaded', function() {
+    initSignatureCanvas();
+    
+    // Initialize calendar tab listener if present
+    const calendarTab = document.getElementById('calendar-tab');
+    if (calendarTab) {
+        calendarTab.addEventListener('shown.bs.tab', function() {
+            renderCalendar();
+        });
+    }
+});
 </script>
 
 <style>
@@ -462,50 +852,56 @@ function openBulkReportModal() {
 .calendar-header {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
-    gap: 10px;
+    gap: 5px;
     margin-bottom: 10px;
     font-weight: bold;
     text-align: center;
 }
 
 .calendar-body {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-
-.calendar-row {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
-    gap: 10px;
+    gap: 5px;
 }
 
 .calendar-day {
-    aspect-ratio: 1;
+    min-height: 80px;
     border: 1px solid #dee2e6;
     border-radius: 4px;
     padding: 5px;
-    position: relative;
     background: white;
+    cursor: pointer;
+}
+
+.calendar-day:hover {
+    background: #f8f9fa;
 }
 
 .calendar-day.empty {
     background: #f8f9fa;
     border-color: #e9ecef;
+    cursor: default;
+}
+
+.calendar-day.clickable {
+    cursor: pointer;
 }
 
 .day-number {
     font-size: 14px;
-    font-weight: 500;
+    font-weight: 600;
+    margin-bottom: 4px;
 }
 
-.day-status {
-    position: absolute;
-    bottom: 5px;
-    left: 5px;
-    right: 5px;
-    height: 8px;
-    border-radius: 2px;
+.shift-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px;
+}
+
+.shift-badges .badge {
+    font-size: 0.65em;
+    padding: 2px 4px;
 }
 
 .calendar-legend {
@@ -513,6 +909,7 @@ function openBulkReportModal() {
     gap: 20px;
     justify-content: center;
     flex-wrap: wrap;
+    margin-top: 15px;
 }
 
 .legend-item {
@@ -526,5 +923,82 @@ function openBulkReportModal() {
     height: 20px;
     border-radius: 3px;
     border: 1px solid #dee2e6;
+}
+
+/* Bulk Calendar styles */
+.bulk-calendar-container {
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.bulk-calendar-header {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+    font-weight: bold;
+    text-align: center;
+    padding: 8px 0;
+}
+
+.bulk-calendar-body {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+}
+
+.bulk-calendar-day {
+    min-height: 70px;
+    border: 1px solid #eee;
+    padding: 4px;
+    cursor: default;
+}
+
+.bulk-calendar-day.empty {
+    background-color: #f8f9fa;
+}
+
+.bulk-calendar-day.no-data {
+    background-color: #f8f9fa;
+    opacity: 0.6;
+}
+
+.bulk-calendar-day.has-completed {
+    background-color: #d4edda;
+    cursor: pointer;
+}
+
+.bulk-calendar-day.has-verified {
+    background-color: #e2d9f3;
+    cursor: pointer;
+}
+
+.bulk-calendar-day.selected {
+    background-color: #0d6efd !important;
+    color: white;
+}
+
+.bulk-calendar-day .day-number {
+    font-weight: bold;
+    margin-bottom: 4px;
+}
+
+.bulk-calendar-day .day-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px;
+}
+
+.bulk-calendar-day .day-badges .badge {
+    font-size: 0.65em;
+    padding: 2px 4px;
+}
+
+/* Signature canvas */
+#signatureCanvas {
+    border: 2px solid #000;
+    border-radius: 4px;
+    cursor: crosshair;
+    touch-action: none;
 }
 </style>

@@ -6,7 +6,7 @@ from django.db.models import Q, Count
 from django.contrib.auth.models import User
 from core.models import (
     SOP, SOPParent, SOPChild, Company, CompanyOperationConfig, 
-    CompanyHoliday, Zone, TenantUser
+    CompanyHoliday, Zone, TenantUser, set_current_tenant
 )
 from datetime import datetime, timedelta, date
 import json
@@ -15,7 +15,19 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def ensure_tenant(view_func):
+    """Decorator to set tenant for TenantManager"""
+    from functools import wraps
+    @wraps(view_func)
+    def wrapper(request, *args, **kwargs):
+        if request.tenant:
+            set_current_tenant(request.tenant)
+        return view_func(request, *args, **kwargs)
+    return wrapper
+
+
 @login_required
+@ensure_tenant
 def operations_dashboard(request):
     """Main operations dashboard view"""
     if not request.tenant:
@@ -33,8 +45,10 @@ def operations_dashboard(request):
     elif selected_company_id:
         selected_company = companies.filter(companyid=selected_company_id).first()
     
-    # Get SOPs for the selected company
-    sops = SOP.objects.filter(company_id=selected_company_id).order_by('sop_did') if selected_company_id else []
+    # Get SOPs for the selected company, filtered by date (only SOPs that existed on selected date)
+    sops = SOP.objects.filter(company_id=selected_company_id).filter(
+        Q(created_at__isnull=True) | Q(created_at__lte=selected_date)
+    ).order_by('sop_did') if selected_company_id else []
     
     pre_op_count = sops.filter(pre=True).count() if sops else 0
     mid_day_count = sops.filter(mid=True).count() if sops else 0
@@ -54,13 +68,19 @@ def operations_dashboard(request):
         inspector = User.objects.filter(id=parent.user_inspected_id).first()
         inspector_name = f"{inspector.first_name} {inspector.last_name}" if inspector else "Unknown"
         
-        # Get valid SOP IDs for this shift
+        # Get valid SOP IDs for this shift (filtered by date)
         if parent.shift == 'Pre-Op':
-            valid_sop_ids = list(sops.filter(pre=True).values_list('sop_did', flat=True))
+            valid_sop_ids = list(SOP.objects.filter(company_id=selected_company_id, pre=True).filter(
+                Q(created_at__isnull=True) | Q(created_at__lte=parent.date)
+            ).values_list('sop_did', flat=True))
         elif parent.shift == 'Mid-Day':
-            valid_sop_ids = list(sops.filter(mid=True).values_list('sop_did', flat=True))
+            valid_sop_ids = list(SOP.objects.filter(company_id=selected_company_id, mid=True).filter(
+                Q(created_at__isnull=True) | Q(created_at__lte=parent.date)
+            ).values_list('sop_did', flat=True))
         else:
-            valid_sop_ids = list(sops.filter(post=True).values_list('sop_did', flat=True))
+            valid_sop_ids = list(SOP.objects.filter(company_id=selected_company_id, post=True).filter(
+                Q(created_at__isnull=True) | Q(created_at__lte=parent.date)
+            ).values_list('sop_did', flat=True))
         
         items_completed = parent.children.filter(
             Q(passed=True) | Q(failed=True),
@@ -179,6 +199,7 @@ def operations_dashboard(request):
 
 
 @login_required
+@ensure_tenant
 def inspection_form(request, parent_id):
     """Inspection form view"""
     if not request.tenant:
@@ -186,13 +207,19 @@ def inspection_form(request, parent_id):
     
     sop_parent = get_object_or_404(SOPParent, id=parent_id)
     
-    # Get SOPs for this company and shift
+    # Get SOPs for this company and shift (only SOPs that existed on inspection date)
     if sop_parent.shift == 'Pre-Op':
-        sops = SOP.objects.filter(company_id=sop_parent.company_id, pre=True).order_by('zone__name', 'sop_did')
+        sops = SOP.objects.filter(company_id=sop_parent.company_id, pre=True).filter(
+            Q(created_at__isnull=True) | Q(created_at__lte=sop_parent.date)
+        ).order_by('zone__name', 'sop_did')
     elif sop_parent.shift == 'Mid-Day':
-        sops = SOP.objects.filter(company_id=sop_parent.company_id, mid=True).order_by('zone__name', 'sop_did')
+        sops = SOP.objects.filter(company_id=sop_parent.company_id, mid=True).filter(
+            Q(created_at__isnull=True) | Q(created_at__lte=sop_parent.date)
+        ).order_by('zone__name', 'sop_did')
     else:
-        sops = SOP.objects.filter(company_id=sop_parent.company_id, post=True).order_by('zone__name', 'sop_did')
+        sops = SOP.objects.filter(company_id=sop_parent.company_id, post=True).filter(
+            Q(created_at__isnull=True) | Q(created_at__lte=sop_parent.date)
+        ).order_by('zone__name', 'sop_did')
     
     # Get existing child records
     existing_children = {child.sop_did: child for child in sop_parent.children.all()}
@@ -237,19 +264,25 @@ def inspection_form(request, parent_id):
     return render(request, 'core/DailyInspections/inspection_form.html', context)
 
 
+
 @login_required
+@ensure_tenant
 def operations_admin(request):
-    """Operations admin dashboard"""
+    """Admin view for operations"""
     if not request.tenant:
         return redirect('login')
     
+    # Set tenant for TenantManager filtering
+    from core.models import set_current_tenant
+    set_current_tenant(request.tenant)
+    
     companies = Company.objects.all().order_by('companyname')
-    # Get users for current tenant only
+    
+    # Get users for dropdowns
     tenant_users = TenantUser.objects.filter(
         tenant=request.tenant
     ).select_related('user').order_by('user__first_name', 'user__last_name')
-
-    users = [{'userid': tu.user.id, 'name': tu.user.get_full_name() or tu.user.username} for tu in tenant_users]
+    users = [{'id': tu.user.id, 'name': tu.user.get_full_name() or tu.user.username} for tu in tenant_users]
     
     selected_company_id = request.GET.get('company_id')
     filter_type = request.GET.get('filter', 'incomplete')
@@ -346,22 +379,37 @@ def operations_admin(request):
                 
                 current += timedelta(days=1)
             
+            # Ensure config exists
+            if not config:
+                config = CompanyOperationConfig.objects.create(
+                    tenant=request.tenant,
+                    company=company
+                )
+            
             company_stats.append({
-                'companyid': company.companyid,
-                'companyname': company.companyname,
+                'id': company.companyid,
+                'name': company.companyname,
                 'incomplete_count': incomplete_count,
                 'unverified_count': unverified_count,
+                'config': config,
             })
         
+        # Calculate totals
+        total_incomplete = sum(c['incomplete_count'] for c in company_stats)
+        total_unverified = sum(c['unverified_count'] for c in company_stats)
+        
         context = {
-            'companies': company_stats,
+            'company_stats': company_stats,
             'users': users,
+            'total_incomplete': total_incomplete,
+            'total_unverified': total_unverified,
         }
     
     return render(request, 'core/DailyInspections/operations_admin.html', context)
 
 
 @login_required
+@ensure_tenant
 def print_sop_schedule(request):
     """Print SOP schedule"""
     if not request.tenant:
@@ -384,6 +432,7 @@ def print_sop_schedule(request):
 
 @require_POST
 @login_required
+@ensure_tenant
 def start_inspection(request):
     """Create a new inspection parent record"""
     if not request.tenant:
@@ -429,6 +478,7 @@ def start_inspection(request):
 
 @require_POST
 @login_required
+@ensure_tenant
 def save_inspection(request, parent_id):
     """Save inspection data"""
     if not request.tenant:
@@ -474,6 +524,7 @@ def save_inspection(request, parent_id):
 
 @require_POST
 @login_required
+@ensure_tenant
 def update_inspection_time(request, parent_id):
     """Update inspection time"""
     if not request.tenant:
@@ -492,6 +543,7 @@ def update_inspection_time(request, parent_id):
 
 @require_POST
 @login_required
+@ensure_tenant
 def update_inspection_inspector(request, parent_id):
     """Update inspection inspector"""
     if not request.tenant:
@@ -509,6 +561,7 @@ def update_inspection_inspector(request, parent_id):
     
 
 @login_required
+@ensure_tenant
 def generate_operational_report(request, parent_id):
     """Generate operational report PDF - placeholder"""
     if not request.tenant:
@@ -519,6 +572,7 @@ def generate_operational_report(request, parent_id):
 
 
 @login_required
+@ensure_tenant
 def generate_deviations_report(request, parent_id):
     """Generate deviations report PDF - placeholder"""
     if not request.tenant:
@@ -529,6 +583,7 @@ def generate_deviations_report(request, parent_id):
 
 
 @login_required
+@ensure_tenant
 def generate_bulk_report(request):
     """Generate bulk reports PDF - placeholder"""
     if not request.tenant:
