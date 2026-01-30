@@ -98,7 +98,17 @@
                                     </button>
                                 </div>
                                 <div class="col-md-8">
-                                    <h5>{{ company.companyname }}</h5>
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <h5>{{ company.companyname }}</h5>
+                                        <div class="btn-group btn-group-sm">
+                                            <button class="btn btn-outline-warning" onclick="editCompany({{ company.companyid }}, '{{ company.companyname|escapejs }}', '{{ company.address|escapejs }}', '{{ company.city|escapejs }}', '{{ company.state|escapejs }}', '{{ company.zipcode|escapejs }}')">
+                                                <i class="bi bi-pencil"></i>
+                                            </button>
+                                            <button class="btn btn-outline-danger" onclick="deleteCompany({{ company.companyid }}, '{{ company.companyname|escapejs }}')">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </div>
+                                    </div>
                                     {% if company.address %}
                                     <p class="mb-1"><small class="text-muted">{{ company.address }}</small></p>
                                     {% endif %}
@@ -185,6 +195,49 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                 <button type="button" class="btn btn-primary" onclick="submitAddCompany()">Add Company</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Company Modal -->
+<div class="modal fade" id="editCompanyModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Company</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editCompanyForm">
+                    <input type="hidden" id="edit_company_id">
+                    <div class="mb-3">
+                        <label class="form-label">Company Name *</label>
+                        <input type="text" class="form-control" id="edit_companyname" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Address</label>
+                        <input type="text" class="form-control" id="edit_address">
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">City</label>
+                            <input type="text" class="form-control" id="edit_city">
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label">State</label>
+                            <input type="text" class="form-control" id="edit_state" maxlength="2">
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label">Zip Code</label>
+                            <input type="text" class="form-control" id="edit_zipcode">
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="submitEditCompany()">Save Changes</button>
             </div>
         </div>
     </div>
@@ -455,6 +508,65 @@ function updateCompanyLogo(companyId) {
         });
     };
     reader.readAsDataURL(file);
+}
+
+function editCompany(id, name, address, city, state, zipcode) {
+    document.getElementById('edit_company_id').value = id;
+    document.getElementById('edit_companyname').value = name;
+    document.getElementById('edit_address').value = address || '';
+    document.getElementById('edit_city').value = city || '';
+    document.getElementById('edit_state').value = state || '';
+    document.getElementById('edit_zipcode').value = zipcode || '';
+    
+    new bootstrap.Modal(document.getElementById('editCompanyModal')).show();
+}
+
+function submitEditCompany() {
+    const companyId = document.getElementById('edit_company_id').value;
+    const data = {
+        companyname: document.getElementById('edit_companyname').value,
+        address: document.getElementById('edit_address').value,
+        city: document.getElementById('edit_city').value,
+        state: document.getElementById('edit_state').value,
+        zipcode: document.getElementById('edit_zipcode').value
+    };
+    
+    fetch(`/api/edit-company/${companyId}/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            location.reload();
+        } else {
+            alert('Error: ' + result.error);
+        }
+    });
+}
+
+function deleteCompany(id, name) {
+    if (confirm(`Are you sure you want to delete company "${name}"? This will delete all associated inspection data, SOPs, and company settings. Master HACCP documents will NOT be affected.`)) {
+        fetch(`/api/delete-company/${id}/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            }
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (result.success) {
+                location.reload();
+            } else {
+                alert('Error: ' + result.error);
+            }
+        });
+    }
 }
 </script>
 {% endblock %}
