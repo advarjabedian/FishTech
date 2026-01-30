@@ -164,6 +164,17 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
+                <div class="mb-3">
+                    <h6>Add New Product Type</h6>
+                    <div class="input-group">
+                        <input type="text" class="form-control" id="newProductTypeNameModal" placeholder="Enter product type name">
+                        <button class="btn btn-success" onclick="addNewProductTypeFromModal()">
+                            <i class="bi bi-plus-circle me-1"></i>Add
+                        </button>
+                    </div>
+                </div>
+                <hr>
+                <h6>Existing Product Types</h6>
                 <div id="productTypesList">
                     <!-- Will be populated by JS -->
                 </div>
@@ -265,15 +276,34 @@ function loadMasterProductTypes() {
             data.active_types.forEach(slug => {
                 const pt = productTypes.find(p => p.slug === slug);
                 if (pt) {
+                    const typeInfo = data.type_status[slug] || {status: 'not_started', completed_count: 0};
+                    const status = typeInfo.status;
+                    const completedCount = typeInfo.completed_count;
+                    let statusBadge, iconColor, statusIcon;
+                    
+                    if (status === 'completed') {
+                        statusBadge = '<span class="badge bg-success"><i class="bi bi-check-circle-fill me-1"></i>Completed</span>';
+                        iconColor = '#198754';
+                        statusIcon = 'bi-folder-check';
+                    } else if (status === 'in_progress') {
+                        statusBadge = `<span class="badge bg-danger"><i class="bi bi-hourglass-split me-1"></i>${completedCount}/4 In Progress</span>`;
+                        iconColor = '#dc3545';
+                        statusIcon = 'bi-folder2-open';
+                    } else {
+                        statusBadge = '<span class="badge bg-secondary"><i class="bi bi-circle me-1"></i>Not Started</span>';
+                        iconColor = '#6c757d';
+                        statusIcon = 'bi-folder';
+                    }
+                    
                     const col = document.createElement('div');
                     col.className = 'col-md-4 col-lg-3 mb-3';
                     col.innerHTML = `
                         <div class="card master-plan-card" onclick="showMasterVersionHistory('${slug}', '${pt.name}')">
                             <div class="card-body text-center">
-                                <i class="bi bi-folder2-open mb-2" style="font-size: 2.5rem; color: #dc3545;"></i>
+                                <i class="bi ${statusIcon} mb-2" style="font-size: 2.5rem; color: ${iconColor};"></i>
                                 <h6 class="card-title mb-2">${pt.name}</h6>
-                                <div class="document-count" style="font-size: 1.5rem; font-weight: bold; color: #dc3545;">4</div>
-                                <small class="text-muted">Documents</small>
+                                <div class="mb-2">${statusBadge}</div>
+                                <small class="text-muted">4 Documents</small>
                             </div>
                         </div>
                     `;
@@ -640,34 +670,34 @@ function loadAndRenderProductTypesList() {
             container.innerHTML = '';
             
             if (data.product_types.length === 0) {
-                container.innerHTML = '<div class="alert alert-info">No product types found. Click "Add Product Type" to create one.</div>';
+                container.innerHTML = '<div class="alert alert-info">No product types found.</div>';
                 return;
             }
             
             data.product_types.forEach(pt => {
                 const div = document.createElement('div');
-                div.className = 'list-group-item';
+                div.className = 'border rounded p-2 mb-2';
                 div.id = `pt-row-${pt.slug}`;
                 div.innerHTML = `
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span id="pt-display-${pt.slug}">${pt.name}</span>
-                        <div class="btn-group btn-group-sm">
-                            <button class="btn btn-outline-primary" onclick="startEditProductType('${pt.slug}', '${pt.name.replace(/'/g, "\\'")}')">
+                    <div class="d-flex justify-content-between align-items-center" id="pt-display-${pt.slug}">
+                        <span>${pt.name}</span>
+                        <div class="d-flex gap-1">
+                            <button class="btn btn-sm btn-outline-primary" onclick="startEditProductType('${pt.slug}', '${pt.name.replace(/'/g, "\\'")}')">
                                 <i class="bi bi-pencil"></i>
                             </button>
-                            <button class="btn btn-outline-danger" onclick="deleteProductType('${pt.slug}', '${pt.name.replace(/'/g, "\\'")}')">
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteProductType('${pt.slug}', '${pt.name.replace(/'/g, "\\'")}')">
                                 <i class="bi bi-trash"></i>
                             </button>
                         </div>
                     </div>
-                    <div id="pt-edit-${pt.slug}" style="display: none;" class="mt-2">
+                    <div class="d-none" id="pt-edit-${pt.slug}">
                         <div class="input-group">
                             <input type="text" class="form-control form-control-sm" id="pt-input-${pt.slug}" value="${pt.name}">
-                            <button class="btn btn-success btn-sm" onclick="saveProductTypeName('${pt.slug}')">
-                                <i class="bi bi-check-lg"></i>
+                            <button class="btn btn-sm btn-success" onclick="saveProductTypeName('${pt.slug}')">
+                                <i class="bi bi-check"></i>
                             </button>
-                            <button class="btn btn-secondary btn-sm" onclick="cancelEditProductType('${pt.slug}', '${pt.name.replace(/'/g, "\\'")}')">
-                                <i class="bi bi-x-lg"></i>
+                            <button class="btn btn-sm btn-secondary" onclick="cancelEditProductType('${pt.slug}', '${pt.name.replace(/'/g, "\\'")}')">
+                                <i class="bi bi-x"></i>
                             </button>
                         </div>
                     </div>
@@ -679,16 +709,50 @@ function loadAndRenderProductTypesList() {
 }
 
 function startEditProductType(slug, currentName) {
-    document.getElementById(`pt-display-${slug}`).parentElement.style.display = 'none';
-    document.getElementById(`pt-edit-${slug}`).style.display = 'block';
-    document.getElementById(`pt-input-${slug}`).value = currentName;
-    document.getElementById(`pt-input-${slug}`).focus();
+    document.getElementById(`pt-display-${slug}`).classList.add('d-none');
+    document.getElementById(`pt-edit-${slug}`).classList.remove('d-none');
+    const input = document.getElementById(`pt-input-${slug}`);
+    input.value = currentName;
+    input.focus();
+    input.select();
 }
 
 function cancelEditProductType(slug, originalName) {
-    document.getElementById(`pt-display-${slug}`).parentElement.style.display = 'flex';
-    document.getElementById(`pt-edit-${slug}`).style.display = 'none';
-    document.getElementById(`pt-input-${slug}`).value = originalName;
+    document.getElementById(`pt-display-${slug}`).classList.remove('d-none');
+    document.getElementById(`pt-edit-${slug}`).classList.add('d-none');
+}
+
+function addNewProductTypeFromModal() {
+    const input = document.getElementById('newProductTypeNameModal');
+    const name = input.value.trim();
+    
+    if (!name) {
+        alert('Please enter a product type name');
+        return;
+    }
+    
+    fetch('/api/haccp-add-product-type/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({ name: name })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            input.value = '';
+            loadAndRenderProductTypesList();
+            loadMasterProductTypes();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(err => {
+        console.error('Error adding product type:', err);
+        alert('Error adding product type');
+    });
 }
 
 function saveProductTypeName(slug) {

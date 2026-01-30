@@ -834,14 +834,40 @@ def get_haccp_version(request, company_id, product_type, document_type):
 
 
 def get_master_product_types(request):
-    """Get all active product types for the master set"""
+    """Get all active product types for the master set with status"""
+    from django.db.models import Count, Q
+    
+    current_year = datetime.now().year
     active_types = HACCPProductType.objects.filter(
         is_active=True
     ).values_list('slug', flat=True)
     
+    type_status = {}
+    for slug in active_types:
+        # Check for documents in master set (company_id=None)
+        docs = HACCPDocument.objects.filter(
+            company_id=None,
+            product_type=slug,
+            year=current_year
+        )
+        
+        if not docs.exists():
+            type_status[slug] = {'status': 'not_started', 'completed_count': 0}
+        else:
+            # Get the latest version's stats
+            latest_version = docs.order_by('-version').first().version
+            version_docs = docs.filter(version=latest_version)
+            completed_count = version_docs.filter(status='completed').count()
+            
+            if completed_count == 4:
+                type_status[slug] = {'status': 'completed', 'completed_count': 4}
+            else:
+                type_status[slug] = {'status': 'in_progress', 'completed_count': completed_count}
+    
     return JsonResponse({
         'success': True,
-        'active_types': list(active_types)
+        'active_types': list(active_types),
+        'type_status': type_status
     })
 
 
