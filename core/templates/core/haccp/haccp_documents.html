@@ -26,7 +26,7 @@
             <i class="bi bi-plus-circle me-2"></i>New Version
         </button>
         {% endif %}
-        <button type="button" class="btn btn-outline-info" onclick="showAllVersionHistory()">
+        <button type="button" class="btn btn-info text-white" onclick="showAllVersionHistory()">
             <i class="bi bi-clock-history me-2"></i>Version History
         </button>
     </div>
@@ -36,16 +36,18 @@
     <div class="d-flex align-items-center mb-4">
         <i class="bi bi-folder2-open me-3" style="font-size: 2.5rem; color: {% if company.companyid == 0 %}#dc3545{% else %}#fd7e14{% endif %};"></i>
         <div class="flex-grow-1">
-            <h1 class="mb-0">{{ product_type }}</h1>
+            <h1 class="mb-0 text-uppercase">{{ product_type }}</h1>
             <p class="{% if company.companyid == 0 %}text-danger fw-bold{% else %}text-muted{% endif %} mb-0">{{ company.companyname }} - HACCP Documents</p>
             {% if current_version %}
             <div class="mt-2">
                 <span class="badge bg-secondary" style="font-size: 0.9rem;">Version {{ current_version }}</span>
-                {% if current_version == active_version %}
-                <span class="badge bg-success" style="font-size: 0.9rem;">Active Version</span>
-                {% else %}
-                <span class="badge bg-warning text-dark" style="font-size: 0.9rem;">Archive Version</span>
-                {% endif %}
+               {% if set_is_complete and current_version == active_version %}
+            <span class="badge bg-success" style="font-size: 0.9rem;">Active Version</span>
+            {% elif set_is_complete %}
+            <span class="badge bg-warning text-dark" style="font-size: 0.9rem;">Archive Version</span>
+            {% else %}
+            <span class="badge bg-info" style="font-size: 0.9rem;">In Progress</span>
+            {% endif %}
             </div>
             {% endif %}
         </div>

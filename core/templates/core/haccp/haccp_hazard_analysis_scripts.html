@@ -122,12 +122,17 @@ function renderHazardAnalysis() {
             <div class="hazard-step-header" ${isReadOnly ? '' : 'draggable="true"'} style="${isReadOnly ? '' : 'cursor: move;'}">
                 <h5 class="mb-0">
                     ${isReadOnly ? '' : '<i class="bi bi-grip-vertical me-2"></i>'}
-                    <span>${step.stepNumber}. </span><span contenteditable="${!isReadOnly}" onblur="updateStepName('${step.id}', this.innerText)" style="outline: none;">${step.stepName}</span>
+                    <span>${step.stepNumber}. </span><span id="stepname-${step.id}" contenteditable="false" onblur="finishEditStepName('${step.id}', this)" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}" style="outline: none;">${step.stepName}</span>
                 </h5>
                 ${isReadOnly ? '' : `
-                <button class="btn btn-sm btn-danger no-print" onclick="deleteHazardStep('${step.id}')">
-                    <i class="bi bi-trash"></i>
-                </button>
+                <div class="d-flex gap-1">
+                    <button class="btn btn-sm btn-light no-print" onclick="event.stopPropagation(); startEditStepName('${step.id}');" title="Edit Step Name">
+                        <i class="bi bi-pencil"></i>
+                    </button>
+                    <button class="btn btn-sm btn-danger no-print" onclick="deleteHazardStep('${step.id}')">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
                 `}
             </div>
             
@@ -234,11 +239,13 @@ function renderHazardRow(step, hazardType, label, isFirst) {
                 <textarea class="form-control form-control-sm" rows="2" 
                           onchange="updateHazardField('${step.id}', '${hazardType}', 'description', this.value)"
                           placeholder="Describe potential ${label.toLowerCase()} hazards"
+                          style="border: 1px solid #6c757d;"
                           ${isReadOnly ? 'disabled' : 'required'}>${hazard.description || ''}</textarea>
             </td>
             <td class="hazard-significant">
                 <select class="form-select form-select-sm" 
                         onchange="updateHazardField('${step.id}', '${hazardType}', 'significant', this.value)"
+                        style="border: 1px solid #6c757d;"
                         ${isReadOnly ? 'disabled' : 'required'}>
                     <option value="">Select...</option>
                     <option value="na" ${hazard.significant === 'na' ? 'selected' : ''}>N/A</option>
@@ -250,6 +257,7 @@ function renderHazardRow(step, hazardType, label, isFirst) {
                 <textarea class="form-control form-control-sm" rows="2" 
                           onchange="updateHazardField('${step.id}', '${hazardType}', 'justification', this.value)"
                           placeholder="Justify why hazard is/isn't significant"
+                          style="border: 1px solid #6c757d;"
                           ${isReadOnly ? 'disabled' : 'required'}>${hazard.justification || ''}</textarea>
             </td>
     `;
@@ -260,6 +268,7 @@ function renderHazardRow(step, hazardType, label, isFirst) {
             <textarea class="form-control form-control-sm" rows="6" 
                       onchange="updateStepField('${step.id}', 'controls', this.value)"
                       placeholder="SOPs, programs, or CCPs"
+                      style="border: 1px solid #6c757d;"
                       ${isReadOnly ? 'disabled' : 'required'}>${step.controls || ''}</textarea>
         </td>
         <td class="hazard-ccp" rowspan="3">
@@ -334,4 +343,31 @@ collectFormData = function() {
     data.document_data = { steps: hazardData.steps };
     return data;
 };
+
+function startEditStepName(stepId) {
+    const el = document.getElementById('stepname-' + stepId);
+    if (el) {
+        el.contentEditable = 'true';
+        el.style.background = 'white';
+        el.style.padding = '2px 8px';
+        el.style.borderRadius = '4px';
+        el.style.color = '#000';
+        el.focus();
+        // Select all text
+        const range = document.createRange();
+        range.selectNodeContents(el);
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+    }
+}
+
+function finishEditStepName(stepId, el) {
+    el.contentEditable = 'false';
+    el.style.background = '';
+    el.style.padding = '';
+    el.style.borderRadius = '';
+    el.style.color = '';
+    updateStepName(stepId, el.innerText);
+}
 </script>

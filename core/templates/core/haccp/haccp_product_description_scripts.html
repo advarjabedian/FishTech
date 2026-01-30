@@ -55,13 +55,14 @@ function renderTable() {
                        value="${row.label}" 
                        onchange="updateRowLabel(${index}, this.value)"
                        placeholder="Field Name"
+                       style="border: 1px solid #6c757d;"
                        ${isReadOnly ? 'disabled' : ''}>
             </div>
         `;
         
         const valueCell = document.createElement('td');
 const textareaValue = (row.value || '').trim();
-valueCell.innerHTML = `<div class="d-flex gap-2"><textarea class="form-control auto-expand-textarea" onchange="updateRowValue(${index}, this.value)" oninput="autoExpandTextarea(this)" placeholder="${row.placeholder}" style="overflow: hidden;" ${isReadOnly ? 'disabled' : ''}>${textareaValue}</textarea>${isReadOnly ? '' : `<button type="button" class="btn btn-sm btn-outline-danger no-print" onclick="deleteRow(${index})" title="Delete Row"><i class="bi bi-trash"></i></button>`}</div>`;
+valueCell.innerHTML = `<div class="d-flex gap-2"><textarea class="form-control auto-expand-textarea" onchange="updateRowValue(${index}, this.value)" oninput="autoExpandTextarea(this)" placeholder="${row.placeholder}" style="overflow: hidden; border: 1px solid #6c757d;" ${isReadOnly ? 'disabled' : ''}>${textareaValue}</textarea>${isReadOnly ? '' : `<button type="button" class="btn btn-sm btn-outline-danger no-print" onclick="deleteRow(${index})" title="Delete Row"><i class="bi bi-trash"></i></button>`}</div>`;
         
         tr.appendChild(labelCell);
         tr.appendChild(valueCell);

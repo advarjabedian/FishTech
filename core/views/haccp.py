@@ -351,7 +351,21 @@ def haccp_document_view(request, company_id, product_type, document_type):
             )
             is_viewing_old_version = False
     
-    is_read_only = (company_id != 0) or is_viewing_old_version or document.status == 'completed'
+    # Check if ALL 4 documents in this set are completed
+    set_complete = False
+    if document.version:
+        set_stats = HACCPDocument.objects.filter(
+            company_id=company_id if company_id != 0 else None,
+            product_type=product_type,
+            year=document.year,
+            version=document.version
+        ).aggregate(
+            total=Count('id'),
+            completed=Count('id', filter=Q(status='completed'))
+        )
+        set_complete = (set_stats['total'] == 4 and set_stats['completed'] == 4)
+    
+    is_read_only = (company_id != 0) or is_viewing_old_version or set_complete
     
     product_type_map = {
         'box-in-box-out': 'Box In - Box Out',

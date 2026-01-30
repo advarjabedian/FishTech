@@ -58,9 +58,9 @@ function syncCCPsFromHazardAnalysis() {
                             id: 'ccp-' + Date.now() + '-' + ccpNumber,
                             ccpNumber: ccpNumberStr,
                             processStep: step.stepName || '',
-                            hazard: hazards.join('\n'),
+                            hazard: '',
                             criticalLimit: '',
-                            monitoring: step.controls || '',
+                            monitoring: '',
                             correctiveActions: '',
                             verification: '',
                             records: ''
@@ -135,31 +135,37 @@ function renderCCPSummary() {
                         <td>
                             <textarea class="form-control form-control-sm" rows="4" 
                                       onchange="updateCCPField(${index}, 'hazard', this.value)"
+                                      style="border: 1px solid #6c757d;"
                                       ${isReadOnly ? 'disabled' : 'required'}>${ccp.hazard || ''}</textarea>
                         </td>
                         <td>
                             <textarea class="form-control form-control-sm" rows="4" 
                                       onchange="updateCCPField(${index}, 'criticalLimit', this.value)"
+                                      style="border: 1px solid #6c757d;"
                                       ${isReadOnly ? 'disabled' : 'required'}>${ccp.criticalLimit || ''}</textarea>
                         </td>
                         <td>
                             <textarea class="form-control form-control-sm" rows="4" 
                                       onchange="updateCCPField(${index}, 'monitoring', this.value)"
+                                      style="border: 1px solid #6c757d;"
                                       ${isReadOnly ? 'disabled' : 'required'}>${ccp.monitoring || ''}</textarea>
                         </td>
                         <td>
                             <textarea class="form-control form-control-sm" rows="4" 
                                       onchange="updateCCPField(${index}, 'correctiveActions', this.value)"
+                                      style="border: 1px solid #6c757d;"
                                       ${isReadOnly ? 'disabled' : 'required'}>${ccp.correctiveActions || ''}</textarea>
                         </td>
                         <td>
                             <textarea class="form-control form-control-sm" rows="4" 
                                       onchange="updateCCPField(${index}, 'records', this.value)"
+                                      style="border: 1px solid #6c757d;"
                                       ${isReadOnly ? 'disabled' : 'required'}>${ccp.records || ''}</textarea>
                         </td>
                         <td>
                             <textarea class="form-control form-control-sm" rows="4" 
                                       onchange="updateCCPField(${index}, 'verification', this.value)"
+                                      style="border: 1px solid #6c757d;"
                                       ${isReadOnly ? 'disabled' : 'required'}>${ccp.verification || ''}</textarea>
                         </td>
                     </tr>
