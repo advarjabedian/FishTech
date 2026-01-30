@@ -297,24 +297,100 @@ function loadProductTypes(companyId) {
             const container = document.getElementById(`product-types-${companyId}`);
             container.innerHTML = '';
             
+            let renderedCount = 0;
+            let allComplete = true;
+            
             if (data.active_types.length === 0) {
                 container.innerHTML = '<span class="text-muted">No product types assigned</span>';
-                return;
+                allComplete = false;
+            } else {
+                data.active_types.forEach(slug => {
+                    renderedCount++;
+                    const isCompleted = data.completed_types.includes(slug);
+                    
+                    if (!isCompleted) {
+                        allComplete = false;
+                    }
+                    
+                    const pt = productTypes.find(p => p.slug === slug);
+                    const name = pt ? pt.name : slug;
+                    const badge = document.createElement('span');
+                    badge.className = `badge ${isCompleted ? 'bg-success' : 'bg-secondary'} me-2 mb-2`;
+                    badge.style.cursor = 'pointer';
+                    badge.innerHTML = isCompleted 
+                        ? `<i class="bi bi-check-circle-fill me-1"></i>${name}`
+                        : name;
+                    badge.onclick = () => window.location.href = `/haccp/${companyId}/${slug}/`;
+                    container.appendChild(badge);
+                });
             }
             
-            data.active_types.forEach(slug => {
-                const isCompleted = data.completed_types.includes(slug);
-                const pt = productTypes.find(p => p.slug === slug);
-                const name = pt ? pt.name : slug;
-                const badge = document.createElement('span');
-                badge.className = `badge ${isCompleted ? 'bg-success' : 'bg-secondary'} me-2 mb-2`;
-                badge.style.cursor = 'pointer';
-                badge.textContent = name;
-                badge.onclick = () => window.location.href = `/haccp/${companyId}/${slug}/`;
-                container.appendChild(badge);
-            });
+            // Update compliance status
+            const companyCard = container.closest('.card');
+            const companyHeader = companyCard.querySelector('.card-header h5');
+            let complianceBadge = companyHeader.querySelector('.compliance-badge');
+            let certIcons = companyHeader.querySelector('.cert-icons');
+            
+            if (allComplete && renderedCount > 0) {
+                if (!complianceBadge) {
+                    complianceBadge = document.createElement('span');
+                    complianceBadge.className = 'badge bg-success ms-2 compliance-badge';
+                    complianceBadge.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i>In Compliance';
+                    companyHeader.appendChild(complianceBadge);
+                }
+                
+                if (!certIcons) {
+                    loadCertificateIcons(companyId, companyHeader);
+                }
+            } else {
+                if (complianceBadge) {
+                    complianceBadge.remove();
+                }
+                if (certIcons) {
+                    certIcons.remove();
+                }
+            }
         })
         .catch(err => console.error('Error loading product types:', err));
+}
+
+function loadCertificateIcons(companyId, companyHeader) {
+    fetch(`/api/company-certificates/${companyId}/`)
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                let certIcons = companyHeader.querySelector('.cert-icons');
+                if (!certIcons) {
+                    certIcons = document.createElement('span');
+                    certIcons.className = 'cert-icons ms-2';
+                    companyHeader.appendChild(certIcons);
+                }
+                
+                certIcons.innerHTML = '';
+                
+                const haccpCert = data.certificates.haccp_certificate;
+                const logCert = data.certificates.letter_of_guarantee;
+                
+                const haccpIcon = document.createElement('i');
+                haccpIcon.className = 'bi bi-file-earmark-text-fill ms-1';
+                haccpIcon.style.fontSize = '1.2rem';
+                haccpIcon.style.cursor = 'pointer';
+                haccpIcon.style.color = haccpCert.is_completed ? '#198754' : '#6c757d';
+                haccpIcon.title = 'HACCP Certificate';
+                haccpIcon.onclick = () => window.location.href = `/haccp/certificate/${companyId}/haccp_certificate/`;
+                certIcons.appendChild(haccpIcon);
+                
+                const logIcon = document.createElement('i');
+                logIcon.className = 'bi bi-file-earmark-check-fill ms-1';
+                logIcon.style.fontSize = '1.2rem';
+                logIcon.style.cursor = 'pointer';
+                logIcon.style.color = logCert.is_completed ? '#198754' : '#6c757d';
+                logIcon.title = 'Letter of Guarantee';
+                logIcon.onclick = () => window.location.href = `/haccp/certificate/${companyId}/letter_of_guarantee/`;
+                certIcons.appendChild(logIcon);
+            }
+        })
+        .catch(err => console.error('Error loading certificates:', err));
 }
 
 function toggleProductTypeManager(companyId) {

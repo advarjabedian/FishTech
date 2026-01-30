@@ -454,8 +454,9 @@ def get_company_product_types(request, company_id):
     
     completed_types = []
     for product_type in active_types:
+        # Check MASTER set (company_id=None) for completed documents
         completed_sets = HACCPDocument.objects.filter(
-            company_id=company_id,
+            company_id=None,
             product_type=product_type,
             year=current_year
         ).values('version').annotate(
@@ -627,6 +628,7 @@ def view_company_certificate(request, company_id, certificate_type):
     
     if not cert:
         cert = CompanyCertificate.objects.create(
+            tenant=request.tenant,
             company=company,
             year=current_year,
             certificate_type=certificate_type
