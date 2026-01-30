@@ -1,129 +1,132 @@
-<!-- Summary view: clickable company cards with config -->
-<div class="row">
-    {% for company in company_stats %}
-    <div class="col-md-6 col-lg-4 mb-4">
-        <div class="card h-100" data-company-id="{{ company.id }}" data-company-name="{{ company.name }}">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">{{ company.name }}</h5>
-                <a href="{% url 'operations_admin' %}?company_id={{ company.id }}" class="btn btn-sm btn-outline-primary">
-                    View Days <i class="bi bi-arrow-right"></i>
-                </a>
-            </div>
-            <div class="card-body">
-                <!-- Stats Row -->
-                <div class="row text-center mb-3">
-                    <div class="col-6">
-                        <div class="border rounded p-2" style="border-color: #dc3545 !important;">
-                            <div class="text-danger fw-bold fs-4">{{ company.incomplete_count }}</div>
-                            <small class="text-muted">Incomplete Days</small>
-                        </div>
-                    </div>
-                    <div class="col-6">
-                        <div class="border rounded p-2" style="border-color: #0d6efd !important;">
-                            <div class="text-primary fw-bold fs-4">{{ company.unverified_count }}</div>
-                            <small class="text-muted">Unverified Logs</small>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Monitor Config -->
-                <div class="mb-3 p-2 rounded" style="background-color: #fff5f5; border: 1px solid #dc3545;">
-                    <label class="form-label mb-1"><small><strong>Monitor:</strong></small></label>
-                    <div class="d-flex align-items-center gap-2">
-                        <select class="form-select form-select-sm" id="monitor-select-{{ company.id }}" 
-                                onchange="updateConfig({{ company.id }}, 'monitor_user_id', this.value)">
-                            <option value="">-- None --</option>
-                            {% for user in users %}
-                            <option value="{{ user.id }}" {% if company.config.monitor_user_id == user.id %}selected{% endif %}>
-                                {{ user.name }}
-                            </option>
-                            {% endfor %}
-                        </select>
-                        {% if company.config.monitor_user_id %}
-                        <button class="btn btn-sm btn-outline-danger" onclick="openSignatureCapture({{ company.id }}, 'monitor')" title="Capture Signature">
-                            <i class="bi bi-pen"></i>
-                        </button>
-                        <span id="monitor-sig-indicator-{{ company.id }}" class="text-success" style="display: none;" title="Signature saved">
-                            <i class="bi bi-check-circle-fill"></i>
-                        </span>
-                        {% endif %}
-                    </div>
-                </div>
-                
-                <!-- Verifier Config -->
-                <div class="mb-3 p-2 rounded" style="background-color: #f0f7ff; border: 1px solid #0d6efd;">
-                    <label class="form-label mb-1"><small><strong>Verifier:</strong></small></label>
-                    <div class="d-flex align-items-center gap-2">
-                        <select class="form-select form-select-sm" id="verifier-select-{{ company.id }}" 
-                                onchange="updateConfig({{ company.id }}, 'verifier_user_id', this.value)">
-                            <option value="">-- None --</option>
-                            {% for user in users %}
-                            <option value="{{ user.id }}" {% if company.config.verifier_user_id == user.id %}selected{% endif %}>
-                                {{ user.name }}
-                            </option>
-                            {% endfor %}
-                        </select>
-                        {% if company.config.verifier_user_id %}
-                        <button class="btn btn-sm btn-outline-primary" onclick="openSignatureCapture({{ company.id }}, 'verifier')" title="Capture Signature">
-                            <i class="bi bi-pen"></i>
-                        </button>
-                        <span id="sig-indicator-{{ company.id }}" class="text-success" style="display: none;" title="Signature saved">
-                            <i class="bi bi-check-circle-fill"></i>
-                        </span>
-                        {% endif %}
-                    </div>
-                </div>
-                
-                <!-- Start Date -->
-                <div class="mb-3">
-                    <label class="form-label mb-1"><small><strong>Start Date:</strong></small></label>
-                    <input type="date" class="form-control form-control-sm" 
-                           value="{{ company.config.start_date|date:'Y-m-d' }}"
-                           onchange="updateConfig({{ company.id }}, 'start_date', this.value)">
-                </div>
-                
-                <!-- Operating Days -->
-                <div>
-                    <label class="form-label mb-1"><small><strong>Operating Days:</strong></small></label>
-                    <button class="btn btn-sm btn-outline-secondary w-100" 
-                            onclick="showDaysModal({{ company.id }}, '{{ company.name }}', {{ company.config.monday|yesno:'true,false' }}, {{ company.config.tuesday|yesno:'true,false' }}, {{ company.config.wednesday|yesno:'true,false' }}, {{ company.config.thursday|yesno:'true,false' }}, {{ company.config.friday|yesno:'true,false' }}, {{ company.config.saturday|yesno:'true,false' }}, {{ company.config.sunday|yesno:'true,false' }})">
-                        <i class="bi bi-calendar-week"></i> 
-                        {% if company.config.monday %}M {% endif %}
-                        {% if company.config.tuesday %}T {% endif %}
-                        {% if company.config.wednesday %}W {% endif %}
-                        {% if company.config.thursday %}Th {% endif %}
-                        {% if company.config.friday %}F {% endif %}
-                        {% if company.config.saturday %}Sa {% endif %}
-                        {% if company.config.sunday %}Su {% endif %}
-                    </button>
-                </div>
-            </div>
+<!-- Summary view: table layout matching legacy design -->
+<p class="text-muted">Incomplete days since 2025-08-10</p>
+
+<!-- KPIs Summary - Above Table -->
+<div class="card mb-4">
+    <div class="card-body d-flex justify-content-around text-center">
+        <div>
+            <span class="text-danger fw-bold fs-3">{{ total_incomplete }}</span>
+            <div class="text-muted">Total Incomplete Days</div>
+        </div>
+        <div>
+            <span class="text-primary fw-bold fs-3">{{ total_unverified }}</span>
+            <div class="text-muted">Total Unverified Logs</div>
         </div>
     </div>
-    {% empty %}
-    <div class="col-12">
-        <div class="alert alert-info">No companies found.</div>
-    </div>
-    {% endfor %}
 </div>
 
-<!-- Totals Summary -->
-<div class="row mt-4">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-body d-flex justify-content-around text-center">
-                <div>
-                    <span class="text-danger fw-bold fs-3">{{ total_incomplete }}</span>
-                    <div class="text-muted">Total Incomplete Days</div>
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th rowspan="2" style="vertical-align: middle;">Company</th>
+            <th colspan="2" class="text-center" style="background-color: #fff5f5; border: 2px solid #dc3545;">Monitoring</th>
+            <th colspan="2" class="text-center" style="background-color: #f0f7ff; border: 2px solid #0d6efd;">Verification</th>
+            <th rowspan="2" style="vertical-align: middle;">Start Date</th>
+            <th rowspan="2" style="vertical-align: middle;">Operating Days</th>
+        </tr>
+        <tr>
+            <th style="background-color: #fff5f5; border-left: 2px solid #dc3545; border-bottom: 2px solid #dc3545;">Monitor</th>
+            <th style="background-color: #fff5f5; border-right: 2px solid #dc3545; border-bottom: 2px solid #dc3545;">Incomplete Days</th>
+            <th style="background-color: #f0f7ff; border-left: 2px solid #0d6efd; border-bottom: 2px solid #0d6efd;">Verifier</th>
+            <th style="background-color: #f0f7ff; border-right: 2px solid #0d6efd; border-bottom: 2px solid #0d6efd;">Unverified Logs</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for company in company_stats %}
+        <tr>
+            <!-- Company -->
+            <td style="cursor: pointer;" onclick="window.location.href='{% url 'operations_admin' %}?company_id={{ company.id }}'">
+                <div class="d-flex align-items-center">
+                    {% if company.config.company.logo %}
+                    <img src="{{ company.config.company.logo }}" alt="{{ company.name }}" style="width: 50px; height: 35px; object-fit: contain; margin-right: 10px;">
+                    {% endif %}
+                    <strong>{{ company.name }}</strong>
                 </div>
-                <div>
-                    <span class="text-primary fw-bold fs-3">{{ total_unverified }}</span>
-                    <div class="text-muted">Total Unverified Logs</div>
+            </td>
+            
+            <!-- Monitor -->
+            <td style="border-left: 2px solid #dc3545;">
+                <div class="d-flex align-items-center gap-2">
+                    <select class="form-select form-select-sm" style="width: 130px;" 
+                            onchange="updateConfig({{ company.id }}, 'monitor_user_id', this.value)">
+                        <option value="">-- None --</option>
+                        {% for user in users %}
+                        <option value="{{ user.id }}" {% if company.config.monitor_user_id == user.id %}selected{% endif %}>
+                            {{ user.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    {% if company.config.monitor_user_id %}
+                    <span id="monitor-sig-indicator-{{ company.id }}" class="text-success" style="display: none;">
+                        <i class="bi bi-check-circle-fill"></i>
+                    </span>
+                    {% endif %}
                 </div>
-            </div>
-        </div>
-    </div>
-</div>
+            </td>
+            
+            <!-- Incomplete Days -->
+            <td class="text-center" style="border-right: 2px solid #dc3545;">
+                <a href="{% url 'operations_admin' %}?company_id={{ company.id }}&filter=incomplete" 
+                   style="color: {% if company.incomplete_count > 0 %}#dc3545{% else %}#000{% endif %}; font-weight: bold; font-size: 1.1em; text-decoration: none;">
+                    {{ company.incomplete_count }}
+                </a>
+            </td>
+            
+            <!-- Verifier -->
+            <td style="border-left: 2px solid #0d6efd;">
+                <div class="d-flex align-items-center gap-2">
+                    <select class="form-select form-select-sm" style="width: 130px;" 
+                            onchange="updateConfig({{ company.id }}, 'verifier_user_id', this.value)">
+                        <option value="">-- None --</option>
+                        {% for user in users %}
+                        <option value="{{ user.id }}" {% if company.config.verifier_user_id == user.id %}selected{% endif %}>
+                            {{ user.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    {% if company.config.verifier_user_id %}
+                    <button class="btn btn-sm btn-outline-primary" onclick="openSignatureCapture({{ company.id }}, 'verifier')" title="Capture Signature">
+                        <i class="bi bi-pen"></i>
+                    </button>
+                    <span id="sig-indicator-{{ company.id }}" class="text-success" style="display: none;">
+                        <i class="bi bi-check-circle-fill"></i>
+                    </span>
+                    {% endif %}
+                </div>
+            </td>
+            
+            <!-- Unverified Logs -->
+            <td class="text-center" style="border-right: 2px solid #0d6efd;">
+                <a href="{% url 'operations_admin' %}?company_id={{ company.id }}&filter=unverified" 
+                   style="color: {% if company.unverified_count > 0 %}#0d6efd{% else %}#000{% endif %}; font-weight: bold; font-size: 1.1em; text-decoration: none;">
+                    {{ company.unverified_count }}
+                </a>
+            </td>
+            
+            <!-- Start Date -->
+            <td>
+                <input type="date" class="form-control form-control-sm" style="width: 140px;"
+                       value="{{ company.config.start_date|date:'Y-m-d' }}"
+                       onchange="updateConfig({{ company.id }}, 'start_date', this.value)">
+            </td>
+            
+            <!-- Operating Days -->
+            <td>
+                <button class="btn btn-sm btn-outline-secondary" 
+                        onclick="showDaysModal({{ company.id }}, '{{ company.name }}', {{ company.config.monday|yesno:'true,false' }}, {{ company.config.tuesday|yesno:'true,false' }}, {{ company.config.wednesday|yesno:'true,false' }}, {{ company.config.thursday|yesno:'true,false' }}, {{ company.config.friday|yesno:'true,false' }}, {{ company.config.saturday|yesno:'true,false' }}, {{ company.config.sunday|yesno:'true,false' }})">
+                    Edit Days
+                </button>
+            </td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="7" class="text-center">No companies found.</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<!-- (removed - moved above table) -->
 
 <script>
 // Check for saved signatures on page load
