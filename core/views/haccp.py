@@ -94,16 +94,9 @@ def haccp_documents(request, company_id, product_type):
     
     current_year = datetime.now().year
     
-    # Convert slug back to readable name
-    product_type_map = {
-        'box-in-box-out': 'Box In - Box Out',
-        'live-molluscan': 'Live Molluscan',
-        'non-scombroid': 'Non-Scombroid',
-        'scombroid-haccp': 'Scombroid HACCP',
-        'smoked-fish': 'Smoked Fish'
-    }
-    
-    product_type_name = product_type_map.get(product_type, product_type)
+    # Get product type name from database
+    product_type_obj = HACCPProductType.objects.filter(slug=product_type).first()
+    product_type_name = product_type_obj.name if product_type_obj else product_type
     
     document_types = [
         {
@@ -367,13 +360,9 @@ def haccp_document_view(request, company_id, product_type, document_type):
     
     is_read_only = (company_id != 0) or is_viewing_old_version or set_complete
     
-    product_type_map = {
-        'box-in-box-out': 'Box In - Box Out',
-        'live-molluscan': 'Live Molluscan',
-        'non-scombroid': 'Non-Scombroid',
-        'scombroid-haccp': 'Scombroid HACCP',
-        'smoked-fish': 'Smoked Fish'
-    }
+    # Get product type name from database
+    product_type_obj = HACCPProductType.objects.filter(slug=product_type).first()
+    product_type_name = product_type_obj.name if product_type_obj else product_type
     
     document_type_map = {
         'product_description': 'Product Description',
@@ -382,7 +371,7 @@ def haccp_document_view(request, company_id, product_type, document_type):
         'ccp_summary': 'CCP Summary'
     }
     
-    product_type_name = product_type_map.get(product_type, product_type)
+    
     document_type_name = document_type_map.get(document_type, document_type)
     
     document_data_json = json.dumps(document.document_data)

@@ -110,12 +110,17 @@ function renderCCPSummary() {
             <div class="hazard-step-header" ${isReadOnly ? '' : 'draggable="true"'} style="${isReadOnly ? '' : 'cursor: move;'}">
                 <h5 class="mb-0">
                     ${isReadOnly ? '' : '<i class="bi bi-grip-vertical me-2"></i>'}
-                    <span>CCP #${ccp.ccpNumber} - </span><span contenteditable="${!isReadOnly}" onblur="updateCCPProcessStep(${index}, this.innerText)" style="outline: none;">${ccp.processStep}</span>
+                    <span>CCP #${ccp.ccpNumber} - </span><span id="ccpname-${index}" contenteditable="false" onblur="finishEditCCPName(${index}, this)" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}" style="outline: none;">${ccp.processStep}</span>
                 </h5>
                 ${isReadOnly ? '' : `
-                <button class="btn btn-sm btn-danger no-print" onclick="deleteCCP(${index})">
-                    <i class="bi bi-trash"></i>
-                </button>
+                <div class="d-flex gap-1">
+                    <button class="btn btn-sm btn-light no-print" onclick="event.stopPropagation(); startEditCCPName(${index});" title="Edit CCP Name">
+                        <i class="bi bi-pencil"></i>
+                    </button>
+                    <button class="btn btn-sm btn-danger no-print" onclick="deleteCCP(${index})">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
                 `}
             </div>
             
@@ -306,4 +311,31 @@ collectFormData = function() {
     data.document_data = { ccps: ccpData.ccps };
     return data;
 };
+
+function startEditCCPName(index) {
+    const el = document.getElementById('ccpname-' + index);
+    if (el) {
+        el.contentEditable = 'true';
+        el.style.background = 'white';
+        el.style.padding = '2px 8px';
+        el.style.borderRadius = '4px';
+        el.style.color = '#000';
+        el.focus();
+        // Select all text
+        const range = document.createRange();
+        range.selectNodeContents(el);
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+    }
+}
+
+function finishEditCCPName(index, el) {
+    el.contentEditable = 'false';
+    el.style.background = '';
+    el.style.padding = '';
+    el.style.borderRadius = '';
+    el.style.color = '';
+    updateCCPProcessStep(index, el.innerText);
+}
 </script>
