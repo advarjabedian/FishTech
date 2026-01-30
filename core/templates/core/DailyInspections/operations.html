@@ -191,9 +191,9 @@ function checkAdminPassword(e) {
                 </select>
             {% else %}
                 <select class="form-control user-input" id="preop-inspector">
-                    <option value="">Select Inspector</option>
+                    <option value="">Select Monitor</option>
                     {% for user in users %}
-                    <option value="{{ user.id }}" {% if user.id == current_user_id %}selected{% endif %}>
+                    <option value="{{ user.userid }}" {% if monitor_user_id and user.userid == monitor_user_id %}selected{% elif not monitor_user_id and user.userid == current_user_id %}selected{% endif %}>
                         {{ user.name }}
                     </option>
                 {% endfor %}
@@ -253,9 +253,9 @@ function checkAdminPassword(e) {
                 </select>
             {% else %}
                 <select class="form-control user-input" id="midday-inspector">
-                    <option value="">Select Inspector</option>
+                    <option value="">Select Monitor</option>
                     {% for user in users %}
-                    <option value="{{ user.id }}" {% if user.id == current_user_id %}selected{% endif %}>
+                    <option value="{{ user.userid }}" {% if monitor_user_id and user.userid == monitor_user_id %}selected{% elif not monitor_user_id and user.userid == current_user_id %}selected{% endif %}>
                         {{ user.name }}
                     </option>
                 {% endfor %}
@@ -316,9 +316,9 @@ function checkAdminPassword(e) {
                 </select>
             {% else %}
                 <select class="form-control user-input" id="postop-inspector">
-                    <option value="">Select Inspector</option>
+                    <option value="">Select Monitor</option>
                         {% for user in users %}
-                    <option value="{{ user.id }}" {% if user.id == current_user_id %}selected{% endif %}>
+                    <option value="{{ user.userid }}" {% if monitor_user_id and user.userid == monitor_user_id %}selected{% elif not monitor_user_id and user.userid == current_user_id %}selected{% endif %}>
                         {{ user.name }}
                     </option>
                 {% endfor %}
@@ -532,7 +532,7 @@ function checkAdminPassword(e) {
         }
         
         if (!inspectorId) {
-            alert('Please select an inspector');
+            alert('Please select a monitor');
             return;
         }
         

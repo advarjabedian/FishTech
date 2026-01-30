@@ -544,7 +544,6 @@ function showAddSOPForm() {
 
 function hideAddSOPForm() {
     document.getElementById('add-sop-form').style.display = 'none';
-    document.getElementById('new-sop-id').value = '';
     document.getElementById('new-sop-description').value = '';
     document.getElementById('new-sop-zone').value = '';
     document.getElementById('new-sop-pre').checked = false;
@@ -558,7 +557,6 @@ function hideAddSOPForm() {
 
 function saveNewSOP() {
     const companyId = document.getElementById('sop-company-select').value;
-    const sopId = document.getElementById('new-sop-id').value;
     const description = document.getElementById('new-sop-description').value;
     const zoneId = document.getElementById('new-sop-zone').value;
     
@@ -577,7 +575,6 @@ function saveNewSOP() {
         },
         body: JSON.stringify({
             company_id: companyId,
-            sop_did: sopId || null,
             description: description,
             zone_id: zoneId,
             pre: document.getElementById('new-sop-pre').checked,

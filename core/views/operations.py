@@ -174,6 +174,13 @@ def operations_dashboard(request):
         date=selected_date
     ).exists() if selected_company_id else False
     
+    # Get monitor_user_id from config
+    monitor_user_id = None
+    if selected_company_id:
+        config = CompanyOperationConfig.objects.filter(company_id=selected_company_id).first()
+        if config:
+            monitor_user_id = config.monitor_user_id
+    
     context = {
         'companies': companies,
         'selected_company': selected_company,
@@ -193,6 +200,7 @@ def operations_dashboard(request):
         'verifier_name': verifier_name,
         'is_holiday': is_holiday,
         'verifier_user_id': verifier_user_id,
+        'monitor_user_id': monitor_user_id,
     }
     
     return render(request, 'core/DailyInspections/operations.html', context)
