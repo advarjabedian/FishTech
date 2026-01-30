@@ -292,7 +292,7 @@ def operations_admin(request):
         company = get_object_or_404(Company, companyid=selected_company_id)
         config = CompanyOperationConfig.objects.filter(company=company).first()
         
-        start_date = config.start_date if config else date(2025, 1, 1)
+        start_date = (config.start_date if config and config.start_date else date(2025, 1, 1))
         today = date.today()
         
         parents = SOPParent.objects.filter(
@@ -344,7 +344,7 @@ def operations_admin(request):
         
         for company in companies:
             config = CompanyOperationConfig.objects.filter(company=company).first()
-            start_date = config.start_date if config else date(2025, 1, 1)
+            start_date = (config.start_date if config and config.start_date else date(2025, 1, 1))
             today = date.today()
             
             parents = SOPParent.objects.filter(
