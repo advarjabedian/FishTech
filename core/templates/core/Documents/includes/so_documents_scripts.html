@@ -222,10 +222,10 @@ function openFileManager(soid) {
             if (data.customer_id) {
                 currentCustomerId = data.customer_id;
                 currentCustomerName = data.customer_name;
-                loadCustomerEmails(data.customer_id);
-            } else {
-                document.getElementById('addressBookSection').style.display = 'none';
             }
+            
+            // Always show address book using tenant-wide emails
+            renderAddressBook(tenantEmails);
             
             const modal = new bootstrap.Modal(document.getElementById('fileManagerModal'));
             modal.show();
@@ -411,25 +411,17 @@ function renderAddressBook(emails) {
     
     section.style.display = 'block';
     
-    if (emails.length === 0) {
-        list.innerHTML = '<p class="text-muted text-center mb-0">No saved emails yet. Click "Manage Emails" to add one.</p>';
+    if (!emails || emails.length === 0) {
+        list.innerHTML = '<p class="text-muted text-center mb-0">No saved emails yet. Click "Manage" to add one.</p>';
         useAllBtn.style.display = 'none';
     } else {
         useAllBtn.style.display = 'inline-block';
         list.innerHTML = emails.map(email => `
-            <div class="d-flex justify-content-between align-items-center mb-2 p-2 bg-light rounded">
-                <div>
-                    <strong>${email.email}</strong>
-                    ${email.label ? `<span class="badge bg-secondary ms-2">${email.label}</span>` : ''}
-                </div>
-                <div class="btn-group">
-                    <button class="btn btn-sm btn-success" onclick="useEmailFromManage('${email.email}')" title="Use this email">
-                        <i class="bi bi-check-circle"></i>
-                    </button>
-                    <button class="btn btn-sm btn-danger" onclick="deleteCustomerEmail(${email.id})">
-                        <i class="bi bi-trash"></i>
-                    </button>
-                </div>
+            <div class="d-flex justify-content-between align-items-center py-1 border-bottom">
+                <span class="small">${email.email} ${email.label ? '<span class="text-muted">(' + email.label + ')</span>' : ''}</span>
+                <button class="btn btn-sm btn-secondary rounded px-2 py-1" onclick="useEmailInModal('${email.email}')" title="Use this email">
+                    <i class="bi bi-arrow-right text-white"></i>
+                </button>
             </div>
         `).join('');
     }
@@ -442,8 +434,12 @@ function useEmail(email) {
 }
 
 function useAllEmails() {
-    const emails = customerEmails.map(e => e.email).join(', ');
+    const emails = tenantEmails.map(e => e.email).join(', ');
     document.getElementById('filemanager-email-input').value = emails;
+}
+
+function useEmailInModal(email) {
+    document.getElementById('filemanager-email-input').value = email;
 }
 
 function emailFilesFromModal(btn) {
@@ -497,15 +493,8 @@ function emailFilesFromModal(btn) {
 }
 
 function openManageEmailsModal() {
-    if (!currentCustomerId) {
-        alert('No customer associated with this order');
-        return;
-    }
-    
-    document.getElementById('manageEmailsCustomerName').textContent = currentCustomerName || '';
-    refreshManageEmailsList();
-    
-    const modal = new bootstrap.Modal(document.getElementById('manageEmailsModal'));
+    refreshTenantEmailsList();
+    const modal = new bootstrap.Modal(document.getElementById('manageTenantEmailsModal'));
     modal.show();
 }
 
@@ -1066,7 +1055,9 @@ function refreshTenantEmailsList() {
                 `).join('');
             }
             
+            // Update both address book displays
             renderBulkAddressBook(emails);
+            renderAddressBook(emails);
         });
 }
 
