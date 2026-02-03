@@ -40,6 +40,7 @@
 // Pass Django template variables to JS
 window.companyId = '{{ selected_company.companyid|default:"" }}';
 window.currentFilter = 'incomplete';
+window.currentSelectedCompanyId = '{{ request.selected_company.companyid|default:"" }}';
 
 {% if selected_company %}
 window.incompleteDays = [

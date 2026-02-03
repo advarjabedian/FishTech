@@ -382,6 +382,8 @@ function openSOPEditor() {
     const select = document.getElementById('sop-company-select');
     select.innerHTML = '<option value="">-- Loading companies --</option>';
     
+    const selectedCompanyId = window.currentSelectedCompanyId || '';
+    
     fetch('/api/operations/get-companies/')
         .then(response => response.json())
         .then(data => {
@@ -391,8 +393,16 @@ function openSOPEditor() {
                     const option = document.createElement('option');
                     option.value = company.id;
                     option.textContent = company.name;
+                    if (company.id == selectedCompanyId) {
+                        option.selected = true;
+                    }
                     select.appendChild(option);
                 });
+                
+                // Auto-load SOPs if company is pre-selected
+                if (selectedCompanyId) {
+                    loadSOPList();
+                }
             } else {
                 select.innerHTML = '<option value="">-- Error loading companies --</option>';
             }
@@ -665,14 +675,22 @@ function openBulkReportModal() {
     const select = document.getElementById('bulk-report-company');
     select.innerHTML = '<option value="">-- Loading companies --</option>';
     
+    const selectedCompanyId = window.currentSelectedCompanyId || '';
+    
     fetch('/api/operations/get-companies/')
         .then(response => response.json())
         .then(data => {
             if (data.success) {
                 select.innerHTML = '<option value="">-- Select Company --</option>';
                 data.companies.forEach(company => {
-                    select.innerHTML += `<option value="${company.id}">${company.name}</option>`;
+                    const selected = (company.id == selectedCompanyId) ? 'selected' : '';
+                    select.innerHTML += `<option value="${company.id}" ${selected}>${company.name}</option>`;
                 });
+                
+                // Auto-load calendar if company is pre-selected
+                if (selectedCompanyId) {
+                    loadBulkReportCalendar();
+                }
             }
         });
     
