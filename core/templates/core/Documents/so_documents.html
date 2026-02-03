@@ -28,6 +28,22 @@
     .upload-warning { background: #fff3cd; color: #856404; }
     .upload-info { background: #d1ecf1; color: #0c5460; }
     .upload-error { background: #f8d7da; color: #721c24; }
+    .customer-email-item { cursor: pointer; }
+    .customer-email-item:hover { background: #e9ecef !important; }
+    
+    /* Stack modals properly */
+    #fileManagerModal {
+        z-index: 1060;
+    }
+    #fileManagerModal + .modal-backdrop {
+        z-index: 1055;
+    }
+    #manageEmailsModal {
+        z-index: 1070;
+    }
+    #manageEmailsModal + .modal-backdrop {
+        z-index: 1065;
+    }
 </style>
 {% endblock %}
 
@@ -88,7 +104,7 @@
                                 <i class="bi bi-x-circle"></i> Clear
                             </button>
                         </div>
-                        <div id="uploadResultsList"></div>
+                        <div id="uploadResultsList" style="max-height: 200px; overflow-y: auto;"></div>
                     </div>
                 </div>
             </div>
@@ -108,20 +124,22 @@
                     <thead class="table-dark">
                         <tr>
                             <th style="width: 40px;">
-                                <input type="checkbox" id="selectAll" title="Select All">
+                                <input type="checkbox" id="selectAll" title="Select All" onchange="toggleSelectAll()">
                             </th>
                             <th>Actions</th>
                             <th>SO ID</th>
                             <th>Company</th>
                             <th>Customer</th>
+                            <th>Customer PO</th>
                             <th>Dispatch Date</th>
+                            <th>Paid</th>
                             <th>Files</th>
                         </tr>
                     </thead>
                     <tbody id="documentsTableBody">
                         <tr>
-                            <td colspan="7" class="text-center text-muted py-4">
-                                Use the filters above to search for sales orders
+                            <td colspan="9" class="text-center text-muted py-4">
+                                <div class="spinner-border spinner-border-sm" role="status"></div> Loading...
                             </td>
                         </tr>
                     </tbody>
@@ -140,25 +158,208 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
+                <!-- Address Book Section -->
+                <div id="addressBookSection" class="card mb-3" style="display: none;">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <strong><i class="bi bi-envelope me-2"></i>Address Book</strong>
+                        <div class="btn-group">
+                            <button id="useAllEmailsBtn" class="btn btn-sm btn-success" onclick="useAllEmails()" style="display: none;">
+                                <i class="bi bi-check-all"></i> Use All
+                            </button>
+                            <button class="btn btn-sm btn-primary" onclick="openManageEmailsModal()">
+                                <i class="bi bi-pencil-square"></i> Manage Emails
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body" id="addressBookList">
+                        <p class="text-muted text-center mb-0">No saved emails yet.</p>
+                    </div>
+                </div>
+                
+                <!-- Drop Zone -->
                 <div class="mb-3">
                     <div id="fileManagerDropZone" class="drop-zone" style="padding: 20px;">
                         <i class="bi bi-cloud-upload" style="font-size: 2rem; color: #6c757d;"></i>
                         <p class="mb-0">Drag and drop files here or click to browse</p>
                     </div>
                 </div>
+                
+                <!-- File Manager Bulk Actions -->
                 <div id="fileManagerBulkActionsBar" class="alert alert-info mb-3" style="display: none;">
                     <div class="d-flex justify-content-between align-items-center">
                         <span id="fileManagerSelectedCount">0 files selected</span>
                         <div class="d-flex gap-2 align-items-center">
-                            <input type="email" id="filemanager-email-input" class="form-control form-control-sm" placeholder="Email address" style="width: 250px;">
+                            <input type="email" id="filemanager-email-input" class="form-control form-control-sm" placeholder="Email address (comma separated)" style="width: 280px;">
                             <button class="btn btn-success" onclick="emailSelectedFiles()">
                                 <i class="bi bi-envelope"></i> Email Files
                             </button>
                         </div>
                     </div>
                 </div>
+                
                 <div class="row" id="fileManagerFiles">
                     <!-- Files will be loaded here -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Customer Documents Modal -->
+<div class="modal fade" id="customerDocumentsModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Documents for Customer: <span id="customerModalName"></span></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Filters -->
+                <div class="mb-3 p-3 bg-light rounded">
+                    <div class="d-flex gap-3 align-items-end">
+                        <div>
+                            <label class="form-label small mb-1">Start Date</label>
+                            <input type="date" id="customer-modal-startdate" class="form-control form-control-sm">
+                        </div>
+                        <div>
+                            <label class="form-label small mb-1">End Date</label>
+                            <input type="date" id="customer-modal-enddate" class="form-control form-control-sm">
+                        </div>
+                        <div>
+                            <label class="form-label small mb-1">Paid Status</label>
+                            <select id="customer-modal-paid" class="form-select form-select-sm" style="width: 120px;">
+                                <option value="all">All</option>
+                                <option value="no" selected>Unpaid</option>
+                                <option value="yes">Paid</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-primary btn-sm" onclick="applyCustomerModalFilters()">
+                            <i class="bi bi-search"></i> Filter
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Customer Modal Bulk Actions -->
+                <div id="customerModalBulkActions" class="alert alert-info mb-3" style="display: none;">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span id="customerModalSelectedCount">0 rows selected</span>
+                        <div class="d-flex gap-2 align-items-center">
+                            <input type="email" id="customer-modal-email" class="form-control form-control-sm" placeholder="Email address" style="width: 250px;" list="customer-saved-emails">
+                            <datalist id="customer-saved-emails"></datalist>
+                            <button class="btn btn-sm btn-outline-secondary" onclick="openManageEmailsFromCustomerModal()" title="Manage saved emails">
+                                <i class="bi bi-person-lines-fill"></i>
+                            </button>
+                            <button class="btn btn-primary btn-sm" onclick="downloadCustomerModalFiles()">
+                                <i class="bi bi-download"></i> Download
+                            </button>
+                            <button class="btn btn-success btn-sm" onclick="emailCustomerModalFiles()">
+                                <i class="bi bi-envelope"></i> Email ZIP
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead class="table-dark">
+                            <tr>
+                                <th style="width: 40px;">
+                                    <input type="checkbox" id="customerModalSelectAll" onchange="toggleCustomerModalSelectAll()">
+                                </th>
+                                <th>Actions</th>
+                                <th>SO ID</th>
+                                <th>Company</th>
+                                <th>Customer PO</th>
+                                <th>Dispatch Date</th>
+                                <th>Paid</th>
+                                <th>Files</th>
+                            </tr>
+                        </thead>
+                        <tbody id="customerModalTableBody">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Details Modal -->
+<div class="modal fade" id="detailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Order Details - SO #<span id="detailsModalSoid"></span></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Billing Information</h6>
+                        <p><strong>Bill To 1:</strong> <span id="modal-billto1"></span></p>
+                        <p><strong>Bill To 2:</strong> <span id="modal-billto2"></span></p>
+                        <p><strong>Bill To 3:</strong> <span id="modal-billto3"></span></p>
+                        <p><strong>Bill To 4:</strong> <span id="modal-billto4"></span></p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Shipping Information</h6>
+                        <p><strong>Ship To 1:</strong> <span id="modal-shipto1"></span></p>
+                        <p><strong>Ship To 2:</strong> <span id="modal-shipto2"></span></p>
+                        <p><strong>Ship To 3:</strong> <span id="modal-shipto3"></span></p>
+                        <p><strong>Ship To 4:</strong> <span id="modal-shipto4"></span></p>
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-md-6">
+                        <h6>Order Information</h6>
+                        <p><strong>Customer PO:</strong> <span id="modal-customerpo"></span></p>
+                        <p><strong>Dispatch Date:</strong> <span id="modal-dispatchdate"></span></p>
+                        <p><strong>Total Amount:</strong> <span id="modal-totalamount"></span></p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Status</h6>
+                        <p><strong>Paid:</strong> <span id="modal-paid"></span></p>
+                        <p><strong>Invoiced:</strong> <span id="modal-invoiced"></span></p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Manage Emails Modal -->
+<div class="modal fade" id="manageEmailsModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Manage Emails for <span id="manageEmailsCustomerName"></span></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <h6>Add New Email</h6>
+                    <div class="input-group mb-2">
+                        <input type="email" class="form-control" id="newEmailAddress" placeholder="email@example.com">
+                        <input type="text" class="form-control" id="newEmailLabel" placeholder="Label (optional)">
+                        <button class="btn btn-primary" onclick="addCustomerEmail()">
+                            <i class="bi bi-plus"></i> Add
+                        </button>
+                    </div>
+                </div>
+                <div>
+                    <h6>Saved Emails:</h6>
+                    <div id="manageEmailsList">
+                        <p class="text-muted text-center">No saved emails yet.</p>
+                    </div>
                 </div>
             </div>
             <div class="modal-footer">
@@ -173,29 +374,42 @@
 <script>
 // Global variables
 let currentSoid = null;
+let currentCustomerId = null;
+let currentCustomerName = null;
+let customerEmails = [];
 
 document.addEventListener('DOMContentLoaded', function() {
     setupFilters();
     setupDropZone();
+    loadAllOrders();
     
     {% if soid %}
     openFileManager('{{ soid }}');
     {% endif %}
 });
 
+// ============================================================================
+// FILTERS AND SEARCH
+// ============================================================================
+
 function setupFilters() {
     document.getElementById('filter-soid').addEventListener('keydown', function(e) {
         if (e.key === 'Enter') {
             const soid = this.value.trim();
-            if (soid) {
+            if (soid && soid.match(/^\d+$/)) {
                 openFileManager(soid);
+            } else if (soid) {
+                searchBySoid(soid);
             }
         }
     });
     
     document.getElementById('filter-customer').addEventListener('keydown', function(e) {
         if (e.key === 'Enter') {
-            searchByCustomer(this.value.trim());
+            const customer = this.value.trim();
+            if (customer) {
+                showCustomerModal(customer);
+            }
         }
     });
     
@@ -208,6 +422,26 @@ function debounce(func, wait) {
         clearTimeout(timeout);
         timeout = setTimeout(() => func.apply(this, args), wait);
     };
+}
+
+function loadAllOrders() {
+    fetch('/api/documents/so/')
+        .then(response => response.json())
+        .then(data => {
+            renderTable(data);
+        })
+        .catch(error => {
+            console.error('Error loading orders:', error);
+            document.getElementById('documentsTableBody').innerHTML = 
+                '<tr><td colspan="9" class="text-center text-danger">Error loading data</td></tr>';
+        });
+}
+
+function searchBySoid(soid) {
+    fetch(`/api/documents/so/?soid=${encodeURIComponent(soid)}`)
+        .then(response => response.json())
+        .then(data => renderTable(data))
+        .catch(error => console.error('Error:', error));
 }
 
 function searchCustomers() {
@@ -233,7 +467,7 @@ function searchCustomers() {
                         e.preventDefault();
                         document.getElementById('filter-customer').value = customer.name;
                         dropdown.style.display = 'none';
-                        searchByCustomer(customer.name);
+                        showCustomerModal(customer.name);
                     };
                     dropdown.appendChild(item);
                 });
@@ -248,40 +482,46 @@ function searchCustomers() {
         });
 }
 
-function searchByCustomer(customerName) {
-    if (!customerName) return;
-    
-    fetch(`/api/documents/so/?customer=${encodeURIComponent(customerName)}`)
-        .then(response => response.json())
-        .then(data => {
-            renderTable(data);
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('Error loading documents');
-        });
-}
+// Hide dropdown when clicking outside
+document.addEventListener('click', function(e) {
+    const dropdown = document.getElementById('customer-dropdown');
+    const input = document.getElementById('filter-customer');
+    if (dropdown && input && e.target !== input && !dropdown.contains(e.target)) {
+        dropdown.style.display = 'none';
+    }
+});
+
+// ============================================================================
+// TABLE RENDERING
+// ============================================================================
 
 function renderTable(data) {
     const tbody = document.getElementById('documentsTableBody');
     
-    if (data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">No documents found</td></tr>';
+    if (!data || data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted py-4">No documents found</td></tr>';
         return;
     }
     
     tbody.innerHTML = data.map(row => `
         <tr>
-            <td><input type="checkbox" class="row-checkbox" value="${row.soid}"></td>
+            <td><input type="checkbox" class="row-checkbox" value="${row.soid}" onchange="updateBulkActions()"></td>
             <td>
-                <button class="btn btn-sm btn-info" onclick="openFileManager('${row.soid}')" title="View Files">
-                    <i class="bi bi-eye"></i>
-                </button>
+                <div class="btn-group btn-group-sm">
+                    <button class="btn btn-info" onclick="openFileManager('${row.soid}')" title="View Files">
+                        <i class="bi bi-eye"></i>
+                    </button>
+                    <button class="btn btn-secondary" onclick="showDetails(${JSON.stringify(row).replace(/"/g, '&quot;')})" title="Details">
+                        <i class="bi bi-info-circle"></i>
+                    </button>
+                </div>
             </td>
             <td>${row.soid || ''}</td>
             <td>${row.company_name || ''}</td>
             <td>${row.customer_name || ''}</td>
+            <td>${row.customer_po || ''}</td>
             <td>${formatDate(row.dispatchdate)}</td>
+            <td>${formatPaid(row.paid)}</td>
             <td><span class="badge ${row.file_count > 0 ? 'bg-success' : 'bg-secondary'}">${row.file_count || 0}</span></td>
         </tr>
     `).join('');
@@ -294,6 +534,79 @@ function formatDate(dateString) {
     return date.toLocaleDateString();
 }
 
+function formatPaid(value) {
+    if (value === '1' || value === 1 || value === 'Yes' || value === 'yes' || value === true) {
+        return '<span class="text-success fw-bold">Yes</span>';
+    }
+    return 'No';
+}
+
+// ============================================================================
+// BULK ACTIONS
+// ============================================================================
+
+function toggleSelectAll() {
+    const selectAll = document.getElementById('selectAll');
+    const checkboxes = document.querySelectorAll('.row-checkbox');
+    checkboxes.forEach(cb => cb.checked = selectAll.checked);
+    updateBulkActions();
+}
+
+function updateBulkActions() {
+    const checked = document.querySelectorAll('.row-checkbox:checked');
+    const bulkBar = document.getElementById('bulkActionsBar');
+    const countSpan = document.getElementById('selectedCount');
+    
+    if (checked.length > 0) {
+        bulkBar.style.display = 'block';
+        countSpan.textContent = `${checked.length} rows selected`;
+    } else {
+        bulkBar.style.display = 'none';
+    }
+    
+    // Update select all checkbox state
+    const allCheckboxes = document.querySelectorAll('.row-checkbox');
+    const selectAll = document.getElementById('selectAll');
+    selectAll.checked = allCheckboxes.length > 0 && checked.length === allCheckboxes.length;
+    selectAll.indeterminate = checked.length > 0 && checked.length < allCheckboxes.length;
+}
+
+function downloadSelectedFiles() {
+    const selected = document.querySelectorAll('.row-checkbox:checked');
+    if (selected.length === 0) {
+        alert('Please select at least one row');
+        return;
+    }
+    
+    const soids = Array.from(selected).map(cb => cb.value);
+    
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '/api/documents/so/download-bulk/';
+    
+    const csrfInput = document.createElement('input');
+    csrfInput.type = 'hidden';
+    csrfInput.name = 'csrfmiddlewaretoken';
+    csrfInput.value = getCookie('csrftoken');
+    form.appendChild(csrfInput);
+    
+    soids.forEach(soid => {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'soids';
+        input.value = soid;
+        form.appendChild(input);
+    });
+    
+    document.body.appendChild(form);
+    form.submit();
+    document.body.removeChild(form);
+}
+
+// ============================================================================
+// FILE MANAGER MODAL
+// ============================================================================
+
 function openFileManager(soid) {
     currentSoid = soid;
     document.getElementById('fileManagerSoid').textContent = soid;
@@ -302,8 +615,20 @@ function openFileManager(soid) {
         .then(response => response.json())
         .then(data => {
             renderFiles(data.files || []);
+            
+            // Load customer info and emails if available
+            if (data.customer_id) {
+                currentCustomerId = data.customer_id;
+                currentCustomerName = data.customer_name;
+                loadCustomerEmails(data.customer_id);
+            } else {
+                document.getElementById('addressBookSection').style.display = 'none';
+            }
+            
             const modal = new bootstrap.Modal(document.getElementById('fileManagerModal'));
             modal.show();
+            
+            setupFileManagerDropZone();
         })
         .catch(error => {
             console.error('Error:', error);
@@ -324,7 +649,7 @@ function renderFiles(files) {
             <div class="card">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-start mb-2">
-                        <input type="checkbox" class="filemanager-file-checkbox" value="${file.filename}">
+                        <input type="checkbox" class="filemanager-file-checkbox" value="${file.filename}" onchange="updateFileManagerBulkActions()">
                     </div>
                     ${file.type === 'pdf' ? 
                         `<div class="text-center mb-2"><i class="bi bi-file-earmark-pdf text-danger" style="font-size: 4rem;"></i></div>` :
@@ -347,6 +672,19 @@ function renderFiles(files) {
     `).join('');
 }
 
+function updateFileManagerBulkActions() {
+    const checked = document.querySelectorAll('.filemanager-file-checkbox:checked');
+    const bulkBar = document.getElementById('fileManagerBulkActionsBar');
+    const countSpan = document.getElementById('fileManagerSelectedCount');
+    
+    if (checked.length > 0) {
+        bulkBar.style.display = 'block';
+        countSpan.textContent = `${checked.length} files selected`;
+    } else {
+        bulkBar.style.display = 'none';
+    }
+}
+
 function deleteFile(filename) {
     if (!confirm(`Delete ${filename}?`)) return;
     
@@ -364,6 +702,485 @@ function deleteFile(filename) {
     })
     .catch(error => alert('Error: ' + error));
 }
+
+function setupFileManagerDropZone() {
+    const dropZone = document.getElementById('fileManagerDropZone');
+    if (!dropZone) return;
+    
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(event => {
+        dropZone.addEventListener(event, e => {
+            e.preventDefault();
+            e.stopPropagation();
+        });
+    });
+    
+    ['dragenter', 'dragover'].forEach(event => {
+        dropZone.addEventListener(event, () => {
+            dropZone.style.borderColor = '#0d6efd';
+            dropZone.style.backgroundColor = '#f0f7ff';
+        });
+    });
+    
+    ['dragleave', 'drop'].forEach(event => {
+        dropZone.addEventListener(event, () => {
+            dropZone.style.borderColor = '#ccc';
+            dropZone.style.backgroundColor = 'transparent';
+        });
+    });
+    
+    dropZone.addEventListener('drop', e => {
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            uploadFilesToSoid(currentSoid, Array.from(files));
+        }
+    });
+    
+    dropZone.addEventListener('click', () => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*,application/pdf';
+        input.multiple = true;
+        input.onchange = e => {
+            if (e.target.files.length > 0) {
+                uploadFilesToSoid(currentSoid, Array.from(e.target.files));
+            }
+        };
+        input.click();
+    });
+}
+
+function uploadFilesToSoid(soid, files) {
+    let completed = 0;
+    const total = files.length;
+    
+    files.forEach(file => {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('soid', soid);
+        
+        fetch('/api/documents/so/upload/', {
+            method: 'POST',
+            body: formData,
+            headers: { 'X-CSRFToken': getCookie('csrftoken') }
+        })
+        .then(response => response.json())
+        .then(data => {
+            completed++;
+            if (completed === total) {
+                openFileManager(soid);
+            }
+        })
+        .catch(error => {
+            completed++;
+            console.error('Upload error:', error);
+            if (completed === total) {
+                openFileManager(soid);
+            }
+        });
+    });
+}
+
+// ============================================================================
+// EMAIL FUNCTIONALITY
+// ============================================================================
+
+function loadCustomerEmails(customerId) {
+    fetch(`/api/documents/customer-emails/${customerId}/`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Not found');
+            }
+            return response.json();
+        })
+        .then(emails => {
+            customerEmails = emails;
+            renderAddressBook(emails);
+        })
+        .catch(error => {
+            console.error('Error loading emails:', error);
+            document.getElementById('addressBookSection').style.display = 'none';
+        });
+}
+
+function renderAddressBook(emails) {
+    const section = document.getElementById('addressBookSection');
+    const list = document.getElementById('addressBookList');
+    const useAllBtn = document.getElementById('useAllEmailsBtn');
+    
+    section.style.display = 'block';
+    
+    if (emails.length === 0) {
+        list.innerHTML = '<p class="text-muted text-center mb-0">No saved emails yet. Click "Manage Emails" to add one.</p>';
+        useAllBtn.style.display = 'none';
+    } else {
+        useAllBtn.style.display = 'inline-block';
+        list.innerHTML = emails.map(email => `
+            <div class="d-flex justify-content-between align-items-center mb-2 p-2 bg-light rounded customer-email-item" data-email="${email.email}">
+                <div>
+                    <strong>${email.email}</strong>
+                    ${email.label ? `<small class="text-muted ms-2">(${email.label})</small>` : ''}
+                </div>
+                <button class="btn btn-sm btn-primary" onclick="useEmail('${email.email}')">
+                    <i class="bi bi-check-circle"></i> Use
+                </button>
+            </div>
+        `).join('');
+    }
+}
+
+function useEmail(email) {
+    const input = document.getElementById('filemanager-email-input');
+    input.value = email;
+    input.focus();
+}
+
+function useAllEmails() {
+    const emails = customerEmails.map(e => e.email).join(', ');
+    document.getElementById('filemanager-email-input').value = emails;
+}
+
+function emailSelectedFiles() {
+    const selected = document.querySelectorAll('.filemanager-file-checkbox:checked');
+    if (selected.length === 0) {
+        alert('Please select at least one file');
+        return;
+    }
+    
+    const emailInput = document.getElementById('filemanager-email-input');
+    const emails = emailInput.value.split(',').map(e => e.trim()).filter(e => e);
+    
+    if (emails.length === 0) {
+        alert('Please enter an email address');
+        emailInput.focus();
+        return;
+    }
+    
+    const filenames = Array.from(selected).map(cb => cb.value);
+    
+    const formData = new FormData();
+    formData.append('soid', currentSoid);
+    emails.forEach(email => formData.append('emails', email));
+    filenames.forEach(f => formData.append('filenames', f));
+    
+    fetch('/api/documents/so/email-files/', {
+        method: 'POST',
+        body: formData,
+        headers: { 'X-CSRFToken': getCookie('csrftoken') }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(`Email sent to ${emails.join(', ')}`);
+            emailInput.value = '';
+        } else {
+            alert('Error: ' + (data.error || 'Email failed'));
+        }
+    })
+    .catch(error => alert('Error: ' + error));
+}
+
+function openManageEmailsModal() {
+    if (!currentCustomerId) {
+        alert('No customer associated with this order');
+        return;
+    }
+    
+    document.getElementById('manageEmailsCustomerName').textContent = currentCustomerName || '';
+    refreshManageEmailsList();
+    
+    const modal = new bootstrap.Modal(document.getElementById('manageEmailsModal'));
+    modal.show();
+}
+
+function refreshManageEmailsList() {
+    fetch(`/api/documents/customer-emails/${currentCustomerId}/`)
+        .then(response => response.json())
+        .then(emails => {
+            const list = document.getElementById('manageEmailsList');
+            
+            if (emails.length === 0) {
+                list.innerHTML = '<p class="text-muted text-center">No saved emails yet.</p>';
+            } else {
+                list.innerHTML = emails.map(email => `
+                    <div class="d-flex justify-content-between align-items-center mb-2 p-2 bg-light rounded">
+                        <div>
+                            <strong>${email.email}</strong>
+                            ${email.label ? `<span class="badge bg-secondary ms-2">${email.label}</span>` : ''}
+                        </div>
+                        <button class="btn btn-sm btn-danger" onclick="deleteCustomerEmail(${email.id})">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                `).join('');
+            }
+            
+            // Also refresh address book
+            customerEmails = emails;
+            renderAddressBook(emails);
+        });
+}
+
+function addCustomerEmail() {
+    const email = document.getElementById('newEmailAddress').value.trim();
+    const label = document.getElementById('newEmailLabel').value.trim();
+    
+    if (!email) {
+        alert('Please enter an email address');
+        return;
+    }
+    
+    fetch('/api/documents/add-customer-email/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({
+            customer_id: currentCustomerId,
+            email: email,
+            label: label
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            document.getElementById('newEmailAddress').value = '';
+            document.getElementById('newEmailLabel').value = '';
+            refreshManageEmailsList();
+        } else {
+            alert('Error: ' + (data.error || 'Failed to add email'));
+        }
+    })
+    .catch(error => alert('Error: ' + error));
+}
+
+function deleteCustomerEmail(emailId) {
+    if (!confirm('Delete this email?')) return;
+    
+    fetch(`/api/documents/delete-customer-email/${emailId}/`, {
+        method: 'DELETE',
+        headers: { 'X-CSRFToken': getCookie('csrftoken') }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            refreshManageEmailsList();
+        } else {
+            alert('Error deleting email');
+        }
+    })
+    .catch(error => alert('Error: ' + error));
+}
+
+// ============================================================================
+// CUSTOMER MODAL
+// ============================================================================
+
+function showCustomerModal(customerName) {
+    currentCustomerName = customerName;
+    document.getElementById('customerModalName').textContent = customerName;
+    
+    // First get customer ID
+    fetch(`/api/documents/customers/search/?search=${encodeURIComponent(customerName)}`)
+        .then(response => response.json())
+        .then(customers => {
+            const customer = customers.find(c => c.name === customerName);
+            if (customer) {
+                currentCustomerId = customer.id;
+                loadCustomerModalData();
+                loadCustomerEmailsForModal(customer.id);
+            }
+        });
+    
+    const modal = new bootstrap.Modal(document.getElementById('customerDocumentsModal'));
+    modal.show();
+}
+
+function loadCustomerModalData() {
+    const startDate = document.getElementById('customer-modal-startdate').value;
+    const endDate = document.getElementById('customer-modal-enddate').value;
+    const paid = document.getElementById('customer-modal-paid').value;
+    
+    let url = `/api/documents/so/?customer=${encodeURIComponent(currentCustomerName)}`;
+    if (startDate) url += `&startdate=${startDate}`;
+    if (endDate) url += `&enddate=${endDate}`;
+    if (paid !== 'all') url += `&paid=${paid}`;
+    
+    fetch(url)
+        .then(response => response.json())
+        .then(data => {
+            renderCustomerModalTable(data);
+        })
+        .catch(error => console.error('Error:', error));
+}
+
+function loadCustomerEmailsForModal(customerId) {
+    fetch(`/api/documents/customer-emails/${customerId}/`)
+        .then(response => response.json())
+        .then(emails => {
+            const datalist = document.getElementById('customer-saved-emails');
+            datalist.innerHTML = emails.map(e => 
+                `<option value="${e.email}">${e.label ? e.email + ' (' + e.label + ')' : e.email}</option>`
+            ).join('');
+        });
+}
+
+function renderCustomerModalTable(data) {
+    const tbody = document.getElementById('customerModalTableBody');
+    
+    if (!data || data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">No documents found</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = data.map(row => `
+        <tr>
+            <td><input type="checkbox" class="customer-modal-checkbox" value="${row.soid}" onchange="updateCustomerModalBulkActions()"></td>
+            <td>
+                <button class="btn btn-sm btn-info" onclick="openFileManager('${row.soid}')" title="View Files">
+                    <i class="bi bi-eye"></i>
+                </button>
+            </td>
+            <td>${row.soid || ''}</td>
+            <td>${row.company_name || ''}</td>
+            <td>${row.customer_po || ''}</td>
+            <td>${formatDate(row.dispatchdate)}</td>
+            <td>${formatPaid(row.paid)}</td>
+            <td><span class="badge ${row.file_count > 0 ? 'bg-success' : 'bg-secondary'}">${row.file_count || 0}</span></td>
+        </tr>
+    `).join('');
+}
+
+function applyCustomerModalFilters() {
+    loadCustomerModalData();
+}
+
+function toggleCustomerModalSelectAll() {
+    const selectAll = document.getElementById('customerModalSelectAll');
+    const checkboxes = document.querySelectorAll('.customer-modal-checkbox');
+    checkboxes.forEach(cb => cb.checked = selectAll.checked);
+    updateCustomerModalBulkActions();
+}
+
+function updateCustomerModalBulkActions() {
+    const checked = document.querySelectorAll('.customer-modal-checkbox:checked');
+    const bulkBar = document.getElementById('customerModalBulkActions');
+    const countSpan = document.getElementById('customerModalSelectedCount');
+    
+    if (checked.length > 0) {
+        bulkBar.style.display = 'block';
+        countSpan.textContent = `${checked.length} rows selected`;
+    } else {
+        bulkBar.style.display = 'none';
+    }
+}
+
+function downloadCustomerModalFiles() {
+    const selected = document.querySelectorAll('.customer-modal-checkbox:checked');
+    if (selected.length === 0) {
+        alert('Please select at least one row');
+        return;
+    }
+    
+    const soids = Array.from(selected).map(cb => cb.value);
+    
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '/api/documents/so/download-bulk/';
+    
+    const csrfInput = document.createElement('input');
+    csrfInput.type = 'hidden';
+    csrfInput.name = 'csrfmiddlewaretoken';
+    csrfInput.value = getCookie('csrftoken');
+    form.appendChild(csrfInput);
+    
+    soids.forEach(soid => {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'soids';
+        input.value = soid;
+        form.appendChild(input);
+    });
+    
+    document.body.appendChild(form);
+    form.submit();
+    document.body.removeChild(form);
+}
+
+function emailCustomerModalFiles() {
+    const selected = document.querySelectorAll('.customer-modal-checkbox:checked');
+    if (selected.length === 0) {
+        alert('Please select at least one row');
+        return;
+    }
+    
+    const emailInput = document.getElementById('customer-modal-email');
+    const emails = emailInput.value.split(',').map(e => e.trim()).filter(e => e);
+    
+    if (emails.length === 0) {
+        alert('Please enter an email address');
+        emailInput.focus();
+        return;
+    }
+    
+    const soids = Array.from(selected).map(cb => cb.value);
+    
+    const formData = new FormData();
+    emails.forEach(email => formData.append('emails', email));
+    soids.forEach(soid => formData.append('soids', soid));
+    
+    fetch('/api/documents/so/email-bulk/', {
+        method: 'POST',
+        body: formData,
+        headers: { 'X-CSRFToken': getCookie('csrftoken') }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(`Email sent to ${emails.join(', ')}`);
+            emailInput.value = '';
+        } else {
+            alert('Error: ' + (data.error || 'Email failed'));
+        }
+    })
+    .catch(error => alert('Error: ' + error));
+}
+
+function openManageEmailsFromCustomerModal() {
+    document.getElementById('manageEmailsCustomerName').textContent = currentCustomerName || '';
+    refreshManageEmailsList();
+    
+    const modal = new bootstrap.Modal(document.getElementById('manageEmailsModal'));
+    modal.show();
+}
+
+// ============================================================================
+// DETAILS MODAL
+// ============================================================================
+
+function showDetails(row) {
+    document.getElementById('detailsModalSoid').textContent = row.soid;
+    document.getElementById('modal-billto1').textContent = row.billto1 || '';
+    document.getElementById('modal-billto2').textContent = row.billto2 || '';
+    document.getElementById('modal-billto3').textContent = row.billto3 || '';
+    document.getElementById('modal-billto4').textContent = row.billto4 || '';
+    document.getElementById('modal-shipto1').textContent = row.shipto1 || '';
+    document.getElementById('modal-shipto2').textContent = row.shipto2 || '';
+    document.getElementById('modal-shipto3').textContent = row.shipto3 || '';
+    document.getElementById('modal-shipto4').textContent = row.shipto4 || '';
+    document.getElementById('modal-customerpo').textContent = row.customer_po || row.customerpo || '';
+    document.getElementById('modal-dispatchdate').textContent = formatDate(row.dispatchdate);
+    document.getElementById('modal-totalamount').textContent = row.total_amount ? '$' + parseFloat(row.total_amount).toFixed(2) : '';
+    document.getElementById('modal-paid').textContent = row.paid || '';
+    document.getElementById('modal-invoiced').textContent = row.invoiced || '';
+    
+    const modal = new bootstrap.Modal(document.getElementById('detailsModal'));
+    modal.show();
+}
+
+// ============================================================================
+// BULK UPLOAD (MAIN DROP ZONE)
+// ============================================================================
 
 function setupDropZone() {
     const dropZone = document.getElementById('soDropZone');
@@ -385,7 +1202,6 @@ function setupDropZone() {
     });
     
     dropZone.addEventListener('drop', handleDrop);
-    dropZone.addEventListener('click', selectMultipleFiles);
 }
 
 function selectMultipleFiles() {
@@ -427,7 +1243,6 @@ function handleDrop(e) {
             });
         });
     } else {
-        // Fallback for browsers without webkitGetAsEntry
         processFiles(Array.from(e.dataTransfer.files));
     }
 }
@@ -440,7 +1255,6 @@ function processEntry(entry, folderSoid) {
                 resolve([{file, soid}]);
             });
         } else if (entry.isDirectory) {
-            // Try to extract SOID from folder name
             const dirSoid = extractSoidFromFilename(entry.name);
             if (dirSoid) {
                 addUploadResult(`📁 Folder: ${entry.name} → SOID ${dirSoid}`, 'info');
@@ -465,7 +1279,7 @@ function readDirectory(dirEntry, folderSoid) {
                     const promises = entries.map(entry => processEntry(entry, folderSoid));
                     Promise.all(promises).then(results => {
                         results.forEach(files => allFiles.push(...files));
-                        readEntries(); // Continue reading (may have more entries)
+                        readEntries();
                     });
                 }
             });
@@ -492,12 +1306,11 @@ function processFiles(files) {
 }
 
 function extractSoidFromFilename(filename) {
-    // Match SOID prefix patterns first, then plain numbers
     const patterns = [
-        /SOID[_-]?(\d+)/i,     // SOID_123456 or SOID-123456
-        /SO[_-]?(\d+)/i,       // SO_123456 or SO-123456
-        /[_-](\d{5,})/,        // _123456 or -123456
-        /(\d{5,})/             // Any 5+ digit number
+        /SOID[_-]?(\d+)/i,
+        /SO[_-]?(\d+)/i,
+        /[_-](\d{5,})/,
+        /(\d{5,})/
     ];
     
     for (const pattern of patterns) {
@@ -517,7 +1330,6 @@ function uploadFile(file, soid) {
     fetch('/api/documents/so/upload/', {
         method: 'POST',
         body: formData,
-        credentials: 'same-origin',
         headers: { 'X-CSRFToken': getCookie('csrftoken') }
     })
     .then(response => response.json())
@@ -546,6 +1358,10 @@ function clearUploadResults() {
     document.getElementById('uploadResultsList').innerHTML = '';
 }
 
+// ============================================================================
+// UTILITY
+// ============================================================================
+
 function getCookie(name) {
     let cookieValue = null;
     if (document.cookie && document.cookie !== '') {
@@ -561,12 +1377,22 @@ function getCookie(name) {
     return cookieValue;
 }
 
-// Hide dropdown when clicking outside
-document.addEventListener('click', function(e) {
-    const dropdown = document.getElementById('customer-dropdown');
-    const input = document.getElementById('filter-customer');
-    if (dropdown && input && e.target !== input && !dropdown.contains(e.target)) {
-        dropdown.style.display = 'none';
+// Handle multiple modals stacking
+document.addEventListener('show.bs.modal', function (event) {
+    const zIndex = 1040 + (10 * document.querySelectorAll('.modal.show').length);
+    event.target.style.zIndex = zIndex;
+    setTimeout(function() {
+        const backdrops = document.querySelectorAll('.modal-backdrop');
+        if (backdrops.length > 0) {
+            backdrops[backdrops.length - 1].style.zIndex = zIndex - 1;
+        }
+    }, 0);
+});
+
+// Restore scrolling when closing stacked modals
+document.addEventListener('hidden.bs.modal', function (event) {
+    if (document.querySelectorAll('.modal.show').length > 0) {
+        document.body.classList.add('modal-open');
     }
 });
 </script>

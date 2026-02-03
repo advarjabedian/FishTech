@@ -51,6 +51,9 @@ class Tenant(models.Model):
     subscription_status = models.CharField(max_length=20, choices=SUBSCRIPTION_STATUS_CHOICES, default='trialing')
     trial_ends_at = models.DateTimeField(null=True, blank=True)
     subscription_ends_at = models.DateTimeField(null=True, blank=True)
+    # Email settings
+    reply_to_email = models.EmailField(blank=True, null=True, help_text="Customer replies go here")
+    reply_to_name = models.CharField(max_length=255, blank=True, null=True, help_text="Display name for reply-to")
     
     def __str__(self):
         return self.name

@@ -3,13 +3,14 @@ from .views import (
     # Auth views
     login_view, logout_view, operations_hub, register_view,
     # Document views
-    documents_home, so_documents, po_documents,# Document views
     documents_home, so_documents, po_documents,
     # Document APIs
     search_customers, search_vendors,
     get_sales_orders, get_so_files, view_so_file, upload_so_file, delete_so_file,
     get_purchase_orders, get_po_files, view_po_file, upload_po_file, delete_po_file,
     get_pod_items,
+    get_customer_emails, add_customer_email, delete_customer_email,
+    download_bulk_so_files, email_bulk_so_files, email_so_files,
     # HACCP views
     haccp, haccp_company, haccp_documents, haccp_document_view,
     haccp_save_document, get_company_product_types, toggle_company_product_type,
@@ -145,6 +146,7 @@ urlpatterns = [
     path('api/documents/so/<str:soid>/files/', get_so_files, name='get_so_files'),
     path('api/documents/so/<str:soid>/files/<str:filename>/view/', view_so_file, name='view_so_file'),
     path('api/documents/so/<str:soid>/files/<str:filename>/', delete_so_file, name='delete_so_file'),
+    path('api/documents/so/email-files/', email_so_files, name='email_so_files'),
     
     # Documents API - Purchase Orders
     path('api/documents/po/', get_purchase_orders, name='get_purchase_orders'),
@@ -159,4 +161,13 @@ urlpatterns = [
     path('api/billing/checkout/', create_checkout_session, name='create_checkout'),
     path('api/billing/portal/', create_portal_session, name='create_portal'),
     path('webhook/stripe/', stripe_webhook, name='stripe_webhook'),
+    # Customer Emails API
+    path('api/documents/customer-emails/<int:customer_id>/', get_customer_emails, name='get_customer_emails'),
+    path('api/documents/add-customer-email/', add_customer_email, name='add_customer_email'),
+    path('api/documents/delete-customer-email/<int:email_id>/', delete_customer_email, name='delete_customer_email'),
+    # Documents API - Bulk operations
+    path('api/documents/so/download-bulk/', download_bulk_so_files, name='download_bulk_so_files'),
+    path('api/documents/so/email-bulk/', email_bulk_so_files, name='email_bulk_so_files'),
+    path('api/documents/customer-emails/<int:customer_id>/', get_customer_emails, name='get_customer_emails'),
+ 
 ]
