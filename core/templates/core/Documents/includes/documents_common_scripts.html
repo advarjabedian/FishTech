@@ -1,0 +1,83 @@
+<script>
+// ============================================================================
+// COMMON UTILITY FUNCTIONS
+// ============================================================================
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+function debounce(func, wait) {
+    let timeout;
+    return function(...args) {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func.apply(this, args), wait);
+    };
+}
+
+function formatDate(dateString) {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return dateString;
+    return date.toLocaleDateString();
+}
+
+function formatPaid(value) {
+    if (value === '1' || value === 1 || value === 'Yes' || value === 'yes' || value === true) {
+        return '<span class="text-success fw-bold">Yes</span>';
+    }
+    return 'No';
+}
+
+// ============================================================================
+// MODAL HANDLING
+// ============================================================================
+
+document.addEventListener('show.bs.modal', function (event) {
+    const zIndex = 1040 + (10 * document.querySelectorAll('.modal.show').length);
+    event.target.style.zIndex = zIndex;
+    setTimeout(function() {
+        const backdrops = document.querySelectorAll('.modal-backdrop');
+        if (backdrops.length > 0) {
+            backdrops[backdrops.length - 1].style.zIndex = zIndex - 1;
+        }
+    }, 0);
+});
+
+document.addEventListener('hidden.bs.modal', function (event) {
+    const openModals = document.querySelectorAll('.modal.show');
+    const backdrops = document.querySelectorAll('.modal-backdrop');
+    
+    if (openModals.length > 0) {
+        document.body.classList.add('modal-open');
+        while (backdrops.length > openModals.length) {
+            backdrops[backdrops.length - 1].remove();
+        }
+    } else {
+        document.body.classList.remove('modal-open');
+        document.body.style.overflow = '';
+        document.body.style.paddingRight = '';
+        backdrops.forEach(backdrop => backdrop.remove());
+    }
+});
+
+// Hide dropdown when clicking outside
+document.addEventListener('click', function(e) {
+    const dropdown = document.getElementById('customer-dropdown');
+    const input = document.getElementById('filter-customer');
+    if (dropdown && input && e.target !== input && !dropdown.contains(e.target)) {
+        dropdown.style.display = 'none';
+    }
+});
+</script>
