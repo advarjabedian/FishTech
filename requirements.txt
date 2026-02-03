@@ -2,3 +2,6 @@ Django>=4.2
 psycopg2-binary>=2.9
 reportlab>=4.0
 PyPDF2>=3.0
+gunicorn
+dj-database-url
+whitenoise
