@@ -497,8 +497,21 @@ function processFiles(files) {
 }
 
 function extractPoidFromFilename(filename) {
-    const match = filename.match(/\b(\d{5,})\b/);
-    return match ? match[1] : null;
+    // Match POID prefix patterns first, then plain numbers
+    const patterns = [
+        /POID[_-]?(\d+)/i,     // POID_123456 or POID-123456
+        /PO[_-]?(\d+)/i,       // PO_123456 or PO-123456
+        /[_-](\d{5,})/,        // _123456 or -123456
+        /(\d{5,})/             // Any 5+ digit number
+    ];
+    
+    for (const pattern of patterns) {
+        const match = filename.match(pattern);
+        if (match) {
+            return match[1];
+        }
+    }
+    return null;
 }
 
 function uploadFile(file, poid) {

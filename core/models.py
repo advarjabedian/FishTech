@@ -395,21 +395,23 @@ class VendorEmail(TenantModel):
         unique_together = [['tenant', 'vendor', 'email']]
 
 
-class SalesOrder(TenantModel):
-    """Sales Order records"""
-    soid = models.IntegerField()  # Sales Order ID
+class SO(TenantModel):
+    """Sales Order header"""
+    soid = models.IntegerField()
     company = models.ForeignKey(Company, on_delete=models.CASCADE, null=True, blank=True)
-    customer = models.ForeignKey(Customer, on_delete=models.SET_NULL, null=True, blank=True)
-    customer_po = models.CharField(max_length=100, blank=True)  # Customer's PO number
+    customer = models.ForeignKey(Customer, on_delete=models.SET_NULL, null=True, blank=True, related_name='sales_orders')
+    customerid = models.IntegerField(null=True, blank=True)  # Legacy ID reference
     
     # Dates
     dispatchdate = models.DateField(null=True, blank=True)
+    deadline = models.CharField(max_length=50, blank=True)
     
     # Billing info
     billto1 = models.CharField(max_length=255, blank=True)
     billto2 = models.CharField(max_length=255, blank=True)
     billto3 = models.CharField(max_length=255, blank=True)
     billto4 = models.CharField(max_length=255, blank=True)
+    billing = models.CharField(max_length=100, blank=True)
     
     # Shipping info
     shipto1 = models.CharField(max_length=255, blank=True)
@@ -417,74 +419,167 @@ class SalesOrder(TenantModel):
     shipto3 = models.CharField(max_length=255, blank=True)
     shipto4 = models.CharField(max_length=255, blank=True)
     
+    # Route info
+    route = models.IntegerField(null=True, blank=True)
+    routeid = models.IntegerField(null=True, blank=True)
+    
+    # Financials
+    totalamount = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    payamount = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    creditamount = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    paid = models.CharField(max_length=50, blank=True)
+    pos = models.CharField(max_length=50, blank=True)
+    
     # Status
-    paid = models.BooleanField(default=False)
-    total_amount = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    invoiced = models.CharField(max_length=50, blank=True)
+    filed = models.CharField(max_length=50, blank=True)
+    priority = models.IntegerField(null=True, blank=True)
+    totalunits = models.IntegerField(null=True, blank=True)
+    lockorder = models.IntegerField(null=True, blank=True)
+    
+    # Delivery
+    deliverwindowopen = models.CharField(max_length=50, blank=True)
+    deliverwindowclose = models.CharField(max_length=50, blank=True)
+    
+    # Other
+    customerpo = models.CharField(max_length=100, blank=True)
+    comments = models.TextField(blank=True)
+    savetime = models.CharField(max_length=50, blank=True)
+    oddball = models.IntegerField(null=True, blank=True)
+    dba = models.IntegerField(null=True, blank=True)
+    onlineorderid = models.IntegerField(null=True, blank=True)
     
     # Metadata
-    comments = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
-        db_table = 'documents_salesorder'
+        db_table = 'documents_so'
         unique_together = [['tenant', 'soid']]
     
     def __str__(self):
         return f"SO-{self.soid}"
 
 
-class PurchaseOrder(TenantModel):
-    """Purchase Order records"""
-    poid = models.IntegerField()  # Purchase Order ID
+class SOD(TenantModel):
+    """Sales Order Detail / line items"""
+    sodid = models.IntegerField()
+    so = models.ForeignKey(SO, on_delete=models.CASCADE, related_name='items', null=True, blank=True)
+    soid = models.IntegerField(null=True, blank=True)  # Legacy reference
+    
+    # Product info
+    productid = models.IntegerField(null=True, blank=True)
+    descriptionmemo = models.TextField(blank=True)
+    origin = models.IntegerField(null=True, blank=True)
+    category = models.IntegerField(null=True, blank=True)
+    
+    # Units
+    unittype = models.IntegerField(null=True, blank=True)
+    unitsize = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    orderedunits = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    unitsshipped = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    weightshipped = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    packsshipped = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    
+    # Pricing
+    salesprice = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    
+    # Status
+    priority = models.IntegerField(null=True, blank=True)
+    complete = models.IntegerField(null=True, blank=True)
+    edit = models.CharField(max_length=50, blank=True)
+    
+    # Other
+    specialinstructions = models.TextField(blank=True)
+    salesrep = models.CharField(max_length=100, blank=True)
+    company = models.CharField(max_length=255, blank=True)
+    sfpnumber = models.CharField(max_length=100, blank=True)
+    crew = models.CharField(max_length=100, blank=True)
+    onlineorderdid = models.IntegerField(null=True, blank=True)
+    supc = models.CharField(max_length=100, blank=True)
+    unitpriceon = models.CharField(max_length=100, blank=True)
+    
+    class Meta:
+        db_table = 'documents_sod'
+        unique_together = [['tenant', 'sodid']]
+    
+    def __str__(self):
+        return f"SOD-{self.sodid}"
+
+
+class PO(TenantModel):
+    """Purchase Order header"""
+    poid = models.IntegerField()
     company = models.ForeignKey(Company, on_delete=models.CASCADE, null=True, blank=True)
-    vendor = models.ForeignKey(Vendor, on_delete=models.SET_NULL, null=True, blank=True)
-    buyer = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    vendor = models.ForeignKey(Vendor, on_delete=models.SET_NULL, null=True, blank=True, related_name='purchase_orders')
+    vendorid = models.IntegerField(null=True, blank=True)  # Legacy ID reference
+    buyer = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='purchase_orders')
     
     # Dates
     orderdate = models.DateField(null=True, blank=True)
     receivedate = models.DateField(null=True, blank=True)
-    receivetime = models.TimeField(null=True, blank=True)
+    receivetime = models.CharField(max_length=50, blank=True)
     
     # Reference numbers
     vendorref = models.CharField(max_length=100, blank=True)
+    awb = models.CharField(max_length=100, blank=True)  # Air waybill
     
     # Financials
     totalcost = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
-    paid = models.BooleanField(default=False)
+    value = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    payment = models.CharField(max_length=50, blank=True)
+    paid = models.CharField(max_length=50, blank=True)
+    credit = models.CharField(max_length=50, blank=True)
+    account = models.CharField(max_length=100, blank=True)
     
-    # Receiving data
-    top_temp = models.CharField(max_length=20, blank=True)
-    middle_temp = models.CharField(max_length=20, blank=True)
-    bottom_temp = models.CharField(max_length=20, blank=True)
-    trailer_temp_before = models.CharField(max_length=20, blank=True)
-    trailer_temp_after = models.CharField(max_length=20, blank=True)
-    seal_num = models.CharField(max_length=50, blank=True)
-    labels = models.CharField(max_length=10, blank=True)
-    country_origin = models.CharField(max_length=10, blank=True)
-    truckcondition = models.CharField(max_length=10, blank=True)
-    palletcondition = models.CharField(max_length=10, blank=True)
-    iceadequate = models.CharField(max_length=10, blank=True)
-    shellfishTag = models.CharField(max_length=10, blank=True)
-    scombroidice = models.CharField(max_length=10, blank=True)
-    datalogreq = models.CharField(max_length=10, blank=True)
-    datalog = models.CharField(max_length=10, blank=True)
-    datalogrev = models.CharField(max_length=10, blank=True)
-    disposition_good = models.BooleanField(default=True)
+    # Receiving - temperatures
+    temperature = models.CharField(max_length=50, blank=True)
+    trailertemp = models.CharField(max_length=50, blank=True)
+    top_temp = models.CharField(max_length=50, blank=True)
+    middle_temp = models.CharField(max_length=50, blank=True)
+    bottom_temp = models.CharField(max_length=50, blank=True)
+    trailer_temp_before = models.CharField(max_length=50, blank=True)
+    trailer_temp_after = models.CharField(max_length=50, blank=True)
+    
+    # Receiving - inspection
     receiver = models.CharField(max_length=100, blank=True)
+    datalogreq = models.CharField(max_length=50, blank=True)
+    datalog = models.CharField(max_length=50, blank=True)
+    datalogrev = models.CharField(max_length=50, blank=True)
+    truckcondition = models.CharField(max_length=100, blank=True)
+    palletcondition = models.CharField(max_length=100, blank=True)
+    containercondition = models.CharField(max_length=100, blank=True)
+    iceadequate = models.CharField(max_length=50, blank=True)
+    shellfishTag = models.CharField(max_length=100, blank=True)
+    scombroidice = models.CharField(max_length=50, blank=True)
+    shuckedcc = models.CharField(max_length=50, blank=True)
+    frozenshell = models.CharField(max_length=50, blank=True)
+    labels = models.CharField(max_length=100, blank=True)
+    country_origin = models.CharField(max_length=50, blank=True)
+    seal_num = models.CharField(max_length=100, blank=True)
+    disposition_good = models.BooleanField(default=True)
     
-    # Verification
+    # Review/verification
+    reviewed = models.CharField(max_length=50, blank=True)
     verified = models.BooleanField(default=False)
-    verified_by = models.CharField(max_length=100, blank=True)
     verified_at = models.DateTimeField(null=True, blank=True)
+    verified_by = models.CharField(max_length=100, blank=True)
     verified_signature = models.TextField(blank=True)
+    received_at = models.DateTimeField(null=True, blank=True)
+    received_by = models.CharField(max_length=100, blank=True)
+    
+    # Other
+    memo = models.CharField(max_length=100, blank=True)
+    notes = models.TextField(blank=True)
+    padding = models.CharField(max_length=100, blank=True)
+    invoicecopyrequest = models.CharField(max_length=50, blank=True)
     
     # Metadata
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
-        db_table = 'documents_purchaseorder'
+        db_table = 'documents_po'
         unique_together = [['tenant', 'poid']]
     
     def __str__(self):
@@ -492,26 +587,64 @@ class PurchaseOrder(TenantModel):
 
 
 class POD(TenantModel):
-    """Purchase Order Detail / Proof of Delivery items"""
+    """Purchase Order Detail / line items"""
     podid = models.IntegerField()
-    po = models.ForeignKey(PurchaseOrder, on_delete=models.CASCADE, related_name='items')
+    po = models.ForeignKey(PO, on_delete=models.CASCADE, related_name='items', null=True, blank=True)
+    poid = models.IntegerField(null=True, blank=True)  # Legacy reference
+    
+    # Product info
     productid = models.IntegerField(null=True, blank=True)
-    descriptionmemo = models.CharField(max_length=500, blank=True)
+    descriptionmemo = models.TextField(blank=True)
+    category = models.IntegerField(null=True, blank=True)
+    origin = models.IntegerField(null=True, blank=True)
     
-    # Quantities
-    unitsin = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
-    weightin = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
-    unitsout = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
-    weightout = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
-    
-    # Tracking
+    # Lot tracking
     vendorlot = models.CharField(max_length=100, blank=True)
     packdate = models.DateField(null=True, blank=True)
-    category = models.CharField(max_length=100, blank=True)
-    origin = models.CharField(max_length=100, blank=True)
+    shelflife = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    
+    # Units
+    unittype = models.IntegerField(null=True, blank=True)
+    packsize = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    fixed = models.IntegerField(null=True, blank=True)
+    
+    # Quantities in
+    unitsin = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    weightin = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    unitsordered = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    
+    # Quantities out/allocated
+    unitsallocated = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    unitsout = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    weightout = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    weightbalance = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    dripout = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    billedweight = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    
+    # Storage
+    storageid = models.IntegerField(null=True, blank=True)
+    unitsstored = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    unitsrequested = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    unitsretrieved = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
     
     # Pricing
-    unitprice = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    unitprice = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    origprice = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    promoprice = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    costverified = models.CharField(max_length=50, blank=True)
+    costpad = models.CharField(max_length=50, blank=True)
+    
+    # Claims
+    claimamount = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    reasonforclaim = models.CharField(max_length=255, blank=True)
+    
+    # Status
+    promotion = models.CharField(max_length=100, blank=True)
+    companyid = models.IntegerField(null=True, blank=True)
+    derived = models.IntegerField(null=True, blank=True)
+    flagged = models.IntegerField(null=True, blank=True)
+    hidden = models.IntegerField(null=True, blank=True)
+    ogpodid = models.IntegerField(null=True, blank=True)
     
     class Meta:
         db_table = 'documents_pod'
@@ -519,34 +652,6 @@ class POD(TenantModel):
     
     def __str__(self):
         return f"POD-{self.podid}"
-
-
-class DocumentFile(TenantModel):
-    """File attachments for documents (SO, PO, Customer, Vendor)"""
-    DOCUMENT_TYPE_CHOICES = [
-        ('so', 'Sales Order'),
-        ('po', 'Purchase Order'),
-        ('pod', 'POD'),
-        ('customer', 'Customer'),
-        ('vendor', 'Vendor'),
-        ('receipt', 'Receipt'),
-    ]
-    
-    document_type = models.CharField(max_length=20, choices=DOCUMENT_TYPE_CHOICES)
-    document_id = models.CharField(max_length=50)  # The ID of the related document
-    filename = models.CharField(max_length=255)
-    file_path = models.CharField(max_length=500)
-    file_type = models.CharField(max_length=50, blank=True)  # pdf, image, etc.
-    file_size = models.IntegerField(null=True, blank=True)
-    uploaded_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    
-    class Meta:
-        db_table = 'documents_file'
-        unique_together = [['tenant', 'document_type', 'document_id', 'filename']]
-    
-    def __str__(self):
-        return f"{self.document_type}/{self.document_id}/{self.filename}"
 
 
 class Receipt(TenantModel):
@@ -563,3 +668,31 @@ class Receipt(TenantModel):
     
     def __str__(self):
         return f"Receipt {self.id} - {self.email_subject[:50] if self.email_subject else 'No subject'}"
+    
+
+class DocumentFile(TenantModel):
+    """Tracks uploaded files for SO/PO/POD/Customer/Vendor"""
+    DOCUMENT_TYPE_CHOICES = [
+        ('so', 'Sales Order'),
+        ('po', 'Purchase Order'),
+        ('pod', 'POD'),
+        ('customer', 'Customer'),
+        ('vendor', 'Vendor'),
+        ('receipt', 'Receipt'),
+    ]
+    
+    document_type = models.CharField(max_length=20, choices=DOCUMENT_TYPE_CHOICES)
+    document_id = models.CharField(max_length=50)  # The SOID, POID, etc.
+    filename = models.CharField(max_length=255)
+    file_path = models.CharField(max_length=500)
+    file_type = models.CharField(max_length=50, blank=True)  # pdf, image, etc.
+    file_size = models.IntegerField(null=True, blank=True)
+    uploaded_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        db_table = 'documents_file'
+        unique_together = [['tenant', 'document_type', 'document_id', 'filename']]
+    
+    def __str__(self):
+        return f"{self.document_type.upper()}-{self.document_id}: {self.filename}"

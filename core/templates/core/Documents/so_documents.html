@@ -400,8 +400,78 @@ function selectMultipleFiles() {
 }
 
 function handleDrop(e) {
-    const files = Array.from(e.dataTransfer.files);
-    processFiles(files);
+    const items = e.dataTransfer.items;
+    const uploadResults = document.getElementById('uploadResults');
+    const uploadResultsList = document.getElementById('uploadResultsList');
+    
+    uploadResults.style.display = 'block';
+    uploadResultsList.innerHTML = '';
+    
+    if (items) {
+        const promises = [];
+        for (let i = 0; i < items.length; i++) {
+            const entry = items[i].webkitGetAsEntry();
+            if (entry) {
+                promises.push(processEntry(entry, null));
+            }
+        }
+        Promise.all(promises).then(results => {
+            const allFiles = results.flat();
+            addUploadResult(`Found ${allFiles.length} file(s) to upload`, 'info');
+            allFiles.forEach(({file, soid}) => {
+                if (soid) {
+                    uploadFile(file, soid);
+                } else {
+                    addUploadResult(`${file.name} - No SOID found`, 'warning');
+                }
+            });
+        });
+    } else {
+        // Fallback for browsers without webkitGetAsEntry
+        processFiles(Array.from(e.dataTransfer.files));
+    }
+}
+
+function processEntry(entry, folderSoid) {
+    return new Promise((resolve) => {
+        if (entry.isFile) {
+            entry.file(file => {
+                const soid = folderSoid || extractSoidFromFilename(file.name);
+                resolve([{file, soid}]);
+            });
+        } else if (entry.isDirectory) {
+            // Try to extract SOID from folder name
+            const dirSoid = extractSoidFromFilename(entry.name);
+            if (dirSoid) {
+                addUploadResult(`📁 Folder: ${entry.name} → SOID ${dirSoid}`, 'info');
+            }
+            readDirectory(entry, dirSoid || folderSoid).then(resolve);
+        } else {
+            resolve([]);
+        }
+    });
+}
+
+function readDirectory(dirEntry, folderSoid) {
+    return new Promise((resolve) => {
+        const allFiles = [];
+        const dirReader = dirEntry.createReader();
+        
+        function readEntries() {
+            dirReader.readEntries(entries => {
+                if (entries.length === 0) {
+                    resolve(allFiles);
+                } else {
+                    const promises = entries.map(entry => processEntry(entry, folderSoid));
+                    Promise.all(promises).then(results => {
+                        results.forEach(files => allFiles.push(...files));
+                        readEntries(); // Continue reading (may have more entries)
+                    });
+                }
+            });
+        }
+        readEntries();
+    });
 }
 
 function processFiles(files) {
@@ -422,8 +492,21 @@ function processFiles(files) {
 }
 
 function extractSoidFromFilename(filename) {
-    const match = filename.match(/\b(\d{5,})\b/);
-    return match ? match[1] : null;
+    // Match SOID prefix patterns first, then plain numbers
+    const patterns = [
+        /SOID[_-]?(\d+)/i,     // SOID_123456 or SOID-123456
+        /SO[_-]?(\d+)/i,       // SO_123456 or SO-123456
+        /[_-](\d{5,})/,        // _123456 or -123456
+        /(\d{5,})/             // Any 5+ digit number
+    ];
+    
+    for (const pattern of patterns) {
+        const match = filename.match(pattern);
+        if (match) {
+            return match[1];
+        }
+    }
+    return null;
 }
 
 function uploadFile(file, soid) {
@@ -434,6 +517,7 @@ function uploadFile(file, soid) {
     fetch('/api/documents/so/upload/', {
         method: 'POST',
         body: formData,
+        credentials: 'same-origin',
         headers: { 'X-CSRFToken': getCookie('csrftoken') }
     })
     .then(response => response.json())

@@ -9,8 +9,9 @@ from django.conf import settings
 from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
 from core.models import (
-    Customer, Vendor, SalesOrder, PurchaseOrder, POD, DocumentFile
+    Customer, Vendor, SO, SOD, PO, POD, DocumentFile
 )
+from django.views.decorators.csrf import csrf_exempt
 import json
 
 
@@ -77,7 +78,7 @@ def get_sales_orders(request):
     soid = request.GET.get('soid', '').strip()
     customer = request.GET.get('customer', '').strip()
     
-    qs = SalesOrder.objects.select_related('company', 'customer')
+    qs = SO.objects.select_related('company', 'customer')
     
     if soid:
         qs = qs.filter(soid__icontains=soid)
@@ -175,9 +176,10 @@ def view_so_file(request, soid, filename):
 
 
 @csrf_exempt
+@csrf_exempt
 @login_required
 def upload_so_file(request):
-    """Upload a file for a sales order"""
+    """Upload a file for a Sales Order"""
     if request.method != 'POST':
         return JsonResponse({'success': False, 'error': 'Invalid method'}, status=405)
     
@@ -278,7 +280,7 @@ def get_purchase_orders(request):
     poid = request.GET.get('poid', '').strip()
     vendor = request.GET.get('vendor', '').strip()
     
-    qs = PurchaseOrder.objects.select_related('company', 'vendor', 'buyer')
+    qs = PO.objects.select_related('company', 'vendor', 'buyer')
     
     if poid:
         qs = qs.filter(poid__icontains=poid)
@@ -476,8 +478,8 @@ def get_pod_items(request, poid):
         return JsonResponse({'error': 'Not authenticated'}, status=401)
     
     try:
-        po = PurchaseOrder.objects.get(poid=poid)
-    except PurchaseOrder.DoesNotExist:
+        po = PO.objects.get(poid=poid)
+    except PO.DoesNotExist:
         return JsonResponse([], safe=False)
     
     items = POD.objects.filter(po=po).order_by('podid')
