@@ -100,11 +100,16 @@ def register_view(request):
             return render(request, 'core/register.html')
         
         try:
-            # Create tenant
+            from django.utils import timezone
+            from datetime import timedelta
+            
+            # Create tenant with 30-day trial
             tenant = Tenant.objects.create(
                 name=company_name,
                 subdomain=subdomain,
-                is_active=True
+                is_active=True,
+                subscription_status='trialing',
+                trial_ends_at=timezone.now() + timedelta(days=30)
             )
             
             # Create admin user

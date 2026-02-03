@@ -5,6 +5,64 @@
 
 {% block content %}
 <div class="container mt-4">
+    
+    <!-- Billing Section -->
+    <div class="card mb-4" id="billingSection">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="bi bi-credit-card me-2"></i>Subscription & Billing</h5>
+        </div>
+        <div class="card-body">
+            <div id="billingLoading" class="text-center py-3">
+                <div class="spinner-border spinner-border-sm" role="status"></div>
+                Loading billing status...
+            </div>
+            <div id="billingContent" style="display: none;">
+                <div class="row align-items-center">
+                    <div class="col-md-6">
+                        <div class="d-flex align-items-center mb-2">
+                            <strong class="me-2">Status:</strong>
+                            <span id="subscriptionBadge" class="badge"></span>
+                        </div>
+                        <div id="trialInfo" style="display: none;">
+                            <span class="text-muted">Trial ends in <strong id="daysRemaining"></strong> days</span>
+                        </div>
+                        <div id="subscriptionInfo" style="display: none;">
+                            <span class="text-muted">Next billing: <span id="nextBilling"></span></span>
+                        </div>
+                    </div>
+                    <div class="col-md-6 text-md-end mt-3 mt-md-0">
+                        <button id="subscribeBtn" class="btn btn-success" style="display: none;" onclick="startCheckout()">
+                            <i class="bi bi-credit-card me-1"></i>Subscribe - $10/month
+                        </button>
+                        <button id="manageBtn" class="btn btn-outline-primary" style="display: none;" onclick="openPortal()">
+                            <i class="bi bi-gear me-1"></i>Manage Subscription
+                        </button>
+                    </div>
+                </div>
+                <div id="pastDueAlert" class="alert alert-warning mt-3" style="display: none;">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    <strong>Payment Failed:</strong> Please update your payment method to continue using FishTech.
+                </div>
+                <div id="expiredAlert" class="alert alert-danger mt-3" style="display: none;">
+                    <i class="bi bi-x-circle me-2"></i>
+                    <strong>Trial Expired:</strong> Subscribe now to continue using FishTech.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Payment Success/Cancel Messages -->
+    <div id="paymentSuccessAlert" class="alert alert-success alert-dismissible fade show" style="display: none;">
+        <i class="bi bi-check-circle me-2"></i>
+        <strong>Payment Successful!</strong> Your subscription is now active.
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    <div id="paymentCancelledAlert" class="alert alert-info alert-dismissible fade show" style="display: none;">
+        <i class="bi bi-info-circle me-2"></i>
+        Payment was cancelled. You can subscribe anytime.
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
     <!-- Companies Filter -->
     <div class="mb-4">
         <h5>Filter by Company</h5>
@@ -568,5 +626,156 @@ function deleteCompany(id, name) {
         });
     }
 }
+// Billing Functions
+function loadBillingStatus() {
+    fetch('{% url "billing_status" %}')
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('billingLoading').style.display = 'none';
+            document.getElementById('billingContent').style.display = 'block';
+            
+            if (!data.success) {
+                console.error('Failed to load billing status');
+                return;
+            }
+            
+            const badge = document.getElementById('subscriptionBadge');
+            const subscribeBtn = document.getElementById('subscribeBtn');
+            const manageBtn = document.getElementById('manageBtn');
+            const trialInfo = document.getElementById('trialInfo');
+            const subscriptionInfo = document.getElementById('subscriptionInfo');
+            const pastDueAlert = document.getElementById('pastDueAlert');
+            const expiredAlert = document.getElementById('expiredAlert');
+            
+            // Reset all
+            subscribeBtn.style.display = 'none';
+            manageBtn.style.display = 'none';
+            trialInfo.style.display = 'none';
+            subscriptionInfo.style.display = 'none';
+            pastDueAlert.style.display = 'none';
+            expiredAlert.style.display = 'none';
+            
+            switch(data.subscription_status) {
+                case 'trialing':
+                    badge.className = 'badge bg-info';
+                    badge.textContent = 'Trial';
+                    trialInfo.style.display = 'block';
+                    document.getElementById('daysRemaining').textContent = data.days_remaining;
+                    subscribeBtn.style.display = 'inline-block';
+                    if (!data.is_valid) {
+                        expiredAlert.style.display = 'block';
+                    }
+                    break;
+                case 'active':
+                    badge.className = 'badge bg-success';
+                    badge.textContent = 'Active';
+                    manageBtn.style.display = 'inline-block';
+                    if (data.subscription_ends_at) {
+                        subscriptionInfo.style.display = 'block';
+                        document.getElementById('nextBilling').textContent = new Date(data.subscription_ends_at).toLocaleDateString();
+                    }
+                    break;
+                case 'past_due':
+                    badge.className = 'badge bg-warning';
+                    badge.textContent = 'Past Due';
+                    pastDueAlert.style.display = 'block';
+                    manageBtn.style.display = 'inline-block';
+                    break;
+                case 'canceled':
+                    badge.className = 'badge bg-secondary';
+                    badge.textContent = 'Canceled';
+                    subscribeBtn.style.display = 'inline-block';
+                    break;
+                case 'unpaid':
+                    badge.className = 'badge bg-danger';
+                    badge.textContent = 'Unpaid';
+                    pastDueAlert.style.display = 'block';
+                    manageBtn.style.display = 'inline-block';
+                    break;
+                default:
+                    badge.className = 'badge bg-secondary';
+                    badge.textContent = data.subscription_status || 'Unknown';
+                    subscribeBtn.style.display = 'inline-block';
+            }
+        })
+        .catch(error => {
+            console.error('Error loading billing status:', error);
+            document.getElementById('billingLoading').innerHTML = '<span class="text-danger">Failed to load billing status</span>';
+        });
+}
+
+function startCheckout() {
+    const btn = document.getElementById('subscribeBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Loading...';
+    
+    fetch('{% url "create_checkout" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success && data.checkout_url) {
+            window.location.href = data.checkout_url;
+        } else {
+            alert('Error: ' + (data.error || 'Could not start checkout'));
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-credit-card me-1"></i>Subscribe - $10/month';
+        }
+    })
+    .catch(error => {
+        alert('Error starting checkout: ' + error);
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-credit-card me-1"></i>Subscribe - $10/month';
+    });
+}
+
+function openPortal() {
+    const btn = document.getElementById('manageBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Loading...';
+    
+    fetch('{% url "create_portal" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success && data.portal_url) {
+            window.location.href = data.portal_url;
+        } else {
+            alert('Error: ' + (data.error || 'Could not open billing portal'));
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-gear me-1"></i>Manage Subscription';
+        }
+    })
+    .catch(error => {
+        alert('Error opening portal: ' + error);
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-gear me-1"></i>Manage Subscription';
+    });
+}
+
+// Check URL params for payment status
+document.addEventListener('DOMContentLoaded', function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('payment') === 'success') {
+        document.getElementById('paymentSuccessAlert').style.display = 'block';
+        // Clean URL
+        window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (urlParams.get('payment') === 'cancelled') {
+        document.getElementById('paymentCancelledAlert').style.display = 'block';
+        window.history.replaceState({}, document.title, window.location.pathname);
+    }
+    
+    // Load billing status
+    loadBillingStatus();
+});
 </script>
 {% endblock %}
