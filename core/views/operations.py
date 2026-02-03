@@ -1,5 +1,5 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.views.decorators.http import require_POST, require_http_methods
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q, Count
@@ -571,31 +571,294 @@ def update_inspection_inspector(request, parent_id):
 @login_required
 @ensure_tenant
 def generate_operational_report(request, parent_id):
-    """Generate operational report PDF - placeholder"""
+    """Generate operational report PDF"""
     if not request.tenant:
         return redirect('login')
-    # TODO: Implement PDF generation
-    from django.http import HttpResponse
-    return HttpResponse("Operational report generation not yet implemented", status=501)
+    
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import letter
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.units import inch
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+    from io import BytesIO
+    
+    parent = get_object_or_404(SOPParent, id=parent_id)
+    company = parent.company
+    children = SOPChild.objects.filter(sop_parent=parent).order_by('sop_did')
+    
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=letter, topMargin=0.5*inch, bottomMargin=0.5*inch)
+    elements = []
+    styles = getSampleStyleSheet()
+    
+    # Title
+    title_style = ParagraphStyle('Title', parent=styles['Heading1'], fontSize=16, alignment=1)
+    elements.append(Paragraph(f"Operational Report - {parent.shift}", title_style))
+    elements.append(Spacer(1, 12))
+    
+    # Header info
+    header_style = ParagraphStyle('Header', parent=styles['Normal'], fontSize=10)
+    elements.append(Paragraph(f"<b>Company:</b> {company.companyname}", header_style))
+    elements.append(Paragraph(f"<b>Date:</b> {parent.date}", header_style))
+    elements.append(Paragraph(f"<b>Time:</b> {parent.time.strftime('%I:%M %p') if parent.time else 'N/A'}", header_style))
+    
+    inspector = User.objects.filter(id=parent.user_inspected_id).first()
+    inspector_name = f"{inspector.first_name} {inspector.last_name}" if inspector else "Unknown"
+    elements.append(Paragraph(f"<b>Inspector:</b> {inspector_name}", header_style))
+    elements.append(Spacer(1, 12))
+    
+    # Table data
+    table_data = [['ID', 'Description', 'Status', 'Notes']]
+    
+    for child in children:
+        sop = SOP.objects.filter(sop_did=child.sop_did, company=company).first()
+        status = 'PASS' if child.passed else ('FAIL' if child.failed else 'N/A')
+        description = sop.description if sop else f'SOP {child.sop_did}'
+        notes = child.notes or ''
+        if child.failed and child.deviation_reason:
+            notes = f"Deviation: {child.deviation_reason}"
+        
+        table_data.append([str(child.sop_did), description[:50], status, notes[:40]])
+    
+    if len(table_data) > 1:
+        table = Table(table_data, colWidths=[0.5*inch, 3*inch, 0.7*inch, 2.5*inch])
+        table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, -1), 8),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.Color(0.95, 0.95, 0.95)]),
+        ]))
+        elements.append(table)
+    
+    # Signature section
+    elements.append(Spacer(1, 24))
+    if parent.inspector_name:
+        elements.append(Paragraph(f"<b>Signed by:</b> {parent.inspector_name}", header_style))
+    if parent.verified:
+        elements.append(Paragraph(f"<b>Verified by:</b> {parent.verifier_name}", header_style))
+    
+    doc.build(elements)
+    buffer.seek(0)
+    
+    response = HttpResponse(buffer, content_type='application/pdf')
+    download = request.GET.get('download')
+    if download:
+        response['Content-Disposition'] = f'attachment; filename="operational_report_{parent.date}_{parent.shift}.pdf"'
+    return response
 
 
 @login_required
 @ensure_tenant
 def generate_deviations_report(request, parent_id):
-    """Generate deviations report PDF - placeholder"""
+    """Generate deviations report PDF"""
     if not request.tenant:
         return redirect('login')
-    # TODO: Implement PDF generation
-    from django.http import HttpResponse
-    return HttpResponse("Deviations report generation not yet implemented", status=501)
+    
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import letter
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.units import inch
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+    from io import BytesIO
+    
+    parent = get_object_or_404(SOPParent, id=parent_id)
+    company = parent.company
+    deviations = SOPChild.objects.filter(sop_parent=parent, failed=True).order_by('sop_did')
+    
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=letter, topMargin=0.5*inch, bottomMargin=0.5*inch)
+    elements = []
+    styles = getSampleStyleSheet()
+    
+    # Title
+    title_style = ParagraphStyle('Title', parent=styles['Heading1'], fontSize=16, alignment=1)
+    elements.append(Paragraph(f"Deviations Report - {parent.shift}", title_style))
+    elements.append(Spacer(1, 12))
+    
+    # Header info
+    header_style = ParagraphStyle('Header', parent=styles['Normal'], fontSize=10)
+    elements.append(Paragraph(f"<b>Company:</b> {company.companyname}", header_style))
+    elements.append(Paragraph(f"<b>Date:</b> {parent.date}", header_style))
+    elements.append(Spacer(1, 12))
+    
+    if deviations.exists():
+        table_data = [['ID', 'Description', 'Deviation Reason', 'Corrective Action']]
+        
+        for child in deviations:
+            sop = SOP.objects.filter(sop_did=child.sop_did, company=company).first()
+            description = sop.description if sop else f'SOP {child.sop_did}'
+            
+            table_data.append([
+                str(child.sop_did),
+                description[:40],
+                child.deviation_reason[:40] if child.deviation_reason else '',
+                child.corrective_action[:40] if child.corrective_action else ''
+            ])
+        
+        table = Table(table_data, colWidths=[0.5*inch, 2*inch, 2*inch, 2.2*inch])
+        table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.Color(0.8, 0.2, 0.2)),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, -1), 8),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
+        ]))
+        elements.append(table)
+    else:
+        elements.append(Paragraph("No deviations recorded for this inspection.", header_style))
+    
+    # Verification
+    elements.append(Spacer(1, 24))
+    if parent.verified:
+        elements.append(Paragraph(f"<b>Verified by:</b> {parent.verifier_name}", header_style))
+        elements.append(Paragraph(f"<b>Verified at:</b> {parent.verified_at}", header_style))
+    
+    doc.build(elements)
+    buffer.seek(0)
+    
+    response = HttpResponse(buffer, content_type='application/pdf')
+    download = request.GET.get('download')
+    if download:
+        response['Content-Disposition'] = f'attachment; filename="deviations_report_{parent.date}_{parent.shift}.pdf"'
+    return response
 
 
 @login_required
 @ensure_tenant
 def generate_bulk_report(request):
-    """Generate bulk reports PDF - placeholder"""
+    """Generate bulk reports PDF combining multiple dates"""
     if not request.tenant:
         return redirect('login')
-    # TODO: Implement PDF generation
-    from django.http import HttpResponse
-    return HttpResponse("Bulk report generation not yet implemented", status=501)
+    
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import letter
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.units import inch
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak
+    from io import BytesIO
+    
+    company_id = request.GET.get('company_id')
+    dates_str = request.GET.get('dates', '')
+    include_operational = request.GET.get('include_operational') == '1'
+    include_deviations = request.GET.get('include_deviations') == '1'
+    
+    if not company_id or not dates_str:
+        return HttpResponse("Missing company_id or dates parameter", status=400)
+    
+    company = get_object_or_404(Company, companyid=company_id)
+    dates = [d.strip() for d in dates_str.split(',') if d.strip()]
+    
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=letter, topMargin=0.5*inch, bottomMargin=0.5*inch)
+    elements = []
+    styles = getSampleStyleSheet()
+    
+    title_style = ParagraphStyle('Title', parent=styles['Heading1'], fontSize=16, alignment=1)
+    subtitle_style = ParagraphStyle('Subtitle', parent=styles['Heading2'], fontSize=12, alignment=1)
+    header_style = ParagraphStyle('Header', parent=styles['Normal'], fontSize=10)
+    
+    # Cover page
+    elements.append(Paragraph("Bulk Inspection Reports", title_style))
+    elements.append(Spacer(1, 12))
+    elements.append(Paragraph(f"<b>Company:</b> {company.companyname}", header_style))
+    elements.append(Paragraph(f"<b>Date Range:</b> {dates[0]} to {dates[-1]}", header_style))
+    elements.append(Paragraph(f"<b>Total Days:</b> {len(dates)}", header_style))
+    elements.append(Paragraph(f"<b>Generated:</b> {datetime.now().strftime('%Y-%m-%d %H:%M')}", header_style))
+    elements.append(PageBreak())
+    
+    for date_str in sorted(dates):
+        parents = SOPParent.objects.filter(
+            company_id=company_id,
+            date=date_str
+        ).order_by('shift')
+        
+        if not parents.exists():
+            continue
+        
+        for parent in parents:
+            children = SOPChild.objects.filter(sop_parent=parent).order_by('sop_did')
+            
+            inspector = User.objects.filter(id=parent.user_inspected_id).first()
+            inspector_name = f"{inspector.first_name} {inspector.last_name}" if inspector else "Unknown"
+            
+            if include_operational:
+                elements.append(Paragraph(f"Operational Report - {parent.shift}", subtitle_style))
+                elements.append(Paragraph(f"<b>Date:</b> {parent.date} | <b>Time:</b> {parent.time.strftime('%I:%M %p') if parent.time else 'N/A'} | <b>Inspector:</b> {inspector_name}", header_style))
+                elements.append(Spacer(1, 8))
+                
+                table_data = [['ID', 'Description', 'Status', 'Notes']]
+                for child in children:
+                    sop = SOP.objects.filter(sop_did=child.sop_did, company=company).first()
+                    status = 'PASS' if child.passed else ('FAIL' if child.failed else 'N/A')
+                    description = sop.description if sop else f'SOP {child.sop_did}'
+                    notes = child.notes or ''
+                    table_data.append([str(child.sop_did), description[:45], status, notes[:35]])
+                
+                if len(table_data) > 1:
+                    table = Table(table_data, colWidths=[0.5*inch, 2.8*inch, 0.6*inch, 2.5*inch])
+                    table.setStyle(TableStyle([
+                        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+                        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                        ('FONTSIZE', (0, 0), (-1, -1), 7),
+                        ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
+                        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.Color(0.95, 0.95, 0.95)]),
+                    ]))
+                    elements.append(table)
+                
+                if parent.inspector_name:
+                    elements.append(Spacer(1, 8))
+                    elements.append(Paragraph(f"<b>Signed:</b> {parent.inspector_name}", header_style))
+                
+                elements.append(Spacer(1, 16))
+            
+            if include_deviations:
+                deviations = children.filter(failed=True)
+                if deviations.exists():
+                    elements.append(Paragraph(f"Deviations Report - {parent.shift} - {parent.date}", subtitle_style))
+                    elements.append(Spacer(1, 8))
+                    
+                    table_data = [['ID', 'Description', 'Deviation', 'Corrective Action']]
+                    for child in deviations:
+                        sop = SOP.objects.filter(sop_did=child.sop_did, company=company).first()
+                        description = sop.description if sop else f'SOP {child.sop_did}'
+                        table_data.append([
+                            str(child.sop_did),
+                            description[:35],
+                            child.deviation_reason[:35] if child.deviation_reason else '',
+                            child.corrective_action[:35] if child.corrective_action else ''
+                        ])
+                    
+                    table = Table(table_data, colWidths=[0.5*inch, 1.8*inch, 2*inch, 2*inch])
+                    table.setStyle(TableStyle([
+                        ('BACKGROUND', (0, 0), (-1, 0), colors.Color(0.8, 0.2, 0.2)),
+                        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                        ('FONTSIZE', (0, 0), (-1, -1), 7),
+                        ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
+                    ]))
+                    elements.append(table)
+                    
+                    if parent.verified:
+                        elements.append(Spacer(1, 8))
+                        elements.append(Paragraph(f"<b>Verified by:</b> {parent.verifier_name}", header_style))
+                    
+                    elements.append(Spacer(1, 16))
+        
+        elements.append(PageBreak())
+    
+    if len(elements) <= 2:
+        elements.append(Paragraph("No inspection data found for the selected dates.", header_style))
+    
+    doc.build(elements)
+    buffer.seek(0)
+    
+    response = HttpResponse(buffer, content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="bulk_report_{company.companyname}_{dates[0]}_to_{dates[-1]}.pdf"'
+    return response

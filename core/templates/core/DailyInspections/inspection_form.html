@@ -930,7 +930,7 @@ function submitWithSignature() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            window.location.href = '/operations/?date={{ sop_parent.date|date:"Y-m-d" }}&company_id={{ sop_parent.company_id }}';
+            window.location.href = '/operations/daily/?date={{ sop_parent.date|date:"Y-m-d" }}&company_id={{ sop_parent.company_id }}';
         } else {
             alert('Error completing inspection');
         }

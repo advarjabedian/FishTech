@@ -17,7 +17,6 @@ from .views import (
     toggle_user_company, toggle_user_admin,
     # Operations views
     operations_dashboard, inspection_form, operations_admin, print_sop_schedule,
-    generate_operational_report, generate_deviations_report, generate_bulk_report,
     # Operations API
     start_inspection, save_inspection, update_inspection_time, update_inspection_inspector,
     update_company_config, toggle_holiday, get_deviations, save_corrective_actions,
@@ -26,6 +25,7 @@ from .views import (
     get_sop_list, create_sop, update_sop, delete_sop, get_zones, create_zone,
     delete_zone, get_calendar_data, get_inspection_images, get_companies
 )
+from .views.operations_reports import generate_operational_report, generate_deviations_report, generate_bulk_report
 
 urlpatterns = [
     # Auth routes
@@ -116,4 +116,5 @@ urlpatterns = [
     path('api/operations/get-companies/', get_companies, name='get_companies'),
 
     path('api/update-company-logo/<int:company_id>/', update_company_logo, name='update_company_logo'),
+   
 ]
