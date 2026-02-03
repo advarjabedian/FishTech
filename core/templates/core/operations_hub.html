@@ -27,6 +27,12 @@
     font-size: 3rem;
     margin-bottom: 15px;
 }
+
+.company-box:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 12px rgba(0,0,0,0.1) !important;
+    border-color: #0d6efd !important;
+}
 </style>
 {% endblock %}
 
@@ -34,6 +40,42 @@
 <div class="container mt-5">
     <div class="text-center mb-5">
         <h1 class="main-title">Operations</h1>
+    </div>
+    
+    <!-- Company Selection -->
+    <div class="row justify-content-center mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h5 class="card-title"><i class="bi bi-building me-2"></i>Select Company</h5>
+                    <div id="company-grid" {% if request.selected_company %}style="display: none;"{% endif %}>
+                        <div class="row row-cols-2 g-2 justify-content-center">
+                            {% for company in request.companies %}
+                            <div class="col">
+                                <div class="company-box shadow-sm" onclick="selectCompany({{ company.companyid }})" style="cursor: pointer; height: 100px; border: 2px solid #dee2e6; border-radius: 8px; display: flex; align-items: center; justify-content: center; transition: all 0.2s ease;">
+                                    {% if company.logo %}
+                                    <img src="{{ company.logo }}" alt="{{ company.companyname }}" style="max-height: 80px; max-width: 100%; object-fit: contain;">
+                                    {% else %}
+                                    <span class="text-muted">{{ company.companyname }}</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div id="selected-company-display" {% if not request.selected_company %}style="display: none;"{% endif %}>
+                        <div class="company-box shadow-sm mx-auto" onclick="resetCompanySelection()" style="cursor: pointer; width: 200px; height: 100px; border: 2px solid #0d6efd; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                            {% if request.selected_company.logo %}
+                            <img src="{{ request.selected_company.logo }}" alt="{{ request.selected_company.companyname }}" style="max-height: 80px; max-width: 100%; object-fit: contain;">
+                            {% else %}
+                            <span>{{ request.selected_company.companyname }}</span>
+                            {% endif %}
+                        </div>
+                        <small class="text-muted mt-2 d-block">Click to change</small>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
     
     <div class="row justify-content-center">
@@ -76,4 +118,14 @@
         {% endif %}
     </div>
 </div>
+<script>
+function selectCompany(companyId) {
+    window.location.href = '{% url "operations_hub" %}?company_id=' + companyId;
+}
+
+function resetCompanySelection() {
+    document.getElementById('company-grid').style.display = 'block';
+    document.getElementById('selected-company-display').style.display = 'none';
+}
+</script>
 {% endblock %}

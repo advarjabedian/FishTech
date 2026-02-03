@@ -117,20 +117,20 @@ function checkAdminPassword(e) {
         <div class="header-controls">
             <!-- Company Display -->
             <div id="company-display" class="text-center mb-3">
-                {% if selected_company %}
-                    <div class="company-box shadow-sm mx-auto" style="width: auto; height: 140px; cursor: pointer; display: inline-block;" onclick="window.location.href='/'">
-                        {% if selected_company.logo %}
-                            <img src="{{ selected_company.logo }}" alt="{{ selected_company.companyname }}" style="height: 100%; object-fit: contain; padding: 10px;">
+                {% if request.selected_company %}
+                    <div class="company-box shadow-sm mx-auto" style="width: auto; height: 140px; cursor: pointer; display: inline-block;" onclick="window.location.href='{% url 'operations_hub' %}'">
+                        {% if request.selected_company.logo %}
+                            <img src="{{ request.selected_company.logo }}" alt="{{ request.selected_company.companyname }}" style="height: 100%; object-fit: contain; padding: 10px;">
                         {% else %}
                             <div style="height: 100%; display: flex; align-items: center; justify-content: center; padding: 10px;">
-                                <h4 class="text-muted mb-0">{{ selected_company.companyname }}</h4>
+                                <h4 class="text-muted mb-0">{{ request.selected_company.companyname }}</h4>
                             </div>
                         {% endif %}
                     </div>
                 {% else %}
                     <div class="text-center">
                         <p class="text-muted">No company selected</p>
-                        <a href="/" class="btn btn-primary btn-sm">Select Company</a>
+                        <a href="{% url 'operations_hub' %}" class="btn btn-primary btn-sm">Select Company</a>
                     </div>
                 {% endif %}
             </div>

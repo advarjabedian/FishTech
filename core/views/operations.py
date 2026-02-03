@@ -36,14 +36,16 @@ def operations_dashboard(request):
     companies = Company.objects.all().order_by('companyname')
     
     selected_date = request.GET.get('date', datetime.now().strftime('%Y-%m-%d'))
-    selected_company_id = request.GET.get('company_id')
     
-    selected_company = None
-    if not selected_company_id and companies.exists():
-        selected_company_id = companies.first().companyid
+    # Use company from middleware (set via session)
+    selected_company = request.selected_company
+    selected_company_id = selected_company.companyid if selected_company else None
+    
+    # Fallback if no company selected
+    if not selected_company and companies.exists():
         selected_company = companies.first()
-    elif selected_company_id:
-        selected_company = companies.filter(companyid=selected_company_id).first()
+        selected_company_id = selected_company.companyid
+        request.session['selected_company_id'] = selected_company_id
     
     # Get SOPs for the selected company, filtered by date (only SOPs that existed on selected date)
     sops = SOP.objects.filter(company_id=selected_company_id).filter(

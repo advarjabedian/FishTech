@@ -1,11 +1,13 @@
 from django.utils.deprecation import MiddlewareMixin
-from .models import TenantUser, set_current_tenant
+from .models import TenantUser, Company, set_current_tenant
 
 class TenantMiddleware(MiddlewareMixin):
     """Automatically set current tenant based on logged-in user"""
     
     def process_request(self, request):
         request.tenant = None
+        request.companies = []
+        request.selected_company = None
         set_current_tenant(None)
         
         if request.user.is_authenticated:
@@ -13,6 +15,26 @@ class TenantMiddleware(MiddlewareMixin):
                 tenant_user = TenantUser.objects.select_related('tenant').get(user=request.user)
                 request.tenant = tenant_user.tenant
                 set_current_tenant(tenant_user.tenant)
+                
+                # Get all companies for this tenant
+                request.companies = list(Company.objects.filter(tenant=tenant_user.tenant).order_by('companyname'))
+                
+                # Get selected company from GET param, session, or default to first
+                company_id = request.GET.get('company_id') or request.session.get('selected_company_id')
+                
+                if company_id:
+                    request.selected_company = Company.objects.filter(
+                        tenant=tenant_user.tenant, 
+                        companyid=company_id
+                    ).first()
+                
+                if not request.selected_company and request.companies:
+                    request.selected_company = request.companies[0]
+                
+                # Store in session for persistence
+                if request.selected_company:
+                    request.session['selected_company_id'] = request.selected_company.companyid
+                    
             except TenantUser.DoesNotExist:
                 pass
         
