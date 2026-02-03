@@ -2,6 +2,14 @@ from django.urls import path
 from .views import (
     # Auth views
     login_view, logout_view, operations_hub, register_view,
+    # Document views
+    documents_home, so_documents, po_documents,# Document views
+    documents_home, so_documents, po_documents,
+    # Document APIs
+    search_customers, search_vendors,
+    get_sales_orders, get_so_files, view_so_file, upload_so_file, delete_so_file,
+    get_purchase_orders, get_po_files, view_po_file, upload_po_file, delete_po_file,
+    get_pod_items,
     # HACCP views
     haccp, haccp_company, haccp_documents, haccp_document_view,
     haccp_save_document, get_company_product_types, toggle_company_product_type,
@@ -120,8 +128,34 @@ urlpatterns = [
 
     path('api/update-company-logo/<int:company_id>/', update_company_logo, name='update_company_logo'),
     
+    # Documents
+    path('documents/', documents_home, name='documents_home'),
+    path('documents/so/', so_documents, name='so_documents'),
+    path('documents/po/', po_documents, name='po_documents'),
+    
+    # Documents API - Customers
+    path('api/documents/customers/search/', search_customers, name='search_customers'),
+    
+    # Documents API - Vendors
+    path('api/documents/vendors/search/', search_vendors, name='search_vendors'),
+    
+    # Documents API - Sales Orders
+    path('api/documents/so/', get_sales_orders, name='get_sales_orders'),
+    path('api/documents/so/upload/', upload_so_file, name='upload_so_file'),
+    path('api/documents/so/<str:soid>/files/', get_so_files, name='get_so_files'),
+    path('api/documents/so/<str:soid>/files/<str:filename>/view/', view_so_file, name='view_so_file'),
+    path('api/documents/so/<str:soid>/files/<str:filename>/', delete_so_file, name='delete_so_file'),
+    
+    # Documents API - Purchase Orders
+    path('api/documents/po/', get_purchase_orders, name='get_purchase_orders'),
+    path('api/documents/po/upload/', upload_po_file, name='upload_po_file'),
+    path('api/documents/po/<str:poid>/files/', get_po_files, name='get_po_files'),
+    path('api/documents/po/<str:poid>/files/<str:filename>/view/', view_po_file, name='view_po_file'),
+    path('api/documents/po/<str:poid>/files/<str:filename>/', delete_po_file, name='delete_po_file'),
+    path('api/documents/po/<str:poid>/pod-items/', get_pod_items, name='get_pod_items'),
+    
     # Stripe billing
-    path('api/billing/status/', get_billing_status, name='billing_status'),
+    path('api/billing/status/', get_billing_status, name='billing_status'), 
     path('api/billing/checkout/', create_checkout_session, name='create_checkout'),
     path('api/billing/portal/', create_portal_session, name='create_portal'),
     path('webhook/stripe/', stripe_webhook, name='stripe_webhook'),
