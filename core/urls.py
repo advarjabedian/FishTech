@@ -3,7 +3,7 @@ from .views import (
     # Auth views
     login_view, logout_view, operations_hub, register_view,
     # Document views
-    documents_home, so_documents, po_documents,
+    documents_home, so_documents, po_documents, customer_documents, vendor_documents,
     # Document APIs
     search_customers, search_vendors,
     get_sales_orders, get_so_files, view_so_file, upload_so_file, delete_so_file,
@@ -12,6 +12,10 @@ from .views import (
     get_vendor_emails, add_vendor_email, delete_vendor_email,
     get_customer_emails, add_customer_email, delete_customer_email,
     get_tenant_emails, add_tenant_email, delete_tenant_email,
+    get_customer_documents, get_customer_files, view_customer_file,
+    upload_customer_file, delete_customer_file, email_customer_files,
+    get_vendor_documents, get_vendor_files, view_vendor_file,
+    upload_vendor_file, delete_vendor_file, email_vendor_files,
     download_bulk_so_files, email_bulk_so_files, email_so_files,
     # HACCP views
     haccp, haccp_company, haccp_documents, haccp_document_view,
@@ -135,6 +139,7 @@ urlpatterns = [
     path('documents/', documents_home, name='documents_home'),
     path('documents/so/', so_documents, name='so_documents'),
     path('documents/po/', po_documents, name='po_documents'),
+    path('documents/customer/', customer_documents, name='customer_documents'),
     
     # Documents API - Customers
     path('api/documents/customers/search/', search_customers, name='search_customers'),
@@ -180,9 +185,29 @@ urlpatterns = [
     path('api/documents/customer-emails/<int:customer_id>/', get_customer_emails, name='get_customer_emails'),
     path('api/documents/add-customer-email/', add_customer_email, name='add_customer_email'),
     path('api/documents/delete-customer-email/<int:email_id>/', delete_customer_email, name='delete_customer_email'),
+    
+    # Customer Documents API
+    path('api/documents/customer/', get_customer_documents, name='get_customer_documents'),
+    path('api/documents/customer/<int:customer_id>/files/', get_customer_files, name='get_customer_files'),
+    path('api/documents/customer/<int:customer_id>/files/<str:filename>/view/', view_customer_file, name='view_customer_file'),
+    path('api/documents/customer/upload/', upload_customer_file, name='upload_customer_file'),
+    path('api/documents/customer/<int:customer_id>/files/<str:filename>/', delete_customer_file, name='delete_customer_file'),
+    path('api/documents/customer/email-files/', email_customer_files, name='email_customer_files'),
+    
     # Documents API - Bulk operations
     path('api/documents/so/download-bulk/', download_bulk_so_files, name='download_bulk_so_files'),
     path('api/documents/so/email-bulk/', email_bulk_so_files, name='email_bulk_so_files'),
     path('api/documents/customer-emails/<int:customer_id>/', get_customer_emails, name='get_customer_emails'),
+
+    # Documents - Vendor
+    path('documents/vendor/', vendor_documents, name='vendor_documents'),
+    
+    # Vendor Documents API
+    path('api/documents/vendor/', get_vendor_documents, name='get_vendor_documents'),
+    path('api/documents/vendor/<int:vendor_id>/files/', get_vendor_files, name='get_vendor_files'),
+    path('api/documents/vendor/<int:vendor_id>/files/<str:filename>/view/', view_vendor_file, name='view_vendor_file'),
+    path('api/documents/vendor/upload/', upload_vendor_file, name='upload_vendor_file'),
+    path('api/documents/vendor/<int:vendor_id>/files/<str:filename>/', delete_vendor_file, name='delete_vendor_file'),
+    path('api/documents/vendor/email-files/', email_vendor_files, name='email_vendor_files'),
  
 ]

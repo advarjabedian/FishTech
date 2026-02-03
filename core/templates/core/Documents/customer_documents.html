@@ -1,0 +1,976 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Customer Documents - FishTech{% endblock %}
+
+{% block extra_css %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+    .drop-zone {
+        border: 2px dashed #ccc;
+        border-radius: 8px;
+        padding: 20px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        background: #fafafa;
+    }
+    .drop-zone:hover, .drop-zone.dragover {
+        border-color: #0d6efd;
+        background: #f0f7ff;
+    }
+    .upload-result-item {
+        padding: 5px 10px;
+        margin: 2px 0;
+        border-radius: 4px;
+        font-size: 0.85rem;
+    }
+    .upload-success { background: #d4edda; color: #155724; }
+    .upload-warning { background: #fff3cd; color: #856404; }
+    .upload-error { background: #f8d7da; color: #721c24; }
+    .upload-info { background: #d1ecf1; color: #0c5460; }
+    
+    .file-card {
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        overflow: hidden;
+        transition: all 0.2s;
+        height: 100%;
+    }
+    .file-card:hover {
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        transform: translateY(-2px);
+    }
+    .file-card.selected {
+        border: 2px solid #0d6efd;
+        background: #e7f1ff;
+    }
+    .file-preview {
+        height: 120px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #f8f9fa;
+        cursor: pointer;
+        overflow: hidden;
+    }
+    .file-preview img {
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+    }
+    .file-preview .pdf-icon {
+        font-size: 3rem;
+        color: #dc3545;
+    }
+    .file-preview .pdf-canvas {
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+    }
+    .file-info {
+        padding: 10px;
+        background: white;
+    }
+    .file-info .form-check {
+        padding-left: 1.8em;
+    }
+    .file-info .form-check-input {
+        width: 1.2em;
+        height: 1.2em;
+        cursor: pointer;
+        border: 2px solid #000;
+    }
+    .file-info .form-check-input:checked {
+        background-color: #0d6efd;
+        border-color: #0d6efd;
+    }
+    .file-info .form-check-label {
+        cursor: pointer;
+    }
+    .file-name {
+        font-size: 0.85rem;
+        word-break: break-word;
+        line-height: 1.2;
+        max-height: 2.4em;
+        overflow: hidden;
+    }
+    .file-actions {
+        display: flex;
+        gap: 5px;
+        margin-top: 8px;
+    }
+    
+    .customer-row { cursor: pointer; }
+    .customer-row:hover { background-color: #e9ecef !important; }
+    .file-count-badge { font-size: 0.8rem; }
+    
+    #customer-dropdown {
+        max-height: 300px;
+        overflow-y: auto;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    #customer-dropdown .dropdown-item {
+        padding: 8px 12px;
+        cursor: pointer;
+    }
+    #customer-dropdown .dropdown-item:hover,
+    #customer-dropdown .dropdown-item.active {
+        background-color: #0d6efd;
+        color: white;
+    }
+    
+    .customer-email-item { cursor: pointer; }
+    .customer-email-item:hover { background: #e9ecef !important; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1><i class="bi bi-people me-2"></i>Customer Documents</h1>
+        <a href="{% url 'documents_home' %}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Back to Documents
+        </a>
+    </div>
+
+    <!-- Filters -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Search Customers</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4">
+                    <label class="form-label">Customer ID</label>
+                    <input type="text" id="filter-customer-id" class="form-control" placeholder="Enter Customer ID">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Customer Name</label>
+                    <div class="position-relative">
+                        <input type="text" id="filter-customer-name" class="form-control" placeholder="Type to search..." autocomplete="off">
+                        <div id="customer-dropdown" class="dropdown-menu w-100" style="display: none;"></div>
+                    </div>
+                </div>
+                <div class="col-md-4 d-flex align-items-end">
+                    <button class="btn btn-primary me-2" onclick="searchCustomers()">
+                        <i class="bi bi-search me-1"></i>Search
+                    </button>
+                    <button class="btn btn-outline-secondary" onclick="clearFilters()">
+                        <i class="bi bi-x-circle me-1"></i>Clear
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Results Table -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">Customers</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Customer ID</th>
+                            <th>Name</th>
+                            <th>Contact</th>
+                            <th>City</th>
+                            <th>State</th>
+                            <th>Files</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="customers-table-body">
+                        <tr>
+                            <td colspan="7" class="text-center py-4">
+                                <div class="spinner-border spinner-border-sm"></div> Loading customers...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- File Manager Modal -->
+<div class="modal fade" id="fileManagerModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Files for Customer: <span id="fileManagerCustomerName"></span></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Address Book Section -->
+                <div id="addressBookSection" class="card mb-3">
+                    <div class="card-header d-flex justify-content-between align-items-center" style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#addressBookCollapse">
+                        <strong><i class="bi bi-envelope me-2"></i>Email Files <i class="bi bi-chevron-down ms-2"></i></strong>
+                        <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); openManageEmailsModal()">
+                            <i class="bi bi-pencil-square"></i> Manage Emails
+                        </button>
+                    </div>
+                    <div class="collapse" id="addressBookCollapse">
+                        <div class="card-body">
+                            <div id="addressBookList" class="mb-3">
+                                <p class="text-muted text-center mb-0">Loading...</p>
+                            </div>
+                            <div class="input-group">
+                                <input type="email" id="email-input" class="form-control" placeholder="Email address (comma separated)">
+                                <button class="btn btn-success" onclick="emailSelectedFiles(this)">
+                                    <i class="bi bi-envelope"></i> Email Selected
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Drop Zone -->
+                <div class="mb-3">
+                    <div id="fileManagerDropZone" class="drop-zone">
+                        <i class="bi bi-cloud-upload" style="font-size: 2rem; color: #6c757d;"></i>
+                        <p class="mb-0">Drag and drop files here or click to browse</p>
+                    </div>
+                </div>
+                
+                <!-- Upload Results -->
+                <div id="uploadResults" class="mb-3" style="display: none;">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="mb-0">Upload Results:</h6>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="clearUploadResults()">
+                            <i class="bi bi-x-circle"></i> Clear
+                        </button>
+                    </div>
+                    <div id="uploadResultsList" style="max-height: 100px; overflow-y: auto;"></div>
+                </div>
+                
+                <!-- Bulk Actions Bar -->
+                <div id="fileManagerBulkBar" class="alert alert-info mb-3" style="display: none;">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span id="fileManagerSelectedCount">0 files selected</span>
+                        <button class="btn btn-sm btn-danger" onclick="deleteSelectedFiles()">
+                            <i class="bi bi-trash"></i> Delete Selected
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Files Grid -->
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="mb-0">Files</h6>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="selectAllFiles" onchange="toggleSelectAllFiles()">
+                        <label class="form-check-label" for="selectAllFiles">Select All</label>
+                    </div>
+                </div>
+                <div class="row g-3" id="fileManagerFiles">
+                    <div class="col-12 text-center text-muted py-4">Loading files...</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Manage Emails Modal -->
+<div class="modal fade" id="manageEmailsModal" tabindex="-1" style="z-index: 1060;">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Manage Customer Emails</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <h6>Add New Email</h6>
+                    <div class="input-group">
+                        <input type="email" class="form-control" id="newEmailAddress" placeholder="email@example.com">
+                        <input type="text" class="form-control" id="newEmailLabel" placeholder="Label (optional)">
+                        <button class="btn btn-primary" onclick="addCustomerEmail()">
+                            <i class="bi bi-plus"></i> Add
+                        </button>
+                    </div>
+                </div>
+                <h6>Saved Emails:</h6>
+                <div id="manageEmailsList">
+                    <p class="text-muted text-center">No saved emails yet.</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% include 'core/Documents/includes/documents_common_scripts.html' %}
+
+<script>
+let currentCustomerId = null;
+let currentCustomerName = null;
+let selectedDropdownIndex = -1;
+let customerEmails = [];
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadAllCustomers();
+    
+    // Check for customer_id in URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const customerId = urlParams.get('customer_id');
+    if (customerId) {
+        document.getElementById('filter-customer-id').value = customerId;
+        searchCustomers();
+    }
+    
+    // Setup autocomplete
+    const nameInput = document.getElementById('filter-customer-name');
+    nameInput.addEventListener('input', debounce(autocompleteCustomers, 300));
+    nameInput.addEventListener('keydown', handleDropdownNavigation);
+    
+    // Enter key on customer ID
+    document.getElementById('filter-customer-id').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') searchCustomers();
+    });
+    
+    // Hide dropdown on outside click
+    document.addEventListener('click', function(e) {
+        const dropdown = document.getElementById('customer-dropdown');
+        const input = document.getElementById('filter-customer-name');
+        if (e.target !== input && !dropdown.contains(e.target)) {
+            dropdown.style.display = 'none';
+        }
+    });
+    
+    // Modal cleanup
+    document.getElementById('fileManagerModal').addEventListener('hidden.bs.modal', function () {
+        loadAllCustomers(); // Refresh file counts
+    });
+});
+
+// ============================================================================
+// CUSTOMER LIST
+// ============================================================================
+
+function loadAllCustomers() {
+    fetch('/api/documents/customer/?all=1')
+        .then(r => r.json())
+        .then(customers => renderCustomersTable(customers))
+        .catch(err => {
+            console.error('Error:', err);
+            document.getElementById('customers-table-body').innerHTML = 
+                '<tr><td colspan="7" class="text-center text-danger py-4">Error loading customers</td></tr>';
+        });
+}
+
+function renderCustomersTable(customers) {
+    const tbody = document.getElementById('customers-table-body');
+    
+    if (customers.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">No customers found</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = customers.map(c => `
+        <tr class="customer-row" onclick="openFileManager(${c.id}, '${escapeHtml(c.name)}')">
+            <td>${c.customer_id || ''}</td>
+            <td><strong>${escapeHtml(c.name)}</strong></td>
+            <td>${escapeHtml(c.contact_name || '')}</td>
+            <td>${escapeHtml(c.city || '')}</td>
+            <td>${escapeHtml(c.state || '')}</td>
+            <td>
+                <span class="badge ${c.file_count > 0 ? 'bg-primary' : 'bg-secondary'} file-count-badge">
+                    ${c.file_count} file${c.file_count !== 1 ? 's' : ''}
+                </span>
+            </td>
+            <td>
+                <button class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation(); openFileManager(${c.id}, '${escapeHtml(c.name)}')">
+                    <i class="bi bi-folder2-open"></i> Files
+                </button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function autocompleteCustomers() {
+    const query = document.getElementById('filter-customer-name').value;
+    const dropdown = document.getElementById('customer-dropdown');
+    selectedDropdownIndex = -1;
+    
+    if (query.length < 2) {
+        dropdown.style.display = 'none';
+        return;
+    }
+    
+    fetch(`/api/documents/customers/search/?search=${encodeURIComponent(query)}`)
+        .then(r => r.json())
+        .then(customers => {
+            dropdown.innerHTML = '';
+            if (customers.length > 0) {
+                customers.forEach((c, idx) => {
+                    const item = document.createElement('a');
+                    item.className = 'dropdown-item';
+                    item.href = '#';
+                    item.textContent = c.name;
+                    item.dataset.index = idx;
+                    item.onclick = function(e) {
+                        e.preventDefault();
+                        document.getElementById('filter-customer-name').value = c.name;
+                        dropdown.style.display = 'none';
+                        searchCustomers();
+                    };
+                    dropdown.appendChild(item);
+                });
+                dropdown.style.display = 'block';
+            } else {
+                dropdown.style.display = 'none';
+            }
+        });
+}
+
+function handleDropdownNavigation(e) {
+    const dropdown = document.getElementById('customer-dropdown');
+    const items = dropdown.querySelectorAll('.dropdown-item');
+    
+    if (dropdown.style.display === 'none' || items.length === 0) {
+        if (e.key === 'Enter') searchCustomers();
+        return;
+    }
+    
+    switch(e.key) {
+        case 'ArrowDown':
+            e.preventDefault();
+            selectedDropdownIndex = Math.min(selectedDropdownIndex + 1, items.length - 1);
+            updateDropdownHighlight(items);
+            break;
+        case 'ArrowUp':
+            e.preventDefault();
+            selectedDropdownIndex = Math.max(selectedDropdownIndex - 1, 0);
+            updateDropdownHighlight(items);
+            break;
+        case 'Enter':
+            e.preventDefault();
+            if (selectedDropdownIndex >= 0) {
+                items[selectedDropdownIndex].click();
+            } else {
+                searchCustomers();
+            }
+            break;
+        case 'Escape':
+            dropdown.style.display = 'none';
+            break;
+    }
+}
+
+function updateDropdownHighlight(items) {
+    items.forEach((item, idx) => {
+        item.classList.toggle('active', idx === selectedDropdownIndex);
+    });
+}
+
+function searchCustomers() {
+    const customerId = document.getElementById('filter-customer-id').value.trim();
+    const customerName = document.getElementById('filter-customer-name').value.trim();
+    
+    if (!customerId && !customerName) {
+        loadAllCustomers();
+        return;
+    }
+    
+    const params = new URLSearchParams();
+    if (customerId) params.append('customer_id', customerId);
+    if (customerName) params.append('name', customerName);
+    
+    fetch(`/api/documents/customer/?${params.toString()}`)
+        .then(r => r.json())
+        .then(customers => renderCustomersTable(customers))
+        .catch(err => {
+            console.error('Error:', err);
+            alert('Error searching customers');
+        });
+}
+
+function clearFilters() {
+    document.getElementById('filter-customer-id').value = '';
+    document.getElementById('filter-customer-name').value = '';
+    loadAllCustomers();
+}
+
+// ============================================================================
+// FILE MANAGER MODAL
+// ============================================================================
+
+function openFileManager(customerId, customerName) {
+    currentCustomerId = customerId;
+    currentCustomerName = customerName;
+    document.getElementById('fileManagerCustomerName').textContent = customerName;
+    
+    clearUploadResults();
+    loadCustomerFiles();
+    loadCustomerEmails();
+    
+    const modal = new bootstrap.Modal(document.getElementById('fileManagerModal'));
+    modal.show();
+    
+    setTimeout(setupDropZone, 100);
+}
+
+function loadCustomerFiles() {
+    const container = document.getElementById('fileManagerFiles');
+    container.innerHTML = '<div class="col-12 text-center py-4"><div class="spinner-border spinner-border-sm"></div> Loading...</div>';
+    
+    fetch(`/api/documents/customer/${currentCustomerId}/files/`)
+        .then(r => r.json())
+        .then(data => {
+            renderFiles(data.files || []);
+        })
+        .catch(err => {
+            container.innerHTML = '<div class="col-12 text-center text-danger py-4">Error loading files</div>';
+        });
+}
+
+function renderFiles(files) {
+    const container = document.getElementById('fileManagerFiles');
+    
+    if (files.length === 0) {
+        container.innerHTML = '<div class="col-12 text-center text-muted py-4">No files uploaded yet</div>';
+        updateBulkBar();
+        return;
+    }
+    
+    container.innerHTML = files.map((f, idx) => `
+        <div class="col-6 col-md-4 col-lg-3">
+            <div class="file-card" data-filename="${escapeHtml(f.filename)}">
+                <div class="file-preview" onclick="window.open('${f.url}', '_blank')">
+                    ${f.type === 'pdf' 
+                        ? `<canvas id="pdf-preview-${idx}" class="pdf-canvas"></canvas>`
+                        : `<img src="${f.url}" alt="${escapeHtml(f.filename)}" onerror="this.outerHTML='<i class=\\'bi bi-file-image\\' style=\\'font-size:3rem;color:#6c757d;\\'></i>'">`
+                    }
+                </div>
+                <div class="file-info">
+                    <div class="form-check mb-2">
+                        <input class="form-check-input file-checkbox" type="checkbox" value="${escapeHtml(f.filename)}" onchange="updateBulkBar()">
+                        <label class="form-check-label file-name">${escapeHtml(f.filename)}</label>
+                    </div>
+                    <div class="file-actions">
+                        <a href="${f.url}" target="_blank" class="btn btn-sm btn-outline-primary flex-fill">
+                            <i class="bi bi-eye"></i>
+                        </a>
+                        <button class="btn btn-sm btn-outline-danger flex-fill" onclick="deleteFile('${escapeHtml(f.filename)}')">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `).join('');
+    
+    // Render PDF previews
+    files.forEach((f, idx) => {
+        if (f.type === 'pdf') {
+            renderPdfPreview(f.url, `pdf-preview-${idx}`);
+        }
+    });
+    
+    updateBulkBar();
+}
+
+function renderPdfPreview(url, canvasId) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    
+    pdfjsLib.getDocument(url).promise.then(pdf => {
+        pdf.getPage(1).then(page => {
+            const context = canvas.getContext('2d');
+            
+            // Use higher scale for better quality, then fit to container
+            const baseViewport = page.getViewport({ scale: 1.5 });
+            const containerWidth = 200;
+            const containerHeight = 120;
+            
+            // Calculate scale to fill the container (crop if needed)
+            const scaleX = containerWidth / baseViewport.width;
+            const scaleY = containerHeight / baseViewport.height;
+            const scale = Math.max(scaleX, scaleY) * 1.5; // Zoom in more
+            
+            const scaledViewport = page.getViewport({ scale: scale });
+            
+            canvas.width = containerWidth;
+            canvas.height = containerHeight;
+            
+            // Center the render (show top portion of page)
+            page.render({
+                canvasContext: context,
+                viewport: scaledViewport
+            });
+        });
+    }).catch(err => {
+        canvas.outerHTML = '<i class="bi bi-file-earmark-pdf pdf-icon"></i>';
+    });
+}
+
+function updateBulkBar() {
+    const checked = document.querySelectorAll('.file-checkbox:checked');
+    const allCheckboxes = document.querySelectorAll('.file-checkbox');
+    const bulkBar = document.getElementById('fileManagerBulkBar');
+    const countSpan = document.getElementById('fileManagerSelectedCount');
+    const selectAll = document.getElementById('selectAllFiles');
+    
+    if (checked.length > 0) {
+        bulkBar.style.display = 'block';
+        countSpan.textContent = `${checked.length} file${checked.length !== 1 ? 's' : ''} selected`;
+    } else {
+        bulkBar.style.display = 'none';
+    }
+    
+    // Update select all checkbox state
+    if (selectAll) {
+        selectAll.checked = allCheckboxes.length > 0 && checked.length === allCheckboxes.length;
+        selectAll.indeterminate = checked.length > 0 && checked.length < allCheckboxes.length;
+    }
+    
+    // Update card visual selection
+    document.querySelectorAll('.file-card').forEach(card => {
+        const checkbox = card.querySelector('.file-checkbox');
+        card.classList.toggle('selected', checkbox && checkbox.checked);
+    });
+}
+
+function toggleSelectAllFiles() {
+    const selectAll = document.getElementById('selectAllFiles');
+    const checkboxes = document.querySelectorAll('.file-checkbox');
+    checkboxes.forEach(cb => cb.checked = selectAll.checked);
+    updateBulkBar();
+}
+
+// ============================================================================
+// DROP ZONE & UPLOAD
+// ============================================================================
+
+function setupDropZone() {
+    const dropZone = document.getElementById('fileManagerDropZone');
+    if (!dropZone || dropZone.dataset.initialized) return;
+    dropZone.dataset.initialized = 'true';
+    
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(event => {
+        dropZone.addEventListener(event, e => {
+            e.preventDefault();
+            e.stopPropagation();
+        });
+    });
+    
+    ['dragenter', 'dragover'].forEach(event => {
+        dropZone.addEventListener(event, () => dropZone.classList.add('dragover'));
+    });
+    
+    ['dragleave', 'drop'].forEach(event => {
+        dropZone.addEventListener(event, () => dropZone.classList.remove('dragover'));
+    });
+    
+    dropZone.addEventListener('drop', handleDrop);
+    dropZone.addEventListener('click', selectFiles);
+}
+
+function selectFiles() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*,application/pdf';
+    input.multiple = true;
+    input.onchange = function(e) {
+        processFiles(Array.from(e.target.files));
+    };
+    input.click();
+}
+
+function handleDrop(e) {
+    processFiles(Array.from(e.dataTransfer.files));
+}
+
+function processFiles(files) {
+    if (files.length === 0) return;
+    
+    const uploadResults = document.getElementById('uploadResults');
+    const uploadResultsList = document.getElementById('uploadResultsList');
+    
+    uploadResults.style.display = 'block';
+    uploadResultsList.innerHTML = '';
+    
+    addUploadResult(`Uploading ${files.length} file(s)...`, 'info');
+    
+    let completed = 0;
+    files.forEach(file => {
+        uploadFile(file, () => {
+            completed++;
+            if (completed === files.length) {
+                loadCustomerFiles();
+            }
+        });
+    });
+}
+
+function uploadFile(file, callback) {
+    const formData = new FormData();
+    formData.append('customer_id', currentCustomerId);
+    formData.append('file', file);
+    
+    fetch('/api/documents/customer/upload/', {
+        method: 'POST',
+        body: formData,
+        headers: { 'X-CSRFToken': getCookie('csrftoken') }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            addUploadResult(`${file.name} ✓`, 'success');
+        } else {
+            addUploadResult(`${file.name} - ${data.error || 'Failed'}`, 'error');
+        }
+        if (callback) callback();
+    })
+    .catch(error => {
+        addUploadResult(`${file.name} - ${error}`, 'error');
+        if (callback) callback();
+    });
+}
+
+function addUploadResult(message, type) {
+    const list = document.getElementById('uploadResultsList');
+    const item = document.createElement('div');
+    item.className = `upload-result-item upload-${type}`;
+    item.textContent = message;
+    list.appendChild(item);
+}
+
+function clearUploadResults() {
+    document.getElementById('uploadResults').style.display = 'none';
+    document.getElementById('uploadResultsList').innerHTML = '';
+}
+
+// ============================================================================
+// FILE OPERATIONS
+// ============================================================================
+
+function deleteFile(filename) {
+    if (!confirm(`Delete ${filename}?`)) return;
+    
+    fetch(`/api/documents/customer/${currentCustomerId}/files/${encodeURIComponent(filename)}/`, {
+        method: 'DELETE',
+        headers: { 'X-CSRFToken': getCookie('csrftoken') }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            loadCustomerFiles();
+        } else {
+            alert('Delete failed: ' + (data.error || 'Unknown error'));
+        }
+    });
+}
+
+function deleteSelectedFiles() {
+    const checked = document.querySelectorAll('.file-checkbox:checked');
+    if (checked.length === 0) return;
+    
+    if (!confirm(`Delete ${checked.length} selected file(s)?`)) return;
+    
+    const filenames = Array.from(checked).map(cb => cb.value);
+    let completed = 0;
+    
+    filenames.forEach(filename => {
+        fetch(`/api/documents/customer/${currentCustomerId}/files/${encodeURIComponent(filename)}/`, {
+            method: 'DELETE',
+            headers: { 'X-CSRFToken': getCookie('csrftoken') }
+        })
+        .then(r => r.json())
+        .then(() => {
+            completed++;
+            if (completed === filenames.length) {
+                loadCustomerFiles();
+            }
+        });
+    });
+}
+
+// ============================================================================
+// EMAIL FUNCTIONALITY
+// ============================================================================
+
+function loadCustomerEmails() {
+    fetch(`/api/documents/customer-emails/${currentCustomerId}/`)
+        .then(r => r.json())
+        .then(emails => {
+            customerEmails = emails;
+            renderAddressBook(emails);
+        })
+        .catch(() => {
+            customerEmails = [];
+            renderAddressBook([]);
+        });
+}
+
+function renderAddressBook(emails) {
+    const list = document.getElementById('addressBookList');
+    
+    if (emails.length === 0) {
+        list.innerHTML = '<p class="text-muted text-center mb-0">No saved emails. Click "Manage Emails" to add.</p>';
+    } else {
+        list.innerHTML = emails.map(email => `
+            <div class="d-flex justify-content-between align-items-center py-1 border-bottom customer-email-item" onclick="useEmail('${email.email}')">
+                <span class="small">${email.email} ${email.label ? '<span class="text-muted">(' + email.label + ')</span>' : ''}</span>
+                <button class="btn btn-sm btn-outline-primary px-2 py-0">
+                    <i class="bi bi-arrow-right"></i>
+                </button>
+            </div>
+        `).join('');
+    }
+}
+
+function useEmail(email) {
+    document.getElementById('email-input').value = email;
+}
+
+function openManageEmailsModal() {
+    refreshManageEmailsList();
+    const modal = new bootstrap.Modal(document.getElementById('manageEmailsModal'));
+    modal.show();
+}
+
+function refreshManageEmailsList() {
+    fetch(`/api/documents/customer-emails/${currentCustomerId}/`)
+        .then(r => r.json())
+        .then(emails => {
+            customerEmails = emails;
+            const list = document.getElementById('manageEmailsList');
+            
+            if (emails.length === 0) {
+                list.innerHTML = '<p class="text-muted text-center">No saved emails yet.</p>';
+            } else {
+                list.innerHTML = emails.map(email => `
+                    <div class="d-flex justify-content-between align-items-center mb-2 p-2 bg-light rounded">
+                        <div>
+                            <strong>${email.email}</strong>
+                            ${email.label ? '<span class="badge bg-secondary ms-2">' + email.label + '</span>' : ''}
+                        </div>
+                        <button class="btn btn-sm btn-danger" onclick="deleteCustomerEmail(${email.id})">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                `).join('');
+            }
+            
+            renderAddressBook(emails);
+        });
+}
+
+function addCustomerEmail() {
+    const email = document.getElementById('newEmailAddress').value.trim();
+    const label = document.getElementById('newEmailLabel').value.trim();
+    
+    if (!email) {
+        alert('Please enter an email address');
+        return;
+    }
+    
+    fetch('/api/documents/add-customer-email/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({ customer_id: currentCustomerId, email, label })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            document.getElementById('newEmailAddress').value = '';
+            document.getElementById('newEmailLabel').value = '';
+            refreshManageEmailsList();
+        } else {
+            alert('Error: ' + (data.error || 'Failed to add email'));
+        }
+    });
+}
+
+function deleteCustomerEmail(emailId) {
+    if (!confirm('Delete this email?')) return;
+    
+    fetch(`/api/documents/delete-customer-email/${emailId}/`, {
+        method: 'DELETE',
+        headers: { 'X-CSRFToken': getCookie('csrftoken') }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            refreshManageEmailsList();
+        } else {
+            alert('Error deleting email');
+        }
+    });
+}
+
+function emailSelectedFiles(btn) {
+    const checked = document.querySelectorAll('.file-checkbox:checked');
+    const emailInput = document.getElementById('email-input');
+    const emails = emailInput.value.split(',').map(e => e.trim()).filter(e => e);
+    
+    if (checked.length === 0) {
+        alert('Please select at least one file');
+        return;
+    }
+    
+    if (emails.length === 0) {
+        alert('Please enter an email address');
+        emailInput.focus();
+        return;
+    }
+    
+    const filenames = Array.from(checked).map(cb => cb.value);
+    
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Sending...';
+    
+    const formData = new FormData();
+    formData.append('customer_id', currentCustomerId);
+    emails.forEach(email => formData.append('emails', email));
+    filenames.forEach(filename => formData.append('filenames', filename));
+    
+    fetch('/api/documents/customer/email-files/', {
+        method: 'POST',
+        body: formData,
+        headers: { 'X-CSRFToken': getCookie('csrftoken') }
+    })
+    .then(r => r.json())
+    .then(data => {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+        if (data.success) {
+            alert(`Email sent to ${emails.join(', ')}`);
+            emailInput.value = '';
+        } else {
+            alert('Error: ' + (data.error || 'Email failed'));
+        }
+    })
+    .catch(error => {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+        alert('Error: ' + error);
+    });
+}
+
+// ============================================================================
+// UTILITIES
+// ============================================================================
+
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+</script>
+{% endblock %}

@@ -88,7 +88,7 @@
         
         <!-- Customer -->
         <div class="col-md-4">
-            <div class="card document-card bg-info bg-opacity-10 border-info">
+            <div class="card document-card bg-info bg-opacity-10 border-info" onclick="window.location.href='{% url 'customer_documents' %}'">
                 <div class="card-body">
                     <i class="bi bi-people document-icon text-info"></i>
                     <h5 class="document-title">Customer</h5>
@@ -99,7 +99,7 @@
         
         <!-- Vendor -->
         <div class="col-md-4">
-            <div class="card document-card bg-secondary bg-opacity-10 border-secondary">
+            <div class="card document-card bg-secondary bg-opacity-10 border-secondary" onclick="window.location.href='{% url 'vendor_documents' %}'">
                 <div class="card-body">
                     <i class="bi bi-building document-icon text-secondary"></i>
                     <h5 class="document-title">Vendor</h5>
