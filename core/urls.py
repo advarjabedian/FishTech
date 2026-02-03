@@ -8,7 +8,8 @@ from .views import (
     search_customers, search_vendors,
     get_sales_orders, get_so_files, view_so_file, upload_so_file, delete_so_file,
     get_purchase_orders, get_po_files, view_po_file, upload_po_file, delete_po_file,
-    get_pod_items,
+    get_pod_items, download_bulk_po_files, email_bulk_po_files, email_po_files,
+    get_vendor_emails, add_vendor_email, delete_vendor_email,
     get_customer_emails, add_customer_email, delete_customer_email,
     get_tenant_emails, add_tenant_email, delete_tenant_email,
     download_bulk_so_files, email_bulk_so_files, email_so_files,
@@ -161,6 +162,14 @@ urlpatterns = [
     path('api/documents/po/<str:poid>/files/<str:filename>/view/', view_po_file, name='view_po_file'),
     path('api/documents/po/<str:poid>/files/<str:filename>/', delete_po_file, name='delete_po_file'),
     path('api/documents/po/<str:poid>/pod-items/', get_pod_items, name='get_pod_items'),
+    path('api/documents/po/download-bulk/', download_bulk_po_files, name='download_bulk_po_files'),
+    path('api/documents/po/email-bulk/', email_bulk_po_files, name='email_bulk_po_files'),
+    path('api/documents/po/email-files/', email_po_files, name='email_po_files'),
+    
+    # Vendor Emails API
+    path('api/documents/vendor-emails/<int:vendor_id>/', get_vendor_emails, name='get_vendor_emails'),
+    path('api/documents/add-vendor-email/', add_vendor_email, name='add_vendor_email'),
+    path('api/documents/delete-vendor-email/<int:email_id>/', delete_vendor_email, name='delete_vendor_email'),
     
     # Stripe billing
     path('api/billing/status/', get_billing_status, name='billing_status'), 
