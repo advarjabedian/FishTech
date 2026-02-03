@@ -1,0 +1,432 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Sales Orders - FishTech{% endblock %}
+
+{% block extra_css %}
+<style>
+    .drop-zone {
+        border: 2px dashed #ccc;
+        border-radius: 8px;
+        padding: 30px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        background: #fafafa;
+    }
+    .drop-zone:hover, .drop-zone.dragover {
+        border-color: #0d6efd;
+        background: #f0f7ff;
+    }
+    .upload-result-item {
+        padding: 5px 10px;
+        margin: 2px 0;
+        border-radius: 4px;
+        font-size: 0.85rem;
+    }
+    .upload-success { background: #d4edda; color: #155724; }
+    .upload-warning { background: #fff3cd; color: #856404; }
+    .upload-info { background: #d1ecf1; color: #0c5460; }
+    .upload-error { background: #f8d7da; color: #721c24; }
+    .customer-email-item { cursor: pointer; }
+    .customer-email-item:hover { background: #e9ecef !important; }
+    
+    /* Stack modals properly */
+    #fileManagerModal {
+        z-index: 1060;
+    }
+    #fileManagerModal + .modal-backdrop {
+        z-index: 1055;
+    }
+    #manageEmailsModal {
+        z-index: 1070;
+    }
+    #manageEmailsModal + .modal-backdrop {
+        z-index: 1065;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <h2>Sales Orders</h2>
+            
+            <div class="mb-3">
+                <a href="{% url 'documents_home' %}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Back to Documents Home
+                </a>
+            </div>
+
+            <!-- Upload and Filters Section -->
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h5>Bulk File Upload & Filters</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <!-- Left side - Drop Zone -->
+                        <div class="col-md-6">
+                            <div id="soDropZone" class="drop-zone">
+                                <div class="drop-zone-content">
+                                    <i class="bi bi-cloud-upload" style="font-size: 2rem; color: #6c757d;"></i>
+                                    <h6>Drag and drop files or folders here</h6>
+                                    <p class="text-muted small">Files sorted by SOID in filename/folder</p>
+                                    <p class="text-muted small">Formats: Images, PDFs</p>
+                                    <button type="button" class="btn btn-sm btn-primary" onclick="selectMultipleFiles()">
+                                        <i class="bi bi-folder2-open"></i> Select Files
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Right side - Filters -->
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Invoice Number</label>
+                                <input type="text" id="filter-soid" class="form-control form-control-sm" placeholder="Press Enter to search">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Customer</label>
+                                <div class="position-relative">
+                                    <input type="text" id="filter-customer" class="form-control form-control-sm" placeholder="Press Enter to search" autocomplete="off">
+                                    <div id="customer-dropdown" class="dropdown-menu" style="display: none; position: absolute; top: 100%; left: 0; right: 0; z-index: 1000; max-height: 200px; overflow-y: auto;"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div id="uploadResults" class="mt-3" style="display: none;">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="mb-0">Upload Results:</h6>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="clearUploadResults()">
+                                <i class="bi bi-x-circle"></i> Clear
+                            </button>
+                        </div>
+                        <div id="uploadResultsList" style="max-height: 200px; overflow-y: auto;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bulk Actions Bar -->
+            <div id="bulkActionsBar" class="alert alert-info" style="display: none;">
+                <div class="d-flex justify-content-between align-items-center">
+                    <span id="selectedCount">0 rows selected</span>
+                    <div class="d-flex gap-2 align-items-center">
+                        <div class="dropdown">
+                            <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" title="Address Book">
+                                <i class="bi bi-person-lines-fill"></i>
+                            </button>
+                            <div class="dropdown-menu dropdown-menu-end p-2" style="min-width: 300px;" id="bulkAddressBookDropdown">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <strong>Address Book</strong>
+                                    <button class="btn btn-sm btn-primary" onclick="openBulkManageEmails()">
+                                        <i class="bi bi-pencil-square"></i> Manage
+                                    </button>
+                                </div>
+                                <div id="bulkAddressBookList">Loading...</div>
+                            </div>
+                        </div>
+                        <input type="email" id="bulk-email-input" class="form-control form-control-sm" placeholder="Email address" style="width: 250px;">
+                        <button class="btn btn-success" onclick="emailBulkFromMainPage(this)">
+                            <i class="bi bi-envelope"></i> Email ZIP
+                        </button>
+                        <button class="btn btn-primary" onclick="downloadSelectedFiles()">
+                            <i class="bi bi-download"></i> Download ZIP
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="table-responsive">
+                <table id="documentsTable" class="table table-striped table-hover">
+                    <thead class="table-dark">
+                        <tr>
+                            <th style="width: 40px;">
+                                <input type="checkbox" id="selectAll" title="Select All" onchange="toggleSelectAll()">
+                            </th>
+                            <th>Actions</th>
+                            <th>SO ID</th>
+                            <th>Company</th>
+                            <th>Customer</th>
+                            <th>Customer PO</th>
+                            <th>Dispatch Date</th>
+                            <th>Paid</th>
+                            <th>Files</th>
+                        </tr>
+                    </thead>
+                    <tbody id="documentsTableBody">
+                        <tr>
+                            <td colspan="9" class="text-center text-muted py-4">
+                                <div class="spinner-border spinner-border-sm" role="status"></div> Loading...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- File Manager Modal -->
+<div class="modal fade" id="fileManagerModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Files for Invoice #: <span id="fileManagerSoid"></span></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Address Book Section -->
+                <!-- Address Book Section -->
+                <div id="addressBookSection" class="card mb-3" style="display: none;">
+                    <div class="card-header d-flex justify-content-between align-items-center" style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#addressBookCollapse">
+                        <strong><i class="bi bi-envelope me-2"></i>Address Book <i class="bi bi-chevron-down ms-2" id="addressBookChevron"></i></strong>
+                        <div class="btn-group" onclick="event.stopPropagation();">
+                            <button id="useAllEmailsBtn" class="btn btn-sm btn-success" onclick="useAllEmails()" style="display: none;">
+                                <i class="bi bi-check-all"></i> Use All
+                            </button>
+                            <button class="btn btn-sm btn-primary" onclick="openManageEmailsModal()">
+                                <i class="bi bi-pencil-square"></i> Manage Emails
+                            </button>
+                        </div>
+                    </div>
+                    <div class="collapse" id="addressBookCollapse">
+                        <div class="card-body" id="addressBookList">
+                            <p class="text-muted text-center mb-0">No saved emails yet.</p>
+                        </div>
+                    </div>
+                </div>
+                </div>
+                
+                <!-- Drop Zone -->
+                <div class="mb-3">
+                    <div id="fileManagerDropZone" class="drop-zone" style="padding: 20px;">
+                        <i class="bi bi-cloud-upload" style="font-size: 2rem; color: #6c757d;"></i>
+                        <p class="mb-0">Drag and drop files here or click to browse</p>
+                    </div>
+                </div>
+                
+                <!-- File Manager Bulk Actions -->
+                <div id="fileManagerBulkActionsBar" class="alert alert-info mb-3" style="display: none;">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span id="fileManagerSelectedCount">0 files selected</span>
+                        <div class="d-flex gap-2 align-items-center">
+                            <input type="email" id="filemanager-email-input" class="form-control form-control-sm" placeholder="Email address (comma separated)" style="width: 280px;">
+                            <button class="btn btn-success" onclick="emailFilesFromModal(this)">
+                                <i class="bi bi-envelope"></i> Email ZIP
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row" id="fileManagerFiles">
+                    <!-- Files will be loaded here -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Customer Documents Modal -->
+<div class="modal fade" id="customerDocumentsModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Documents for Customer: <span id="customerModalName"></span></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Filters -->
+                <div class="mb-3 p-3 bg-light rounded">
+                    <div class="d-flex gap-3 align-items-end">
+                        <div>
+                            <label class="form-label small mb-1">Start Date</label>
+                            <input type="date" id="customer-modal-startdate" class="form-control form-control-sm">
+                        </div>
+                        <div>
+                            <label class="form-label small mb-1">End Date</label>
+                            <input type="date" id="customer-modal-enddate" class="form-control form-control-sm">
+                        </div>
+                        <div>
+                            <label class="form-label small mb-1">Paid Status</label>
+                            <select id="customer-modal-paid" class="form-select form-select-sm" style="width: 120px;">
+                                <option value="all">All</option>
+                                <option value="no" selected>Unpaid</option>
+                                <option value="yes">Paid</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-primary btn-sm" onclick="applyCustomerModalFilters()">
+                            <i class="bi bi-search"></i> Filter
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Customer Modal Bulk Actions -->
+                <div id="customerModalBulkActions" class="alert alert-info mb-3" style="display: none;">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span id="customerModalSelectedCount">0 rows selected</span>
+                        <div class="d-flex gap-2 align-items-center">
+                            <input type="email" id="customer-modal-email" class="form-control form-control-sm" placeholder="Email address" style="width: 250px;" list="customer-saved-emails">
+                            <datalist id="customer-saved-emails"></datalist>
+                            <button class="btn btn-sm btn-outline-secondary" onclick="openManageEmailsFromCustomerModal()" title="Manage saved emails">
+                                <i class="bi bi-person-lines-fill"></i>
+                            </button>
+                            <button class="btn btn-primary btn-sm" onclick="downloadCustomerModalFiles()">
+                                <i class="bi bi-download"></i> Download
+                            </button>
+                            <button class="btn btn-success btn-sm" onclick="emailCustomerModalFiles(this)">
+                                <i class="bi bi-envelope"></i> Email ZIP
+                            </button>   
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead class="table-dark">
+                            <tr>
+                                <th style="width: 40px;">
+                                    <input type="checkbox" id="customerModalSelectAll" onchange="toggleCustomerModalSelectAll()">
+                                </th>
+                                <th>Actions</th>
+                                <th>SO ID</th>
+                                <th>Company</th>
+                                <th>Customer PO</th>
+                                <th>Dispatch Date</th>
+                                <th>Paid</th>
+                                <th>Files</th>
+                            </tr>
+                        </thead>
+                        <tbody id="customerModalTableBody">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Details Modal -->
+<div class="modal fade" id="detailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Order Details - SO #<span id="detailsModalSoid"></span></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Billing Information</h6>
+                        <p><strong>Bill To 1:</strong> <span id="modal-billto1"></span></p>
+                        <p><strong>Bill To 2:</strong> <span id="modal-billto2"></span></p>
+                        <p><strong>Bill To 3:</strong> <span id="modal-billto3"></span></p>
+                        <p><strong>Bill To 4:</strong> <span id="modal-billto4"></span></p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Shipping Information</h6>
+                        <p><strong>Ship To 1:</strong> <span id="modal-shipto1"></span></p>
+                        <p><strong>Ship To 2:</strong> <span id="modal-shipto2"></span></p>
+                        <p><strong>Ship To 3:</strong> <span id="modal-shipto3"></span></p>
+                        <p><strong>Ship To 4:</strong> <span id="modal-shipto4"></span></p>
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-md-6">
+                        <h6>Order Information</h6>
+                        <p><strong>Customer PO:</strong> <span id="modal-customerpo"></span></p>
+                        <p><strong>Dispatch Date:</strong> <span id="modal-dispatchdate"></span></p>
+                        <p><strong>Total Amount:</strong> <span id="modal-totalamount"></span></p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Status</h6>
+                        <p><strong>Paid:</strong> <span id="modal-paid"></span></p>
+                        <p><strong>Invoiced:</strong> <span id="modal-invoiced"></span></p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Manage Customer Emails Modal -->
+<div class="modal fade" id="manageEmailsModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Manage Emails for <span id="manageEmailsCustomerName"></span></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <h6>Add New Email</h6>
+                    <div class="input-group mb-2">
+                        <input type="email" class="form-control" id="newEmailAddress" placeholder="email@example.com">
+                        <input type="text" class="form-control" id="newEmailLabel" placeholder="Label (optional)">
+                        <button class="btn btn-primary" onclick="addCustomerEmail()">
+                            <i class="bi bi-plus"></i> Add
+                        </button>
+                    </div>
+                </div>
+                <div>
+                    <h6>Saved Emails:</h6>
+                    <div id="manageEmailsList">
+                        <p class="text-muted text-center">No saved emails yet.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Manage Tenant Emails Modal -->
+<div class="modal fade" id="manageTenantEmailsModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Manage Address Book</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <h6>Add New Email</h6>
+                    <div class="input-group mb-2">
+                        <input type="email" class="form-control" id="newTenantEmailAddress" placeholder="email@example.com">
+                        <input type="text" class="form-control" id="newTenantEmailLabel" placeholder="Label (optional)">
+                        <button class="btn btn-primary" onclick="addTenantEmail()">
+                            <i class="bi bi-plus"></i> Add
+                        </button>
+                    </div>
+                </div>
+                <div>
+                    <h6>Saved Emails:</h6>
+                    <div id="manageTenantEmailsList">
+                        <p class="text-muted text-center">No saved emails yet.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+{% include 'core/documents/includes/documents_common_scripts.html' %}
+{% include 'core/documents/includes/so_documents_scripts.html' %}
+{% endblock %}

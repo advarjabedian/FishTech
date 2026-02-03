@@ -2,6 +2,17 @@ from django.urls import path
 from .views import (
     # Auth views
     login_view, logout_view, operations_hub, register_view,
+    # Document views
+    documents_home, so_documents, po_documents,
+    # Document APIs
+    search_customers, search_vendors,
+    get_sales_orders, get_so_files, view_so_file, upload_so_file, delete_so_file,
+    get_purchase_orders, get_po_files, view_po_file, upload_po_file, delete_po_file,
+    get_pod_items, download_bulk_po_files, email_bulk_po_files, email_po_files,
+    get_vendor_emails, add_vendor_email, delete_vendor_email,
+    get_customer_emails, add_customer_email, delete_customer_email,
+    get_tenant_emails, add_tenant_email, delete_tenant_email,
+    download_bulk_so_files, email_bulk_so_files, email_so_files,
     # HACCP views
     haccp, haccp_company, haccp_documents, haccp_document_view,
     haccp_save_document, get_company_product_types, toggle_company_product_type,
@@ -120,9 +131,58 @@ urlpatterns = [
 
     path('api/update-company-logo/<int:company_id>/', update_company_logo, name='update_company_logo'),
     
+    # Documents
+    path('documents/', documents_home, name='documents_home'),
+    path('documents/so/', so_documents, name='so_documents'),
+    path('documents/po/', po_documents, name='po_documents'),
+    
+    # Documents API - Customers
+    path('api/documents/customers/search/', search_customers, name='search_customers'),
+    
+    # Documents API - Vendors
+    path('api/documents/vendors/search/', search_vendors, name='search_vendors'),
+    
+    # Documents API - Sales Orders
+    path('api/documents/so/', get_sales_orders, name='get_sales_orders'),
+    path('api/documents/so/upload/', upload_so_file, name='upload_so_file'),
+    path('api/documents/so/<str:soid>/files/', get_so_files, name='get_so_files'),
+    path('api/documents/so/<str:soid>/files/<str:filename>/view/', view_so_file, name='view_so_file'),
+    path('api/documents/so/<str:soid>/files/<str:filename>/', delete_so_file, name='delete_so_file'),
+    path('api/documents/so/email-files/', email_so_files, name='email_so_files'),
+    
+    # Tenant-wide Address Book
+    path('api/documents/tenant-emails/', get_tenant_emails, name='get_tenant_emails'),
+    path('api/documents/add-tenant-email/', add_tenant_email, name='add_tenant_email'),
+    path('api/documents/delete-tenant-email/<int:email_id>/', delete_tenant_email, name='delete_tenant_email'),
+    
+    # Documents API - Purchase Orders
+    path('api/documents/po/', get_purchase_orders, name='get_purchase_orders'),
+    path('api/documents/po/upload/', upload_po_file, name='upload_po_file'),
+    path('api/documents/po/<str:poid>/files/', get_po_files, name='get_po_files'),
+    path('api/documents/po/<str:poid>/files/<str:filename>/view/', view_po_file, name='view_po_file'),
+    path('api/documents/po/<str:poid>/files/<str:filename>/', delete_po_file, name='delete_po_file'),
+    path('api/documents/po/<str:poid>/pod-items/', get_pod_items, name='get_pod_items'),
+    path('api/documents/po/download-bulk/', download_bulk_po_files, name='download_bulk_po_files'),
+    path('api/documents/po/email-bulk/', email_bulk_po_files, name='email_bulk_po_files'),
+    path('api/documents/po/email-files/', email_po_files, name='email_po_files'),
+    
+    # Vendor Emails API
+    path('api/documents/vendor-emails/<int:vendor_id>/', get_vendor_emails, name='get_vendor_emails'),
+    path('api/documents/add-vendor-email/', add_vendor_email, name='add_vendor_email'),
+    path('api/documents/delete-vendor-email/<int:email_id>/', delete_vendor_email, name='delete_vendor_email'),
+    
     # Stripe billing
-    path('api/billing/status/', get_billing_status, name='billing_status'),
+    path('api/billing/status/', get_billing_status, name='billing_status'), 
     path('api/billing/checkout/', create_checkout_session, name='create_checkout'),
     path('api/billing/portal/', create_portal_session, name='create_portal'),
     path('webhook/stripe/', stripe_webhook, name='stripe_webhook'),
+    # Customer Emails API
+    path('api/documents/customer-emails/<int:customer_id>/', get_customer_emails, name='get_customer_emails'),
+    path('api/documents/add-customer-email/', add_customer_email, name='add_customer_email'),
+    path('api/documents/delete-customer-email/<int:email_id>/', delete_customer_email, name='delete_customer_email'),
+    # Documents API - Bulk operations
+    path('api/documents/so/download-bulk/', download_bulk_so_files, name='download_bulk_so_files'),
+    path('api/documents/so/email-bulk/', email_bulk_so_files, name='email_bulk_so_files'),
+    path('api/documents/customer-emails/<int:customer_id>/', get_customer_emails, name='get_customer_emails'),
+ 
 ]

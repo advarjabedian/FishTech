@@ -1,0 +1,626 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}POD Documents - FishTech{% endblock %}
+
+{% block extra_css %}
+<style>
+    .drop-zone {
+        border: 2px dashed #ccc;
+        border-radius: 8px;
+        padding: 30px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        background: #fafafa;
+    }
+    .drop-zone:hover, .drop-zone.dragover {
+        border-color: #0d6efd;
+        background: #f0f7ff;
+    }
+    .upload-result-item {
+        padding: 5px 10px;
+        margin: 2px 0;
+        border-radius: 4px;
+        font-size: 0.85rem;
+    }
+    .upload-success { background: #d4edda; color: #155724; }
+    .upload-warning { background: #fff3cd; color: #856404; }
+    .upload-info { background: #d1ecf1; color: #0c5460; }
+    .upload-error { background: #f8d7da; color: #721c24; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <h2>POD Documents</h2>
+            
+            <div class="mb-3">
+                <a href="{% url 'documents_home' %}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Back to Documents Home
+                </a>
+            </div>
+
+            <!-- Upload and Filters Section -->
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h5>Bulk File Upload & Filters</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <!-- Left side - Drop Zone -->
+                        <div class="col-md-6">
+                            <div id="podDropZone" class="drop-zone">
+                                <div class="drop-zone-content">
+                                    <i class="bi bi-cloud-upload" style="font-size: 2rem; color: #6c757d;"></i>
+                                    <h6>Drag and drop files or folders here</h6>
+                                    <p class="text-muted small">Files sorted by PODID in filename/folder</p>
+                                    <p class="text-muted small">Formats: Images, PDFs</p>
+                                    <button type="button" class="btn btn-sm btn-primary" onclick="selectMultipleFiles()">
+                                        <i class="bi bi-folder2-open"></i> Select Files
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Right side - Filters -->
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">POD ID</label>
+                                <input type="text" id="filter-podid" class="form-control form-control-sm" placeholder="Press Enter to search">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Product</label>
+                                <div class="position-relative">
+                                    <input type="text" id="filter-product" class="form-control form-control-sm" placeholder="Press Enter to search" autocomplete="off">
+                                    <div id="product-dropdown" class="dropdown-menu" style="display: none; position: absolute; top: 100%; left: 0; right: 0; z-index: 1000; max-height: 200px; overflow-y: auto;"></div>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Vendor Lot</label>
+                                <input type="text" id="filter-vendorlot" class="form-control form-control-sm" placeholder="Press Enter to search">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div id="uploadResults" class="mt-3" style="display: none;">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="mb-0">Upload Results:</h6>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="clearUploadResults()">
+                                <i class="bi bi-x-circle"></i> Clear
+                            </button>
+                        </div>
+                        <div id="uploadResultsList"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bulk Actions Bar -->
+            <div id="bulkActionsBar" class="alert alert-info" style="display: none;">
+                <div class="d-flex justify-content-between align-items-center">
+                    <span id="selectedCount">0 rows selected</span>
+                    <button class="btn btn-primary" onclick="downloadSelectedFiles()">
+                        <i class="bi bi-download"></i> Download Selected Files as ZIP
+                    </button>
+                </div>
+            </div>
+            
+            <div class="table-responsive">
+                <table id="documentsTable" class="table table-striped table-hover">
+                    <thead class="table-dark">
+                        <tr>
+                            <th style="width: 40px;">
+                                <input type="checkbox" id="selectAll" title="Select All">
+                            </th>
+                            <th>Actions</th>
+                            <th>POD ID</th>
+                            <th>PO ID</th>
+                            <th>Product</th>
+                            <th>Vendor Lot</th>
+                            <th>Pack Date</th>
+                            <th>Files</th>
+                        </tr>
+                    </thead>
+                    <tbody id="documentsTableBody">
+                        <tr>
+                            <td colspan="8" class="text-center text-muted py-4">
+                                Use the filters above to search for POD records
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- File Manager Modal -->
+<div class="modal fade" id="fileManagerModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Files for POD #: <span id="fileManagerPodid"></span></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <div id="fileManagerDropZone" class="drop-zone" style="padding: 20px;">
+                        <i class="bi bi-cloud-upload" style="font-size: 2rem; color: #6c757d;"></i>
+                        <p class="mb-0">Drag and drop files here or click to browse</p>
+                    </div>
+                </div>
+                <div id="fileManagerBulkActionsBar" class="alert alert-info mb-3" style="display: none;">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span id="fileManagerSelectedCount">0 files selected</span>
+                        <div class="d-flex gap-2 align-items-center">
+                            <input type="email" id="filemanager-email-input" class="form-control form-control-sm" placeholder="Email address" style="width: 250px;">
+                            <button class="btn btn-success" onclick="emailSelectedFiles()">
+                                <i class="bi bi-envelope"></i> Email Files
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="row" id="fileManagerFiles">
+                    <!-- Files will be loaded here -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Global variables
+let currentPodid = null;
+
+document.addEventListener('DOMContentLoaded', function() {
+    setupFilters();
+    setupDropZone();
+    
+    {% if podid %}
+    openFileManager('{{ podid }}');
+    {% endif %}
+});
+
+function setupFilters() {
+    document.getElementById('filter-podid').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            const podid = this.value.trim();
+            if (podid) {
+                openFileManager(podid);
+            }
+        }
+    });
+    
+    document.getElementById('filter-product').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            searchByProduct(this.value.trim());
+        }
+    });
+    
+    document.getElementById('filter-vendorlot').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            searchByVendorLot(this.value.trim());
+        }
+    });
+    
+    document.getElementById('filter-product').addEventListener('input', debounce(searchProducts, 300));
+}
+
+function debounce(func, wait) {
+    let timeout;
+    return function(...args) {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func.apply(this, args), wait);
+    };
+}
+
+function searchProducts() {
+    const query = document.getElementById('filter-product').value;
+    const dropdown = document.getElementById('product-dropdown');
+    
+    if (query.length < 2) {
+        dropdown.style.display = 'none';
+        return;
+    }
+    
+    fetch(`/api/documents/pod/search-products/?search=${encodeURIComponent(query)}`)
+        .then(response => response.json())
+        .then(products => {
+            dropdown.innerHTML = '';
+            if (products.length > 0) {
+                products.forEach(product => {
+                    const item = document.createElement('a');
+                    item.className = 'dropdown-item';
+                    item.href = '#';
+                    item.textContent = product.description;
+                    item.onclick = function(e) {
+                        e.preventDefault();
+                        document.getElementById('filter-product').value = product.description;
+                        dropdown.style.display = 'none';
+                        searchByProduct(product.description);
+                    };
+                    dropdown.appendChild(item);
+                });
+                dropdown.style.display = 'block';
+            } else {
+                dropdown.style.display = 'none';
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            dropdown.style.display = 'none';
+        });
+}
+
+function searchByProduct(product) {
+    if (!product) return;
+    
+    fetch(`/api/documents/pod/?product=${encodeURIComponent(product)}`)
+        .then(response => response.json())
+        .then(data => {
+            renderTable(data);
+        })
+        .catch(error => console.error('Error:', error));
+}
+
+function searchByVendorLot(vendorlot) {
+    if (!vendorlot) return;
+    
+    fetch(`/api/documents/pod/?vendorlot=${encodeURIComponent(vendorlot)}`)
+        .then(response => response.json())
+        .then(data => {
+            renderTable(data);
+        })
+        .catch(error => console.error('Error:', error));
+}
+
+function renderTable(data) {
+    const tbody = document.getElementById('documentsTableBody');
+    
+    if (data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">No records found</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = data.map(row => `
+        <tr>
+            <td><input type="checkbox" class="row-checkbox" value="${row.podid}"></td>
+            <td>
+                <button class="btn btn-sm btn-info" onclick="openFileManager('${row.podid}')" title="View Files">
+                    <i class="bi bi-folder2-open"></i>
+                </button>
+            </td>
+            <td>${row.podid || ''}</td>
+            <td>${row.poid || ''}</td>
+            <td>${row.description || ''}</td>
+            <td>${row.vendorlot || ''}</td>
+            <td>${row.packdate || ''}</td>
+            <td><span class="badge bg-secondary">${row.file_count || 0}</span></td>
+        </tr>
+    `).join('');
+}
+
+function openFileManager(podid) {
+    currentPodid = podid;
+    document.getElementById('fileManagerPodid').textContent = podid;
+    
+    fetch(`/api/documents/pod/${podid}/files/`)
+        .then(response => response.json())
+        .then(data => {
+            renderFiles(data.files || []);
+            setupFileManagerDropZone();
+            const modal = new bootstrap.Modal(document.getElementById('fileManagerModal'));
+            modal.show();
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error loading files');
+        });
+}
+
+function renderFiles(files) {
+    const container = document.getElementById('fileManagerFiles');
+    
+    if (files.length === 0) {
+        container.innerHTML = '<div class="col-12"><p class="text-muted text-center">No files uploaded yet.</p></div>';
+        return;
+    }
+    
+    container.innerHTML = files.map(file => `
+        <div class="col-md-6 mb-3">
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <input type="checkbox" class="filemanager-file-checkbox" value="${file.filename}">
+                    </div>
+                    ${file.type === 'pdf' ? 
+                        `<div class="text-center mb-2"><i class="bi bi-file-earmark-pdf text-danger" style="font-size: 4rem;"></i></div>` :
+                        `<div class="mb-2" style="height: 150px; overflow: hidden; display: flex; align-items: center; justify-content: center; background: #f8f9fa;">
+                            <img src="${file.url}" alt="${file.filename}" style="max-width: 100%; max-height: 150px; object-fit: contain;">
+                        </div>`
+                    }
+                    <h6 class="text-center mt-2 small text-truncate" title="${file.filename}">${file.filename}</h6>
+                    <div class="btn-group w-100">
+                        <button class="btn btn-sm btn-primary" onclick="window.open('${file.url}', '_blank')">
+                            <i class="bi bi-eye"></i> View
+                        </button>
+                        <button class="btn btn-sm btn-danger" onclick="deleteFile('${file.filename}')">
+                            <i class="bi bi-trash"></i> Delete
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function deleteFile(filename) {
+    if (!confirm(`Delete ${filename}?`)) return;
+    
+    fetch(`/api/documents/pod/${currentPodid}/files/${filename}/`, {
+        method: 'DELETE',
+        headers: { 'X-CSRFToken': getCookie('csrftoken') }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            openFileManager(currentPodid);
+        } else {
+            alert('Error: ' + (data.error || 'Delete failed'));
+        }
+    })
+    .catch(error => alert('Error: ' + error));
+}
+
+function setupDropZone() {
+    const dropZone = document.getElementById('podDropZone');
+    if (!dropZone) return;
+    
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(event => {
+        dropZone.addEventListener(event, e => {
+            e.preventDefault();
+            e.stopPropagation();
+        });
+    });
+    
+    ['dragenter', 'dragover'].forEach(event => {
+        dropZone.addEventListener(event, () => dropZone.classList.add('dragover'));
+    });
+    
+    ['dragleave', 'drop'].forEach(event => {
+        dropZone.addEventListener(event, () => dropZone.classList.remove('dragover'));
+    });
+    
+    dropZone.addEventListener('drop', handleDrop);
+    dropZone.addEventListener('click', selectMultipleFiles);
+}
+
+function setupFileManagerDropZone() {
+    const dropZone = document.getElementById('fileManagerDropZone');
+    if (!dropZone) return;
+    
+    // Remove old listeners by cloning
+    const newDropZone = dropZone.cloneNode(true);
+    dropZone.parentNode.replaceChild(newDropZone, dropZone);
+    
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(event => {
+        newDropZone.addEventListener(event, e => {
+            e.preventDefault();
+            e.stopPropagation();
+        });
+    });
+    
+    ['dragenter', 'dragover'].forEach(event => {
+        newDropZone.addEventListener(event, () => newDropZone.classList.add('dragover'));
+    });
+    
+    ['dragleave', 'drop'].forEach(event => {
+        newDropZone.addEventListener(event, () => newDropZone.classList.remove('dragover'));
+    });
+    
+    newDropZone.addEventListener('drop', function(e) {
+        const files = Array.from(e.dataTransfer.files);
+        files.forEach(file => uploadFile(file, currentPodid));
+    });
+    
+    newDropZone.addEventListener('click', function() {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*,application/pdf';
+        input.multiple = true;
+        input.onchange = function(e) {
+            Array.from(e.target.files).forEach(file => uploadFile(file, currentPodid));
+        };
+        input.click();
+    });
+}
+
+function selectMultipleFiles() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*,application/pdf';
+    input.multiple = true;
+    input.onchange = function(e) {
+        processFiles(Array.from(e.target.files));
+    };
+    input.click();
+}
+
+// Folder processing support
+function handleDrop(e) {
+    const items = e.dataTransfer.items;
+    const uploadResults = document.getElementById('uploadResults');
+    const uploadResultsList = document.getElementById('uploadResultsList');
+    
+    uploadResults.style.display = 'block';
+    uploadResultsList.innerHTML = '';
+    
+    if (items) {
+        const promises = [];
+        for (let i = 0; i < items.length; i++) {
+            const entry = items[i].webkitGetAsEntry();
+            if (entry) {
+                promises.push(processEntry(entry, null));
+            }
+        }
+        Promise.all(promises).then(results => {
+            const allFiles = results.flat();
+            addUploadResult(`Found ${allFiles.length} file(s) to upload`, 'info');
+            allFiles.forEach(({file, podid}) => {
+                if (podid) {
+                    uploadFile(file, podid);
+                } else {
+                    addUploadResult(`${file.name} - No PODID found`, 'warning');
+                }
+            });
+        });
+    } else {
+        // Fallback for browsers without webkitGetAsEntry
+        processFiles(Array.from(e.dataTransfer.files));
+    }
+}
+
+function processEntry(entry, folderPodid) {
+    return new Promise((resolve) => {
+        if (entry.isFile) {
+            entry.file(file => {
+                const podid = folderPodid || extractPodidFromFilename(file.name);
+                resolve([{file, podid}]);
+            });
+        } else if (entry.isDirectory) {
+            const dirPodid = extractPodidFromFilename(entry.name);
+            if (dirPodid) {
+                addUploadResult(`📁 Folder: ${entry.name} → PODID ${dirPodid}`, 'info');
+            }
+            readDirectory(entry, dirPodid || folderPodid).then(resolve);
+        } else {
+            resolve([]);
+        }
+    });
+}
+
+function readDirectory(dirEntry, folderPodid) {
+    return new Promise((resolve) => {
+        const allFiles = [];
+        const dirReader = dirEntry.createReader();
+        
+        function readEntries() {
+            dirReader.readEntries(entries => {
+                if (entries.length === 0) {
+                    resolve(allFiles);
+                } else {
+                    const promises = entries.map(entry => processEntry(entry, folderPodid));
+                    Promise.all(promises).then(results => {
+                        results.forEach(files => allFiles.push(...files));
+                        readEntries();
+                    });
+                }
+            });
+        }
+        readEntries();
+    });
+}
+
+function processFiles(files) {
+    const uploadResults = document.getElementById('uploadResults');
+    const uploadResultsList = document.getElementById('uploadResultsList');
+    
+    uploadResults.style.display = 'block';
+    uploadResultsList.innerHTML = '';
+    
+    files.forEach(file => {
+        const podid = extractPodidFromFilename(file.name);
+        if (podid) {
+            uploadFile(file, podid);
+        } else {
+            addUploadResult(`${file.name} - No PODID found in filename`, 'warning');
+        }
+    });
+}
+
+function extractPodidFromFilename(filename) {
+    const patterns = [
+        /PODID[_-]?(\d+)/i,
+        /POD[_-]?(\d+)/i,
+        /[_-](\d{5,})/,
+        /(\d{5,})/
+    ];
+    
+    for (const pattern of patterns) {
+        const match = filename.match(pattern);
+        if (match) {
+            return match[1];
+        }
+    }
+    return null;
+}
+
+function uploadFile(file, podid) {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('podid', podid);
+    
+    fetch('/api/documents/pod/upload/', {
+        method: 'POST',
+        body: formData,
+        credentials: 'same-origin',
+        headers: { 'X-CSRFToken': getCookie('csrftoken') }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            addUploadResult(`${file.name} → PODID ${podid} ✓`, 'success');
+        } else {
+            addUploadResult(`${file.name} - ${data.error}`, 'error');
+        }
+    })
+    .catch(error => {
+        addUploadResult(`${file.name} - ${error}`, 'error');
+    });
+}
+
+function addUploadResult(message, type) {
+    const list = document.getElementById('uploadResultsList');
+    const item = document.createElement('div');
+    item.className = `upload-result-item upload-${type}`;
+    item.textContent = message;
+    list.appendChild(item);
+}
+
+function clearUploadResults() {
+    document.getElementById('uploadResults').style.display = 'none';
+    document.getElementById('uploadResultsList').innerHTML = '';
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// Hide dropdown when clicking outside
+document.addEventListener('click', function(e) {
+    const dropdown = document.getElementById('product-dropdown');
+    const input = document.getElementById('filter-product');
+    if (dropdown && input && e.target !== input && !dropdown.contains(e.target)) {
+        dropdown.style.display = 'none';
+    }
+});
+</script>
+{% endblock %}

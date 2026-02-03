@@ -103,6 +103,18 @@
             </div>
         </div>
 
+        <!-- Documents Card -->
+        <div class="col-md-4 mb-3">
+            <div class="card card-dashboard bg-primary bg-opacity-10" style="border-color: #0d6efd !important;" onclick="window.location.href='{% url 'documents_home' %}'">
+                <div class="card-body text-center py-5">
+                    <i class="bi bi-file-earmark-text card-icon text-primary"></i>
+                    <h3>Documents</h3>
+                    <p class="text-muted">Sales orders, purchase orders, and files</p>
+                    <a href="{% url 'documents_home' %}" class="btn btn-primary mt-2">View Documents</a>
+                </div>
+            </div>
+        </div>
+
         <!-- Manage Users & Companies Card (Admin Only) -->
         {% if is_admin %}
         <div class="col-md-4 mb-3">

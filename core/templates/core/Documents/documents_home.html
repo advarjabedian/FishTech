@@ -1,0 +1,123 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Documents - FishTech{% endblock %}
+
+{% block extra_css %}
+<style>
+    .document-card {
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        height: 100%;
+        cursor: pointer;
+        min-height: 200px;
+    }
+    
+    .document-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+    }
+    
+    .document-icon {
+        font-size: 3rem;
+        margin-bottom: 15px;
+    }
+    
+    .document-card .card-body {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+        padding: 2rem;
+    }
+    
+    .document-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+    }
+    
+    .document-description {
+        color: #6c757d;
+        font-size: 0.95rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1><i class="bi bi-file-earmark-text me-2"></i>Documents</h1>
+        <a href="{% url 'operations_hub' %}" class="btn btn-secondary">
+            <i class="bi bi-house me-1"></i>Back to Operations
+        </a>
+    </div>
+    
+    <div class="row g-4">
+        <!-- Sales Orders -->
+        <div class="col-md-4">
+            <div class="card document-card bg-primary bg-opacity-10 border-primary" onclick="window.location.href='{% url 'so_documents' %}'">
+                <div class="card-body">
+                    <i class="bi bi-file-earmark-text document-icon text-primary"></i>
+                    <h5 class="document-title">SO</h5>
+                    <p class="document-description">Sales Orders</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Purchase Orders -->
+        <div class="col-md-4">
+            <div class="card document-card bg-success bg-opacity-10 border-success" onclick="window.location.href='{% url 'po_documents' %}'">
+                <div class="card-body">
+                    <i class="bi bi-file-earmark-check document-icon text-success"></i>
+                    <h5 class="document-title">PO</h5>
+                    <p class="document-description">Purchase Orders</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- POD -->
+        <div class="col-md-4">
+            <div class="card document-card bg-warning bg-opacity-10 border-warning">
+                <div class="card-body">
+                    <i class="bi bi-truck document-icon text-warning"></i>
+                    <h5 class="document-title">POD</h5>
+                    <p class="document-description">Proof of Delivery</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Customer -->
+        <div class="col-md-4">
+            <div class="card document-card bg-info bg-opacity-10 border-info">
+                <div class="card-body">
+                    <i class="bi bi-people document-icon text-info"></i>
+                    <h5 class="document-title">Customer</h5>
+                    <p class="document-description">Customer Documents</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Vendor -->
+        <div class="col-md-4">
+            <div class="card document-card bg-secondary bg-opacity-10 border-secondary">
+                <div class="card-body">
+                    <i class="bi bi-building document-icon text-secondary"></i>
+                    <h5 class="document-title">Vendor</h5>
+                    <p class="document-description">Vendor Documents</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Receipts -->
+        <div class="col-md-4">
+            <div class="card document-card bg-danger bg-opacity-10 border-danger">
+                <div class="card-body">
+                    <i class="bi bi-receipt document-icon text-danger"></i>
+                    <h5 class="document-title">Receipts</h5>
+                    <p class="document-description">Email Receipts from Vendors</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
