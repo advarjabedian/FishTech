@@ -32,13 +32,45 @@ class TenantModel(models.Model):
 
 class Tenant(models.Model):
     """Represents each fish factory customer"""
+    SUBSCRIPTION_STATUS_CHOICES = [
+        ('trialing', 'Trial'),
+        ('active', 'Active'),
+        ('past_due', 'Past Due'),
+        ('canceled', 'Canceled'),
+        ('unpaid', 'Unpaid'),
+    ]
+    
     name = models.CharField(max_length=255)  # Company name
     subdomain = models.CharField(max_length=63, unique=True)  # e.g., 'goldenstateseafood'
     is_active = models.BooleanField(default=True)
     created_at = models.DateField(null=True, blank=True, help_text="SOP effective date - only shows in inspections on/after this date")
     
+    # Stripe billing fields
+    stripe_customer_id = models.CharField(max_length=255, blank=True)
+    stripe_subscription_id = models.CharField(max_length=255, blank=True)
+    subscription_status = models.CharField(max_length=20, choices=SUBSCRIPTION_STATUS_CHOICES, default='trialing')
+    trial_ends_at = models.DateTimeField(null=True, blank=True)
+    subscription_ends_at = models.DateTimeField(null=True, blank=True)
+    
     def __str__(self):
         return self.name
+    
+    def is_subscription_valid(self):
+        """Check if tenant has valid subscription or is in trial"""
+        from django.utils import timezone
+        if self.subscription_status == 'active':
+            return True
+        if self.subscription_status == 'trialing' and self.trial_ends_at:
+            return timezone.now() < self.trial_ends_at
+        return False
+    
+    def days_remaining_in_trial(self):
+        """Get days remaining in trial"""
+        from django.utils import timezone
+        if self.subscription_status == 'trialing' and self.trial_ends_at:
+            delta = self.trial_ends_at - timezone.now()
+            return max(0, delta.days)
+        return 0
 
 class TenantUser(models.Model):
     """Links Django users to tenants"""

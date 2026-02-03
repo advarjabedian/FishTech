@@ -26,6 +26,9 @@ from .views import (
     delete_zone, get_calendar_data, get_inspection_images, get_companies
 )
 from .views.operations_reports import generate_operational_report, generate_deviations_report, generate_bulk_report
+from .views.stripe_billing import (
+    get_billing_status, create_checkout_session, create_portal_session, stripe_webhook
+)
 
 urlpatterns = [
     # Auth routes
@@ -116,5 +119,10 @@ urlpatterns = [
     path('api/operations/get-companies/', get_companies, name='get_companies'),
 
     path('api/update-company-logo/<int:company_id>/', update_company_logo, name='update_company_logo'),
-   
+    
+    # Stripe billing
+    path('api/billing/status/', get_billing_status, name='billing_status'),
+    path('api/billing/checkout/', create_checkout_session, name='create_checkout'),
+    path('api/billing/portal/', create_portal_session, name='create_portal'),
+    path('webhook/stripe/', stripe_webhook, name='stripe_webhook'),
 ]
