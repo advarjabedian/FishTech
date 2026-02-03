@@ -129,7 +129,7 @@
                             </div>
                         </div>
                         <input type="email" id="bulk-email-input" class="form-control form-control-sm" placeholder="Email address" style="width: 250px;">
-                        <button class="btn btn-success" onclick="emailSelectedFiles()">
+                        <button class="btn btn-success" onclick="emailBulkFromMainPage(this)">
                             <i class="bi bi-envelope"></i> Email ZIP
                         </button>
                         <button class="btn btn-primary" onclick="downloadSelectedFiles()">
@@ -214,9 +214,9 @@
                         <span id="fileManagerSelectedCount">0 files selected</span>
                         <div class="d-flex gap-2 align-items-center">
                             <input type="email" id="filemanager-email-input" class="form-control form-control-sm" placeholder="Email address (comma separated)" style="width: 280px;">
-                            <button class="btn btn-success" onclick="emailSelectedFiles()">
-                                <i class="bi bi-envelope"></i> Email Files
-                            </button>
+                            <button class="btn btn-success" onclick="emailBulkFromMainPage(this)">
+                            <i class="bi bi-envelope"></i> Email ZIP
+                        </button>
                         </div>
                     </div>
                 </div>
@@ -279,9 +279,9 @@
                             <button class="btn btn-primary btn-sm" onclick="downloadCustomerModalFiles()">
                                 <i class="bi bi-download"></i> Download
                             </button>
-                            <button class="btn btn-success btn-sm" onclick="emailCustomerModalFiles()">
+                            <button class="btn btn-success btn-sm" onclick="emailCustomerModalFiles(this)">
                                 <i class="bi bi-envelope"></i> Email ZIP
-                            </button>
+                            </button>   
                         </div>
                     </div>
                 </div>
@@ -425,6 +425,39 @@
     </div>
 </div>
 </div>
+
+<!-- Manage Tenant Emails Modal -->
+<div class="modal fade" id="manageTenantEmailsModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Manage Address Book</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <h6>Add New Email</h6>
+                    <div class="input-group mb-2">
+                        <input type="email" class="form-control" id="newTenantEmailAddress" placeholder="email@example.com">
+                        <input type="text" class="form-control" id="newTenantEmailLabel" placeholder="Label (optional)">
+                        <button class="btn btn-primary" onclick="addTenantEmail()">
+                            <i class="bi bi-plus"></i> Add
+                        </button>
+                    </div>
+                </div>
+                <div>
+                    <h6>Saved Emails:</h6>
+                    <div id="manageTenantEmailsList">
+                        <p class="text-muted text-center">No saved emails yet.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -565,14 +598,9 @@ function renderTable(data) {
         <tr>
             <td><input type="checkbox" class="row-checkbox" value="${row.soid}" onchange="updateBulkActions()"></td>
             <td>
-                <div class="btn-group btn-group-sm">
-                    <button class="btn btn-info" onclick="openFileManager('${row.soid}')" title="View Files">
-                        <i class="bi bi-eye"></i>
-                    </button>
-                    <button class="btn btn-secondary" onclick="showDetails(${JSON.stringify(row).replace(/"/g, '&quot;')})" title="Details">
-                        <i class="bi bi-info-circle"></i>
-                    </button>
-                </div>
+                <button class="btn btn-sm btn-info" onclick="openFileManager('${row.soid}')" title="View Files">
+                    <i class="bi bi-eye"></i>
+                </button>
             </td>
             <td>${row.soid || ''}</td>
             <td>${row.company_name || ''}</td>
@@ -904,7 +932,7 @@ function useAllEmails() {
     document.getElementById('filemanager-email-input').value = emails;
 }
 
-function emailSelectedFiles() {
+function emailFilesFromModal(btn) {
     const selected = document.querySelectorAll('.filemanager-file-checkbox:checked');
     if (selected.length === 0) {
         alert('Please select at least one file');
@@ -922,6 +950,11 @@ function emailSelectedFiles() {
     
     const filenames = Array.from(selected).map(cb => cb.value);
     
+    // Show loading state
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Sending...';
+    
     const formData = new FormData();
     formData.append('soid', currentSoid);
     emails.forEach(email => formData.append('emails', email));
@@ -934,6 +967,8 @@ function emailSelectedFiles() {
     })
     .then(response => response.json())
     .then(data => {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
         if (data.success) {
             alert(`Email sent to ${emails.join(', ')}`);
             emailInput.value = '';
@@ -941,7 +976,11 @@ function emailSelectedFiles() {
             alert('Error: ' + (data.error || 'Email failed'));
         }
     })
-    .catch(error => alert('Error: ' + error));
+    .catch(error => {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+        alert('Error: ' + error);
+    });
 }
 
 function openManageEmailsModal() {
@@ -1191,7 +1230,7 @@ function downloadCustomerModalFiles() {
     document.body.removeChild(form);
 }
 
-function emailCustomerModalFiles() {
+function emailCustomerModalFiles(btn) {
     const selected = document.querySelectorAll('.customer-modal-checkbox:checked');
     if (selected.length === 0) {
         alert('Please select at least one row');
@@ -1209,6 +1248,11 @@ function emailCustomerModalFiles() {
     
     const soids = Array.from(selected).map(cb => cb.value);
     
+    // Show loading state
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Sending...';
+    
     const formData = new FormData();
     emails.forEach(email => formData.append('emails', email));
     soids.forEach(soid => formData.append('soids', soid));
@@ -1220,6 +1264,8 @@ function emailCustomerModalFiles() {
     })
     .then(response => response.json())
     .then(data => {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
         if (data.success) {
             alert(`Email sent to ${emails.join(', ')}`);
             emailInput.value = '';
@@ -1227,7 +1273,11 @@ function emailCustomerModalFiles() {
             alert('Error: ' + (data.error || 'Email failed'));
         }
     })
-    .catch(error => alert('Error: ' + error));
+    .catch(error => {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+        alert('Error: ' + error);
+    });
 }
 
 function openManageEmailsFromCustomerModal() {
@@ -1627,7 +1677,7 @@ function deleteTenantEmail(emailId) {
     .catch(error => alert('Error: ' + error));
 }
 
-function emailSelectedFiles() {
+function emailBulkFromMainPage(btn) {
     const selected = document.querySelectorAll('.row-checkbox:checked');
     if (selected.length === 0) {
         alert('Please select at least one row');
@@ -1635,6 +1685,11 @@ function emailSelectedFiles() {
     }
     
     const emailInput = document.getElementById('bulk-email-input');
+    if (!emailInput) {
+        alert('Email input not found');
+        return;
+    }
+    
     const emails = emailInput.value.split(',').map(e => e.trim()).filter(e => e);
     
     if (emails.length === 0) {
@@ -1644,6 +1699,11 @@ function emailSelectedFiles() {
     }
     
     const soids = Array.from(selected).map(cb => cb.value);
+    
+    // Show loading state
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Sending...';
     
     const formData = new FormData();
     emails.forEach(email => formData.append('emails', email));
@@ -1656,6 +1716,8 @@ function emailSelectedFiles() {
     })
     .then(response => response.json())
     .then(data => {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
         if (data.success) {
             alert(`Email sent to ${emails.join(', ')}`);
             emailInput.value = '';
@@ -1663,7 +1725,62 @@ function emailSelectedFiles() {
             alert('Error: ' + (data.error || 'Email failed'));
         }
     })
-    .catch(error => alert('Error: ' + error));
+    .catch(error => {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+        alert('Error: ' + error);
+    });
+}
+
+function emailFilesFromModal(btn) {
+    const selected = document.querySelectorAll('.filemanager-file-checkbox:checked');
+    if (selected.length === 0) {
+        alert('Please select at least one file');
+        return;
+    }
+    
+    const emailInput = document.getElementById('filemanager-email-input');
+    const emails = emailInput.value.split(',').map(e => e.trim()).filter(e => e);
+    
+    if (emails.length === 0) {
+        alert('Please enter an email address');
+        emailInput.focus();
+        return;
+    }
+    
+    const filenames = Array.from(selected).map(cb => cb.value);
+    
+    // Show loading state
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Sending...';
+    
+    const formData = new FormData();
+    formData.append('soid', currentSoid);
+    emails.forEach(email => formData.append('emails', email));
+    filenames.forEach(f => formData.append('filenames', f));
+    
+    fetch('/api/documents/so/email-files/', {
+        method: 'POST',
+        body: formData,
+        headers: { 'X-CSRFToken': getCookie('csrftoken') }
+    })
+    .then(response => response.json())
+    .then(data => {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+        if (data.success) {
+            alert(`Email sent to ${emails.join(', ')}`);
+            emailInput.value = '';
+        } else {
+            alert('Error: ' + (data.error || 'Email failed'));
+        }
+    })
+    .catch(error => {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+        alert('Error: ' + error);
+    });
 }
 </script>
 {% endblock %}

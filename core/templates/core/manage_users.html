@@ -51,6 +51,24 @@
         </div>
     </div>
 
+    <!-- Address Book Section -->
+    <div class="card mb-4">
+        <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="bi bi-person-lines-fill me-2"></i>Company Address Book</h5>
+            <button class="btn btn-light btn-sm" data-bs-toggle="modal" data-bs-target="#addTenantEmailModal">
+                <i class="bi bi-plus"></i> Add Email
+            </button>
+        </div>
+        <div class="card-body">
+            <p class="text-muted small mb-3">These emails are shared across all users in your organization for quick access when emailing documents.</p>
+            <div id="tenantEmailsList">
+                <div class="text-center py-3">
+                    <div class="spinner-border spinner-border-sm" role="status"></div> Loading...
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Payment Success/Cancel Messages -->
     <div id="paymentSuccessAlert" class="alert alert-success alert-dismissible fade show" style="display: none;">
         <i class="bi bi-check-circle me-2"></i>
@@ -325,6 +343,35 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                 <button type="button" class="btn btn-primary" onclick="submitEditUser()">Save Changes</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- Add Tenant Email Modal -->
+<div class="modal fade" id="addTenantEmailModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add Email to Address Book</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Email Address <span class="text-danger">*</span></label>
+                    <input type="email" class="form-control" id="tenantEmailAddress" placeholder="email@example.com" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Label (optional)</label>
+                    <input type="text" class="form-control" id="tenantEmailLabel" placeholder="e.g., Accounts Payable, John Smith">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="addTenantEmail()">
+                    <i class="bi bi-plus"></i> Add Email
+                </button>
             </div>
         </div>
     </div>
@@ -776,6 +823,109 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Load billing status
     loadBillingStatus();
+    
+    // Load address book
+    loadTenantEmails();
 });
+
+// ============================================================================
+// TENANT ADDRESS BOOK
+// ============================================================================
+
+function loadTenantEmails() {
+    fetch('/api/documents/tenant-emails/')
+        .then(response => response.json())
+        .then(emails => {
+            renderTenantEmails(emails);
+        })
+        .catch(error => {
+            console.error('Error loading tenant emails:', error);
+            document.getElementById('tenantEmailsList').innerHTML = 
+                '<p class="text-danger">Error loading address book</p>';
+        });
+}
+
+function renderTenantEmails(emails) {
+    const container = document.getElementById('tenantEmailsList');
+    
+    if (emails.length === 0) {
+        container.innerHTML = '<p class="text-muted text-center mb-0">No emails in address book yet. Click "Add Email" to get started.</p>';
+        return;
+    }
+    
+    container.innerHTML = `
+        <table class="table table-sm table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>Email</th>
+                    <th>Label</th>
+                    <th style="width: 100px;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${emails.map(email => `
+                    <tr>
+                        <td>${email.email}</td>
+                        <td>${email.label || '<span class="text-muted">-</span>'}</td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteTenantEmail(${email.id})" title="Delete">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+    `;
+}
+
+function addTenantEmail() {
+    const email = document.getElementById('tenantEmailAddress').value.trim();
+    const label = document.getElementById('tenantEmailLabel').value.trim();
+    
+    if (!email) {
+        alert('Please enter an email address');
+        return;
+    }
+    
+    fetch('/api/documents/add-tenant-email/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({ email, label })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            document.getElementById('tenantEmailAddress').value = '';
+            document.getElementById('tenantEmailLabel').value = '';
+            bootstrap.Modal.getInstance(document.getElementById('addTenantEmailModal')).hide();
+            loadTenantEmails();
+        } else {
+            alert('Error: ' + (data.error || 'Failed to add email'));
+        }
+    })
+    .catch(error => alert('Error: ' + error));
+}
+
+function deleteTenantEmail(emailId) {
+    if (!confirm('Delete this email from the address book?')) return;
+    
+    fetch(`/api/documents/delete-tenant-email/${emailId}/`, {
+        method: 'DELETE',
+        headers: { 'X-CSRFToken': getCookie('csrftoken') }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            loadTenantEmails();
+        } else {
+            alert('Error deleting email');
+        }
+    })
+    .catch(error => alert('Error: ' + error));
+}
 </script>
 {% endblock %}
