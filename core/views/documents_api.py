@@ -977,5 +977,67 @@ def email_bulk_so_files(request):
 
 
 # =============================================================================
-# CUSTOMER EMAIL APIs
+# TENANT EMAIL APIs (Tenant-wide Address Book)
 # =============================================================================
+
+@login_required
+def get_tenant_emails(request):
+    """Get all tenant-wide emails"""
+    if not request.tenant:
+        return JsonResponse({'error': 'Not authenticated'}, status=401)
+    
+    from core.models import TenantEmail
+    emails = TenantEmail.objects.filter(tenant=request.tenant).order_by('-created_at')
+    
+    return JsonResponse([
+        {'id': e.id, 'email': e.email, 'label': e.label}
+        for e in emails
+    ], safe=False)
+
+
+@csrf_exempt
+@login_required
+def add_tenant_email(request):
+    """Add tenant-wide email"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Invalid method'}, status=405)
+    
+    if not request.tenant:
+        return JsonResponse({'success': False, 'error': 'Not authenticated'}, status=401)
+    
+    from core.models import TenantEmail
+    data = json.loads(request.body)
+    email = data.get('email', '').strip()
+    label = data.get('label', '').strip()
+    
+    if not email:
+        return JsonResponse({'success': False, 'error': 'Email required'})
+    
+    if TenantEmail.objects.filter(tenant=request.tenant, email=email).exists():
+        return JsonResponse({'success': False, 'error': 'Email already exists'})
+    
+    TenantEmail.objects.create(
+        tenant=request.tenant,
+        email=email,
+        label=label
+    )
+    
+    return JsonResponse({'success': True})
+
+
+@csrf_exempt
+@login_required
+def delete_tenant_email(request, email_id):
+    """Delete a tenant-wide email"""
+    if request.method != 'DELETE':
+        return JsonResponse({'success': False, 'error': 'Invalid method'}, status=405)
+    
+    if not request.tenant:
+        return JsonResponse({'success': False, 'error': 'Not authenticated'}, status=401)
+    
+    from core.models import TenantEmail
+    try:
+        TenantEmail.objects.filter(id=email_id, tenant=request.tenant).delete()
+        return JsonResponse({'success': True})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})

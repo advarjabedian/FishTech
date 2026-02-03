@@ -10,6 +10,7 @@ from .views import (
     get_purchase_orders, get_po_files, view_po_file, upload_po_file, delete_po_file,
     get_pod_items,
     get_customer_emails, add_customer_email, delete_customer_email,
+    get_tenant_emails, add_tenant_email, delete_tenant_email,
     download_bulk_so_files, email_bulk_so_files, email_so_files,
     # HACCP views
     haccp, haccp_company, haccp_documents, haccp_document_view,
@@ -147,6 +148,11 @@ urlpatterns = [
     path('api/documents/so/<str:soid>/files/<str:filename>/view/', view_so_file, name='view_so_file'),
     path('api/documents/so/<str:soid>/files/<str:filename>/', delete_so_file, name='delete_so_file'),
     path('api/documents/so/email-files/', email_so_files, name='email_so_files'),
+    
+    # Tenant-wide Address Book
+    path('api/documents/tenant-emails/', get_tenant_emails, name='get_tenant_emails'),
+    path('api/documents/add-tenant-email/', add_tenant_email, name='add_tenant_email'),
+    path('api/documents/delete-tenant-email/<int:email_id>/', delete_tenant_email, name='delete_tenant_email'),
     
     # Documents API - Purchase Orders
     path('api/documents/po/', get_purchase_orders, name='get_purchase_orders'),

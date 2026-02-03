@@ -113,9 +113,29 @@
             <div id="bulkActionsBar" class="alert alert-info" style="display: none;">
                 <div class="d-flex justify-content-between align-items-center">
                     <span id="selectedCount">0 rows selected</span>
-                    <button class="btn btn-primary" onclick="downloadSelectedFiles()">
-                        <i class="bi bi-download"></i> Download Selected Files as ZIP
-                    </button>
+                    <div class="d-flex gap-2 align-items-center">
+                        <div class="dropdown">
+                            <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" title="Address Book">
+                                <i class="bi bi-person-lines-fill"></i>
+                            </button>
+                            <div class="dropdown-menu dropdown-menu-end p-2" style="min-width: 300px;" id="bulkAddressBookDropdown">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <strong>Address Book</strong>
+                                    <button class="btn btn-sm btn-primary" onclick="openBulkManageEmails()">
+                                        <i class="bi bi-pencil-square"></i> Manage
+                                    </button>
+                                </div>
+                                <div id="bulkAddressBookList">Loading...</div>
+                            </div>
+                        </div>
+                        <input type="email" id="bulk-email-input" class="form-control form-control-sm" placeholder="Email address" style="width: 250px;">
+                        <button class="btn btn-success" onclick="emailSelectedFiles()">
+                            <i class="bi bi-envelope"></i> Email ZIP
+                        </button>
+                        <button class="btn btn-primary" onclick="downloadSelectedFiles()">
+                            <i class="bi bi-download"></i> Download ZIP
+                        </button>
+                    </div>
                 </div>
             </div>
             
@@ -159,10 +179,11 @@
             </div>
             <div class="modal-body">
                 <!-- Address Book Section -->
+                <!-- Address Book Section -->
                 <div id="addressBookSection" class="card mb-3" style="display: none;">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <strong><i class="bi bi-envelope me-2"></i>Address Book</strong>
-                        <div class="btn-group">
+                    <div class="card-header d-flex justify-content-between align-items-center" style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#addressBookCollapse">
+                        <strong><i class="bi bi-envelope me-2"></i>Address Book <i class="bi bi-chevron-down ms-2" id="addressBookChevron"></i></strong>
+                        <div class="btn-group" onclick="event.stopPropagation();">
                             <button id="useAllEmailsBtn" class="btn btn-sm btn-success" onclick="useAllEmails()" style="display: none;">
                                 <i class="bi bi-check-all"></i> Use All
                             </button>
@@ -171,9 +192,12 @@
                             </button>
                         </div>
                     </div>
-                    <div class="card-body" id="addressBookList">
-                        <p class="text-muted text-center mb-0">No saved emails yet.</p>
+                    <div class="collapse" id="addressBookCollapse">
+                        <div class="card-body" id="addressBookList">
+                            <p class="text-muted text-center mb-0">No saved emails yet.</p>
+                        </div>
                     </div>
+                </div>
                 </div>
                 
                 <!-- Drop Zone -->
@@ -367,6 +391,39 @@
             </div>
         </div>
     </div>
+ 
+    <!-- Manage Tenant Emails Modal -->
+<div class="modal fade" id="manageTenantEmailsModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Manage Address Book</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <h6>Add New Email</h6>
+                    <div class="input-group mb-2">
+                        <input type="email" class="form-control" id="newTenantEmailAddress" placeholder="email@example.com">
+                        <input type="text" class="form-control" id="newTenantEmailLabel" placeholder="Label (optional)">
+                        <button class="btn btn-primary" onclick="addTenantEmail()">
+                            <i class="bi bi-plus"></i> Add
+                        </button>
+                    </div>
+                </div>
+                <div>
+                    <h6>Saved Emails:</h6>
+                    <div id="manageTenantEmailsList">
+                        <p class="text-muted text-center">No saved emails yet.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
 </div>
 {% endblock %}
 
@@ -382,6 +439,7 @@ document.addEventListener('DOMContentLoaded', function() {
     setupFilters();
     setupDropZone();
     loadAllOrders();
+    loadTenantEmails();
     
     {% if soid %}
     openFileManager('{{ soid }}');
@@ -652,9 +710,11 @@ function renderFiles(files) {
                         <input type="checkbox" class="filemanager-file-checkbox" value="${file.filename}" onchange="updateFileManagerBulkActions()">
                     </div>
                     ${file.type === 'pdf' ? 
-                        `<div class="text-center mb-2"><i class="bi bi-file-earmark-pdf text-danger" style="font-size: 4rem;"></i></div>` :
-                        `<div class="mb-2" style="height: 150px; overflow: hidden; display: flex; align-items: center; justify-content: center; background: #f8f9fa;">
-                            <img src="${file.url}" alt="${file.filename}" style="max-width: 100%; max-height: 150px; object-fit: contain;">
+                        `<div class="mb-2" style="height: 200px; overflow: hidden; background: #f8f9fa;">
+                            <iframe src="${file.url}#toolbar=0&navpanes=0" style="width: 100%; height: 100%; border: none;"></iframe>
+                        </div>` :
+                        `<div class="mb-2" style="height: 200px; overflow: hidden; display: flex; align-items: center; justify-content: center; background: #f8f9fa;">
+                            <img src="${file.url}" alt="${file.filename}" style="max-width: 100%; max-height: 200px; object-fit: contain;">
                         </div>`
                     }
                     <h6 class="text-center mt-2 small text-truncate" title="${file.filename}">${file.filename}</h6>
@@ -815,16 +875,21 @@ function renderAddressBook(emails) {
     } else {
         useAllBtn.style.display = 'inline-block';
         list.innerHTML = emails.map(email => `
-            <div class="d-flex justify-content-between align-items-center mb-2 p-2 bg-light rounded customer-email-item" data-email="${email.email}">
-                <div>
-                    <strong>${email.email}</strong>
-                    ${email.label ? `<small class="text-muted ms-2">(${email.label})</small>` : ''}
+                <div class="d-flex justify-content-between align-items-center mb-2 p-2 bg-light rounded">
+                    <div>
+                        <strong>${email.email}</strong>
+                        ${email.label ? `<span class="badge bg-secondary ms-2">${email.label}</span>` : ''}
+                    </div>
+                    <div class="btn-group">
+                        <button class="btn btn-sm btn-success" onclick="useEmailFromManage('${email.email}')" title="Use this email">
+                            <i class="bi bi-check-circle"></i>
+                        </button>
+                        <button class="btn btn-sm btn-danger" onclick="deleteCustomerEmail(${email.id})">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
                 </div>
-                <button class="btn btn-sm btn-primary" onclick="useEmail('${email.email}')">
-                    <i class="bi bi-check-circle"></i> Use
-                </button>
-            </div>
-        `).join('');
+            `).join('');
     }
 }
 
@@ -918,6 +983,25 @@ function refreshManageEmailsList() {
             customerEmails = emails;
             renderAddressBook(emails);
         });
+}
+
+function useEmailFromManage(email) {
+    // Try file manager input first, then customer modal input
+    const fileManagerInput = document.getElementById('filemanager-email-input');
+    const customerModalInput = document.getElementById('customer-modal-email');
+    
+    if (fileManagerInput && document.getElementById('fileManagerModal').classList.contains('show')) {
+        fileManagerInput.value = email;
+    } else if (customerModalInput) {
+        customerModalInput.value = email;
+    }
+    
+    // Close the manage emails modal if it's open
+    const manageModal = document.getElementById('manageEmailsModal');
+    const manageModalInstance = bootstrap.Modal.getInstance(manageModal);
+    if (manageModalInstance) {
+        manageModalInstance.hide();
+    }
 }
 
 function addCustomerEmail() {
@@ -1389,11 +1473,197 @@ document.addEventListener('show.bs.modal', function (event) {
     }, 0);
 });
 
-// Restore scrolling when closing stacked modals
+// Aggressive cleanup when closing modals
 document.addEventListener('hidden.bs.modal', function (event) {
-    if (document.querySelectorAll('.modal.show').length > 0) {
+    const openModals = document.querySelectorAll('.modal.show');
+    const backdrops = document.querySelectorAll('.modal-backdrop');
+    
+    if (openModals.length > 0) {
+        // Still have open modals - keep body class and one backdrop
         document.body.classList.add('modal-open');
+        // Remove extra backdrops
+        while (backdrops.length > openModals.length) {
+            backdrops[backdrops.length - 1].remove();
+        }
+    } else {
+        // No open modals - full cleanup
+        document.body.classList.remove('modal-open');
+        document.body.style.overflow = '';
+        document.body.style.paddingRight = '';
+        // Remove all backdrops
+        backdrops.forEach(backdrop => backdrop.remove());
     }
 });
+
+// Additional cleanup for file manager modal specifically
+document.getElementById('fileManagerModal').addEventListener('hidden.bs.modal', function () {
+    // Force cleanup after file manager closes
+    setTimeout(() => {
+        if (!document.querySelector('.modal.show')) {
+            document.querySelectorAll('.modal-backdrop').forEach(b => b.remove());
+            document.body.classList.remove('modal-open');
+            document.body.style.overflow = '';
+        }
+    }, 100);
+});
+
+
+// ============================================================================
+// TENANT-WIDE ADDRESS BOOK
+// ============================================================================
+
+let tenantEmails = [];
+
+function loadTenantEmails() {
+    fetch('/api/documents/tenant-emails/')
+        .then(response => response.json())
+        .then(emails => {
+            tenantEmails = emails;
+            renderBulkAddressBook(emails);
+        })
+        .catch(error => console.error('Error loading tenant emails:', error));
+}
+
+function renderBulkAddressBook(emails) {
+    const list = document.getElementById('bulkAddressBookList');
+    
+    if (emails.length === 0) {
+        list.innerHTML = '<p class="text-muted small mb-0">No saved emails. Click Manage to add.</p>';
+    } else {
+        list.innerHTML = emails.map(email => `
+            <div class="d-flex justify-content-between align-items-center py-1 border-bottom">
+                <span class="small">${email.email} ${email.label ? '<span class="text-muted">(' + email.label + ')</span>' : ''}</span>
+                <button class="btn btn-sm btn-link p-0" onclick="useTenantEmail('${email.email}')">Use</button>
+            </div>
+        `).join('');
+    }
+}
+
+function useTenantEmail(email) {
+    document.getElementById('bulk-email-input').value = email;
+    // Close the dropdown
+    const dropdown = document.getElementById('bulkAddressBookDropdown');
+    bootstrap.Dropdown.getInstance(dropdown.previousElementSibling)?.hide();
+}
+
+function openBulkManageEmails() {
+    refreshTenantEmailsList();
+    const modal = new bootstrap.Modal(document.getElementById('manageTenantEmailsModal'));
+    modal.show();
+}
+
+function refreshTenantEmailsList() {
+    fetch('/api/documents/tenant-emails/')
+        .then(response => response.json())
+        .then(emails => {
+            tenantEmails = emails;
+            const list = document.getElementById('manageTenantEmailsList');
+            
+            if (emails.length === 0) {
+                list.innerHTML = '<p class="text-muted text-center">No saved emails yet.</p>';
+            } else {
+                list.innerHTML = emails.map(email => `
+                    <div class="d-flex justify-content-between align-items-center mb-2 p-2 bg-light rounded">
+                        <div>
+                            <strong>${email.email}</strong>
+                            ${email.label ? '<span class="badge bg-secondary ms-2">' + email.label + '</span>' : ''}
+                        </div>
+                        <button class="btn btn-sm btn-danger" onclick="deleteTenantEmail(${email.id})">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                `).join('');
+            }
+            
+            renderBulkAddressBook(emails);
+        });
+}
+
+function addTenantEmail() {
+    const email = document.getElementById('newTenantEmailAddress').value.trim();
+    const label = document.getElementById('newTenantEmailLabel').value.trim();
+    
+    if (!email) {
+        alert('Please enter an email address');
+        return;
+    }
+    
+    fetch('/api/documents/add-tenant-email/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({ email, label })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            document.getElementById('newTenantEmailAddress').value = '';
+            document.getElementById('newTenantEmailLabel').value = '';
+            refreshTenantEmailsList();
+        } else {
+            alert('Error: ' + (data.error || 'Failed to add email'));
+        }
+    })
+    .catch(error => alert('Error: ' + error));
+}
+
+function deleteTenantEmail(emailId) {
+    if (!confirm('Delete this email?')) return;
+    
+    fetch(`/api/documents/delete-tenant-email/${emailId}/`, {
+        method: 'DELETE',
+        headers: { 'X-CSRFToken': getCookie('csrftoken') }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            refreshTenantEmailsList();
+        } else {
+            alert('Error deleting email');
+        }
+    })
+    .catch(error => alert('Error: ' + error));
+}
+
+function emailSelectedFiles() {
+    const selected = document.querySelectorAll('.row-checkbox:checked');
+    if (selected.length === 0) {
+        alert('Please select at least one row');
+        return;
+    }
+    
+    const emailInput = document.getElementById('bulk-email-input');
+    const emails = emailInput.value.split(',').map(e => e.trim()).filter(e => e);
+    
+    if (emails.length === 0) {
+        alert('Please enter an email address');
+        emailInput.focus();
+        return;
+    }
+    
+    const soids = Array.from(selected).map(cb => cb.value);
+    
+    const formData = new FormData();
+    emails.forEach(email => formData.append('emails', email));
+    soids.forEach(soid => formData.append('soids', soid));
+    
+    fetch('/api/documents/so/email-bulk/', {
+        method: 'POST',
+        body: formData,
+        headers: { 'X-CSRFToken': getCookie('csrftoken') }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(`Email sent to ${emails.join(', ')}`);
+            emailInput.value = '';
+        } else {
+            alert('Error: ' + (data.error || 'Email failed'));
+        }
+    })
+    .catch(error => alert('Error: ' + error));
+}
 </script>
 {% endblock %}

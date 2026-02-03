@@ -699,3 +699,17 @@ class DocumentFile(TenantModel):
     
     def __str__(self):
         return f"{self.document_type.upper()}-{self.document_id}: {self.filename}"
+    
+
+class TenantEmail(TenantModel):
+    """Tenant-wide email address book"""
+    email = models.EmailField()
+    label = models.CharField(max_length=100, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        db_table = 'documents_tenant_email'
+        unique_together = [['tenant', 'email']]
+    
+    def __str__(self):
+        return f"{self.email} ({self.label})" if self.label else self.email
