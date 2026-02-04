@@ -10,5 +10,6 @@ from .documents_api_po import *
 from .documents_api_emails import *
 from .documents_api_entities import *
 from .licenses_vehicles import *
+from .platform_admin import platform_admin
 
 

@@ -1,4 +1,5 @@
 from django.urls import path
+from .views.platform_admin import platform_admin
 from .views import (
     # Auth views
     login_view, logout_view, operations_hub, register_view,
@@ -238,4 +239,6 @@ urlpatterns = [
     
     # Expiration counts for navbar badges
     path('api/expiration-counts/', get_expiration_counts_api, name='get_expiration_counts_api'),
+    # Platform Admin (superuser only)
+    path('platform-admin/', platform_admin, name='platform_admin'),
 ]

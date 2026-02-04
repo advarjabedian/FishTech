@@ -73,6 +73,13 @@
                 </span>
             </a>
             
+            <!-- Platform Admin (superusers only) -->
+            {% if request.user.is_superuser %}
+            <a href="{% url 'platform_admin' %}" class="nav-link text-warning nav-icon-link me-2" title="Platform Admin">
+                <i class="bi bi-speedometer2"></i>
+            </a>
+            {% endif %}
+            
             <!-- Tenant Dropdown -->
             <div class="dropdown">
                 <a class="nav-link dropdown-toggle text-light" href="#" role="button" id="tenantDropdown" data-bs-toggle="dropdown" aria-expanded="false">
