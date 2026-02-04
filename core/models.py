@@ -60,6 +60,11 @@ class Tenant(models.Model):
     inbound_email_password = models.CharField(max_length=255, blank=True, help_text="App password")
     inbound_email_imap_server = models.CharField(max_length=255, blank=True, default='imap.gmail.com')
     
+    # Twilio SMS settings
+    twilio_account_sid = models.CharField(max_length=100, blank=True)
+    twilio_auth_token = models.CharField(max_length=100, blank=True)
+    twilio_phone_number = models.CharField(max_length=20, blank=True, help_text="e.g. +18555975969")
+    
     def __str__(self):
         return self.name
     

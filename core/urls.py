@@ -1,4 +1,5 @@
 from django.urls import path
+from .views.public_pages import sms_opt_in, privacy_policy, terms_of_service
 from .views.platform_admin import platform_admin
 from .views import (
     # Auth views
@@ -48,7 +49,8 @@ from .views import (
     submit_verification, save_verifier_signature, get_verifier_signature,
     save_monitor_signature, get_monitor_signature, get_operations_config,
     get_sop_list, create_sop, update_sop, delete_sop, get_zones, create_zone,
-    delete_zone, get_calendar_data, get_inspection_images, get_companies
+    delete_zone, get_calendar_data, get_inspection_images, get_companies, check_order_emails_api, get_email_settings_api, save_email_settings_api, test_email_connection_api,
+    twilio_sms_webhook
 )
 from .views.operations_reports import generate_operational_report, generate_deviations_report, generate_bulk_report
 from .views.stripe_billing import (
@@ -262,4 +264,9 @@ urlpatterns = [
     path('api/email-settings/', get_email_settings_api, name='get_email_settings_api'),
     path('api/email-settings/save/', save_email_settings_api, name='save_email_settings_api'),
     path('api/email-settings/test/', test_email_connection_api, name='test_email_connection_api'),
+    path('api/twilio-sms-webhook/', twilio_sms_webhook, name='twilio_sms_webhook'),
+    # Public pages (no login required)
+    path('sms-opt-in/', sms_opt_in, name='sms_opt_in'),
+    path('privacy-policy/', privacy_policy, name='privacy_policy'),
+    path('terms-of-service/', terms_of_service, name='terms_of_service'),
 ]

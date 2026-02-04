@@ -425,3 +425,46 @@ def check_order_emails_api(request):
         import traceback
         logger.error(traceback.format_exc())
         return JsonResponse({'error': str(e)}, status=500)
+
+from django.views.decorators.csrf import csrf_exempt
+from django.http import HttpResponse
+
+@csrf_exempt
+def twilio_sms_webhook(request):
+    """Receive incoming SMS from Twilio"""
+    if request.method != 'POST':
+        return HttpResponse(status=405)
+    
+    from .models import Tenant, InboundMessage
+    from django.utils import timezone
+    
+    # Get SMS data from Twilio
+    from_number = request.POST.get('From', '')
+    to_number = request.POST.get('To', '')
+    body = request.POST.get('Body', '')
+    
+    # Find tenant by Twilio phone number
+    try:
+        tenant = Tenant.objects.get(twilio_phone_number=to_number)
+    except Tenant.DoesNotExist:
+        # Try without + prefix
+        clean_number = to_number.replace('+', '')
+        try:
+            tenant = Tenant.objects.get(twilio_phone_number__icontains=clean_number[-10:])
+        except Tenant.DoesNotExist:
+            return HttpResponse('<Response></Response>', content_type='text/xml')
+    
+    # Create InboundMessage
+    InboundMessage.all_objects.create(
+        tenant=tenant,
+        source='sms',
+        received_at=timezone.now(),
+        subject=f"SMS from {from_number}",
+        sender=from_number,
+        sender_phone=from_number,
+        body=body,
+        status='Unassigned'
+    )
+    
+    # Return empty TwiML response (no auto-reply)
+    return HttpResponse('<Response></Response>', content_type='text/xml')
