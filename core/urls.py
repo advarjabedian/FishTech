@@ -3,6 +3,11 @@ from .views.platform_admin import platform_admin
 from .views import (
     # Auth views
     login_view, logout_view, operations_hub, register_view,
+    # Order Requests
+    order_requests, get_order_requests_api, get_order_requests_complete_api,
+    view_order_request_api, assign_order_request_user_api, complete_order_request_api,
+    uncomplete_order_request_api, update_order_request_notes_api, update_order_request_customer_api,
+    check_order_emails_api, get_email_settings_api, save_email_settings_api, test_email_connection_api,
     # Document views
     documents_home, so_documents, po_documents, customer_documents, vendor_documents,
     licenses, vehicles,
@@ -240,5 +245,21 @@ urlpatterns = [
     # Expiration counts for navbar badges
     path('api/expiration-counts/', get_expiration_counts_api, name='get_expiration_counts_api'),
     # Platform Admin (superuser only)
+    # Platform Admin (superuser only)
     path('platform-admin/', platform_admin, name='platform_admin'),
+    
+    # Order Requests
+    path('order-requests/', order_requests, name='order_requests'),
+    path('api/order-requests/', get_order_requests_api, name='get_order_requests_api'),
+    path('api/order-requests/complete/', get_order_requests_complete_api, name='get_order_requests_complete_api'),
+    path('api/order-request/<int:order_request_id>/view/', view_order_request_api, name='view_order_request_api'),
+    path('api/order-request/<int:order_request_id>/assign-user/', assign_order_request_user_api, name='assign_order_request_user_api'),
+    path('api/order-request/<int:order_request_id>/complete/', complete_order_request_api, name='complete_order_request_api'),
+    path('api/order-request/<int:order_request_id>/uncomplete/', uncomplete_order_request_api, name='uncomplete_order_request_api'),
+    path('api/order-request/<int:order_request_id>/update-notes/', update_order_request_notes_api, name='update_order_request_notes_api'),
+    path('api/order-request/<int:order_request_id>/update-customer/', update_order_request_customer_api, name='update_order_request_customer_api'),
+    path('api/check-order-emails/', check_order_emails_api, name='check_order_emails_api'),
+    path('api/email-settings/', get_email_settings_api, name='get_email_settings_api'),
+    path('api/email-settings/save/', save_email_settings_api, name='save_email_settings_api'),
+    path('api/email-settings/test/', test_email_connection_api, name='test_email_connection_api'),
 ]
