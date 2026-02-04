@@ -114,6 +114,48 @@
         </div>
     </div>
 
+    <!-- Twilio SMS Settings -->
+<div class="card mb-4 border-success">
+    <div class="card-header bg-success text-white">
+        <i class="bi bi-chat-dots"></i> SMS Settings (Twilio)
+    </div>
+    <div class="card-body">
+        <p class="text-muted small">Configure Twilio to receive customer orders via text message. Each tenant has their own phone number.</p>
+        
+        <div class="row g-3">
+            <div class="col-md-4">
+                <label class="form-label">Account SID</label>
+                <input type="text" id="twilioAccountSid" class="form-control" placeholder="ACxxxxx...">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Auth Token</label>
+                <div class="input-group">
+                    <input type="password" id="twilioAuthToken" class="form-control" placeholder="Leave blank to keep existing">
+                    <button class="btn btn-outline-secondary" type="button" onclick="toggleTwilioToken()">
+                        <i class="bi bi-eye" id="twilioTokenIcon"></i>
+                    </button>
+                </div>
+                <small class="text-muted">Leave blank to keep existing</small>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Phone Number</label>
+                <input type="text" id="twilioPhoneNumber" class="form-control" placeholder="+18555551234">
+                <small class="text-muted">Include country code (+1)</small>
+            </div>
+        </div>
+        
+        <div class="mt-3 d-flex gap-2">
+            <button class="btn btn-success" onclick="saveTwilioSettings()">
+                <i class="bi bi-check-lg"></i> Save SMS Settings
+            </button>
+            <button class="btn btn-outline-success" onclick="testTwilioConnection()">
+                <i class="bi bi-plug"></i> Test Connection
+            </button>
+        </div>
+        <div id="twilioStatus" class="mt-2"></div>
+    </div>
+</div>
+
     <!-- Payment Success/Cancel Messages -->
     <div id="paymentSuccessAlert" class="alert alert-success alert-dismissible fade show" style="display: none;">
         <i class="bi bi-check-circle me-2"></i>
@@ -1086,5 +1128,82 @@ function deleteTenantEmail(emailId) {
     })
     .catch(error => alert('Error: ' + error));
 }
+
+
+// Twilio Settings
+function loadTwilioSettings() {
+    fetch('/api/twilio-settings/')
+        .then(r => r.json())
+        .then(data => {
+            document.getElementById('twilioAccountSid').value = data.twilio_account_sid || '';
+            document.getElementById('twilioPhoneNumber').value = data.twilio_phone_number || '';
+            document.getElementById('twilioAuthToken').placeholder = data.has_token ? 'Leave blank to keep existing' : 'Enter auth token';
+        });
+}
+
+function saveTwilioSettings() {
+    const data = {
+        twilio_account_sid: document.getElementById('twilioAccountSid').value,
+        twilio_auth_token: document.getElementById('twilioAuthToken').value,
+        twilio_phone_number: document.getElementById('twilioPhoneNumber').value,
+    };
+    
+    fetch('/api/twilio-settings/save/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        },
+        body: JSON.stringify(data)
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            document.getElementById('twilioStatus').innerHTML = '<div class="alert alert-success py-1"><i class="bi bi-check-circle"></i> Settings saved!</div>';
+            document.getElementById('twilioAuthToken').value = '';
+            loadTwilioSettings();
+        } else {
+            document.getElementById('twilioStatus').innerHTML = `<div class="alert alert-danger py-1"><i class="bi bi-x-circle"></i> ${data.error}</div>`;
+        }
+    });
+}
+
+function testTwilioConnection() {
+    document.getElementById('twilioStatus').innerHTML = '<div class="alert alert-info py-1"><i class="bi bi-hourglass-split"></i> Testing...</div>';
+    
+    fetch('/api/twilio-settings/test/', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            document.getElementById('twilioStatus').innerHTML = `<div class="alert alert-success py-1"><i class="bi bi-check-circle"></i> ${data.message}</div>`;
+        } else {
+            document.getElementById('twilioStatus').innerHTML = `<div class="alert alert-danger py-1"><i class="bi bi-x-circle"></i> ${data.error}</div>`;
+        }
+    });
+}
+
+function toggleTwilioToken() {
+    const input = document.getElementById('twilioAuthToken');
+    const icon = document.getElementById('twilioTokenIcon');
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.classList.replace('bi-eye', 'bi-eye-slash');
+    } else {
+        input.type = 'password';
+        icon.classList.replace('bi-eye-slash', 'bi-eye');
+    }
+}
+
+// Load on page load - add to your DOMContentLoaded
+document.addEventListener('DOMContentLoaded', function() {
+    // ... existing code ...
+    loadTwilioSettings();
+});
+
 </script>
 {% endblock %}

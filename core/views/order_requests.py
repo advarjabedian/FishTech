@@ -428,6 +428,7 @@ def check_order_emails_api(request):
 
 from django.views.decorators.csrf import csrf_exempt
 from django.http import HttpResponse
+from django.contrib.auth.decorators import login_required
 
 @csrf_exempt
 def twilio_sms_webhook(request):
@@ -435,7 +436,7 @@ def twilio_sms_webhook(request):
     if request.method != 'POST':
         return HttpResponse(status=405)
     
-    from .models import Tenant, InboundMessage
+    from ..models import Tenant, InboundMessage
     from django.utils import timezone
     
     # Get SMS data from Twilio
@@ -468,3 +469,70 @@ def twilio_sms_webhook(request):
     
     # Return empty TwiML response (no auto-reply)
     return HttpResponse('<Response></Response>', content_type='text/xml')
+
+
+@login_required
+def get_twilio_settings_api(request):
+    """Get tenant's Twilio settings"""
+    tenant = request.tenant
+    if not tenant:
+        return JsonResponse({'error': 'No tenant'}, status=400)
+    
+    return JsonResponse({
+        'twilio_account_sid': tenant.twilio_account_sid or '',
+        'twilio_auth_token': '',  # Don't send token back for security
+        'twilio_phone_number': tenant.twilio_phone_number or '',
+        'has_token': bool(tenant.twilio_auth_token),
+    })
+
+@login_required
+def save_twilio_settings_api(request):
+    """Save tenant's Twilio settings"""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
+    
+    tenant = request.tenant
+    if not tenant:
+        return JsonResponse({'error': 'No tenant'}, status=400)
+    
+    import json
+    data = json.loads(request.body)
+    
+    tenant.twilio_account_sid = data.get('twilio_account_sid', '').strip()
+    tenant.twilio_phone_number = data.get('twilio_phone_number', '').strip()
+    
+    # Only update token if provided (not blank)
+    new_token = data.get('twilio_auth_token', '').strip()
+    if new_token:
+        tenant.twilio_auth_token = new_token
+    
+    tenant.save()
+    
+    return JsonResponse({'success': True})
+
+@login_required
+def test_twilio_connection_api(request):
+    """Test Twilio credentials"""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
+    
+    tenant = request.tenant
+    if not tenant:
+        return JsonResponse({'error': 'No tenant'}, status=400)
+    
+    if not tenant.twilio_account_sid or not tenant.twilio_auth_token:
+        return JsonResponse({'error': 'Twilio credentials not configured'}, status=400)
+    
+    try:
+        from twilio.rest import Client
+        client = Client(tenant.twilio_account_sid, tenant.twilio_auth_token)
+        
+        # Verify credentials by fetching account info
+        account = client.api.accounts(tenant.twilio_account_sid).fetch()
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Connected! Account: {account.friendly_name}'
+        })
+    except Exception as e:
+        return JsonResponse({'error': f'Connection failed: {str(e)}'}, status=400)

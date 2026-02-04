@@ -50,7 +50,7 @@ from .views import (
     save_monitor_signature, get_monitor_signature, get_operations_config,
     get_sop_list, create_sop, update_sop, delete_sop, get_zones, create_zone,
     delete_zone, get_calendar_data, get_inspection_images, get_companies, check_order_emails_api, get_email_settings_api, save_email_settings_api, test_email_connection_api,
-    twilio_sms_webhook
+    twilio_sms_webhook, get_twilio_settings_api, save_twilio_settings_api, test_twilio_connection_api
 )
 from .views.operations_reports import generate_operational_report, generate_deviations_report, generate_bulk_report
 from .views.stripe_billing import (
@@ -265,6 +265,9 @@ urlpatterns = [
     path('api/email-settings/save/', save_email_settings_api, name='save_email_settings_api'),
     path('api/email-settings/test/', test_email_connection_api, name='test_email_connection_api'),
     path('api/twilio-sms-webhook/', twilio_sms_webhook, name='twilio_sms_webhook'),
+    path('api/twilio-settings/', get_twilio_settings_api, name='get_twilio_settings_api'),
+    path('api/twilio-settings/save/', save_twilio_settings_api, name='save_twilio_settings_api'),
+    path('api/twilio-settings/test/', test_twilio_connection_api, name='test_twilio_connection_api'),
     # Public pages (no login required)
     path('sms-opt-in/', sms_opt_in, name='sms_opt_in'),
     path('privacy-policy/', privacy_policy, name='privacy_policy'),
