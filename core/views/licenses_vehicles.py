@@ -535,3 +535,46 @@ def delete_vehicle_api(request, vehicle_id):
         import logging
         logging.error(f"Error deleting vehicle: {str(e)}")
         return JsonResponse({'success': False, 'error': str(e)})
+    
+
+@login_required
+def get_expiration_counts_api(request):
+    """Get counts of expired and expiring licenses/vehicles for navbar badges"""
+    if not request.tenant:
+        return JsonResponse({'error': 'No tenant'}, status=403)
+    
+    from datetime import date, timedelta
+    
+    today = date.today()
+    thirty_days = today + timedelta(days=30)
+    
+    # Licenses
+    licenses_expired = License.objects.filter(
+        tenant=request.tenant,
+        expiration_date__lt=today
+    ).count()
+    
+    licenses_expiring = License.objects.filter(
+        tenant=request.tenant,
+        expiration_date__gte=today,
+        expiration_date__lte=thirty_days
+    ).count()
+    
+    # Vehicles (DMV renewal date)
+    vehicles_expired = Vehicle.objects.filter(
+        tenant=request.tenant,
+        dmv_renewal_date__lt=today
+    ).count()
+    
+    vehicles_expiring = Vehicle.objects.filter(
+        tenant=request.tenant,
+        dmv_renewal_date__gte=today,
+        dmv_renewal_date__lte=thirty_days
+    ).count()
+    
+    return JsonResponse({
+        'licenses_expired': licenses_expired,
+        'licenses_expiring': licenses_expiring,
+        'vehicles_expired': vehicles_expired,
+        'vehicles_expiring': vehicles_expiring
+    })

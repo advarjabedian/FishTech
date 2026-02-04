@@ -7,6 +7,7 @@ from .views import (
     licenses, vehicles,
     get_licenses_api, upload_license_api, update_license_api, view_license_file_api, delete_license_api,
     get_vehicles_api, add_vehicle_api, update_vehicle_api, delete_vehicle_api,
+    get_expiration_counts_api,
     # Document APIs
     search_customers, search_vendors,
     get_sales_orders, get_so_files, view_so_file, upload_so_file, delete_so_file,
@@ -234,4 +235,7 @@ urlpatterns = [
     path('api/vehicles/add/', add_vehicle_api, name='add_vehicle_api'),
     path('api/vehicles/<int:vehicle_id>/update/', update_vehicle_api, name='update_vehicle_api'),
     path('api/vehicles/<int:vehicle_id>/delete/', delete_vehicle_api, name='delete_vehicle_api'),
+    
+    # Expiration counts for navbar badges
+    path('api/expiration-counts/', get_expiration_counts_api, name='get_expiration_counts_api'),
 ]
