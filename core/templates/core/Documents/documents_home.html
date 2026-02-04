@@ -1,6 +1,6 @@
 {% extends 'core/base.html' %}
 
-{% block title %}Documents - FishTech{% endblock %}
+{% block title %}Documents - FishTeck{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -58,8 +58,8 @@
             <div class="card document-card bg-primary bg-opacity-10 border-primary" onclick="window.location.href='{% url 'so_documents' %}'">
                 <div class="card-body">
                     <i class="bi bi-file-earmark-text document-icon text-primary"></i>
-                    <h5 class="document-title">SO</h5>
-                    <p class="document-description">Sales Orders</p>
+                    <h5 class="document-title">Sales Orders</h5>
+                    <p class="document-description">Customer sales orders</p>
                 </div>
             </div>
         </div>
@@ -69,19 +69,8 @@
             <div class="card document-card bg-success bg-opacity-10 border-success" onclick="window.location.href='{% url 'po_documents' %}'">
                 <div class="card-body">
                     <i class="bi bi-file-earmark-check document-icon text-success"></i>
-                    <h5 class="document-title">PO</h5>
-                    <p class="document-description">Purchase Orders</p>
-                </div>
-            </div>
-        </div>
-        
-        <!-- POD -->
-        <div class="col-md-4">
-            <div class="card document-card bg-warning bg-opacity-10 border-warning">
-                <div class="card-body">
-                    <i class="bi bi-truck document-icon text-warning"></i>
-                    <h5 class="document-title">POD</h5>
-                    <p class="document-description">Proof of Delivery</p>
+                    <h5 class="document-title">Purchase Orders</h5>
+                    <p class="document-description">Vendor purchase orders</p>
                 </div>
             </div>
         </div>
