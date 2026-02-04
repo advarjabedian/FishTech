@@ -719,7 +719,7 @@ class License(TenantModel):
     """Business licenses"""
     filename = models.CharField(max_length=255)
     title = models.CharField(max_length=255)
-    company = models.CharField(max_length=50, blank=True)  # GSS, FRS, etc.
+    company = models.ForeignKey(Company, on_delete=models.SET_NULL, null=True, blank=True)
     issuance_date = models.DateField(null=True, blank=True)
     expiration_date = models.DateField(null=True, blank=True)
     managing_user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
@@ -729,7 +729,7 @@ class License(TenantModel):
         db_table = 'documents_license'
     
     def __str__(self):
-        return f"{self.title} ({self.company})"
+        return f"{self.title} ({self.company.companyname if self.company else 'No Company'})"
 
 
 class Vehicle(TenantModel):

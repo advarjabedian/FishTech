@@ -4,6 +4,9 @@ from .views import (
     login_view, logout_view, operations_hub, register_view,
     # Document views
     documents_home, so_documents, po_documents, customer_documents, vendor_documents,
+    licenses, vehicles,
+    get_licenses_api, upload_license_api, update_license_api, view_license_file_api, delete_license_api,
+    get_vehicles_api, add_vehicle_api, update_vehicle_api, delete_vehicle_api,
     # Document APIs
     search_customers, search_vendors,
     get_sales_orders, get_so_files, view_so_file, upload_so_file, delete_so_file,
@@ -209,5 +212,19 @@ urlpatterns = [
     path('api/documents/vendor/upload/', upload_vendor_file, name='upload_vendor_file'),
     path('api/documents/vendor/<int:vendor_id>/files/<str:filename>/', delete_vendor_file, name='delete_vendor_file'),
     path('api/documents/vendor/email-files/', email_vendor_files, name='email_vendor_files'),
- 
+    
+    # Licenses
+    path('documents/licenses/', licenses, name='licenses'),
+    path('api/documents/licenses/', get_licenses_api, name='get_licenses_api'),
+    path('api/documents/licenses/upload/', upload_license_api, name='upload_license_api'),
+    path('api/documents/licenses/<int:license_id>/update/', update_license_api, name='update_license_api'),
+    path('api/documents/licenses/<str:filename>/view/', view_license_file_api, name='view_license_file_api'),
+    path('api/documents/licenses/delete/<str:filename>/', delete_license_api, name='delete_license_api'),
+    
+    # Vehicles
+    path('documents/vehicles/', vehicles, name='vehicles'),
+    path('api/documents/vehicles/', get_vehicles_api, name='get_vehicles_api'),
+    path('api/documents/vehicles/add/', add_vehicle_api, name='add_vehicle_api'),
+    path('api/documents/vehicles/<int:vehicle_id>/update/', update_vehicle_api, name='update_vehicle_api'),
+    path('api/documents/vehicles/<int:vehicle_id>/delete/', delete_vehicle_api, name='delete_vehicle_api'),
 ]
