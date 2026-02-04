@@ -27,11 +27,33 @@ STRIPE_PRICE_ID = settings.STRIPE_PRICE_ID  # e.g., 'price_1234567890'
 
 @login_required
 def get_billing_status(request):
-    """Get current billing status for the tenant"""
+    """Get current billing status for the tenant - checks Stripe directly"""
     if not request.tenant:
         return JsonResponse({'success': False, 'error': 'No tenant'})
     
     tenant = request.tenant
+    
+    # If we have a Stripe customer, check their subscription status directly
+    if tenant.stripe_customer_id:
+        try:
+            subscriptions = stripe.Subscription.list(
+                customer=tenant.stripe_customer_id,
+                status='active',
+                limit=1
+            )
+            
+            if subscriptions.data:
+                sub = subscriptions.data[0]
+                # Update local record
+                tenant.stripe_subscription_id = sub.id
+                tenant.subscription_status = sub.status
+                if sub.current_period_end:
+                    tenant.subscription_ends_at = timezone.datetime.fromtimestamp(
+                        sub.current_period_end, tz=timezone.utc
+                    )
+                tenant.save()
+        except stripe.error.StripeError as e:
+            logger.error(f"Error checking Stripe subscription: {e}")
     
     return JsonResponse({
         'success': True,

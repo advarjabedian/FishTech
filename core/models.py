@@ -55,6 +55,16 @@ class Tenant(models.Model):
     reply_to_email = models.EmailField(blank=True, null=True, help_text="Customer replies go here")
     reply_to_name = models.CharField(max_length=255, blank=True, null=True, help_text="Display name for reply-to")
     
+    # Inbound email settings (IMAP)
+    inbound_email_address = models.EmailField(blank=True, null=True, help_text="Email to check for orders/voicemails")
+    inbound_email_password = models.CharField(max_length=255, blank=True, help_text="App password")
+    inbound_email_imap_server = models.CharField(max_length=255, blank=True, default='imap.gmail.com')
+    
+    # Twilio SMS settings
+    twilio_account_sid = models.CharField(max_length=100, blank=True)
+    twilio_auth_token = models.CharField(max_length=100, blank=True)
+    twilio_phone_number = models.CharField(max_length=20, blank=True, help_text="e.g. +18555975969")
+    
     def __str__(self):
         return self.name
     
@@ -713,3 +723,83 @@ class TenantEmail(TenantModel):
     
     def __str__(self):
         return f"{self.email} ({self.label})" if self.label else self.email
+
+
+class License(TenantModel):
+    """Business licenses"""
+    filename = models.CharField(max_length=255)
+    title = models.CharField(max_length=255)
+    company = models.ForeignKey(Company, on_delete=models.SET_NULL, null=True, blank=True)
+    issuance_date = models.DateField(null=True, blank=True)
+    expiration_date = models.DateField(null=True, blank=True)
+    managing_user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        db_table = 'documents_license'
+    
+    def __str__(self):
+        return f"{self.title} ({self.company.companyname if self.company else 'No Company'})"
+
+
+class Vehicle(TenantModel):
+    """Fleet vehicles"""
+    year = models.IntegerField(null=True, blank=True)
+    make = models.CharField(max_length=100, blank=True)
+    model = models.CharField(max_length=100, blank=True)
+    vin = models.CharField(max_length=50, blank=True)
+    license_plate = models.CharField(max_length=20, blank=True)
+    number = models.CharField(max_length=20, blank=True)  # Vehicle number
+    driver = models.CharField(max_length=100, blank=True)
+    dmv_renewal_date = models.DateField(null=True, blank=True)
+    company = models.CharField(max_length=50, blank=True)
+    status = models.CharField(max_length=20, blank=True)  # Active/Inactive
+    title = models.CharField(max_length=100, blank=True)
+    carb_number = models.CharField(max_length=100, blank=True)
+    dash_cam = models.CharField(max_length=100, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        db_table = 'documents_vehicle'
+    
+    def __str__(self):
+        return f"{self.year} {self.make} {self.model} - {self.license_plate}"
+
+
+class InboundMessage(TenantModel):
+    """Inbound messages from email, voicemail, or SMS"""
+    SOURCE_CHOICES = [
+        ('email', 'Email'),
+        ('voicemail', 'Voicemail'),
+        ('sms', 'SMS/Text'),
+    ]
+    
+    source = models.CharField(max_length=20, choices=SOURCE_CHOICES, default='email')
+    received_at = models.DateTimeField(null=True, blank=True)
+    subject = models.CharField(max_length=500, blank=True)
+    sender = models.CharField(max_length=255, blank=True)
+    sender_phone = models.CharField(max_length=50, blank=True)
+    sender_name = models.CharField(max_length=255, blank=True)
+    
+    # Content
+    body = models.TextField(blank=True)  # Original email/SMS body
+    transcription = models.TextField(blank=True)  # AI transcription for voicemails
+    
+    # Attachments
+    filename = models.CharField(max_length=255, blank=True)
+    file_path = models.CharField(max_length=500, blank=True)
+    duration = models.IntegerField(null=True, blank=True)  # Voicemail duration in seconds
+    
+    # Workflow
+    status = models.CharField(max_length=50, default='Unassigned')
+    assigned_user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    customer = models.CharField(max_length=255, blank=True)
+    notes = models.TextField(blank=True)
+    
+    class Meta:
+        db_table = 'inbound_message'
+    
+    def __str__(self):
+        return f"{self.get_source_display()} {self.id} - {self.subject[:50] if self.subject else self.sender}"
+    
+

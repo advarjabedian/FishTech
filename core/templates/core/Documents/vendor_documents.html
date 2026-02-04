@@ -1,0 +1,590 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Vendor Documents - FishTech{% endblock %}
+
+{% block extra_css %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+    .drop-zone {
+        border: 2px dashed #ccc;
+        border-radius: 8px;
+        padding: 20px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        background: #fafafa;
+    }
+    .drop-zone:hover, .drop-zone.dragover {
+        border-color: #0d6efd;
+        background: #f0f7ff;
+    }
+    .upload-result-item {
+        padding: 5px 10px;
+        margin: 2px 0;
+        border-radius: 4px;
+        font-size: 0.85rem;
+    }
+    .upload-success { background: #d4edda; color: #155724; }
+    .upload-warning { background: #fff3cd; color: #856404; }
+    .upload-error { background: #f8d7da; color: #721c24; }
+    .upload-info { background: #d1ecf1; color: #0c5460; }
+    
+    .file-card {
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        overflow: hidden;
+        transition: all 0.2s;
+        height: 100%;
+    }
+    .file-card:hover {
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        transform: translateY(-2px);
+    }
+    .file-card.selected {
+        border: 2px solid #0d6efd;
+        background: #e7f1ff;
+    }
+    .file-preview {
+        height: 120px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #f8f9fa;
+        cursor: pointer;
+        overflow: hidden;
+    }
+    .file-preview img {
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+    }
+    .file-preview .pdf-icon {
+        font-size: 3rem;
+        color: #dc3545;
+    }
+    .file-preview .pdf-canvas {
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+    }
+    .file-info {
+        padding: 10px;
+        background: white;
+    }
+    .file-info .form-check {
+        padding-left: 1.8em;
+    }
+    .file-info .form-check-input {
+        width: 1.2em;
+        height: 1.2em;
+        cursor: pointer;
+        border: 2px solid #000;
+    }
+    .file-info .form-check-input:checked {
+        background-color: #0d6efd;
+        border-color: #0d6efd;
+    }
+    .file-info .form-check-label {
+        cursor: pointer;
+    }
+    .file-name {
+        font-size: 0.85rem;
+        word-break: break-word;
+        line-height: 1.2;
+        max-height: 2.4em;
+        overflow: hidden;
+    }
+    .file-actions {
+        display: flex;
+        gap: 5px;
+        margin-top: 8px;
+    }
+    
+    .vendor-row { cursor: pointer; }
+    .vendor-row:hover { background-color: #e9ecef !important; }
+    .file-count-badge { font-size: 0.8rem; }
+    
+    #vendor-dropdown {
+        max-height: 300px;
+        overflow-y: auto;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    #vendor-dropdown .dropdown-item {
+        padding: 8px 12px;
+        cursor: pointer;
+    }
+    #vendor-dropdown .dropdown-item:hover,
+    #vendor-dropdown .dropdown-item.active {
+        background-color: #0d6efd;
+        color: white;
+    }
+    
+    .vendor-email-item { cursor: pointer; }
+    .vendor-email-item:hover { background: #e9ecef !important; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1><i class="bi bi-building me-2"></i>Vendor Documents</h1>
+        <a href="{% url 'documents_home' %}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Back to Documents
+        </a>
+    </div>
+
+    <!-- Filters -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Search Vendors</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4">
+                    <label class="form-label">Vendor ID</label>
+                    <input type="text" id="filter-vendor-id" class="form-control" placeholder="Enter Vendor ID">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Vendor Name</label>
+                    <div class="position-relative">
+                        <input type="text" id="filter-vendor-name" class="form-control" placeholder="Type to search..." autocomplete="off">
+                        <div id="vendor-dropdown" class="dropdown-menu w-100" style="display: none;"></div>
+                    </div>
+                </div>
+                <div class="col-md-4 d-flex align-items-end">
+                    <button class="btn btn-primary me-2" onclick="searchVendors()">
+                        <i class="bi bi-search me-1"></i>Search
+                    </button>
+                    <button class="btn btn-outline-secondary" onclick="clearFilters()">
+                        <i class="bi bi-x-circle me-1"></i>Clear
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Results Table -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">Vendors</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Vendor ID</th>
+                            <th>Name</th>
+                            <th>Contact</th>
+                            <th>City</th>
+                            <th>State</th>
+                            <th>Files</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="vendors-table-body">
+                        <tr>
+                            <td colspan="7" class="text-center py-4">
+                                <div class="spinner-border spinner-border-sm"></div> Loading vendors...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- File Manager Modal -->
+<div class="modal fade" id="fileManagerModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Files for Vendor: <span id="fileManagerVendorName"></span></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Address Book Section -->
+                <div id="addressBookSection" class="card mb-3">
+                    <div class="card-header d-flex justify-content-between align-items-center" style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#addressBookCollapse">
+                        <strong><i class="bi bi-envelope me-2"></i>Email Files <i class="bi bi-chevron-down ms-2"></i></strong>
+                        <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); openManageEmailsModal()">
+                            <i class="bi bi-pencil-square"></i> Manage Emails
+                        </button>
+                    </div>
+                    <div class="collapse" id="addressBookCollapse">
+                        <div class="card-body">
+                            <div id="addressBookList" class="mb-3">
+                                <p class="text-muted text-center mb-0">Loading...</p>
+                            </div>
+                            <div class="input-group">
+                                <input type="email" id="email-input" class="form-control" placeholder="Email address (comma separated)">
+                                <button class="btn btn-success" onclick="emailSelectedFiles(this)">
+                                    <i class="bi bi-envelope"></i> Email Selected
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Drop Zone -->
+                <div class="mb-3">
+                    <div id="fileManagerDropZone" class="drop-zone">
+                        <i class="bi bi-cloud-upload" style="font-size: 2rem; color: #6c757d;"></i>
+                        <p class="mb-0">Drag and drop files here or click to browse</p>
+                    </div>
+                </div>
+                
+                <!-- Upload Results -->
+                <div id="uploadResults" class="mb-3" style="display: none;">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="mb-0">Upload Results:</h6>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="clearUploadResults()">
+                            <i class="bi bi-x-circle"></i> Clear
+                        </button>
+                    </div>
+                    <div id="uploadResultsList" style="max-height: 100px; overflow-y: auto;"></div>
+                </div>
+                
+                <!-- Bulk Actions Bar -->
+                <div id="fileManagerBulkBar" class="alert alert-info mb-3" style="display: none;">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span id="fileManagerSelectedCount">0 files selected</span>
+                        <button class="btn btn-sm btn-danger" onclick="deleteSelectedFiles()">
+                            <i class="bi bi-trash"></i> Delete Selected
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Files Grid -->
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="mb-0">Files</h6>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="selectAllFiles" onchange="toggleSelectAllFiles()" style="border: 2px solid #000;">
+                        <label class="form-check-label" for="selectAllFiles">Select All</label>
+                    </div>
+                </div>
+                <div class="row g-3" id="fileManagerFiles">
+                    <div class="col-12 text-center text-muted py-4">Loading files...</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Manage Emails Modal -->
+<div class="modal fade" id="manageEmailsModal" tabindex="-1" style="z-index: 1060;">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Manage Vendor Emails</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <h6>Add New Email</h6>
+                    <div class="input-group">
+                        <input type="email" class="form-control" id="newEmailAddress" placeholder="email@example.com">
+                        <input type="text" class="form-control" id="newEmailLabel" placeholder="Label (optional)">
+                        <button class="btn btn-primary" onclick="addVendorEmail()">
+                            <i class="bi bi-plus"></i> Add
+                        </button>
+                    </div>
+                </div>
+                <h6>Saved Emails:</h6>
+                <div id="manageEmailsList">
+                    <p class="text-muted text-center">No saved emails yet.</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% include 'core/Documents/includes/documents_common_scripts.html' %}
+
+<script>
+let currentVendorId = null;
+let currentVendorName = null;
+let vendorEmails = [];
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadAllVendors();
+    
+    // Check for vendor_id in URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const vendorId = urlParams.get('vendor_id');
+    if (vendorId) {
+        document.getElementById('filter-vendor-id').value = vendorId;
+        searchVendors();
+    }
+    
+    // Setup autocomplete using common function
+    setupAutocompleteDropdown(
+        'filter-vendor-name',
+        'vendor-dropdown',
+        '/api/documents/vendors/search/',
+        function(item) {
+            if (item.fromEnter) {
+                searchVendors();
+            } else {
+                searchVendors();
+            }
+        }
+    );
+    
+    // Enter key on vendor ID
+    document.getElementById('filter-vendor-id').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') searchVendors();
+    });
+    
+    // Modal cleanup
+    document.getElementById('fileManagerModal').addEventListener('hidden.bs.modal', function () {
+        loadAllVendors();
+    });
+});
+
+// ============================================================================
+// VENDOR LIST
+// ============================================================================
+
+function loadAllVendors() {
+    fetch('/api/documents/vendor/?all=1')
+        .then(r => r.json())
+        .then(vendors => renderVendorsTable(vendors))
+        .catch(err => {
+            console.error('Error:', err);
+            document.getElementById('vendors-table-body').innerHTML = 
+                '<tr><td colspan="7" class="text-center text-danger py-4">Error loading vendors</td></tr>';
+        });
+}
+
+function renderVendorsTable(vendors) {
+    const tbody = document.getElementById('vendors-table-body');
+    
+    if (vendors.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">No vendors found</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = vendors.map(v => `
+        <tr class="vendor-row" onclick="openFileManager(${v.id}, '${escapeHtml(v.name)}')">
+            <td>${v.vendor_id || ''}</td>
+            <td><strong>${escapeHtml(v.name)}</strong></td>
+            <td>${escapeHtml(v.contact_name || '')}</td>
+            <td>${escapeHtml(v.city || '')}</td>
+            <td>${escapeHtml(v.state || '')}</td>
+            <td>
+                <span class="badge ${v.file_count > 0 ? 'bg-success' : 'bg-secondary'} file-count-badge">
+                    ${v.file_count} file${v.file_count !== 1 ? 's' : ''}
+                </span>
+            </td>
+            <td>
+                <button class="btn btn-sm btn-outline-success" onclick="event.stopPropagation(); openFileManager(${v.id}, '${escapeHtml(v.name)}')">
+                    <i class="bi bi-folder2-open"></i> Files
+                </button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function searchVendors() {
+    const vendorId = document.getElementById('filter-vendor-id').value.trim();
+    const vendorName = document.getElementById('filter-vendor-name').value.trim();
+    
+    if (!vendorId && !vendorName) {
+        loadAllVendors();
+        return;
+    }
+    
+    const params = new URLSearchParams();
+    if (vendorId) params.append('vendor_id', vendorId);
+    if (vendorName) params.append('name', vendorName);
+    
+    fetch(`/api/documents/vendor/?${params.toString()}`)
+        .then(r => r.json())
+        .then(vendors => renderVendorsTable(vendors))
+        .catch(err => {
+            console.error('Error:', err);
+            alert('Error searching vendors');
+        });
+}
+
+function clearFilters() {
+    document.getElementById('filter-vendor-id').value = '';
+    document.getElementById('filter-vendor-name').value = '';
+    loadAllVendors();
+}
+
+// ============================================================================
+// FILE MANAGER MODAL
+// ============================================================================
+
+function openFileManager(vendorId, vendorName) {
+    currentVendorId = vendorId;
+    currentVendorName = vendorName;
+    document.getElementById('fileManagerVendorName').textContent = vendorName;
+    
+    clearUploadResults();
+    loadVendorFiles();
+    loadVendorEmails();
+    
+    const modal = new bootstrap.Modal(document.getElementById('fileManagerModal'));
+    modal.show();
+    
+    setTimeout(setupDropZone, 100);
+}
+
+function loadVendorFiles() {
+    const container = document.getElementById('fileManagerFiles');
+    container.innerHTML = '<div class="col-12 text-center py-4"><div class="spinner-border spinner-border-sm"></div> Loading...</div>';
+    
+    fetch(`/api/documents/vendor/${currentVendorId}/files/`)
+        .then(r => r.json())
+        .then(data => {
+            renderFileCards(data.files || [], 'fileManagerFiles', 'deleteFile', 'updateBulkBar');
+            updateBulkBar();
+        })
+        .catch(err => {
+            container.innerHTML = '<div class="col-12 text-center text-danger py-4">Error loading files</div>';
+        });
+}
+
+function updateBulkBar() {
+    updateFileManagerBulkBar('.file-checkbox', 'fileManagerBulkBar', 'fileManagerSelectedCount', 'selectAllFiles');
+}
+
+function toggleSelectAllFiles() {
+    toggleSelectAllFiles('.file-checkbox', 'selectAllFiles');
+    updateBulkBar();
+}
+
+// ============================================================================
+// DROP ZONE & UPLOAD
+// ============================================================================
+
+function setupDropZone() {
+    setupGenericDropZone('fileManagerDropZone', handleDrop, selectFiles);
+}
+
+function selectFiles() {
+    selectFilesForUpload('image/*,application/pdf', true, processFiles);
+}
+
+function handleDrop(e) {
+    processFiles(Array.from(e.dataTransfer.files));
+}
+
+function processFiles(files) {
+    if (files.length === 0) return;
+    
+    uploadMultipleFiles(files, function(file) {
+        const formData = new FormData();
+        formData.append('vendor_id', currentVendorId);
+        formData.append('file', file);
+        return {
+            url: '/api/documents/vendor/upload/',
+            formData: formData,
+            filename: file.name
+        };
+    }, loadVendorFiles);
+}
+
+// ============================================================================
+// FILE OPERATIONS
+// ============================================================================
+
+function deleteFile(filename) {
+    deleteFileCommon(
+        `/api/documents/vendor/${currentVendorId}/files/${encodeURIComponent(filename)}/`,
+        filename,
+        loadVendorFiles
+    );
+}
+
+function deleteSelectedFiles() {
+    deleteSelectedFilesCommon(
+        `/api/documents/vendor/${currentVendorId}/files/`,
+        '.file-checkbox',
+        loadVendorFiles
+    );
+}
+
+// ============================================================================
+// EMAIL FUNCTIONALITY
+// ============================================================================
+
+function loadVendorEmails() {
+    loadEntityEmails(`/api/documents/vendor-emails/${currentVendorId}/`, function(emails) {
+        vendorEmails = emails;
+        renderEntityAddressBook(emails, 'addressBookList', 'useEmail');
+    });
+}
+
+function useEmail(email) {
+    document.getElementById('email-input').value = email;
+}
+
+function openManageEmailsModal() {
+    refreshManageEmailsList();
+    const modal = new bootstrap.Modal(document.getElementById('manageEmailsModal'));
+    modal.show();
+}
+
+function refreshManageEmailsList() {
+    loadEntityEmails(`/api/documents/vendor-emails/${currentVendorId}/`, function(emails) {
+        vendorEmails = emails;
+        renderManageEmailsList(emails, 'manageEmailsList', 'deleteVendorEmail');
+        renderEntityAddressBook(emails, 'addressBookList', 'useEmail');
+    });
+}
+
+function addVendorEmail() {
+    addEntityEmail(
+        '/api/documents/add-vendor-email/',
+        'vendor_id',
+        currentVendorId,
+        'newEmailAddress',
+        'newEmailLabel',
+        refreshManageEmailsList
+    );
+}
+
+function deleteVendorEmail(emailId) {
+    deleteEntityEmail(`/api/documents/delete-vendor-email/${emailId}/`, refreshManageEmailsList);
+}
+
+function emailSelectedFiles(btn) {
+    const checked = document.querySelectorAll('.file-checkbox:checked');
+    const emailInput = document.getElementById('email-input');
+    const emails = emailInput.value.split(',').map(e => e.trim()).filter(e => e);
+    
+    if (checked.length === 0) {
+        alert('Please select at least one file');
+        return;
+    }
+    
+    if (emails.length === 0) {
+        alert('Please enter an email address');
+        emailInput.focus();
+        return;
+    }
+    
+    const filenames = Array.from(checked).map(cb => cb.value);
+    
+    const formData = new FormData();
+    formData.append('vendor_id', currentVendorId);
+    emails.forEach(email => formData.append('emails', email));
+    filenames.forEach(filename => formData.append('filenames', filename));
+    
+    emailSelectedFilesCommon('/api/documents/vendor/email-files/', formData, btn, emailInput);
+}
+</script>
+{% endblock %}

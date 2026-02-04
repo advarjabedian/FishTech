@@ -1,6 +1,6 @@
 {% extends 'core/base.html' %}
 
-{% block title %}Operations - FishTech{% endblock %}
+{% block title %}FishTeck{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -37,11 +37,7 @@
 {% endblock %}
 
 {% block content %}
-<div class="container mt-5">
-    <div class="text-center mb-5">
-        <h1 class="main-title">Operations</h1>
-    </div>
-    
+<div class="container mt-4">
     <!-- Company Selection -->
     <div class="row justify-content-center mb-4">
         <div class="col-md-6">
@@ -111,6 +107,18 @@
                     <h3>Documents</h3>
                     <p class="text-muted">Sales orders, purchase orders, and files</p>
                     <a href="{% url 'documents_home' %}" class="btn btn-primary mt-2">View Documents</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Order Requests Card -->
+        <div class="col-md-4 mb-3">
+            <div class="card card-dashboard bg-danger bg-opacity-10" style="border-color: #dc3545 !important;" onclick="window.location.href='{% url 'order_requests' %}'">
+                <div class="card-body text-center py-5">
+                    <i class="bi bi-envelope-paper card-icon text-danger"></i>
+                    <h3>Order Requests</h3>
+                    <p class="text-muted">Email orders from customers</p>
+                    <a href="{% url 'order_requests' %}" class="btn btn-danger mt-2">View Orders</a>
                 </div>
             </div>
         </div>

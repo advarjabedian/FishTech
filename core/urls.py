@@ -1,9 +1,20 @@
 from django.urls import path
+from .views.public_pages import sms_opt_in, privacy_policy, terms_of_service
+from .views.platform_admin import platform_admin
 from .views import (
     # Auth views
     login_view, logout_view, operations_hub, register_view,
+    # Order Requests
+    order_requests, get_order_requests_api, get_order_requests_complete_api,
+    view_order_request_api, assign_order_request_user_api, complete_order_request_api,
+    uncomplete_order_request_api, update_order_request_notes_api, update_order_request_customer_api,
+    check_order_emails_api, get_email_settings_api, save_email_settings_api, test_email_connection_api,
     # Document views
-    documents_home, so_documents, po_documents,
+    documents_home, so_documents, po_documents, customer_documents, vendor_documents,
+    licenses, vehicles,
+    get_licenses_api, upload_license_api, update_license_api, view_license_file_api, delete_license_api,
+    get_vehicles_api, add_vehicle_api, update_vehicle_api, delete_vehicle_api,
+    get_expiration_counts_api,
     # Document APIs
     search_customers, search_vendors,
     get_sales_orders, get_so_files, view_so_file, upload_so_file, delete_so_file,
@@ -12,6 +23,10 @@ from .views import (
     get_vendor_emails, add_vendor_email, delete_vendor_email,
     get_customer_emails, add_customer_email, delete_customer_email,
     get_tenant_emails, add_tenant_email, delete_tenant_email,
+    get_customer_documents, get_customer_files, view_customer_file,
+    upload_customer_file, delete_customer_file, email_customer_files,
+    get_vendor_documents, get_vendor_files, view_vendor_file,
+    upload_vendor_file, delete_vendor_file, email_vendor_files,
     download_bulk_so_files, email_bulk_so_files, email_so_files,
     # HACCP views
     haccp, haccp_company, haccp_documents, haccp_document_view,
@@ -34,7 +49,8 @@ from .views import (
     submit_verification, save_verifier_signature, get_verifier_signature,
     save_monitor_signature, get_monitor_signature, get_operations_config,
     get_sop_list, create_sop, update_sop, delete_sop, get_zones, create_zone,
-    delete_zone, get_calendar_data, get_inspection_images, get_companies
+    delete_zone, get_calendar_data, get_inspection_images, get_companies, check_order_emails_api, get_email_settings_api, save_email_settings_api, test_email_connection_api,
+    twilio_sms_webhook
 )
 from .views.operations_reports import generate_operational_report, generate_deviations_report, generate_bulk_report
 from .views.stripe_billing import (
@@ -135,6 +151,7 @@ urlpatterns = [
     path('documents/', documents_home, name='documents_home'),
     path('documents/so/', so_documents, name='so_documents'),
     path('documents/po/', po_documents, name='po_documents'),
+    path('documents/customer/', customer_documents, name='customer_documents'),
     
     # Documents API - Customers
     path('api/documents/customers/search/', search_customers, name='search_customers'),
@@ -180,9 +197,76 @@ urlpatterns = [
     path('api/documents/customer-emails/<int:customer_id>/', get_customer_emails, name='get_customer_emails'),
     path('api/documents/add-customer-email/', add_customer_email, name='add_customer_email'),
     path('api/documents/delete-customer-email/<int:email_id>/', delete_customer_email, name='delete_customer_email'),
+    
+    # Customer Documents API
+    path('api/documents/customer/', get_customer_documents, name='get_customer_documents'),
+    path('api/documents/customer/<int:customer_id>/files/', get_customer_files, name='get_customer_files'),
+    path('api/documents/customer/<int:customer_id>/files/<str:filename>/view/', view_customer_file, name='view_customer_file'),
+    path('api/documents/customer/upload/', upload_customer_file, name='upload_customer_file'),
+    path('api/documents/customer/<int:customer_id>/files/<str:filename>/', delete_customer_file, name='delete_customer_file'),
+    path('api/documents/customer/email-files/', email_customer_files, name='email_customer_files'),
+    
     # Documents API - Bulk operations
     path('api/documents/so/download-bulk/', download_bulk_so_files, name='download_bulk_so_files'),
     path('api/documents/so/email-bulk/', email_bulk_so_files, name='email_bulk_so_files'),
     path('api/documents/customer-emails/<int:customer_id>/', get_customer_emails, name='get_customer_emails'),
- 
+
+    # Documents - Vendor
+    path('documents/vendor/', vendor_documents, name='vendor_documents'),
+    
+    # Vendor Documents API
+    path('api/documents/vendor/', get_vendor_documents, name='get_vendor_documents'),
+    path('api/documents/vendor/<int:vendor_id>/files/', get_vendor_files, name='get_vendor_files'),
+    path('api/documents/vendor/<int:vendor_id>/files/<str:filename>/view/', view_vendor_file, name='view_vendor_file'),
+    path('api/documents/vendor/upload/', upload_vendor_file, name='upload_vendor_file'),
+    path('api/documents/vendor/<int:vendor_id>/files/<str:filename>/', delete_vendor_file, name='delete_vendor_file'),
+    path('api/documents/vendor/email-files/', email_vendor_files, name='email_vendor_files'),
+    
+    # Licenses
+    path('documents/licenses/', licenses, name='licenses'),
+    path('api/documents/licenses/', get_licenses_api, name='get_licenses_api'),
+    path('api/documents/licenses/upload/', upload_license_api, name='upload_license_api'),
+    path('api/documents/licenses/<int:license_id>/update/', update_license_api, name='update_license_api'),
+    path('api/documents/licenses/<str:filename>/view/', view_license_file_api, name='view_license_file_api'),
+    path('api/documents/licenses/delete/<str:filename>/', delete_license_api, name='delete_license_api'),
+    
+    # Vehicles
+    path('documents/vehicles/', vehicles, name='vehicles'),
+    path('api/documents/vehicles/', get_vehicles_api, name='get_vehicles_api'),
+    path('api/documents/vehicles/add/', add_vehicle_api, name='add_vehicle_api'),
+    path('api/documents/vehicles/<int:vehicle_id>/update/', update_vehicle_api, name='update_vehicle_api'),
+    path('api/documents/vehicles/<int:vehicle_id>/delete/', delete_vehicle_api, name='delete_vehicle_api'),
+
+        # Vehicles
+    path('documents/vehicles/', vehicles, name='vehicles'),
+    path('api/vehicles/', get_vehicles_api, name='get_vehicles_api'),
+    path('api/vehicles/add/', add_vehicle_api, name='add_vehicle_api'),
+    path('api/vehicles/<int:vehicle_id>/update/', update_vehicle_api, name='update_vehicle_api'),
+    path('api/vehicles/<int:vehicle_id>/delete/', delete_vehicle_api, name='delete_vehicle_api'),
+    
+    # Expiration counts for navbar badges
+    path('api/expiration-counts/', get_expiration_counts_api, name='get_expiration_counts_api'),
+    # Platform Admin (superuser only)
+    # Platform Admin (superuser only)
+    path('platform-admin/', platform_admin, name='platform_admin'),
+    
+    # Order Requests
+    path('order-requests/', order_requests, name='order_requests'),
+    path('api/order-requests/', get_order_requests_api, name='get_order_requests_api'),
+    path('api/order-requests/complete/', get_order_requests_complete_api, name='get_order_requests_complete_api'),
+    path('api/order-request/<int:order_request_id>/view/', view_order_request_api, name='view_order_request_api'),
+    path('api/order-request/<int:order_request_id>/assign-user/', assign_order_request_user_api, name='assign_order_request_user_api'),
+    path('api/order-request/<int:order_request_id>/complete/', complete_order_request_api, name='complete_order_request_api'),
+    path('api/order-request/<int:order_request_id>/uncomplete/', uncomplete_order_request_api, name='uncomplete_order_request_api'),
+    path('api/order-request/<int:order_request_id>/update-notes/', update_order_request_notes_api, name='update_order_request_notes_api'),
+    path('api/order-request/<int:order_request_id>/update-customer/', update_order_request_customer_api, name='update_order_request_customer_api'),
+    path('api/check-order-emails/', check_order_emails_api, name='check_order_emails_api'),
+    path('api/email-settings/', get_email_settings_api, name='get_email_settings_api'),
+    path('api/email-settings/save/', save_email_settings_api, name='save_email_settings_api'),
+    path('api/email-settings/test/', test_email_connection_api, name='test_email_connection_api'),
+    path('api/twilio-sms-webhook/', twilio_sms_webhook, name='twilio_sms_webhook'),
+    # Public pages (no login required)
+    path('sms-opt-in/', sms_opt_in, name='sms_opt_in'),
+    path('privacy-policy/', privacy_policy, name='privacy_policy'),
+    path('terms-of-service/', terms_of_service, name='terms_of_service'),
 ]

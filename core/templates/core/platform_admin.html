@@ -1,0 +1,121 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Platform Admin - FishTech{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-4"><i class="bi bi-speedometer2 me-2"></i>Platform Admin Dashboard</h2>
+    
+    <!-- Metrics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <h6 class="card-title">Total Tenants</h6>
+                    <h2>{{ total_tenants }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <h6 class="card-title">Active Subscriptions</h6>
+                    <h2>{{ active_subscriptions }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <h6 class="card-title">Monthly Revenue</h6>
+                    <h2>${{ monthly_revenue }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-secondary text-white">
+                <div class="card-body">
+                    <h6 class="card-title">Stripe Balance</h6>
+                    <h2>${{ stripe_balance|default:"--" }}</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Status Breakdown -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header">Subscription Status Breakdown</div>
+                <div class="card-body">
+                    <span class="badge bg-success me-3">Active: {{ active_subscriptions }}</span>
+                    <span class="badge bg-info me-3">Trialing: {{ trialing }}</span>
+                    <span class="badge bg-warning me-3">Past Due: {{ past_due }}</span>
+                    <span class="badge bg-secondary">Canceled: {{ canceled }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Tenants Table -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">All Tenants</h5>
+        </div>
+        <div class="card-body">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>Subdomain</th>
+                        <th>Status</th>
+                        <th>Users</th>
+                        <th>Trial Ends</th>
+                        <th>Stripe Customer</th>
+                        <th>Created</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for tenant in tenants %}
+                    <tr>
+                        <td>{{ tenant.id }}</td>
+                        <td>{{ tenant.name }}</td>
+                        <td><code>{{ tenant.subdomain }}</code></td>
+                        <td>
+                            {% if tenant.subscription_status == 'active' %}
+                            <span class="badge bg-success">Active</span>
+                            {% elif tenant.subscription_status == 'trialing' %}
+                            <span class="badge bg-info">Trial</span>
+                            {% elif tenant.subscription_status == 'past_due' %}
+                            <span class="badge bg-warning">Past Due</span>
+                            {% elif tenant.subscription_status == 'canceled' %}
+                            <span class="badge bg-secondary">Canceled</span>
+                            {% else %}
+                            <span class="badge bg-dark">{{ tenant.subscription_status }}</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ tenant.user_count }}</td>
+                        <td>{{ tenant.trial_ends_at|date:"M d, Y"|default:"-" }}</td>
+                        <td>
+                            {% if tenant.stripe_customer_id %}
+                            <a href="https://dashboard.stripe.com/customers/{{ tenant.stripe_customer_id }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-box-arrow-up-right"></i> View
+                            </a>
+                            {% else %}
+                            <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ tenant.created_at|date:"M d, Y"|default:"-" }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" class="text-center text-muted">No tenants yet</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

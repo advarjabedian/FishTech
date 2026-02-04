@@ -1,6 +1,6 @@
 {% extends 'core/base.html' %}
 
-{% block title %}Documents - FishTech{% endblock %}
+{% block title %}Documents - FishTeck{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -58,8 +58,8 @@
             <div class="card document-card bg-primary bg-opacity-10 border-primary" onclick="window.location.href='{% url 'so_documents' %}'">
                 <div class="card-body">
                     <i class="bi bi-file-earmark-text document-icon text-primary"></i>
-                    <h5 class="document-title">SO</h5>
-                    <p class="document-description">Sales Orders</p>
+                    <h5 class="document-title">Sales Orders</h5>
+                    <p class="document-description">Customer sales orders</p>
                 </div>
             </div>
         </div>
@@ -69,26 +69,15 @@
             <div class="card document-card bg-success bg-opacity-10 border-success" onclick="window.location.href='{% url 'po_documents' %}'">
                 <div class="card-body">
                     <i class="bi bi-file-earmark-check document-icon text-success"></i>
-                    <h5 class="document-title">PO</h5>
-                    <p class="document-description">Purchase Orders</p>
-                </div>
-            </div>
-        </div>
-        
-        <!-- POD -->
-        <div class="col-md-4">
-            <div class="card document-card bg-warning bg-opacity-10 border-warning">
-                <div class="card-body">
-                    <i class="bi bi-truck document-icon text-warning"></i>
-                    <h5 class="document-title">POD</h5>
-                    <p class="document-description">Proof of Delivery</p>
+                    <h5 class="document-title">Purchase Orders</h5>
+                    <p class="document-description">Vendor purchase orders</p>
                 </div>
             </div>
         </div>
         
         <!-- Customer -->
         <div class="col-md-4">
-            <div class="card document-card bg-info bg-opacity-10 border-info">
+            <div class="card document-card bg-info bg-opacity-10 border-info" onclick="window.location.href='{% url 'customer_documents' %}'">
                 <div class="card-body">
                     <i class="bi bi-people document-icon text-info"></i>
                     <h5 class="document-title">Customer</h5>
@@ -99,7 +88,7 @@
         
         <!-- Vendor -->
         <div class="col-md-4">
-            <div class="card document-card bg-secondary bg-opacity-10 border-secondary">
+            <div class="card document-card bg-secondary bg-opacity-10 border-secondary" onclick="window.location.href='{% url 'vendor_documents' %}'">
                 <div class="card-body">
                     <i class="bi bi-building document-icon text-secondary"></i>
                     <h5 class="document-title">Vendor</h5>
@@ -108,13 +97,24 @@
             </div>
         </div>
         
-        <!-- Receipts -->
+        <!-- Licenses -->
         <div class="col-md-4">
-            <div class="card document-card bg-danger bg-opacity-10 border-danger">
+            <div class="card document-card bg-danger bg-opacity-10 border-danger" onclick="window.location.href='{% url 'licenses' %}'">
                 <div class="card-body">
-                    <i class="bi bi-receipt document-icon text-danger"></i>
-                    <h5 class="document-title">Receipts</h5>
-                    <p class="document-description">Email Receipts from Vendors</p>
+                    <i class="bi bi-file-earmark-medical document-icon text-danger"></i>
+                    <h5 class="document-title">Licenses</h5>
+                    <p class="document-description">Business Licenses</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Vehicles -->
+        <div class="col-md-4">
+            <div class="card document-card bg-dark bg-opacity-10 border-dark" onclick="window.location.href='{% url 'vehicles' %}'">
+                <div class="card-body">
+                    <i class="bi bi-truck document-icon text-dark"></i>
+                    <h5 class="document-title">Vehicles</h5>
+                    <p class="document-description">Fleet Management</p>
                 </div>
             </div>
         </div>

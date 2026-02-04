@@ -69,6 +69,51 @@
         </div>
     </div>
 
+    <!-- Email Settings Section -->
+    <div class="card mb-4">
+        <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="bi bi-envelope-at me-2"></i>Inbound Email Settings</h5>
+            <button class="btn btn-dark btn-sm" onclick="testEmailConnection()">
+                <i class="bi bi-plug me-1"></i>Test Connection
+            </button>
+        </div>
+        <div class="card-body">
+            <p class="text-muted small mb-3">Configure the email account to check for customer orders. Use an app password, not your regular password.</p>
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">Email Address</label>
+                    <input type="email" id="inboundEmailAddress" class="form-control" placeholder="orders@yourcompany.com">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">App Password</label>
+                    <div class="input-group">
+                        <input type="password" id="inboundEmailPassword" class="form-control" placeholder="••••••••••••">
+                        <button class="btn btn-outline-secondary" type="button" onclick="togglePasswordVisibility()">
+                            <i class="bi bi-eye" id="passwordToggleIcon"></i>
+                        </button>
+                    </div>
+                    <small class="text-muted">Leave blank to keep existing</small>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">IMAP Server</label>
+                    <select id="inboundImapServer" class="form-select">
+                        <option value="imap.gmail.com">Gmail (imap.gmail.com)</option>
+                        <option value="outlook.office365.com">Outlook/Office 365</option>
+                        <option value="imap.mail.yahoo.com">Yahoo Mail</option>
+                        <option value="custom">Custom...</option>
+                    </select>
+                    <input type="text" id="inboundImapServerCustom" class="form-control mt-2" placeholder="imap.yourserver.com" style="display: none;">
+                </div>
+            </div>
+            <div class="mt-3">
+                <button class="btn btn-primary" onclick="saveEmailSettings()">
+                    <i class="bi bi-save me-1"></i>Save Email Settings
+                </button>
+                <span id="emailSettingsStatus" class="ms-3"></span>
+            </div>
+        </div>
+    </div>
+
     <!-- Payment Success/Cancel Messages -->
     <div id="paymentSuccessAlert" class="alert alert-success alert-dismissible fade show" style="display: none;">
         <i class="bi bi-check-circle me-2"></i>
@@ -809,6 +854,117 @@ function openPortal() {
     });
 }
 
+// ============================================================================
+// EMAIL SETTINGS
+// ============================================================================
+
+function loadEmailSettings() {
+    fetch('/api/email-settings/')
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('inboundEmailAddress').value = data.email_address || '';
+                // Don't populate password for security
+                
+                const server = data.imap_server || 'imap.gmail.com';
+                const select = document.getElementById('inboundImapServer');
+                const customInput = document.getElementById('inboundImapServerCustom');
+                
+                // Check if server is in dropdown
+                const option = Array.from(select.options).find(o => o.value === server);
+                if (option) {
+                    select.value = server;
+                    customInput.style.display = 'none';
+                } else {
+                    select.value = 'custom';
+                    customInput.style.display = 'block';
+                    customInput.value = server;
+                }
+            }
+        })
+        .catch(err => console.error('Error loading email settings:', err));
+}
+
+function saveEmailSettings() {
+    const select = document.getElementById('inboundImapServer');
+    let imapServer = select.value;
+    if (imapServer === 'custom') {
+        imapServer = document.getElementById('inboundImapServerCustom').value.trim();
+    }
+    
+    const data = {
+        email_address: document.getElementById('inboundEmailAddress').value.trim(),
+        email_password: document.getElementById('inboundEmailPassword').value,
+        imap_server: imapServer
+    };
+    
+    const statusEl = document.getElementById('emailSettingsStatus');
+    statusEl.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Saving...';
+    
+    fetch('/api/email-settings/save/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify(data)
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            statusEl.innerHTML = '<span class="text-success"><i class="bi bi-check-circle"></i> Saved!</span>';
+            document.getElementById('inboundEmailPassword').value = '';
+            setTimeout(() => statusEl.innerHTML = '', 3000);
+        } else {
+            statusEl.innerHTML = '<span class="text-danger"><i class="bi bi-x-circle"></i> ' + (data.error || 'Error') + '</span>';
+        }
+    })
+    .catch(err => {
+        statusEl.innerHTML = '<span class="text-danger"><i class="bi bi-x-circle"></i> Error saving</span>';
+    });
+}
+
+function testEmailConnection() {
+    const statusEl = document.getElementById('emailSettingsStatus');
+    statusEl.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Testing connection...';
+    
+    fetch('/api/email-settings/test/', {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCookie('csrftoken') }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            statusEl.innerHTML = '<span class="text-success"><i class="bi bi-check-circle"></i> Connection successful! Found ' + data.unread_count + ' unread emails.</span>';
+        } else {
+            statusEl.innerHTML = '<span class="text-danger"><i class="bi bi-x-circle"></i> ' + (data.error || 'Connection failed') + '</span>';
+        }
+    })
+    .catch(err => {
+        statusEl.innerHTML = '<span class="text-danger"><i class="bi bi-x-circle"></i> Error testing connection</span>';
+    });
+}
+
+function togglePasswordVisibility() {
+    const input = document.getElementById('inboundEmailPassword');
+    const icon = document.getElementById('passwordToggleIcon');
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.classList.remove('bi-eye');
+        icon.classList.add('bi-eye-slash');
+    } else {
+        input.type = 'password';
+        icon.classList.remove('bi-eye-slash');
+        icon.classList.add('bi-eye');
+    }
+}
+
+// Handle IMAP server dropdown
+document.getElementById('inboundImapServer').addEventListener('change', function() {
+    const customInput = document.getElementById('inboundImapServerCustom');
+    customInput.style.display = this.value === 'custom' ? 'block' : 'none';
+});
+
 // Check URL params for payment status
 document.addEventListener('DOMContentLoaded', function() {
     const urlParams = new URLSearchParams(window.location.search);
@@ -826,6 +982,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Load address book
     loadTenantEmails();
+    
+    // Load email settings
+    loadEmailSettings();
 });
 
 // ============================================================================

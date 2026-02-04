@@ -41,3 +41,38 @@ def po_documents(request):
     
     poid = request.GET.get('poid', None)
     return render(request, 'core/documents/po_documents.html', {'poid': poid})
+
+
+@login_required
+def customer_documents(request):
+    """Display customer documents"""
+    if not request.tenant:
+        return redirect('login')
+    
+    customer_id = request.GET.get('customer_id', None)
+    return render(request, 'core/documents/customer_documents.html', {'customer_id': customer_id})
+
+@login_required
+def vendor_documents(request):
+    """Display vendor documents"""
+    if not request.tenant:
+        return redirect('login')
+    
+    vendor_id = request.GET.get('vendor_id', None)
+    return render(request, 'core/Documents/vendor_documents.html', {'vendor_id': vendor_id})
+
+
+@login_required
+def licenses(request):
+    """Display licenses page"""
+    if not request.tenant:
+        return redirect('login')
+    return render(request, 'core/documents/licenses.html')
+
+
+@login_required
+def vehicles(request):
+    """Display vehicles page"""
+    if not request.tenant:
+        return redirect('login')
+    return render(request, 'core/documents/vehicles.html')

@@ -3,14 +3,14 @@
 let currentSoid = null;
 let currentCustomerId = null;
 let currentCustomerName = null;
-let customerEmails = [];
-let tenantEmails = [];
 
 document.addEventListener('DOMContentLoaded', function() {
     setupFilters();
     setupDropZone();
     loadAllOrders();
-    loadTenantEmails();
+    loadTenantEmails(emails => {
+        renderTenantAddressBook('bulkAddressBookList', 'useTenantEmail');
+    });
     
     {% if soid %}
     openFileManager('{{ soid }}');
@@ -44,24 +44,22 @@ function setupFilters() {
         }
     });
     
-    document.getElementById('filter-customer').addEventListener('keydown', function(e) {
-        if (e.key === 'Enter') {
-            const customer = this.value.trim();
-            if (customer) {
-                showCustomerModal(customer);
+    setupAutocompleteDropdown(
+        'filter-customer',
+        'customer-dropdown',
+        '/api/documents/customers/search/',
+        function(item) {
+            if (item.name) {
+                showCustomerModal(item.name);
             }
         }
-    });
-    
-    document.getElementById('filter-customer').addEventListener('input', debounce(searchCustomers, 300));
+    );
 }
 
 function loadAllOrders() {
     fetch('/api/documents/so/')
         .then(response => response.json())
-        .then(data => {
-            renderTable(data);
-        })
+        .then(data => renderTable(data))
         .catch(error => {
             console.error('Error loading orders:', error);
             document.getElementById('documentsTableBody').innerHTML = 
@@ -74,44 +72,6 @@ function searchBySoid(soid) {
         .then(response => response.json())
         .then(data => renderTable(data))
         .catch(error => console.error('Error:', error));
-}
-
-function searchCustomers() {
-    const query = document.getElementById('filter-customer').value;
-    const dropdown = document.getElementById('customer-dropdown');
-    
-    if (query.length < 2) {
-        dropdown.style.display = 'none';
-        return;
-    }
-    
-    fetch(`/api/documents/customers/search/?search=${encodeURIComponent(query)}`)
-        .then(response => response.json())
-        .then(customers => {
-            dropdown.innerHTML = '';
-            if (customers.length > 0) {
-                customers.forEach(customer => {
-                    const item = document.createElement('a');
-                    item.className = 'dropdown-item';
-                    item.href = '#';
-                    item.textContent = customer.name;
-                    item.onclick = function(e) {
-                        e.preventDefault();
-                        document.getElementById('filter-customer').value = customer.name;
-                        dropdown.style.display = 'none';
-                        showCustomerModal(customer.name);
-                    };
-                    dropdown.appendChild(item);
-                });
-                dropdown.style.display = 'block';
-            } else {
-                dropdown.style.display = 'none';
-            }
-        })
-        .catch(error => {
-            console.error('Error searching customers:', error);
-            dropdown.style.display = 'none';
-        });
 }
 
 // ============================================================================
@@ -135,9 +95,9 @@ function renderTable(data) {
                 </button>
             </td>
             <td>${row.soid || ''}</td>
-            <td>${row.company_name || ''}</td>
-            <td>${row.customer_name || ''}</td>
-            <td>${row.customer_po || ''}</td>
+            <td>${escapeHtml(row.company_name || '')}</td>
+            <td>${escapeHtml(row.customer_name || '')}</td>
+            <td>${escapeHtml(row.customer_po || '')}</td>
             <td>${formatDate(row.dispatchdate)}</td>
             <td>${formatPaid(row.paid)}</td>
             <td><span class="badge ${row.file_count > 0 ? 'bg-success' : 'bg-secondary'}">${row.file_count || 0}</span></td>
@@ -150,28 +110,12 @@ function renderTable(data) {
 // ============================================================================
 
 function toggleSelectAll() {
-    const selectAll = document.getElementById('selectAll');
-    const checkboxes = document.querySelectorAll('.row-checkbox');
-    checkboxes.forEach(cb => cb.checked = selectAll.checked);
+    toggleTableSelectAll('.row-checkbox', 'selectAll');
     updateBulkActions();
 }
 
 function updateBulkActions() {
-    const checked = document.querySelectorAll('.row-checkbox:checked');
-    const bulkBar = document.getElementById('bulkActionsBar');
-    const countSpan = document.getElementById('selectedCount');
-    
-    if (checked.length > 0) {
-        bulkBar.style.display = 'block';
-        countSpan.textContent = `${checked.length} rows selected`;
-    } else {
-        bulkBar.style.display = 'none';
-    }
-    
-    const allCheckboxes = document.querySelectorAll('.row-checkbox');
-    const selectAll = document.getElementById('selectAll');
-    selectAll.checked = allCheckboxes.length > 0 && checked.length === allCheckboxes.length;
-    selectAll.indeterminate = checked.length > 0 && checked.length < allCheckboxes.length;
+    updateTableBulkActions('.row-checkbox', 'selectAll', 'bulkActionsBar', 'selectedCount');
 }
 
 function downloadSelectedFiles() {
@@ -180,30 +124,7 @@ function downloadSelectedFiles() {
         alert('Please select at least one row');
         return;
     }
-    
-    const soids = Array.from(selected).map(cb => cb.value);
-    
-    const form = document.createElement('form');
-    form.method = 'POST';
-    form.action = '/api/documents/so/download-bulk/';
-    
-    const csrfInput = document.createElement('input');
-    csrfInput.type = 'hidden';
-    csrfInput.name = 'csrfmiddlewaretoken';
-    csrfInput.value = getCookie('csrftoken');
-    form.appendChild(csrfInput);
-    
-    soids.forEach(soid => {
-        const input = document.createElement('input');
-        input.type = 'hidden';
-        input.name = 'soids';
-        input.value = soid;
-        form.appendChild(input);
-    });
-    
-    document.body.appendChild(form);
-    form.submit();
-    document.body.removeChild(form);
+    downloadBulkAsZip('/api/documents/so/download-bulk/', Array.from(selected).map(cb => cb.value), 'soids');
 }
 
 // ============================================================================
@@ -224,8 +145,7 @@ function openFileManager(soid) {
                 currentCustomerName = data.customer_name;
             }
             
-            // Always show address book using tenant-wide emails
-            renderAddressBook(tenantEmails);
+            renderAddressBook(getTenantEmails());
             
             const modal = new bootstrap.Modal(document.getElementById('fileManagerModal'));
             modal.show();
@@ -251,22 +171,22 @@ function renderFiles(files) {
             <div class="card">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-start mb-2">
-                        <input type="checkbox" class="filemanager-file-checkbox" value="${file.filename}" onchange="updateFileManagerBulkActions()">
+                        <input type="checkbox" class="filemanager-file-checkbox" value="${escapeHtml(file.filename)}" onchange="updateFileManagerBulkActions()">
                     </div>
                     ${file.type === 'pdf' ? 
                         `<div class="mb-2" style="height: 200px; overflow: hidden; background: #f8f9fa;">
                             <iframe src="${file.url}#toolbar=0&navpanes=0" style="width: 100%; height: 100%; border: none;"></iframe>
                         </div>` :
                         `<div class="mb-2" style="height: 200px; overflow: hidden; display: flex; align-items: center; justify-content: center; background: #f8f9fa;">
-                            <img src="${file.url}" alt="${file.filename}" style="max-width: 100%; max-height: 200px; object-fit: contain;">
+                            <img src="${file.url}" alt="${escapeHtml(file.filename)}" style="max-width: 100%; max-height: 200px; object-fit: contain;">
                         </div>`
                     }
-                    <h6 class="text-center mt-2 small text-truncate" title="${file.filename}">${file.filename}</h6>
+                    <h6 class="text-center mt-2 small text-truncate" title="${escapeHtml(file.filename)}">${escapeHtml(file.filename)}</h6>
                     <div class="btn-group w-100">
                         <button class="btn btn-sm btn-primary" onclick="window.open('${file.url}', '_blank')">
                             <i class="bi bi-eye"></i> View
                         </button>
-                        <button class="btn btn-sm btn-danger" onclick="deleteFile('${file.filename}')">
+                        <button class="btn btn-sm btn-danger" onclick="deleteFile('${escapeHtml(file.filename)}')">
                             <i class="bi bi-trash"></i> Delete
                         </button>
                     </div>
@@ -277,132 +197,44 @@ function renderFiles(files) {
 }
 
 function updateFileManagerBulkActions() {
-    const checked = document.querySelectorAll('.filemanager-file-checkbox:checked');
-    const bulkBar = document.getElementById('fileManagerBulkActionsBar');
-    const countSpan = document.getElementById('fileManagerSelectedCount');
-    
-    if (checked.length > 0) {
-        bulkBar.style.display = 'block';
-        countSpan.textContent = `${checked.length} files selected`;
-    } else {
-        bulkBar.style.display = 'none';
-    }
+    updateFileManagerBulkBar('.filemanager-file-checkbox', 'fileManagerBulkActionsBar', 'fileManagerSelectedCount', null);
 }
 
 function deleteFile(filename) {
-    if (!confirm(`Delete ${filename}?`)) return;
-    
-    fetch(`/api/documents/so/${currentSoid}/files/${filename}/`, {
-        method: 'DELETE',
-        headers: { 'X-CSRFToken': getCookie('csrftoken') }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            openFileManager(currentSoid);
-        } else {
-            alert('Error: ' + (data.error || 'Delete failed'));
-        }
-    })
-    .catch(error => alert('Error: ' + error));
+    deleteFileCommon(
+        `/api/documents/so/${currentSoid}/files/${encodeURIComponent(filename)}/`,
+        filename,
+        () => openFileManager(currentSoid)
+    );
 }
 
 function setupFileManagerDropZone() {
-    const dropZone = document.getElementById('fileManagerDropZone');
-    if (!dropZone) return;
-    
-    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(event => {
-        dropZone.addEventListener(event, e => {
-            e.preventDefault();
-            e.stopPropagation();
+    setupGenericDropZone('fileManagerDropZone', function(e) {
+        const files = Array.from(e.dataTransfer.files);
+        uploadFilesToSoid(currentSoid, files);
+    }, function() {
+        selectFilesForUpload('image/*,application/pdf', true, function(files) {
+            uploadFilesToSoid(currentSoid, files);
         });
-    });
-    
-    ['dragenter', 'dragover'].forEach(event => {
-        dropZone.addEventListener(event, () => {
-            dropZone.style.borderColor = '#0d6efd';
-            dropZone.style.backgroundColor = '#f0f7ff';
-        });
-    });
-    
-    ['dragleave', 'drop'].forEach(event => {
-        dropZone.addEventListener(event, () => {
-            dropZone.style.borderColor = '#ccc';
-            dropZone.style.backgroundColor = 'transparent';
-        });
-    });
-    
-    dropZone.addEventListener('drop', e => {
-        const files = e.dataTransfer.files;
-        if (files.length > 0) {
-            uploadFilesToSoid(currentSoid, Array.from(files));
-        }
-    });
-    
-    dropZone.addEventListener('click', () => {
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = 'image/*,application/pdf';
-        input.multiple = true;
-        input.onchange = e => {
-            if (e.target.files.length > 0) {
-                uploadFilesToSoid(currentSoid, Array.from(e.target.files));
-            }
-        };
-        input.click();
     });
 }
 
 function uploadFilesToSoid(soid, files) {
-    let completed = 0;
-    const total = files.length;
-    
-    files.forEach(file => {
+    uploadMultipleFiles(files, function(file) {
         const formData = new FormData();
         formData.append('file', file);
         formData.append('soid', soid);
-        
-        fetch('/api/documents/so/upload/', {
-            method: 'POST',
-            body: formData,
-            headers: { 'X-CSRFToken': getCookie('csrftoken') }
-        })
-        .then(response => response.json())
-        .then(data => {
-            completed++;
-            if (completed === total) {
-                openFileManager(soid);
-            }
-        })
-        .catch(error => {
-            completed++;
-            console.error('Upload error:', error);
-            if (completed === total) {
-                openFileManager(soid);
-            }
-        });
-    });
+        return {
+            url: '/api/documents/so/upload/',
+            formData: formData,
+            filename: file.name
+        };
+    }, () => openFileManager(soid));
 }
 
 // ============================================================================
 // EMAIL FUNCTIONALITY
 // ============================================================================
-
-function loadCustomerEmails(customerId) {
-    fetch(`/api/documents/customer-emails/${customerId}/`)
-        .then(response => {
-            if (!response.ok) throw new Error('Not found');
-            return response.json();
-        })
-        .then(emails => {
-            customerEmails = emails;
-            renderAddressBook(emails);
-        })
-        .catch(error => {
-            console.error('Error loading emails:', error);
-            document.getElementById('addressBookSection').style.display = 'none';
-        });
-}
 
 function renderAddressBook(emails) {
     const section = document.getElementById('addressBookSection');
@@ -413,28 +245,15 @@ function renderAddressBook(emails) {
     
     if (!emails || emails.length === 0) {
         list.innerHTML = '<p class="text-muted text-center mb-0">No saved emails yet. Click "Manage" to add one.</p>';
-        useAllBtn.style.display = 'none';
+        if (useAllBtn) useAllBtn.style.display = 'none';
     } else {
-        useAllBtn.style.display = 'inline-block';
-        list.innerHTML = emails.map(email => `
-            <div class="d-flex justify-content-between align-items-center py-1 border-bottom">
-                <span class="small">${email.email} ${email.label ? '<span class="text-muted">(' + email.label + ')</span>' : ''}</span>
-                <button class="btn btn-sm btn-secondary rounded px-2 py-1" onclick="useEmailInModal('${email.email}')" title="Use this email">
-                    <i class="bi bi-arrow-right text-white"></i>
-                </button>
-            </div>
-        `).join('');
+        if (useAllBtn) useAllBtn.style.display = 'inline-block';
+        renderEntityAddressBook(emails, 'addressBookList', 'useEmailInModal');
     }
 }
 
-function useEmail(email) {
-    const input = document.getElementById('filemanager-email-input');
-    input.value = email;
-    input.focus();
-}
-
 function useAllEmails() {
-    const emails = tenantEmails.map(e => e.email).join(', ');
+    const emails = getTenantEmails().map(e => e.email).join(', ');
     document.getElementById('filemanager-email-input').value = emails;
 }
 
@@ -460,138 +279,71 @@ function emailFilesFromModal(btn) {
     
     const filenames = Array.from(selected).map(cb => cb.value);
     
-    const originalText = btn.innerHTML;
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Sending...';
-    
     const formData = new FormData();
     formData.append('soid', currentSoid);
     emails.forEach(email => formData.append('emails', email));
     filenames.forEach(f => formData.append('filenames', f));
     
-    fetch('/api/documents/so/email-files/', {
-        method: 'POST',
-        body: formData,
-        headers: { 'X-CSRFToken': getCookie('csrftoken') }
-    })
-    .then(response => response.json())
-    .then(data => {
-        btn.disabled = false;
-        btn.innerHTML = originalText;
-        if (data.success) {
-            alert(`Email sent to ${emails.join(', ')}`);
-            emailInput.value = '';
-        } else {
-            alert('Error: ' + (data.error || 'Email failed'));
-        }
-    })
-    .catch(error => {
-        btn.disabled = false;
-        btn.innerHTML = originalText;
-        alert('Error: ' + error);
-    });
+    emailSelectedFilesCommon('/api/documents/so/email-files/', formData, btn, emailInput);
 }
 
 function openManageEmailsModal() {
-    refreshTenantEmailsList();
+    refreshTenantEmailsManageList('manageTenantEmailsList', 'deleteTenantEmail');
     const modal = new bootstrap.Modal(document.getElementById('manageTenantEmailsModal'));
     modal.show();
 }
 
-function refreshManageEmailsList() {
-    fetch(`/api/documents/customer-emails/${currentCustomerId}/`)
-        .then(response => response.json())
-        .then(emails => {
-            const list = document.getElementById('manageEmailsList');
-            
-            if (emails.length === 0) {
-                list.innerHTML = '<p class="text-muted text-center">No saved emails yet.</p>';
-            } else {
-                list.innerHTML = emails.map(email => `
-                    <div class="d-flex justify-content-between align-items-center mb-2 p-2 bg-light rounded">
-                        <div>
-                            <strong>${email.email}</strong>
-                            ${email.label ? `<span class="badge bg-secondary ms-2">${email.label}</span>` : ''}
-                        </div>
-                        <button class="btn btn-sm btn-danger" onclick="deleteCustomerEmail(${email.id})">
-                            <i class="bi bi-trash"></i>
-                        </button>
-                    </div>
-                `).join('');
-            }
-            
-            customerEmails = emails;
-            renderAddressBook(emails);
-        });
+function addTenantEmail() {
+    addTenantEmailCommon('newTenantEmailAddress', 'newTenantEmailLabel', () => {
+        refreshTenantEmailsManageList('manageTenantEmailsList', 'deleteTenantEmail');
+        renderTenantAddressBook('bulkAddressBookList', 'useTenantEmail');
+        renderAddressBook(getTenantEmails());
+    });
 }
 
-function useEmailFromManage(email) {
-    const fileManagerInput = document.getElementById('filemanager-email-input');
-    const customerModalInput = document.getElementById('customer-modal-email');
-    
-    if (fileManagerInput && document.getElementById('fileManagerModal').classList.contains('show')) {
-        fileManagerInput.value = email;
-    } else if (customerModalInput) {
-        customerModalInput.value = email;
-    }
-    
-    const manageModal = document.getElementById('manageEmailsModal');
-    const manageModalInstance = bootstrap.Modal.getInstance(manageModal);
-    if (manageModalInstance) {
-        manageModalInstance.hide();
+function deleteTenantEmail(emailId) {
+    deleteTenantEmailCommon(emailId, () => {
+        refreshTenantEmailsManageList('manageTenantEmailsList', 'deleteTenantEmail');
+        renderTenantAddressBook('bulkAddressBookList', 'useTenantEmail');
+        renderAddressBook(getTenantEmails());
+    });
+}
+
+function useTenantEmail(email) {
+    document.getElementById('bulk-email-input').value = email;
+    const dropdown = document.getElementById('bulkAddressBookDropdown');
+    if (dropdown) {
+        bootstrap.Dropdown.getInstance(dropdown.previousElementSibling)?.hide();
     }
 }
 
-function addCustomerEmail() {
-    const email = document.getElementById('newEmailAddress').value.trim();
-    const label = document.getElementById('newEmailLabel').value.trim();
-    
-    if (!email) {
-        alert('Please enter an email address');
+function openBulkManageEmails() {
+    openManageEmailsModal();
+}
+
+function emailBulkFromMainPage(btn) {
+    const selected = document.querySelectorAll('.row-checkbox:checked');
+    if (selected.length === 0) {
+        alert('Please select at least one row');
         return;
     }
     
-    fetch('/api/documents/add-customer-email/', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': getCookie('csrftoken')
-        },
-        body: JSON.stringify({
-            customer_id: currentCustomerId,
-            email: email,
-            label: label
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            document.getElementById('newEmailAddress').value = '';
-            document.getElementById('newEmailLabel').value = '';
-            refreshManageEmailsList();
-        } else {
-            alert('Error: ' + (data.error || 'Failed to add email'));
-        }
-    })
-    .catch(error => alert('Error: ' + error));
-}
-
-function deleteCustomerEmail(emailId) {
-    if (!confirm('Delete this email?')) return;
+    const emailInput = document.getElementById('bulk-email-input');
+    const emails = emailInput.value.split(',').map(e => e.trim()).filter(e => e);
     
-    fetch(`/api/documents/delete-customer-email/${emailId}/`, {
-        method: 'DELETE',
-        headers: { 'X-CSRFToken': getCookie('csrftoken') }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            refreshManageEmailsList();
-        } else {
-            alert('Error deleting email');
-        }
-    })
-    .catch(error => alert('Error: ' + error));
+    if (emails.length === 0) {
+        alert('Please enter an email address');
+        emailInput.focus();
+        return;
+    }
+    
+    const soids = Array.from(selected).map(cb => cb.value);
+    
+    const formData = new FormData();
+    emails.forEach(email => formData.append('emails', email));
+    soids.forEach(soid => formData.append('soids', soid));
+    
+    sendBulkEmail('/api/documents/so/email-bulk/', formData, btn, emailInput);
 }
 
 // ============================================================================
@@ -629,21 +381,17 @@ function loadCustomerModalData() {
     
     fetch(url)
         .then(response => response.json())
-        .then(data => {
-            renderCustomerModalTable(data);
-        })
+        .then(data => renderCustomerModalTable(data))
         .catch(error => console.error('Error:', error));
 }
 
 function loadCustomerEmailsForModal(customerId) {
-    fetch(`/api/documents/customer-emails/${customerId}/`)
-        .then(response => response.json())
-        .then(emails => {
-            const datalist = document.getElementById('customer-saved-emails');
-            datalist.innerHTML = emails.map(e => 
-                `<option value="${e.email}">${e.label ? e.email + ' (' + e.label + ')' : e.email}</option>`
-            ).join('');
-        });
+    loadEntityEmails(`/api/documents/customer-emails/${customerId}/`, function(emails) {
+        const datalist = document.getElementById('customer-saved-emails');
+        datalist.innerHTML = emails.map(e => 
+            `<option value="${escapeHtml(e.email)}">${e.label ? escapeHtml(e.email) + ' (' + escapeHtml(e.label) + ')' : escapeHtml(e.email)}</option>`
+        ).join('');
+    });
 }
 
 function renderCustomerModalTable(data) {
@@ -663,8 +411,8 @@ function renderCustomerModalTable(data) {
                 </button>
             </td>
             <td>${row.soid || ''}</td>
-            <td>${row.company_name || ''}</td>
-            <td>${row.customer_po || ''}</td>
+            <td>${escapeHtml(row.company_name || '')}</td>
+            <td>${escapeHtml(row.customer_po || '')}</td>
             <td>${formatDate(row.dispatchdate)}</td>
             <td>${formatPaid(row.paid)}</td>
             <td><span class="badge ${row.file_count > 0 ? 'bg-success' : 'bg-secondary'}">${row.file_count || 0}</span></td>
@@ -677,23 +425,12 @@ function applyCustomerModalFilters() {
 }
 
 function toggleCustomerModalSelectAll() {
-    const selectAll = document.getElementById('customerModalSelectAll');
-    const checkboxes = document.querySelectorAll('.customer-modal-checkbox');
-    checkboxes.forEach(cb => cb.checked = selectAll.checked);
+    toggleTableSelectAll('.customer-modal-checkbox', 'customerModalSelectAll');
     updateCustomerModalBulkActions();
 }
 
 function updateCustomerModalBulkActions() {
-    const checked = document.querySelectorAll('.customer-modal-checkbox:checked');
-    const bulkBar = document.getElementById('customerModalBulkActions');
-    const countSpan = document.getElementById('customerModalSelectedCount');
-    
-    if (checked.length > 0) {
-        bulkBar.style.display = 'block';
-        countSpan.textContent = `${checked.length} rows selected`;
-    } else {
-        bulkBar.style.display = 'none';
-    }
+    updateTableBulkActions('.customer-modal-checkbox', 'customerModalSelectAll', 'customerModalBulkActions', 'customerModalSelectedCount');
 }
 
 function downloadCustomerModalFiles() {
@@ -702,30 +439,7 @@ function downloadCustomerModalFiles() {
         alert('Please select at least one row');
         return;
     }
-    
-    const soids = Array.from(selected).map(cb => cb.value);
-    
-    const form = document.createElement('form');
-    form.method = 'POST';
-    form.action = '/api/documents/so/download-bulk/';
-    
-    const csrfInput = document.createElement('input');
-    csrfInput.type = 'hidden';
-    csrfInput.name = 'csrfmiddlewaretoken';
-    csrfInput.value = getCookie('csrftoken');
-    form.appendChild(csrfInput);
-    
-    soids.forEach(soid => {
-        const input = document.createElement('input');
-        input.type = 'hidden';
-        input.name = 'soids';
-        input.value = soid;
-        form.appendChild(input);
-    });
-    
-    document.body.appendChild(form);
-    form.submit();
-    document.body.removeChild(form);
+    downloadBulkAsZip('/api/documents/so/download-bulk/', Array.from(selected).map(cb => cb.value), 'soids');
 }
 
 function emailCustomerModalFiles(btn) {
@@ -746,67 +460,15 @@ function emailCustomerModalFiles(btn) {
     
     const soids = Array.from(selected).map(cb => cb.value);
     
-    const originalText = btn.innerHTML;
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Sending...';
-    
     const formData = new FormData();
     emails.forEach(email => formData.append('emails', email));
     soids.forEach(soid => formData.append('soids', soid));
     
-    fetch('/api/documents/so/email-bulk/', {
-        method: 'POST',
-        body: formData,
-        headers: { 'X-CSRFToken': getCookie('csrftoken') }
-    })
-    .then(response => response.json())
-    .then(data => {
-        btn.disabled = false;
-        btn.innerHTML = originalText;
-        if (data.success) {
-            alert(`Email sent to ${emails.join(', ')}`);
-            emailInput.value = '';
-        } else {
-            alert('Error: ' + (data.error || 'Email failed'));
-        }
-    })
-    .catch(error => {
-        btn.disabled = false;
-        btn.innerHTML = originalText;
-        alert('Error: ' + error);
-    });
+    sendBulkEmail('/api/documents/so/email-bulk/', formData, btn, emailInput);
 }
 
 function openManageEmailsFromCustomerModal() {
-    document.getElementById('manageEmailsCustomerName').textContent = currentCustomerName || '';
-    refreshManageEmailsList();
-    
-    const modal = new bootstrap.Modal(document.getElementById('manageEmailsModal'));
-    modal.show();
-}
-
-// ============================================================================
-// DETAILS MODAL
-// ============================================================================
-
-function showDetails(row) {
-    document.getElementById('detailsModalSoid').textContent = row.soid;
-    document.getElementById('modal-billto1').textContent = row.billto1 || '';
-    document.getElementById('modal-billto2').textContent = row.billto2 || '';
-    document.getElementById('modal-billto3').textContent = row.billto3 || '';
-    document.getElementById('modal-billto4').textContent = row.billto4 || '';
-    document.getElementById('modal-shipto1').textContent = row.shipto1 || '';
-    document.getElementById('modal-shipto2').textContent = row.shipto2 || '';
-    document.getElementById('modal-shipto3').textContent = row.shipto3 || '';
-    document.getElementById('modal-shipto4').textContent = row.shipto4 || '';
-    document.getElementById('modal-customerpo').textContent = row.customer_po || row.customerpo || '';
-    document.getElementById('modal-dispatchdate').textContent = formatDate(row.dispatchdate);
-    document.getElementById('modal-totalamount').textContent = row.total_amount ? '$' + parseFloat(row.total_amount).toFixed(2) : '';
-    document.getElementById('modal-paid').textContent = row.paid || '';
-    document.getElementById('modal-invoiced').textContent = row.invoiced || '';
-    
-    const modal = new bootstrap.Modal(document.getElementById('detailsModal'));
-    modal.show();
+    openManageEmailsModal();
 }
 
 // ============================================================================
@@ -814,117 +476,25 @@ function showDetails(row) {
 // ============================================================================
 
 function setupDropZone() {
-    const dropZone = document.getElementById('soDropZone');
-    if (!dropZone) return;
-    
-    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(event => {
-        dropZone.addEventListener(event, e => {
-            e.preventDefault();
-            e.stopPropagation();
-        });
-    });
-    
-    ['dragenter', 'dragover'].forEach(event => {
-        dropZone.addEventListener(event, () => dropZone.classList.add('dragover'));
-    });
-    
-    ['dragleave', 'drop'].forEach(event => {
-        dropZone.addEventListener(event, () => dropZone.classList.remove('dragover'));
-    });
-    
-    dropZone.addEventListener('drop', handleDrop);
+    setupGenericDropZone('soDropZone', handleDrop, null);
 }
 
 function selectMultipleFiles() {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'image/*,application/pdf';
-    input.multiple = true;
-    input.onchange = function(e) {
-        processFiles(Array.from(e.target.files));
-    };
-    input.click();
+    selectFilesForUpload('image/*,application/pdf', true, processFiles);
 }
 
 function handleDrop(e) {
     const items = e.dataTransfer.items;
-    const uploadResults = document.getElementById('uploadResults');
-    const uploadResultsList = document.getElementById('uploadResultsList');
     
-    uploadResults.style.display = 'block';
-    uploadResultsList.innerHTML = '';
-    
-    if (items) {
-        const promises = [];
-        for (let i = 0; i < items.length; i++) {
-            const entry = items[i].webkitGetAsEntry();
-            if (entry) {
-                promises.push(processEntry(entry, null));
-            }
-        }
-        Promise.all(promises).then(results => {
-            const allFiles = results.flat();
-            addUploadResult(`Found ${allFiles.length} file(s) to upload`, 'info');
-            allFiles.forEach(({file, soid}) => {
-                if (soid) {
-                    uploadFile(file, soid);
-                } else {
-                    addUploadResult(`${file.name} - No SOID found`, 'warning');
-                }
-            });
-        });
+    if (items && items[0] && items[0].webkitGetAsEntry) {
+        processDroppedItems(items, extractSoidFromFilename, uploadFile);
     } else {
         processFiles(Array.from(e.dataTransfer.files));
     }
 }
 
-function processEntry(entry, folderSoid) {
-    return new Promise((resolve) => {
-        if (entry.isFile) {
-            entry.file(file => {
-                const soid = folderSoid || extractSoidFromFilename(file.name);
-                resolve([{file, soid}]);
-            });
-        } else if (entry.isDirectory) {
-            const dirSoid = extractSoidFromFilename(entry.name);
-            if (dirSoid) {
-                addUploadResult(`📁 Folder: ${entry.name} → SOID ${dirSoid}`, 'info');
-            }
-            readDirectory(entry, dirSoid || folderSoid).then(resolve);
-        } else {
-            resolve([]);
-        }
-    });
-}
-
-function readDirectory(dirEntry, folderSoid) {
-    return new Promise((resolve) => {
-        const allFiles = [];
-        const dirReader = dirEntry.createReader();
-        
-        function readEntries() {
-            dirReader.readEntries(entries => {
-                if (entries.length === 0) {
-                    resolve(allFiles);
-                } else {
-                    const promises = entries.map(entry => processEntry(entry, folderSoid));
-                    Promise.all(promises).then(results => {
-                        results.forEach(files => allFiles.push(...files));
-                        readEntries();
-                    });
-                }
-            });
-        }
-        readEntries();
-    });
-}
-
 function processFiles(files) {
-    const uploadResults = document.getElementById('uploadResults');
-    const uploadResultsList = document.getElementById('uploadResultsList');
-    
-    uploadResults.style.display = 'block';
-    uploadResultsList.innerHTML = '';
+    showUploadResults();
     
     files.forEach(file => {
         const soid = extractSoidFromFilename(file.name);
@@ -958,208 +528,6 @@ function uploadFile(file, soid) {
     formData.append('file', file);
     formData.append('soid', soid);
     
-    fetch('/api/documents/so/upload/', {
-        method: 'POST',
-        body: formData,
-        headers: { 'X-CSRFToken': getCookie('csrftoken') }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            addUploadResult(`${file.name} → SOID ${soid} ✓`, 'success');
-        } else {
-            addUploadResult(`${file.name} - ${data.error}`, 'error');
-        }
-    })
-    .catch(error => {
-        addUploadResult(`${file.name} - ${error}`, 'error');
-    });
-}
-
-function addUploadResult(message, type) {
-    const list = document.getElementById('uploadResultsList');
-    const item = document.createElement('div');
-    item.className = `upload-result-item upload-${type}`;
-    item.textContent = message;
-    list.appendChild(item);
-}
-
-function clearUploadResults() {
-    document.getElementById('uploadResults').style.display = 'none';
-    document.getElementById('uploadResultsList').innerHTML = '';
-}
-
-// ============================================================================
-// TENANT-WIDE ADDRESS BOOK
-// ============================================================================
-
-function loadTenantEmails() {
-    fetch('/api/documents/tenant-emails/')
-        .then(response => response.json())
-        .then(emails => {
-            tenantEmails = emails;
-            renderBulkAddressBook(emails);
-        })
-        .catch(error => console.error('Error loading tenant emails:', error));
-}
-
-function renderBulkAddressBook(emails) {
-    const list = document.getElementById('bulkAddressBookList');
-    
-    if (emails.length === 0) {
-        list.innerHTML = '<p class="text-muted small mb-0">No saved emails. Click Manage to add.</p>';
-    } else {
-        list.innerHTML = emails.map(email => `
-            <div class="d-flex justify-content-between align-items-center py-1 border-bottom">
-                <span class="small">${email.email} ${email.label ? '<span class="text-muted">(' + email.label + ')</span>' : ''}</span>
-                <button class="btn btn-sm btn-secondary rounded px-2 py-1" onclick="useTenantEmail('${email.email}')" title="Use this email">
-                    <i class="bi bi-arrow-right text-white"></i>
-                </button>
-            </div>
-        `).join('');
-    }
-}
-
-function useTenantEmail(email) {
-    document.getElementById('bulk-email-input').value = email;
-    const dropdown = document.getElementById('bulkAddressBookDropdown');
-    bootstrap.Dropdown.getInstance(dropdown.previousElementSibling)?.hide();
-}
-
-function openBulkManageEmails() {
-    refreshTenantEmailsList();
-    const modal = new bootstrap.Modal(document.getElementById('manageTenantEmailsModal'));
-    modal.show();
-}
-
-function refreshTenantEmailsList() {
-    fetch('/api/documents/tenant-emails/')
-        .then(response => response.json())
-        .then(emails => {
-            tenantEmails = emails;
-            const list = document.getElementById('manageTenantEmailsList');
-            
-            if (emails.length === 0) {
-                list.innerHTML = '<p class="text-muted text-center">No saved emails yet.</p>';
-            } else {
-                list.innerHTML = emails.map(email => `
-                    <div class="d-flex justify-content-between align-items-center mb-2 p-2 bg-light rounded">
-                        <div>
-                            <strong>${email.email}</strong>
-                            ${email.label ? '<span class="badge bg-secondary ms-2">' + email.label + '</span>' : ''}
-                        </div>
-                        <button class="btn btn-sm btn-danger" onclick="deleteTenantEmail(${email.id})">
-                            <i class="bi bi-trash"></i>
-                        </button>
-                    </div>
-                `).join('');
-            }
-            
-            // Update both address book displays
-            renderBulkAddressBook(emails);
-            renderAddressBook(emails);
-        });
-}
-
-function addTenantEmail() {
-    const email = document.getElementById('newTenantEmailAddress').value.trim();
-    const label = document.getElementById('newTenantEmailLabel').value.trim();
-    
-    if (!email) {
-        alert('Please enter an email address');
-        return;
-    }
-    
-    fetch('/api/documents/add-tenant-email/', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': getCookie('csrftoken')
-        },
-        body: JSON.stringify({ email, label })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            document.getElementById('newTenantEmailAddress').value = '';
-            document.getElementById('newTenantEmailLabel').value = '';
-            refreshTenantEmailsList();
-        } else {
-            alert('Error: ' + (data.error || 'Failed to add email'));
-        }
-    })
-    .catch(error => alert('Error: ' + error));
-}
-
-function deleteTenantEmail(emailId) {
-    if (!confirm('Delete this email?')) return;
-    
-    fetch(`/api/documents/delete-tenant-email/${emailId}/`, {
-        method: 'DELETE',
-        headers: { 'X-CSRFToken': getCookie('csrftoken') }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            refreshTenantEmailsList();
-        } else {
-            alert('Error deleting email');
-        }
-    })
-    .catch(error => alert('Error: ' + error));
-}
-
-function emailBulkFromMainPage(btn) {
-    const selected = document.querySelectorAll('.row-checkbox:checked');
-    if (selected.length === 0) {
-        alert('Please select at least one row');
-        return;
-    }
-    
-    const emailInput = document.getElementById('bulk-email-input');
-    if (!emailInput) {
-        alert('Email input not found');
-        return;
-    }
-    
-    const emails = emailInput.value.split(',').map(e => e.trim()).filter(e => e);
-    
-    if (emails.length === 0) {
-        alert('Please enter an email address');
-        emailInput.focus();
-        return;
-    }
-    
-    const soids = Array.from(selected).map(cb => cb.value);
-    
-    const originalText = btn.innerHTML;
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Sending...';
-    
-    const formData = new FormData();
-    emails.forEach(email => formData.append('emails', email));
-    soids.forEach(soid => formData.append('soids', soid));
-    
-    fetch('/api/documents/so/email-bulk/', {
-        method: 'POST',
-        body: formData,
-        headers: { 'X-CSRFToken': getCookie('csrftoken') }
-    })
-    .then(response => response.json())
-    .then(data => {
-        btn.disabled = false;
-        btn.innerHTML = originalText;
-        if (data.success) {
-            alert(`Email sent to ${emails.join(', ')}`);
-            emailInput.value = '';
-        } else {
-            alert('Error: ' + (data.error || 'Email failed'));
-        }
-    })
-    .catch(error => {
-        btn.disabled = false;
-        btn.innerHTML = originalText;
-        alert('Error: ' + error);
-    });
+    uploadFileCommon('/api/documents/so/upload/', formData, `${file.name} → SOID ${soid}`, null);
 }
 </script>
