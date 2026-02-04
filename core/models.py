@@ -713,3 +713,46 @@ class TenantEmail(TenantModel):
     
     def __str__(self):
         return f"{self.email} ({self.label})" if self.label else self.email
+
+
+class License(TenantModel):
+    """Business licenses"""
+    filename = models.CharField(max_length=255)
+    title = models.CharField(max_length=255)
+    company = models.CharField(max_length=50, blank=True)  # GSS, FRS, etc.
+    issuance_date = models.DateField(null=True, blank=True)
+    expiration_date = models.DateField(null=True, blank=True)
+    managing_user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        db_table = 'documents_license'
+    
+    def __str__(self):
+        return f"{self.title} ({self.company})"
+
+
+class Vehicle(TenantModel):
+    """Fleet vehicles"""
+    year = models.IntegerField(null=True, blank=True)
+    make = models.CharField(max_length=100, blank=True)
+    model = models.CharField(max_length=100, blank=True)
+    vin = models.CharField(max_length=50, blank=True)
+    license_plate = models.CharField(max_length=20, blank=True)
+    number = models.CharField(max_length=20, blank=True)  # Vehicle number
+    driver = models.CharField(max_length=100, blank=True)
+    dmv_renewal_date = models.DateField(null=True, blank=True)
+    company = models.CharField(max_length=50, blank=True)
+    status = models.CharField(max_length=20, blank=True)  # Active/Inactive
+    title = models.CharField(max_length=100, blank=True)
+    carb_number = models.CharField(max_length=100, blank=True)
+    dash_cam = models.CharField(max_length=100, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        db_table = 'documents_vehicle'
+    
+    def __str__(self):
+        return f"{self.year} {self.make} {self.model} - {self.license_plate}"
+    
+

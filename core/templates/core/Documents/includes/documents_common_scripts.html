@@ -40,6 +40,768 @@ function formatPaid(value) {
     return 'No';
 }
 
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// ============================================================================
+// PDF PREVIEW
+// ============================================================================
+
+function renderPdfPreview(url, canvasId) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    
+    if (typeof pdfjsLib === 'undefined') {
+        canvas.outerHTML = '<i class="bi bi-file-earmark-pdf pdf-icon"></i>';
+        return;
+    }
+    
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    
+    pdfjsLib.getDocument(url).promise.then(pdf => {
+        pdf.getPage(1).then(page => {
+            const context = canvas.getContext('2d');
+            const baseViewport = page.getViewport({ scale: 1.5 });
+            const containerWidth = 200;
+            const containerHeight = 120;
+            const scaleX = containerWidth / baseViewport.width;
+            const scaleY = containerHeight / baseViewport.height;
+            const scale = Math.max(scaleX, scaleY) * 1.5;
+            const scaledViewport = page.getViewport({ scale: scale });
+            canvas.width = containerWidth;
+            canvas.height = containerHeight;
+            page.render({ canvasContext: context, viewport: scaledViewport });
+        });
+    }).catch(() => {
+        canvas.outerHTML = '<i class="bi bi-file-earmark-pdf pdf-icon"></i>';
+    });
+}
+
+// ============================================================================
+// UPLOAD RESULTS
+// ============================================================================
+
+function addUploadResult(message, type) {
+    const list = document.getElementById('uploadResultsList');
+    if (!list) return;
+    const item = document.createElement('div');
+    item.className = `upload-result-item upload-${type}`;
+    item.textContent = message;
+    list.appendChild(item);
+}
+
+function clearUploadResults() {
+    const results = document.getElementById('uploadResults');
+    const list = document.getElementById('uploadResultsList');
+    if (results) results.style.display = 'none';
+    if (list) list.innerHTML = '';
+}
+
+function showUploadResults() {
+    const results = document.getElementById('uploadResults');
+    const list = document.getElementById('uploadResultsList');
+    if (results) results.style.display = 'block';
+    if (list) list.innerHTML = '';
+}
+
+// ============================================================================
+// DROP ZONE SETUP
+// ============================================================================
+
+function setupGenericDropZone(dropZoneId, onDropCallback, onClickCallback) {
+    const dropZone = document.getElementById(dropZoneId);
+    if (!dropZone || dropZone.dataset.initialized) return;
+    dropZone.dataset.initialized = 'true';
+    
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(event => {
+        dropZone.addEventListener(event, e => {
+            e.preventDefault();
+            e.stopPropagation();
+        });
+    });
+    
+    ['dragenter', 'dragover'].forEach(event => {
+        dropZone.addEventListener(event, () => dropZone.classList.add('dragover'));
+    });
+    
+    ['dragleave', 'drop'].forEach(event => {
+        dropZone.addEventListener(event, () => dropZone.classList.remove('dragover'));
+    });
+    
+    dropZone.addEventListener('drop', onDropCallback);
+    if (onClickCallback) {
+        dropZone.addEventListener('click', onClickCallback);
+    }
+}
+
+// ============================================================================
+// AUTOCOMPLETE DROPDOWN WITH KEYBOARD NAVIGATION
+// ============================================================================
+
+let _dropdownStates = {};
+
+function setupAutocompleteDropdown(inputId, dropdownId, searchUrl, onSelect) {
+    const input = document.getElementById(inputId);
+    const dropdown = document.getElementById(dropdownId);
+    if (!input || !dropdown) return;
+    
+    _dropdownStates[dropdownId] = { selectedIndex: -1 };
+    
+    input.addEventListener('input', debounce(function() {
+        const query = this.value.trim();
+        _dropdownStates[dropdownId].selectedIndex = -1;
+        
+        if (query.length < 2) {
+            dropdown.style.display = 'none';
+            return;
+        }
+        
+        fetch(`${searchUrl}?search=${encodeURIComponent(query)}`)
+            .then(r => r.json())
+            .then(items => {
+                dropdown.innerHTML = '';
+                if (items.length > 0) {
+                    items.forEach((item, idx) => {
+                        const el = document.createElement('a');
+                        el.className = 'dropdown-item';
+                        el.href = '#';
+                        el.textContent = item.name;
+                        el.dataset.index = idx;
+                        el.onclick = function(e) {
+                            e.preventDefault();
+                            input.value = item.name;
+                            dropdown.style.display = 'none';
+                            if (onSelect) onSelect(item);
+                        };
+                        dropdown.appendChild(el);
+                    });
+                    dropdown.style.display = 'block';
+                } else {
+                    dropdown.style.display = 'none';
+                }
+            });
+    }, 300));
+    
+    input.addEventListener('keydown', function(e) {
+        const items = dropdown.querySelectorAll('.dropdown-item');
+        const state = _dropdownStates[dropdownId];
+        
+        if (dropdown.style.display === 'none' || items.length === 0) {
+            if (e.key === 'Enter' && onSelect) {
+                onSelect({ name: input.value.trim(), fromEnter: true });
+            }
+            return;
+        }
+        
+        switch(e.key) {
+            case 'ArrowDown':
+                e.preventDefault();
+                state.selectedIndex = Math.min(state.selectedIndex + 1, items.length - 1);
+                updateDropdownHighlightCommon(items, state.selectedIndex);
+                break;
+            case 'ArrowUp':
+                e.preventDefault();
+                state.selectedIndex = Math.max(state.selectedIndex - 1, 0);
+                updateDropdownHighlightCommon(items, state.selectedIndex);
+                break;
+            case 'Enter':
+                e.preventDefault();
+                if (state.selectedIndex >= 0) {
+                    items[state.selectedIndex].click();
+                } else if (onSelect) {
+                    onSelect({ name: input.value.trim(), fromEnter: true });
+                }
+                break;
+            case 'Escape':
+                dropdown.style.display = 'none';
+                break;
+        }
+    });
+}
+
+function updateDropdownHighlightCommon(items, selectedIndex) {
+    items.forEach((item, idx) => {
+        item.classList.toggle('active', idx === selectedIndex);
+    });
+}
+
+// ============================================================================
+// FILE MANAGER - BULK SELECTION
+// ============================================================================
+
+function updateFileManagerBulkBar(checkboxSelector, bulkBarId, countSpanId, selectAllId) {
+    const checked = document.querySelectorAll(`${checkboxSelector}:checked`);
+    const allCheckboxes = document.querySelectorAll(checkboxSelector);
+    const bulkBar = document.getElementById(bulkBarId);
+    const countSpan = document.getElementById(countSpanId);
+    const selectAll = document.getElementById(selectAllId);
+    
+    if (checked.length > 0) {
+        bulkBar.style.display = 'block';
+        countSpan.textContent = `${checked.length} file${checked.length !== 1 ? 's' : ''} selected`;
+    } else {
+        bulkBar.style.display = 'none';
+    }
+    
+    if (selectAll) {
+        selectAll.checked = allCheckboxes.length > 0 && checked.length === allCheckboxes.length;
+        selectAll.indeterminate = checked.length > 0 && checked.length < allCheckboxes.length;
+    }
+    
+    // Update card visual selection
+    document.querySelectorAll('.file-card').forEach(card => {
+        const checkbox = card.querySelector(checkboxSelector);
+        card.classList.toggle('selected', checkbox && checkbox.checked);
+    });
+}
+
+function toggleSelectAllFiles(checkboxSelector, selectAllId) {
+    const selectAll = document.getElementById(selectAllId);
+    const checkboxes = document.querySelectorAll(checkboxSelector);
+    checkboxes.forEach(cb => cb.checked = selectAll.checked);
+}
+
+// ============================================================================
+// FILE CARD RENDERING
+// ============================================================================
+
+function renderFileCards(files, containerId, onDeleteFile, onCheckboxChange) {
+    const container = document.getElementById(containerId);
+    
+    if (files.length === 0) {
+        container.innerHTML = '<div class="col-12 text-center text-muted py-4">No files uploaded yet</div>';
+        return;
+    }
+    
+    container.innerHTML = files.map((f, idx) => `
+        <div class="col-6 col-md-4 col-lg-3">
+            <div class="file-card" data-filename="${escapeHtml(f.filename)}">
+                <div class="file-preview" onclick="window.open('${f.url}', '_blank')">
+                    ${f.type === 'pdf' 
+                        ? `<canvas id="pdf-preview-${idx}" class="pdf-canvas"></canvas>`
+                        : `<img src="${f.url}" alt="${escapeHtml(f.filename)}" onerror="this.outerHTML='<i class=\\'bi bi-file-image\\' style=\\'font-size:3rem;color:#6c757d;\\'></i>'">`
+                    }
+                </div>
+                <div class="file-info">
+                    <div class="form-check mb-2">
+                        <input class="form-check-input file-checkbox" type="checkbox" value="${escapeHtml(f.filename)}" onchange="${onCheckboxChange}()">
+                        <label class="form-check-label file-name">${escapeHtml(f.filename)}</label>
+                    </div>
+                    <div class="file-actions">
+                        <a href="${f.url}" target="_blank" class="btn btn-sm btn-outline-primary flex-fill">
+                            <i class="bi bi-eye"></i>
+                        </a>
+                        <button class="btn btn-sm btn-outline-danger flex-fill" onclick="${onDeleteFile}('${escapeHtml(f.filename)}')">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `).join('');
+    
+    // Render PDF previews
+    files.forEach((f, idx) => {
+        if (f.type === 'pdf') {
+            renderPdfPreview(f.url, `pdf-preview-${idx}`);
+        }
+    });
+}
+
+// ============================================================================
+// FILE OPERATIONS
+// ============================================================================
+
+function deleteFileCommon(url, filename, onSuccess) {
+    if (!confirm(`Delete ${filename}?`)) return;
+    
+    fetch(url, {
+        method: 'DELETE',
+        headers: { 'X-CSRFToken': getCookie('csrftoken') }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            if (onSuccess) onSuccess();
+        } else {
+            alert('Delete failed: ' + (data.error || 'Unknown error'));
+        }
+    })
+    .catch(error => alert('Error: ' + error));
+}
+
+function deleteSelectedFilesCommon(baseUrl, checkboxSelector, onSuccess) {
+    const checked = document.querySelectorAll(`${checkboxSelector}:checked`);
+    if (checked.length === 0) return;
+    
+    if (!confirm(`Delete ${checked.length} selected file(s)?`)) return;
+    
+    const filenames = Array.from(checked).map(cb => cb.value);
+    let completed = 0;
+    
+    filenames.forEach(filename => {
+        fetch(`${baseUrl}${encodeURIComponent(filename)}/`, {
+            method: 'DELETE',
+            headers: { 'X-CSRFToken': getCookie('csrftoken') }
+        })
+        .then(r => r.json())
+        .then(() => {
+            completed++;
+            if (completed === filenames.length && onSuccess) {
+                onSuccess();
+            }
+        });
+    });
+}
+
+function uploadFileCommon(url, formData, filename, onSuccess) {
+    fetch(url, {
+        method: 'POST',
+        body: formData,
+        headers: { 'X-CSRFToken': getCookie('csrftoken') }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            addUploadResult(`${filename} ✓`, 'success');
+        } else {
+            addUploadResult(`${filename} - ${data.error || 'Failed'}`, 'error');
+        }
+        if (onSuccess) onSuccess(data);
+    })
+    .catch(error => {
+        addUploadResult(`${filename} - ${error}`, 'error');
+        if (onSuccess) onSuccess({ success: false, error });
+    });
+}
+
+function uploadMultipleFiles(files, createFormData, onAllComplete) {
+    if (files.length === 0) return;
+    
+    showUploadResults();
+    addUploadResult(`Uploading ${files.length} file(s)...`, 'info');
+    
+    let completed = 0;
+    files.forEach(file => {
+        const { url, formData, filename } = createFormData(file);
+        uploadFileCommon(url, formData, filename, () => {
+            completed++;
+            if (completed === files.length && onAllComplete) {
+                onAllComplete();
+            }
+        });
+    });
+}
+
+// ============================================================================
+// ADDRESS BOOK - ENTITY SPECIFIC (Customer/Vendor)
+// ============================================================================
+
+function loadEntityEmails(url, callback) {
+    fetch(url)
+        .then(r => r.json())
+        .then(emails => {
+            if (callback) callback(emails);
+        })
+        .catch(() => {
+            if (callback) callback([]);
+        });
+}
+
+function renderEntityAddressBook(emails, listId, onUseEmail) {
+    const list = document.getElementById(listId);
+    if (!list) return;
+    
+    if (emails.length === 0) {
+        list.innerHTML = '<p class="text-muted text-center mb-0">No saved emails. Click "Manage Emails" to add.</p>';
+    } else {
+        list.innerHTML = emails.map(email => `
+            <div class="d-flex justify-content-between align-items-center py-1 border-bottom entity-email-item" style="cursor:pointer" onclick="${onUseEmail}('${escapeHtml(email.email)}')">
+                <span class="small">${escapeHtml(email.email)} ${email.label ? '<span class="text-muted">(' + escapeHtml(email.label) + ')</span>' : ''}</span>
+                <button class="btn btn-sm btn-outline-primary px-2 py-0">
+                    <i class="bi bi-arrow-right"></i>
+                </button>
+            </div>
+        `).join('');
+    }
+}
+
+function renderManageEmailsList(emails, listId, onDelete) {
+    const list = document.getElementById(listId);
+    if (!list) return;
+    
+    if (emails.length === 0) {
+        list.innerHTML = '<p class="text-muted text-center">No saved emails yet.</p>';
+    } else {
+        list.innerHTML = emails.map(email => `
+            <div class="d-flex justify-content-between align-items-center mb-2 p-2 bg-light rounded">
+                <div>
+                    <strong>${escapeHtml(email.email)}</strong>
+                    ${email.label ? '<span class="badge bg-secondary ms-2">' + escapeHtml(email.label) + '</span>' : ''}
+                </div>
+                <button class="btn btn-sm btn-danger" onclick="${onDelete}(${email.id})">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </div>
+        `).join('');
+    }
+}
+
+function addEntityEmail(url, entityIdField, entityId, emailInputId, labelInputId, onSuccess) {
+    const email = document.getElementById(emailInputId).value.trim();
+    const label = document.getElementById(labelInputId).value.trim();
+    
+    if (!email) {
+        alert('Please enter an email address');
+        return;
+    }
+    
+    const body = { email, label };
+    body[entityIdField] = entityId;
+    
+    fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+        body: JSON.stringify(body)
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            document.getElementById(emailInputId).value = '';
+            document.getElementById(labelInputId).value = '';
+            if (onSuccess) onSuccess();
+        } else {
+            alert('Error: ' + (data.error || 'Failed to add email'));
+        }
+    })
+    .catch(error => alert('Error: ' + error));
+}
+
+function deleteEntityEmail(url, onSuccess) {
+    if (!confirm('Delete this email?')) return;
+    
+    fetch(url, {
+        method: 'DELETE',
+        headers: { 'X-CSRFToken': getCookie('csrftoken') }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            if (onSuccess) onSuccess();
+        } else {
+            alert('Error deleting email');
+        }
+    })
+    .catch(error => alert('Error: ' + error));
+}
+
+function emailSelectedFilesCommon(url, formData, btn, emailInput) {
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Sending...';
+    
+    fetch(url, {
+        method: 'POST',
+        body: formData,
+        headers: { 'X-CSRFToken': getCookie('csrftoken') }
+    })
+    .then(r => r.json())
+    .then(data => {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+        if (data.success) {
+            alert('Email sent successfully');
+            if (emailInput) emailInput.value = '';
+        } else {
+            alert('Error: ' + (data.error || 'Email failed'));
+        }
+    })
+    .catch(error => {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+        alert('Error: ' + error);
+    });
+}
+
+// ============================================================================
+// TENANT EMAIL FUNCTIONS
+// ============================================================================
+
+let _tenantEmails = [];
+
+function getTenantEmails() {
+    return _tenantEmails;
+}
+
+function loadTenantEmails(callback) {
+    fetch('/api/documents/tenant-emails/')
+        .then(r => r.json())
+        .then(emails => {
+            _tenantEmails = emails;
+            if (callback) callback(emails);
+        })
+        .catch(error => {
+            console.error('Error loading tenant emails:', error);
+            _tenantEmails = [];
+            if (callback) callback([]);
+        });
+}
+
+function renderTenantAddressBook(containerId, onUseEmail) {
+    const list = document.getElementById(containerId);
+    if (!list) return;
+    
+    if (_tenantEmails.length === 0) {
+        list.innerHTML = '<p class="text-muted small mb-0">No saved emails. Click Manage to add.</p>';
+    } else {
+        list.innerHTML = _tenantEmails.map(email => `
+            <div class="d-flex justify-content-between align-items-center py-1 border-bottom">
+                <span class="small">${escapeHtml(email.email)} ${email.label ? '<span class="text-muted">(' + escapeHtml(email.label) + ')</span>' : ''}</span>
+                <button class="btn btn-sm btn-secondary rounded px-2 py-1" onclick="${onUseEmail}('${escapeHtml(email.email)}')" title="Use this email">
+                    <i class="bi bi-arrow-right text-white"></i>
+                </button>
+            </div>
+        `).join('');
+    }
+}
+
+function refreshTenantEmailsManageList(listId, onDelete) {
+    fetch('/api/documents/tenant-emails/')
+        .then(r => r.json())
+        .then(emails => {
+            _tenantEmails = emails;
+            renderManageEmailsList(emails, listId, onDelete);
+        });
+}
+
+function addTenantEmailCommon(emailInputId, labelInputId, onSuccess) {
+    const email = document.getElementById(emailInputId).value.trim();
+    const label = document.getElementById(labelInputId).value.trim();
+    
+    if (!email) {
+        alert('Please enter an email address');
+        return;
+    }
+    
+    fetch('/api/documents/add-tenant-email/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+        body: JSON.stringify({ email, label })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            document.getElementById(emailInputId).value = '';
+            document.getElementById(labelInputId).value = '';
+            if (onSuccess) onSuccess();
+        } else {
+            alert('Error: ' + (data.error || 'Failed to add email'));
+        }
+    })
+    .catch(error => alert('Error: ' + error));
+}
+
+function deleteTenantEmailCommon(emailId, onSuccess) {
+    if (!confirm('Delete this email?')) return;
+    
+    fetch(`/api/documents/delete-tenant-email/${emailId}/`, {
+        method: 'DELETE',
+        headers: { 'X-CSRFToken': getCookie('csrftoken') }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            if (onSuccess) onSuccess();
+        } else {
+            alert('Error deleting email');
+        }
+    })
+    .catch(error => alert('Error: ' + error));
+}
+
+// ============================================================================
+// BULK EMAIL SENDING
+// ============================================================================
+
+function sendBulkEmail(url, formData, btn, emailInput) {
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Sending...';
+    
+    fetch(url, {
+        method: 'POST',
+        body: formData,
+        headers: { 'X-CSRFToken': getCookie('csrftoken') }
+    })
+    .then(r => r.json())
+    .then(data => {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+        if (data.success) {
+            alert('Email sent successfully');
+            if (emailInput) emailInput.value = '';
+        } else {
+            alert('Error: ' + (data.error || 'Email failed'));
+        }
+    })
+    .catch(error => {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+        alert('Error: ' + error);
+    });
+}
+
+// ============================================================================
+// BULK DOWNLOAD
+// ============================================================================
+
+function downloadBulkAsZip(url, ids, idFieldName) {
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = url;
+    
+    const csrfInput = document.createElement('input');
+    csrfInput.type = 'hidden';
+    csrfInput.name = 'csrfmiddlewaretoken';
+    csrfInput.value = getCookie('csrftoken');
+    form.appendChild(csrfInput);
+    
+    ids.forEach(id => {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = idFieldName;
+        input.value = id;
+        form.appendChild(input);
+    });
+    
+    document.body.appendChild(form);
+    form.submit();
+    document.body.removeChild(form);
+}
+
+// ============================================================================
+// TABLE BULK SELECTION
+// ============================================================================
+
+function updateTableBulkActions(checkboxSelector, selectAllId, bulkBarId, countSpanId) {
+    const checked = document.querySelectorAll(`${checkboxSelector}:checked`);
+    const allCheckboxes = document.querySelectorAll(checkboxSelector);
+    const bulkBar = document.getElementById(bulkBarId);
+    const countSpan = document.getElementById(countSpanId);
+    const selectAll = document.getElementById(selectAllId);
+    
+    if (checked.length > 0) {
+        bulkBar.style.display = 'block';
+        countSpan.textContent = `${checked.length} rows selected`;
+    } else {
+        bulkBar.style.display = 'none';
+    }
+    
+    if (selectAll) {
+        selectAll.checked = allCheckboxes.length > 0 && checked.length === allCheckboxes.length;
+        selectAll.indeterminate = checked.length > 0 && checked.length < allCheckboxes.length;
+    }
+}
+
+function toggleTableSelectAll(checkboxSelector, selectAllId) {
+    const selectAll = document.getElementById(selectAllId);
+    const checkboxes = document.querySelectorAll(checkboxSelector);
+    checkboxes.forEach(cb => cb.checked = selectAll.checked);
+}
+
+// ============================================================================
+// FOLDER UPLOAD PROCESSING
+// ============================================================================
+
+function processDroppedItems(items, extractIdFromFilename, uploadFile) {
+    showUploadResults();
+    
+    const promises = [];
+    for (let i = 0; i < items.length; i++) {
+        const entry = items[i].webkitGetAsEntry();
+        if (entry) {
+            promises.push(processEntryCommon(entry, null, extractIdFromFilename));
+        }
+    }
+    
+    return Promise.all(promises).then(results => {
+        const allFiles = results.flat();
+        addUploadResult(`Found ${allFiles.length} file(s) to upload`, 'info');
+        
+        allFiles.forEach(({ file, id }) => {
+            if (id) {
+                uploadFile(file, id);
+            } else {
+                addUploadResult(`${file.name} - No ID found`, 'warning');
+            }
+        });
+        
+        return allFiles;
+    });
+}
+
+function processEntryCommon(entry, folderId, extractIdFromFilename) {
+    return new Promise((resolve) => {
+        if (entry.isFile) {
+            entry.file(file => {
+                const id = folderId || extractIdFromFilename(file.name);
+                resolve([{ file, id }]);
+            });
+        } else if (entry.isDirectory) {
+            const dirId = extractIdFromFilename(entry.name);
+            if (dirId) {
+                addUploadResult(`📁 Folder: ${entry.name} → ID ${dirId}`, 'info');
+            }
+            readDirectoryCommon(entry, dirId || folderId, extractIdFromFilename).then(resolve);
+        } else {
+            resolve([]);
+        }
+    });
+}
+
+function readDirectoryCommon(dirEntry, folderId, extractIdFromFilename) {
+    return new Promise((resolve) => {
+        const allFiles = [];
+        const dirReader = dirEntry.createReader();
+        
+        function readEntries() {
+            dirReader.readEntries(entries => {
+                if (entries.length === 0) {
+                    resolve(allFiles);
+                } else {
+                    const promises = entries.map(entry => processEntryCommon(entry, folderId, extractIdFromFilename));
+                    Promise.all(promises).then(results => {
+                        results.forEach(files => allFiles.push(...files));
+                        readEntries();
+                    });
+                }
+            });
+        }
+        readEntries();
+    });
+}
+
+// ============================================================================
+// FILE INPUT SELECTION
+// ============================================================================
+
+function selectFilesForUpload(accept, multiple, onFilesSelected) {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = accept || 'image/*,application/pdf';
+    input.multiple = multiple !== false;
+    input.onchange = function(e) {
+        if (e.target.files.length > 0) {
+            onFilesSelected(Array.from(e.target.files));
+        }
+    };
+    input.click();
+}
+
 // ============================================================================
 // MODAL HANDLING
 // ============================================================================
@@ -72,12 +834,13 @@ document.addEventListener('hidden.bs.modal', function (event) {
     }
 });
 
-// Hide dropdown when clicking outside
+// Hide dropdowns when clicking outside
 document.addEventListener('click', function(e) {
-    const dropdown = document.getElementById('customer-dropdown');
-    const input = document.getElementById('filter-customer');
-    if (dropdown && input && e.target !== input && !dropdown.contains(e.target)) {
-        dropdown.style.display = 'none';
-    }
+    ['customer-dropdown', 'vendor-dropdown', 'product-dropdown'].forEach(id => {
+        const dropdown = document.getElementById(id);
+        if (dropdown && !e.target.closest(`#${id}`) && !e.target.closest(`[data-dropdown="${id}"]`)) {
+            dropdown.style.display = 'none';
+        }
+    });
 });
 </script>

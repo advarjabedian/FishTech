@@ -108,13 +108,24 @@
             </div>
         </div>
         
-        <!-- Receipts -->
+        <!-- Licenses -->
         <div class="col-md-4">
-            <div class="card document-card bg-danger bg-opacity-10 border-danger">
+            <div class="card document-card bg-danger bg-opacity-10 border-danger" onclick="window.location.href='{% url 'licenses' %}'">
                 <div class="card-body">
-                    <i class="bi bi-receipt document-icon text-danger"></i>
-                    <h5 class="document-title">Receipts</h5>
-                    <p class="document-description">Email Receipts from Vendors</p>
+                    <i class="bi bi-file-earmark-medical document-icon text-danger"></i>
+                    <h5 class="document-title">Licenses</h5>
+                    <p class="document-description">Business Licenses</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Vehicles -->
+        <div class="col-md-4">
+            <div class="card document-card bg-dark bg-opacity-10 border-dark" onclick="window.location.href='{% url 'vehicles' %}'">
+                <div class="card-body">
+                    <i class="bi bi-truck document-icon text-dark"></i>
+                    <h5 class="document-title">Vehicles</h5>
+                    <p class="document-description">Fleet Management</p>
                 </div>
             </div>
         </div>

@@ -60,3 +60,19 @@ def vendor_documents(request):
     
     vendor_id = request.GET.get('vendor_id', None)
     return render(request, 'core/Documents/vendor_documents.html', {'vendor_id': vendor_id})
+
+
+@login_required
+def licenses(request):
+    """Display licenses page"""
+    if not request.tenant:
+        return redirect('login')
+    return render(request, 'core/documents/licenses.html')
+
+
+@login_required
+def vehicles(request):
+    """Display vehicles page"""
+    if not request.tenant:
+        return redirect('login')
+    return render(request, 'core/documents/vehicles.html')

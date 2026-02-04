@@ -119,8 +119,7 @@
         color: white;
     }
     
-    .customer-email-item { cursor: pointer; }
-    .customer-email-item:hover { background: #e9ecef !important; }
+    .entity-email-item:hover { background: #e9ecef !important; }
 </style>
 {% endblock %}
 
@@ -260,7 +259,7 @@
                 <div class="d-flex justify-content-between align-items-center mb-2">
                     <h6 class="mb-0">Files</h6>
                     <div class="form-check">
-                        <input class="form-check-input" type="checkbox" id="selectAllFiles" onchange="toggleSelectAllFiles()">
+                        <input class="form-check-input" type="checkbox" id="selectAllFiles" onchange="toggleSelectAll()">
                         <label class="form-check-label" for="selectAllFiles">Select All</label>
                     </div>
                 </div>
@@ -311,7 +310,6 @@
 <script>
 let currentCustomerId = null;
 let currentCustomerName = null;
-let selectedDropdownIndex = -1;
 let customerEmails = [];
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -325,28 +323,28 @@ document.addEventListener('DOMContentLoaded', function() {
         searchCustomers();
     }
     
-    // Setup autocomplete
-    const nameInput = document.getElementById('filter-customer-name');
-    nameInput.addEventListener('input', debounce(autocompleteCustomers, 300));
-    nameInput.addEventListener('keydown', handleDropdownNavigation);
+    // Setup autocomplete dropdown
+    setupAutocompleteDropdown(
+        'filter-customer-name',
+        'customer-dropdown',
+        '/api/documents/customers/search/',
+        function(item) {
+            if (item.fromEnter) {
+                searchCustomers();
+            } else {
+                searchCustomers();
+            }
+        }
+    );
     
     // Enter key on customer ID
     document.getElementById('filter-customer-id').addEventListener('keydown', function(e) {
         if (e.key === 'Enter') searchCustomers();
     });
     
-    // Hide dropdown on outside click
-    document.addEventListener('click', function(e) {
-        const dropdown = document.getElementById('customer-dropdown');
-        const input = document.getElementById('filter-customer-name');
-        if (e.target !== input && !dropdown.contains(e.target)) {
-            dropdown.style.display = 'none';
-        }
-    });
-    
     // Modal cleanup
     document.getElementById('fileManagerModal').addEventListener('hidden.bs.modal', function () {
-        loadAllCustomers(); // Refresh file counts
+        loadAllCustomers();
     });
 });
 
@@ -392,82 +390,6 @@ function renderCustomersTable(customers) {
             </td>
         </tr>
     `).join('');
-}
-
-function autocompleteCustomers() {
-    const query = document.getElementById('filter-customer-name').value;
-    const dropdown = document.getElementById('customer-dropdown');
-    selectedDropdownIndex = -1;
-    
-    if (query.length < 2) {
-        dropdown.style.display = 'none';
-        return;
-    }
-    
-    fetch(`/api/documents/customers/search/?search=${encodeURIComponent(query)}`)
-        .then(r => r.json())
-        .then(customers => {
-            dropdown.innerHTML = '';
-            if (customers.length > 0) {
-                customers.forEach((c, idx) => {
-                    const item = document.createElement('a');
-                    item.className = 'dropdown-item';
-                    item.href = '#';
-                    item.textContent = c.name;
-                    item.dataset.index = idx;
-                    item.onclick = function(e) {
-                        e.preventDefault();
-                        document.getElementById('filter-customer-name').value = c.name;
-                        dropdown.style.display = 'none';
-                        searchCustomers();
-                    };
-                    dropdown.appendChild(item);
-                });
-                dropdown.style.display = 'block';
-            } else {
-                dropdown.style.display = 'none';
-            }
-        });
-}
-
-function handleDropdownNavigation(e) {
-    const dropdown = document.getElementById('customer-dropdown');
-    const items = dropdown.querySelectorAll('.dropdown-item');
-    
-    if (dropdown.style.display === 'none' || items.length === 0) {
-        if (e.key === 'Enter') searchCustomers();
-        return;
-    }
-    
-    switch(e.key) {
-        case 'ArrowDown':
-            e.preventDefault();
-            selectedDropdownIndex = Math.min(selectedDropdownIndex + 1, items.length - 1);
-            updateDropdownHighlight(items);
-            break;
-        case 'ArrowUp':
-            e.preventDefault();
-            selectedDropdownIndex = Math.max(selectedDropdownIndex - 1, 0);
-            updateDropdownHighlight(items);
-            break;
-        case 'Enter':
-            e.preventDefault();
-            if (selectedDropdownIndex >= 0) {
-                items[selectedDropdownIndex].click();
-            } else {
-                searchCustomers();
-            }
-            break;
-        case 'Escape':
-            dropdown.style.display = 'none';
-            break;
-    }
-}
-
-function updateDropdownHighlight(items) {
-    items.forEach((item, idx) => {
-        item.classList.toggle('active', idx === selectedDropdownIndex);
-    });
 }
 
 function searchCustomers() {
@@ -524,126 +446,20 @@ function loadCustomerFiles() {
     fetch(`/api/documents/customer/${currentCustomerId}/files/`)
         .then(r => r.json())
         .then(data => {
-            renderFiles(data.files || []);
+            renderFileCards(data.files || [], 'fileManagerFiles', 'deleteFile', 'updateBulkBar');
+            updateBulkBar();
         })
         .catch(err => {
             container.innerHTML = '<div class="col-12 text-center text-danger py-4">Error loading files</div>';
         });
 }
 
-function renderFiles(files) {
-    const container = document.getElementById('fileManagerFiles');
-    
-    if (files.length === 0) {
-        container.innerHTML = '<div class="col-12 text-center text-muted py-4">No files uploaded yet</div>';
-        updateBulkBar();
-        return;
-    }
-    
-    container.innerHTML = files.map((f, idx) => `
-        <div class="col-6 col-md-4 col-lg-3">
-            <div class="file-card" data-filename="${escapeHtml(f.filename)}">
-                <div class="file-preview" onclick="window.open('${f.url}', '_blank')">
-                    ${f.type === 'pdf' 
-                        ? `<canvas id="pdf-preview-${idx}" class="pdf-canvas"></canvas>`
-                        : `<img src="${f.url}" alt="${escapeHtml(f.filename)}" onerror="this.outerHTML='<i class=\\'bi bi-file-image\\' style=\\'font-size:3rem;color:#6c757d;\\'></i>'">`
-                    }
-                </div>
-                <div class="file-info">
-                    <div class="form-check mb-2">
-                        <input class="form-check-input file-checkbox" type="checkbox" value="${escapeHtml(f.filename)}" onchange="updateBulkBar()">
-                        <label class="form-check-label file-name">${escapeHtml(f.filename)}</label>
-                    </div>
-                    <div class="file-actions">
-                        <a href="${f.url}" target="_blank" class="btn btn-sm btn-outline-primary flex-fill">
-                            <i class="bi bi-eye"></i>
-                        </a>
-                        <button class="btn btn-sm btn-outline-danger flex-fill" onclick="deleteFile('${escapeHtml(f.filename)}')">
-                            <i class="bi bi-trash"></i>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    `).join('');
-    
-    // Render PDF previews
-    files.forEach((f, idx) => {
-        if (f.type === 'pdf') {
-            renderPdfPreview(f.url, `pdf-preview-${idx}`);
-        }
-    });
-    
-    updateBulkBar();
-}
-
-function renderPdfPreview(url, canvasId) {
-    const canvas = document.getElementById(canvasId);
-    if (!canvas) return;
-    
-    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-    
-    pdfjsLib.getDocument(url).promise.then(pdf => {
-        pdf.getPage(1).then(page => {
-            const context = canvas.getContext('2d');
-            
-            // Use higher scale for better quality, then fit to container
-            const baseViewport = page.getViewport({ scale: 1.5 });
-            const containerWidth = 200;
-            const containerHeight = 120;
-            
-            // Calculate scale to fill the container (crop if needed)
-            const scaleX = containerWidth / baseViewport.width;
-            const scaleY = containerHeight / baseViewport.height;
-            const scale = Math.max(scaleX, scaleY) * 1.5; // Zoom in more
-            
-            const scaledViewport = page.getViewport({ scale: scale });
-            
-            canvas.width = containerWidth;
-            canvas.height = containerHeight;
-            
-            // Center the render (show top portion of page)
-            page.render({
-                canvasContext: context,
-                viewport: scaledViewport
-            });
-        });
-    }).catch(err => {
-        canvas.outerHTML = '<i class="bi bi-file-earmark-pdf pdf-icon"></i>';
-    });
-}
-
 function updateBulkBar() {
-    const checked = document.querySelectorAll('.file-checkbox:checked');
-    const allCheckboxes = document.querySelectorAll('.file-checkbox');
-    const bulkBar = document.getElementById('fileManagerBulkBar');
-    const countSpan = document.getElementById('fileManagerSelectedCount');
-    const selectAll = document.getElementById('selectAllFiles');
-    
-    if (checked.length > 0) {
-        bulkBar.style.display = 'block';
-        countSpan.textContent = `${checked.length} file${checked.length !== 1 ? 's' : ''} selected`;
-    } else {
-        bulkBar.style.display = 'none';
-    }
-    
-    // Update select all checkbox state
-    if (selectAll) {
-        selectAll.checked = allCheckboxes.length > 0 && checked.length === allCheckboxes.length;
-        selectAll.indeterminate = checked.length > 0 && checked.length < allCheckboxes.length;
-    }
-    
-    // Update card visual selection
-    document.querySelectorAll('.file-card').forEach(card => {
-        const checkbox = card.querySelector('.file-checkbox');
-        card.classList.toggle('selected', checkbox && checkbox.checked);
-    });
+    updateFileManagerBulkBar('.file-checkbox', 'fileManagerBulkBar', 'fileManagerSelectedCount', 'selectAllFiles');
 }
 
-function toggleSelectAllFiles() {
-    const selectAll = document.getElementById('selectAllFiles');
-    const checkboxes = document.querySelectorAll('.file-checkbox');
-    checkboxes.forEach(cb => cb.checked = selectAll.checked);
+function toggleSelectAll() {
+    toggleSelectAllFiles('.file-checkbox', 'selectAllFiles');
     updateBulkBar();
 }
 
@@ -652,38 +468,11 @@ function toggleSelectAllFiles() {
 // ============================================================================
 
 function setupDropZone() {
-    const dropZone = document.getElementById('fileManagerDropZone');
-    if (!dropZone || dropZone.dataset.initialized) return;
-    dropZone.dataset.initialized = 'true';
-    
-    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(event => {
-        dropZone.addEventListener(event, e => {
-            e.preventDefault();
-            e.stopPropagation();
-        });
-    });
-    
-    ['dragenter', 'dragover'].forEach(event => {
-        dropZone.addEventListener(event, () => dropZone.classList.add('dragover'));
-    });
-    
-    ['dragleave', 'drop'].forEach(event => {
-        dropZone.addEventListener(event, () => dropZone.classList.remove('dragover'));
-    });
-    
-    dropZone.addEventListener('drop', handleDrop);
-    dropZone.addEventListener('click', selectFiles);
+    setupGenericDropZone('fileManagerDropZone', handleDrop, selectFiles);
 }
 
 function selectFiles() {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'image/*,application/pdf';
-    input.multiple = true;
-    input.onchange = function(e) {
-        processFiles(Array.from(e.target.files));
-    };
-    input.click();
+    selectFilesForUpload('image/*,application/pdf', true, processFiles);
 }
 
 function handleDrop(e) {
@@ -693,61 +482,16 @@ function handleDrop(e) {
 function processFiles(files) {
     if (files.length === 0) return;
     
-    const uploadResults = document.getElementById('uploadResults');
-    const uploadResultsList = document.getElementById('uploadResultsList');
-    
-    uploadResults.style.display = 'block';
-    uploadResultsList.innerHTML = '';
-    
-    addUploadResult(`Uploading ${files.length} file(s)...`, 'info');
-    
-    let completed = 0;
-    files.forEach(file => {
-        uploadFile(file, () => {
-            completed++;
-            if (completed === files.length) {
-                loadCustomerFiles();
-            }
-        });
-    });
-}
-
-function uploadFile(file, callback) {
-    const formData = new FormData();
-    formData.append('customer_id', currentCustomerId);
-    formData.append('file', file);
-    
-    fetch('/api/documents/customer/upload/', {
-        method: 'POST',
-        body: formData,
-        headers: { 'X-CSRFToken': getCookie('csrftoken') }
-    })
-    .then(r => r.json())
-    .then(data => {
-        if (data.success) {
-            addUploadResult(`${file.name} ✓`, 'success');
-        } else {
-            addUploadResult(`${file.name} - ${data.error || 'Failed'}`, 'error');
-        }
-        if (callback) callback();
-    })
-    .catch(error => {
-        addUploadResult(`${file.name} - ${error}`, 'error');
-        if (callback) callback();
-    });
-}
-
-function addUploadResult(message, type) {
-    const list = document.getElementById('uploadResultsList');
-    const item = document.createElement('div');
-    item.className = `upload-result-item upload-${type}`;
-    item.textContent = message;
-    list.appendChild(item);
-}
-
-function clearUploadResults() {
-    document.getElementById('uploadResults').style.display = 'none';
-    document.getElementById('uploadResultsList').innerHTML = '';
+    uploadMultipleFiles(files, function(file) {
+        const formData = new FormData();
+        formData.append('customer_id', currentCustomerId);
+        formData.append('file', file);
+        return {
+            url: '/api/documents/customer/upload/',
+            formData: formData,
+            filename: file.name
+        };
+    }, loadCustomerFiles);
 }
 
 // ============================================================================
@@ -755,44 +499,19 @@ function clearUploadResults() {
 // ============================================================================
 
 function deleteFile(filename) {
-    if (!confirm(`Delete ${filename}?`)) return;
-    
-    fetch(`/api/documents/customer/${currentCustomerId}/files/${encodeURIComponent(filename)}/`, {
-        method: 'DELETE',
-        headers: { 'X-CSRFToken': getCookie('csrftoken') }
-    })
-    .then(r => r.json())
-    .then(data => {
-        if (data.success) {
-            loadCustomerFiles();
-        } else {
-            alert('Delete failed: ' + (data.error || 'Unknown error'));
-        }
-    });
+    deleteFileCommon(
+        `/api/documents/customer/${currentCustomerId}/files/${encodeURIComponent(filename)}/`,
+        filename,
+        loadCustomerFiles
+    );
 }
 
 function deleteSelectedFiles() {
-    const checked = document.querySelectorAll('.file-checkbox:checked');
-    if (checked.length === 0) return;
-    
-    if (!confirm(`Delete ${checked.length} selected file(s)?`)) return;
-    
-    const filenames = Array.from(checked).map(cb => cb.value);
-    let completed = 0;
-    
-    filenames.forEach(filename => {
-        fetch(`/api/documents/customer/${currentCustomerId}/files/${encodeURIComponent(filename)}/`, {
-            method: 'DELETE',
-            headers: { 'X-CSRFToken': getCookie('csrftoken') }
-        })
-        .then(r => r.json())
-        .then(() => {
-            completed++;
-            if (completed === filenames.length) {
-                loadCustomerFiles();
-            }
-        });
-    });
+    deleteSelectedFilesCommon(
+        `/api/documents/customer/${currentCustomerId}/files/`,
+        '.file-checkbox',
+        loadCustomerFiles
+    );
 }
 
 // ============================================================================
@@ -800,33 +519,10 @@ function deleteSelectedFiles() {
 // ============================================================================
 
 function loadCustomerEmails() {
-    fetch(`/api/documents/customer-emails/${currentCustomerId}/`)
-        .then(r => r.json())
-        .then(emails => {
-            customerEmails = emails;
-            renderAddressBook(emails);
-        })
-        .catch(() => {
-            customerEmails = [];
-            renderAddressBook([]);
-        });
-}
-
-function renderAddressBook(emails) {
-    const list = document.getElementById('addressBookList');
-    
-    if (emails.length === 0) {
-        list.innerHTML = '<p class="text-muted text-center mb-0">No saved emails. Click "Manage Emails" to add.</p>';
-    } else {
-        list.innerHTML = emails.map(email => `
-            <div class="d-flex justify-content-between align-items-center py-1 border-bottom customer-email-item" onclick="useEmail('${email.email}')">
-                <span class="small">${email.email} ${email.label ? '<span class="text-muted">(' + email.label + ')</span>' : ''}</span>
-                <button class="btn btn-sm btn-outline-primary px-2 py-0">
-                    <i class="bi bi-arrow-right"></i>
-                </button>
-            </div>
-        `).join('');
-    }
+    loadEntityEmails(`/api/documents/customer-emails/${currentCustomerId}/`, function(emails) {
+        customerEmails = emails;
+        renderEntityAddressBook(emails, 'addressBookList', 'useEmail');
+    });
 }
 
 function useEmail(email) {
@@ -840,76 +536,26 @@ function openManageEmailsModal() {
 }
 
 function refreshManageEmailsList() {
-    fetch(`/api/documents/customer-emails/${currentCustomerId}/`)
-        .then(r => r.json())
-        .then(emails => {
-            customerEmails = emails;
-            const list = document.getElementById('manageEmailsList');
-            
-            if (emails.length === 0) {
-                list.innerHTML = '<p class="text-muted text-center">No saved emails yet.</p>';
-            } else {
-                list.innerHTML = emails.map(email => `
-                    <div class="d-flex justify-content-between align-items-center mb-2 p-2 bg-light rounded">
-                        <div>
-                            <strong>${email.email}</strong>
-                            ${email.label ? '<span class="badge bg-secondary ms-2">' + email.label + '</span>' : ''}
-                        </div>
-                        <button class="btn btn-sm btn-danger" onclick="deleteCustomerEmail(${email.id})">
-                            <i class="bi bi-trash"></i>
-                        </button>
-                    </div>
-                `).join('');
-            }
-            
-            renderAddressBook(emails);
-        });
+    loadEntityEmails(`/api/documents/customer-emails/${currentCustomerId}/`, function(emails) {
+        customerEmails = emails;
+        renderManageEmailsList(emails, 'manageEmailsList', 'deleteCustomerEmail');
+        renderEntityAddressBook(emails, 'addressBookList', 'useEmail');
+    });
 }
 
 function addCustomerEmail() {
-    const email = document.getElementById('newEmailAddress').value.trim();
-    const label = document.getElementById('newEmailLabel').value.trim();
-    
-    if (!email) {
-        alert('Please enter an email address');
-        return;
-    }
-    
-    fetch('/api/documents/add-customer-email/', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': getCookie('csrftoken')
-        },
-        body: JSON.stringify({ customer_id: currentCustomerId, email, label })
-    })
-    .then(r => r.json())
-    .then(data => {
-        if (data.success) {
-            document.getElementById('newEmailAddress').value = '';
-            document.getElementById('newEmailLabel').value = '';
-            refreshManageEmailsList();
-        } else {
-            alert('Error: ' + (data.error || 'Failed to add email'));
-        }
-    });
+    addEntityEmail(
+        '/api/documents/add-customer-email/',
+        'customer_id',
+        currentCustomerId,
+        'newEmailAddress',
+        'newEmailLabel',
+        refreshManageEmailsList
+    );
 }
 
 function deleteCustomerEmail(emailId) {
-    if (!confirm('Delete this email?')) return;
-    
-    fetch(`/api/documents/delete-customer-email/${emailId}/`, {
-        method: 'DELETE',
-        headers: { 'X-CSRFToken': getCookie('csrftoken') }
-    })
-    .then(r => r.json())
-    .then(data => {
-        if (data.success) {
-            refreshManageEmailsList();
-        } else {
-            alert('Error deleting email');
-        }
-    });
+    deleteEntityEmail(`/api/documents/delete-customer-email/${emailId}/`, refreshManageEmailsList);
 }
 
 function emailSelectedFiles(btn) {
@@ -930,47 +576,12 @@ function emailSelectedFiles(btn) {
     
     const filenames = Array.from(checked).map(cb => cb.value);
     
-    const originalText = btn.innerHTML;
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Sending...';
-    
     const formData = new FormData();
     formData.append('customer_id', currentCustomerId);
     emails.forEach(email => formData.append('emails', email));
     filenames.forEach(filename => formData.append('filenames', filename));
     
-    fetch('/api/documents/customer/email-files/', {
-        method: 'POST',
-        body: formData,
-        headers: { 'X-CSRFToken': getCookie('csrftoken') }
-    })
-    .then(r => r.json())
-    .then(data => {
-        btn.disabled = false;
-        btn.innerHTML = originalText;
-        if (data.success) {
-            alert(`Email sent to ${emails.join(', ')}`);
-            emailInput.value = '';
-        } else {
-            alert('Error: ' + (data.error || 'Email failed'));
-        }
-    })
-    .catch(error => {
-        btn.disabled = false;
-        btn.innerHTML = originalText;
-        alert('Error: ' + error);
-    });
-}
-
-// ============================================================================
-// UTILITIES
-// ============================================================================
-
-function escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
+    emailSelectedFilesCommon('/api/documents/customer/email-files/', formData, btn, emailInput);
 }
 </script>
 {% endblock %}
