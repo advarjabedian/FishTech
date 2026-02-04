@@ -227,4 +227,11 @@ urlpatterns = [
     path('api/documents/vehicles/add/', add_vehicle_api, name='add_vehicle_api'),
     path('api/documents/vehicles/<int:vehicle_id>/update/', update_vehicle_api, name='update_vehicle_api'),
     path('api/documents/vehicles/<int:vehicle_id>/delete/', delete_vehicle_api, name='delete_vehicle_api'),
+
+        # Vehicles
+    path('documents/vehicles/', vehicles, name='vehicles'),
+    path('api/vehicles/', get_vehicles_api, name='get_vehicles_api'),
+    path('api/vehicles/add/', add_vehicle_api, name='add_vehicle_api'),
+    path('api/vehicles/<int:vehicle_id>/update/', update_vehicle_api, name='update_vehicle_api'),
+    path('api/vehicles/<int:vehicle_id>/delete/', delete_vehicle_api, name='delete_vehicle_api'),
 ]

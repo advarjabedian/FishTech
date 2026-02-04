@@ -1,0 +1,417 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Vehicles - FishTech{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <h2>Vehicle Fleet</h2>
+            
+            <div class="mb-3">
+                <a href="{% url 'documents_home' %}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Back to Documents Home
+                </a>
+                <button type="button" class="btn btn-primary ms-2" onclick="showAddModal()">
+                    <i class="bi bi-plus-lg"></i> Add Vehicle
+                </button>
+            </div>
+
+            <!-- Filters -->
+            <div class="card mb-3">
+                <div class="card-body">
+                    <div class="row g-2">
+                        <div class="col-md-3">
+                            <label class="form-label small text-muted mb-1">Company</label>
+                            <select class="form-select form-select-sm" id="companyFilter">
+                                <option value="">All Companies</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small text-muted mb-1">Status</label>
+                            <select class="form-select form-select-sm" id="statusFilter">
+                                <option value="">All Status</option>
+                                <option value="Active">Active</option>
+                                <option value="Inactive">Inactive</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Vehicles Table -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Fleet Vehicles</h5>
+                </div>
+                <div class="card-body table-responsive">
+                    <table class="table table-striped table-hover table-sm">
+                        <thead>
+                            <tr>
+                                <th>Year</th>
+                                <th>Make</th>
+                                <th>Model</th>
+                                <th>VIN</th>
+                                <th>License Plate</th>
+                                <th>#</th>
+                                <th>Driver</th>
+                                <th>DMV Renewal</th>
+                                <th>Company</th>
+                                <th>Status</th>
+                                <th>Title</th>
+                                <th>CARB #</th>
+                                <th>Dash Cam</th>
+                                <th style="width: 100px;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="vehiclesTableBody">
+                            <tr><td colspan="14" class="text-center text-muted">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add/Edit Modal -->
+<div class="modal fade" id="vehicleModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalTitle">Add Vehicle</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="vehicleId">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <label class="form-label">Year</label>
+                        <input type="number" class="form-control" id="vYear" min="1900" max="2100">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Make</label>
+                        <input type="text" class="form-control" id="vMake">
+                    </div>
+                    <div class="col-md-5">
+                        <label class="form-label">Model</label>
+                        <input type="text" class="form-control" id="vModel">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">VIN #</label>
+                        <input type="text" class="form-control" id="vVin" maxlength="17">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">License Plate</label>
+                        <input type="text" class="form-control" id="vLicensePlate">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Vehicle Number</label>
+                        <input type="text" class="form-control" id="vNumber">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Driver</label>
+                        <input type="text" class="form-control" id="vDriver">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">DMV Renewal Date</label>
+                        <input type="date" class="form-control" id="vDmvRenewal">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Company</label>
+                        <select class="form-select" id="vCompany">
+                            <option value="">-- Select --</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Status</label>
+                        <select class="form-select" id="vStatus">
+                            <option value="">-- Select --</option>
+                            <option value="Active">Active</option>
+                            <option value="Inactive">Inactive</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Title</label>
+                        <input type="text" class="form-control" id="vTitle">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">CARB #</label>
+                        <input type="text" class="form-control" id="vCarb">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Dash Cam</label>
+                        <input type="text" class="form-control" id="vDashCam">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="saveVehicle()">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.expiring-soon { background-color: #fff3cd !important; }
+.expired { background-color: #f8d7da !important; }
+.badge { font-size: 0.75em; vertical-align: middle; margin-left: 5px; }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+    'use strict';
+    
+    var vehiclesCache = [];
+    var companiesCache = [];
+    
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+    
+    function init() {
+        loadVehicles();
+        document.getElementById('companyFilter').addEventListener('change', filterTable);
+        document.getElementById('statusFilter').addEventListener('change', filterTable);
+    }
+    
+    function loadVehicles() {
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', '{% url "get_vehicles_api" %}', true);
+        
+        xhr.onload = function() {
+            var tbody = document.getElementById('vehiclesTableBody');
+            
+            if (xhr.status === 200) {
+                try {
+                    var data = JSON.parse(xhr.responseText);
+                    vehiclesCache = data.vehicles || [];
+                    companiesCache = data.companies || [];
+                    
+                    // Populate company filter dropdown
+                    var companyFilter = document.getElementById('companyFilter');
+                    companyFilter.innerHTML = '<option value="">All Companies</option>';
+                    companiesCache.forEach(function(c) {
+                        companyFilter.innerHTML += '<option value="' + c.id + '">' + escapeHtml(c.name) + '</option>';
+                    });
+                    
+                    // Populate modal company dropdown
+                    var modalCompany = document.getElementById('vCompany');
+                    modalCompany.innerHTML = '<option value="">-- Select --</option>';
+                    companiesCache.forEach(function(c) {
+                        modalCompany.innerHTML += '<option value="' + c.id + '">' + escapeHtml(c.name) + '</option>';
+                    });
+                    
+                    if (!vehiclesCache || vehiclesCache.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="14" class="text-center text-muted">No vehicles added yet</td></tr>';
+                        return;
+                    }
+                    
+                    renderTable(vehiclesCache);
+                } catch (e) {
+                    tbody.innerHTML = '<tr><td colspan="14" class="text-center text-danger">Error loading vehicles</td></tr>';
+                    console.error('Parse error:', e);
+                }
+            } else {
+                tbody.innerHTML = '<tr><td colspan="14" class="text-center text-danger">Error loading vehicles</td></tr>';
+            }
+        };
+        xhr.onerror = function() {
+            document.getElementById('vehiclesTableBody').innerHTML = '<tr><td colspan="14" class="text-center text-danger">Network error</td></tr>';
+        };
+        xhr.send();
+    }
+    
+    function renderTable(vehicles) {
+        var tbody = document.getElementById('vehiclesTableBody');
+        var today = new Date();
+        var thirtyDays = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000);
+        
+        var html = '';
+        vehicles.forEach(function(v) {
+            var rowClass = '';
+            if (v.dmv_renewal_date) {
+                var exp = new Date(v.dmv_renewal_date);
+                if (exp < today) rowClass = 'expired';
+                else if (exp < thirtyDays) rowClass = 'expiring-soon';
+            }
+            
+            html += '<tr class="' + rowClass + '" data-company-id="' + (v.company_id || '') + '" data-status="' + escapeHtml(v.status || '') + '">';
+            html += '<td>' + (v.year || '-') + '</td>';
+            html += '<td>' + escapeHtml(v.make || '-') + '</td>';
+            html += '<td>' + escapeHtml(v.model || '-') + '</td>';
+            html += '<td style="font-size:0.85em">' + escapeHtml(v.vin || '-') + '</td>';
+            html += '<td>' + escapeHtml(v.license_plate || '-') + '</td>';
+            html += '<td>' + escapeHtml(v.number || '-') + '</td>';
+            html += '<td>' + escapeHtml(v.driver || '-') + '</td>';
+            html += '<td>';
+            if (v.dmv_renewal_date) {
+                html += v.dmv_renewal_date;
+                var exp = new Date(v.dmv_renewal_date);
+                if (exp < today) {
+                    html += ' <span class="badge bg-danger">Expired</span>';
+                } else if (exp < thirtyDays) {
+                    var daysLeft = Math.ceil((exp - today) / (1000 * 60 * 60 * 24));
+                    html += ' <span class="badge bg-warning text-dark">' + daysLeft + ' days</span>';
+                }
+            } else {
+                html += '-';
+            }
+            html += '</td>';
+            html += '<td>' + escapeHtml(v.company_name || '-') + '</td>';
+            html += '<td>' + escapeHtml(v.status || '-') + '</td>';
+            html += '<td>' + escapeHtml(v.title || '-') + '</td>';
+            html += '<td style="font-size:0.85em">' + escapeHtml(v.carb_number || '-') + '</td>';
+            html += '<td>' + escapeHtml(v.dash_cam || '-') + '</td>';
+            html += '<td>';
+            html += '<button class="btn btn-sm btn-outline-primary me-1" onclick="editVehicle(' + v.id + ')"><i class="bi bi-pencil"></i></button>';
+            html += '<button class="btn btn-sm btn-outline-danger" onclick="deleteVehicle(' + v.id + ')"><i class="bi bi-trash"></i></button>';
+            html += '</td>';
+            html += '</tr>';
+        });
+        tbody.innerHTML = html;
+    }
+    
+    window.showAddModal = function() {
+        document.getElementById('vehicleId').value = '';
+        document.getElementById('modalTitle').textContent = 'Add Vehicle';
+        document.getElementById('vYear').value = '';
+        document.getElementById('vMake').value = '';
+        document.getElementById('vModel').value = '';
+        document.getElementById('vVin').value = '';
+        document.getElementById('vLicensePlate').value = '';
+        document.getElementById('vNumber').value = '';
+        document.getElementById('vDriver').value = '';
+        document.getElementById('vDmvRenewal').value = '';
+        document.getElementById('vCompany').value = '';
+        document.getElementById('vStatus').value = '';
+        document.getElementById('vTitle').value = '';
+        document.getElementById('vCarb').value = '';
+        document.getElementById('vDashCam').value = '';
+        new bootstrap.Modal(document.getElementById('vehicleModal')).show();
+    };
+    
+    window.editVehicle = function(id) {
+        var v = vehiclesCache.find(function(x) { return x.id === id; });
+        if (!v) {
+            alert('Vehicle not found');
+            return;
+        }
+        
+        document.getElementById('vehicleId').value = v.id;
+        document.getElementById('modalTitle').textContent = 'Edit Vehicle';
+        document.getElementById('vYear').value = v.year || '';
+        document.getElementById('vMake').value = v.make || '';
+        document.getElementById('vModel').value = v.model || '';
+        document.getElementById('vVin').value = v.vin || '';
+        document.getElementById('vLicensePlate').value = v.license_plate || '';
+        document.getElementById('vNumber').value = v.number || '';
+        document.getElementById('vDriver').value = v.driver || '';
+        document.getElementById('vDmvRenewal').value = v.dmv_renewal_date || '';
+        document.getElementById('vCompany').value = v.company_id || '';
+        document.getElementById('vStatus').value = v.status || '';
+        document.getElementById('vTitle').value = v.title || '';
+        document.getElementById('vCarb').value = v.carb_number || '';
+        document.getElementById('vDashCam').value = v.dash_cam || '';
+        new bootstrap.Modal(document.getElementById('vehicleModal')).show();
+    };
+    
+    window.saveVehicle = function() {
+        var id = document.getElementById('vehicleId').value;
+        var data = {
+            year: document.getElementById('vYear').value || null,
+            make: document.getElementById('vMake').value,
+            model: document.getElementById('vModel').value,
+            vin: document.getElementById('vVin').value,
+            license_plate: document.getElementById('vLicensePlate').value,
+            number: document.getElementById('vNumber').value,
+            driver: document.getElementById('vDriver').value,
+            dmv_renewal_date: document.getElementById('vDmvRenewal').value || null,
+            company_id: document.getElementById('vCompany').value || null,
+            status: document.getElementById('vStatus').value,
+            title: document.getElementById('vTitle').value,
+            carb_number: document.getElementById('vCarb').value,
+            dash_cam: document.getElementById('vDashCam').value
+        };
+        
+        var url = id ? '{% url "update_vehicle_api" 0 %}'.replace('/0/', '/' + id + '/') : '{% url "add_vehicle_api" %}';
+        
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', url, true);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.setRequestHeader('X-CSRFToken', getCookie('csrftoken'));
+        
+        xhr.onload = function() {
+            if (xhr.status === 200) {
+                var resp = JSON.parse(xhr.responseText);
+                if (resp.success) {
+                    bootstrap.Modal.getInstance(document.getElementById('vehicleModal')).hide();
+                    loadVehicles();
+                } else {
+                    alert('Error: ' + (resp.error || 'Unknown error'));
+                }
+            } else {
+                alert('Error saving vehicle');
+            }
+        };
+        xhr.onerror = function() {
+            alert('Network error');
+        };
+        xhr.send(JSON.stringify(data));
+    };
+    
+    window.deleteVehicle = function(id) {
+        if (!confirm('Delete this vehicle?')) return;
+        
+        var url = '{% url "delete_vehicle_api" 0 %}'.replace('/0/', '/' + id + '/');
+        
+        var xhr = new XMLHttpRequest();
+        xhr.open('DELETE', url, true);
+        xhr.setRequestHeader('X-CSRFToken', getCookie('csrftoken'));
+        
+        xhr.onload = function() {
+            if (xhr.status === 200) {
+                loadVehicles();
+            } else {
+                alert('Delete failed');
+            }
+        };
+        xhr.send();
+    };
+    
+    function filterTable() {
+        var companyFilter = document.getElementById('companyFilter').value;
+        var statusFilter = document.getElementById('statusFilter').value;
+        var rows = document.querySelectorAll('#vehiclesTableBody tr');
+        
+        rows.forEach(function(row) {
+            var companyId = row.getAttribute('data-company-id') || '';
+            var status = row.getAttribute('data-status') || '';
+            var showCompany = !companyFilter || companyId === companyFilter;
+            var showStatus = !statusFilter || status === statusFilter;
+            row.style.display = (showCompany && showStatus) ? '' : 'none';
+        });
+    }
+    
+    function getCookie(name) {
+        var value = '; ' + document.cookie;
+        var parts = value.split('; ' + name + '=');
+        if (parts.length === 2) return parts.pop().split(';').shift();
+        return '';
+    }
+    
+    function escapeHtml(str) {
+        if (!str) return '';
+        var div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    }
+})();
+</script>
+{% endblock %}

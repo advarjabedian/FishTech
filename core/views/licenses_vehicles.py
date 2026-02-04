@@ -9,6 +9,7 @@ from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_exempt
 from django.conf import settings
 from ..models import License, Vehicle, User, Company, UserCompany
+from django.views.decorators.http import require_http_methods
 
 logger = logging.getLogger(__name__)
 
@@ -368,4 +369,169 @@ def delete_vehicle_api(request, vehicle_id):
         
     except Exception as e:
         logger.error(f"Error deleting vehicle: {str(e)}")
+        return JsonResponse({'success': False, 'error': str(e)})
+    
+
+# =============================================================================
+# VEHICLES API FUNCTIONS - Add these to core/views/licenses_vehicles.py
+# =============================================================================
+
+@login_required
+def vehicles(request):
+    """Display the vehicles page"""
+    return render(request, 'core/documents/vehicles.html')
+
+
+@login_required
+def get_vehicles_api(request):
+    """Get all vehicle records for tenant"""
+    if not request.tenant:
+        return JsonResponse({'error': 'No tenant'}, status=403)
+    
+    try:
+        vehicles = Vehicle.objects.filter(tenant=request.tenant).order_by('-created_at')
+        
+        files = []
+        for v in vehicles:
+            files.append({
+                'id': v.id,
+                'year': v.year,
+                'make': v.make,
+                'model': v.model,
+                'vin': v.vin,
+                'license_plate': v.license_plate,
+                'number': v.number,
+                'driver': v.driver,
+                'dmv_renewal_date': v.dmv_renewal_date.isoformat() if v.dmv_renewal_date else None,
+                'company_id': None,
+                'company_name': v.company,
+                'status': v.status,
+                'title': v.title,
+                'carb_number': v.carb_number,
+                'dash_cam': v.dash_cam,
+                'created_at': v.created_at.isoformat() if v.created_at else None
+            })
+        
+        # Get companies for dropdown
+        companies = Company.objects.filter(tenant=request.tenant).order_by('companyname')
+        companies_list = [{'id': c.companyid, 'name': c.companyname} for c in companies]
+        
+        return JsonResponse({'vehicles': files, 'companies': companies_list})
+        
+    except Exception as e:
+        import logging
+        logging.error(f"Error in get_vehicles_api: {str(e)}")
+        return JsonResponse({'vehicles': [], 'companies': [], 'error': str(e)})
+
+
+@login_required
+@require_http_methods(["POST"])
+def add_vehicle_api(request):
+    """Add a new vehicle"""
+    if not request.tenant:
+        return JsonResponse({'success': False, 'error': 'No tenant'}, status=403)
+    
+    try:
+        import json
+        data = json.loads(request.body)
+        
+        # Get company name if company_id provided
+        company_name = None
+        company_id = data.get('company_id')
+        if company_id:
+            try:
+                company = Company.objects.get(companyid=company_id, tenant=request.tenant)
+                company_name = company.companyname
+            except Company.DoesNotExist:
+                pass
+        
+        vehicle = Vehicle.objects.create(
+            tenant=request.tenant,
+            year=data.get('year') or None,
+            make=data.get('make') or None,
+            model=data.get('model') or None,
+            vin=data.get('vin') or None,
+            license_plate=data.get('license_plate') or None,
+            number=data.get('number') or None,
+            driver=data.get('driver') or None,
+            dmv_renewal_date=data.get('dmv_renewal_date') or None,
+            company=company_name,
+            status=data.get('status') or None,
+            title=data.get('title') or None,
+            carb_number=data.get('carb_number') or None,
+            dash_cam=data.get('dash_cam') or None
+        )
+        
+        return JsonResponse({'success': True, 'id': vehicle.id})
+        
+    except Exception as e:
+        import logging
+        logging.error(f"Error adding vehicle: {str(e)}")
+        return JsonResponse({'success': False, 'error': str(e)})
+
+
+@login_required
+@require_http_methods(["POST"])
+def update_vehicle_api(request, vehicle_id):
+    """Update a vehicle"""
+    if not request.tenant:
+        return JsonResponse({'success': False, 'error': 'No tenant'}, status=403)
+    
+    try:
+        import json
+        data = json.loads(request.body)
+        
+        vehicle = Vehicle.objects.get(id=vehicle_id, tenant=request.tenant)
+        
+        vehicle.year = data.get('year') or None
+        vehicle.make = data.get('make') or None
+        vehicle.model = data.get('model') or None
+        vehicle.vin = data.get('vin') or None
+        vehicle.license_plate = data.get('license_plate') or None
+        vehicle.number = data.get('number') or None
+        vehicle.driver = data.get('driver') or None
+        vehicle.dmv_renewal_date = data.get('dmv_renewal_date') or None
+        # Get company name if company_id provided
+        company_id = data.get('company_id')
+        if company_id:
+            try:
+                company = Company.objects.get(companyid=company_id, tenant=request.tenant)
+                vehicle.company = company.companyname
+            except Company.DoesNotExist:
+                vehicle.company = None
+        else:
+            vehicle.company = None
+        vehicle.status = data.get('status') or None
+        vehicle.title = data.get('title') or None
+        vehicle.carb_number = data.get('carb_number') or None
+        vehicle.dash_cam = data.get('dash_cam') or None
+        vehicle.save()
+        
+        return JsonResponse({'success': True})
+        
+    except Vehicle.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Vehicle not found'}, status=404)
+    except Exception as e:
+        import logging
+        logging.error(f"Error updating vehicle: {str(e)}")
+        return JsonResponse({'success': False, 'error': str(e)})
+
+
+@login_required
+@require_http_methods(["DELETE"])
+def delete_vehicle_api(request, vehicle_id):
+    """Delete a vehicle"""
+    if not request.tenant:
+        return JsonResponse({'success': False, 'error': 'No tenant'}, status=403)
+    
+    try:
+        vehicle = Vehicle.objects.get(id=vehicle_id, tenant=request.tenant)
+        vehicle.delete()
+        return JsonResponse({'success': True})
+        
+    except Vehicle.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Vehicle not found'}, status=404)
+    except Exception as e:
+        import logging
+        logging.error(f"Error deleting vehicle: {str(e)}")
         return JsonResponse({'success': False, 'error': str(e)})
