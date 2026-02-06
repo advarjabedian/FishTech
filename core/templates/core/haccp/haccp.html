@@ -120,10 +120,10 @@
                     {% for company in companies %}
                     <div class="col-md-6 col-lg-4 mb-4">
                         <div class="card company-card border-warning">
-                            <div class="card-header bg-warning text-white" style="min-height: 90px;">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <h5 class="mb-0" style="max-width: 55%;">{{ company.companyname }}</h5>
-                        <div class="d-flex flex-column align-items-end gap-1 company-header-actions" id="header-actions-{{ company.companyid }}"></div>
+                            <div class="card-header bg-warning text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">{{ company.companyname }}</h5>
+                        <div class="d-flex align-items-center gap-1 company-header-actions" id="header-actions-{{ company.companyid }}"></div>
                     </div>
                 </div>
                             <div class="card-body">
@@ -131,10 +131,11 @@
                                 <div class="d-flex flex-wrap" id="product-types-{{ company.companyid }}">
                                     <!-- Product types will be loaded via JS -->
                                 </div>
-                                <div class="mt-3">
+                                <div class="mt-3 d-flex flex-column gap-2">
                                     <button class="btn btn-warning btn-sm w-100" onclick="toggleProductTypeManager({{ company.companyid }})">
                                         <i class="bi bi-gear me-1"></i>Manage Product Types
                                     </button>
+                                    <div id="print-btn-{{ company.companyid }}"></div>
                                 </div>
                             </div>
                         </div>
@@ -420,13 +421,14 @@ function loadProductTypes(companyId) {
                 actionsContainer.appendChild(complianceBadge);
             }
             
-            // Show Print button if there are completed types
-            if (companyCompletedTypes[companyId].length > 0) {
-                const printBtn = document.createElement('button');
-                printBtn.className = 'btn btn-sm btn-light print-btn';
-                printBtn.innerHTML = '<i class="bi bi-printer me-1"></i>Print';
-                printBtn.onclick = (e) => { e.stopPropagation(); openPrintModal(companyId); };
-                actionsContainer.appendChild(printBtn);
+            // Show Print button below Manage Product Types
+            const printContainer = document.getElementById(`print-btn-${companyId}`);
+            if (printContainer) {
+                if (companyCompletedTypes[companyId].length > 0) {
+                    printContainer.innerHTML = `<button class="btn btn-outline-secondary btn-sm w-100" onclick="openPrintModal(${companyId})"><i class="bi bi-printer me-1"></i>Print Documents</button>`;
+                } else {
+                    printContainer.innerHTML = '';
+                }
             }
         })
         .catch(err => console.error('Error loading product types:', err));
