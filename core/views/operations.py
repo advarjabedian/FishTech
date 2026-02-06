@@ -68,7 +68,7 @@ def operations_dashboard(request):
     
     for parent in existing_inspections:
         inspector = User.objects.filter(id=parent.user_inspected_id).first()
-        inspector_name = f"{inspector.first_name} {inspector.last_name}" if inspector else "Unknown"
+        inspector_name = (inspector.get_full_name() or inspector.username) if inspector else "Unknown"
         
         # Get valid SOP IDs for this shift (filtered by date)
         if parent.shift == 'Pre-Op':

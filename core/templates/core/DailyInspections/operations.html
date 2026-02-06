@@ -431,7 +431,7 @@ function checkAdminPassword(e) {
                     </div>
                     
                     <!-- Images Viewer -->
-                    <div id="images-viewer-container" style="height: calc(100% - 50px); overflow-y: auto; display: none;">
+                    <div id="images-viewer-container" style="height: calc(100% - 50px); overflow-y: auto; overflow-x: hidden; display: none;">
                         <div id="images-content"></div>
                     </div>
                 </div>
@@ -728,14 +728,15 @@ function checkAdminPassword(e) {
 }
     
     function downloadCurrentReport() {
-    let url;
-    if (currentReportType === 'operational') {
-        url = `/operations/report/operational/${currentReportParentId}/?download=1`;
-    } else {
-        url = `/operations/report/deviations/${currentReportParentId}/?download=1`;
+        // Download combined report (operational + deviations)
+        const params = new URLSearchParams({
+            company_id: '{{ selected_company_id }}',
+            dates: '{{ selected_date }}',
+            include_operational: '1',
+            include_deviations: '1'
+        });
+        window.open(`/operations/bulk-report/?${params.toString()}`, '_blank');
     }
-    window.open(url, '_blank');
-}
 
     // Verification Modal Functions
     let currentVerificationParentId = null;
