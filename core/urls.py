@@ -37,7 +37,7 @@ from .views import (
     delete_product_type, get_inactive_product_types, restore_product_type,
     update_product_type,
     set_haccp_owner, get_company_certificates, save_company_certificate,
-    view_company_certificate, add_company, edit_company, delete_company,
+    view_company_certificate, haccp_print_set, add_company, edit_company, delete_company,
     # User management
     manage_users, add_user, edit_user, delete_user, update_company_logo,
     toggle_user_company, toggle_user_admin,
@@ -71,6 +71,7 @@ urlpatterns = [
     path('haccp/', haccp, name='haccp'),
     path('haccp/<int:company_id>/', haccp_company, name='haccp_company'),
     path('haccp/<int:company_id>/<slug:product_type>/', haccp_documents, name='haccp_documents'),
+    path('haccp/<int:company_id>/<slug:product_type>/print/', haccp_print_set, name='haccp_print_set'),
     path('haccp/<int:company_id>/<slug:product_type>/<str:document_type>/', haccp_document_view, name='haccp_document_view'),
     path('haccp/certificate/<int:company_id>/<str:certificate_type>/', view_company_certificate, name='view_company_certificate'),
     

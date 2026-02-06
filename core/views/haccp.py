@@ -1163,3 +1163,79 @@ def delete_company(request, company_id):
         
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)})
+
+
+@login_required
+def haccp_print_set(request, company_id, product_type):
+    """Print all 4 HACCP documents for the latest completed version"""
+    if not request.tenant:
+        return redirect('admin:index')
+    
+    current_year = datetime.now().year
+    
+    if company_id == 0:
+        company = type('obj', (object,), {
+            'companyid': 0,
+            'companyname': 'Master Set'
+        })()
+    else:
+        company = get_object_or_404(Company, companyid=company_id)
+    
+    pt_obj = HACCPProductType.objects.filter(slug=product_type).first()
+    product_type_name = pt_obj.name if pt_obj else product_type
+    
+    # Find latest completed version from master set (company=None)
+    completed_sets = HACCPDocument.objects.filter(
+        company_id=None,
+        product_type=product_type,
+        year=current_year
+    ).values('version').annotate(
+        total_docs=Count('id'),
+        completed_docs=Count('id', filter=Q(status='completed'))
+    ).filter(total_docs=4, completed_docs=4).order_by('-version')
+    
+    if not completed_sets.exists():
+        return render(request, 'core/haccp/haccp_print_set.html', {
+            'error': f'No completed document set found for {product_type_name} in {current_year}',
+            'company': company,
+            'product_type': product_type_name,
+        })
+    
+    version = completed_sets.first()['version']
+    
+    doc_types = ['product_description', 'flow_chart', 'hazard_analysis', 'ccp_summary']
+    doc_type_names = {
+        'product_description': 'Product Description',
+        'flow_chart': 'Flow Chart',
+        'hazard_analysis': 'Hazard Analysis',
+        'ccp_summary': 'CCP Summary'
+    }
+    
+    documents = []
+    for dt in doc_types:
+        doc = HACCPDocument.objects.filter(
+            company_id=None,
+            product_type=product_type,
+            document_type=dt,
+            year=current_year,
+            version=version
+        ).first()
+        
+        if doc:
+            doc_data = doc.document_data or {}
+            documents.append({
+                'type': dt,
+                'type_name': doc_type_names[dt],
+                'document': doc,
+                'data': doc_data,
+                'data_json': json.dumps(doc_data),
+            })
+    
+    return render(request, 'core/haccp/haccp_print_set.html', {
+        'company': company,
+        'product_type': product_type_name,
+        'product_type_slug': product_type,
+        'documents': documents,
+        'version': version,
+        'year': current_year,
+    })

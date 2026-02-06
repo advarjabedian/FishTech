@@ -1,0 +1,331 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Print HACCP Set - {{ product_type }}{% endblock %}
+
+{% block extra_css %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+    @media print {
+        .no-print { display: none !important; }
+        .print-document { page-break-after: always; }
+        .print-document:last-child { page-break-after: auto; }
+        .document-container { border: none !important; box-shadow: none !important; padding: 10px !important; }
+        body { font-size: 11pt; }
+        .container { max-width: 100% !important; padding: 0 !important; margin: 0 !important; }
+        .print-table th, .print-table td { padding: 6px 8px !important; }
+        h6 { break-after: avoid !important; page-break-after: avoid !important; }
+        .print-table { page-break-inside: auto !important; break-inside: auto !important; }
+        .print-table tbody { page-break-inside: auto !important; break-inside: auto !important; }
+        .print-table tr { page-break-inside: auto !important; break-inside: auto !important; }
+        .print-table td { page-break-inside: auto !important; break-inside: auto !important; overflow: visible !important; }
+        pre.print-value { page-break-inside: auto; break-inside: auto; overflow: visible; white-space: pre-wrap !important; }
+        .print-document .document-container { page-break-inside: auto !important; break-inside: auto !important; overflow: visible !important; }
+    }
+    .print-document { margin-bottom: 40px; }
+    .document-container { max-width: 100%; }
+    .print-table { width: 100%; border-collapse: collapse; }
+    .print-table th, .print-table td { border: 1px solid #333; padding: 8px 10px; vertical-align: top; }
+    .print-table th { background: #f0f0f0; font-weight: bold; text-align: left; }
+    .doc-header { display: grid; grid-template-columns: 1fr 2fr 1fr; gap: 10px; align-items: start; border-bottom: 2px solid #dee2e6; padding-bottom: 15px; margin-bottom: 20px; }
+    .doc-footer { display: grid; grid-template-columns: 1fr 1fr 2fr; gap: 10px; align-items: end; border-top: 2px solid #dee2e6; padding-top: 8px; margin-top: 15px; }
+    .signature-img { max-width: 200px; max-height: 60px; }
+    .hazard-step { margin-bottom: 15px; }
+    .hazard-step-header { background: #f8f9fa; padding: 8px 12px; border: 1px solid #dee2e6; border-bottom: none; border-radius: 4px 4px 0 0; }
+    .hazard-table { width: 100%; border-collapse: collapse; }
+    .hazard-table th, .hazard-table td { border: 1px solid #dee2e6; padding: 6px 8px; font-size: 0.85rem; vertical-align: top; }
+    .hazard-table th { background: #e9ecef; }
+    .ccp-table { width: 100%; border-collapse: collapse; }
+    .ccp-table th, .ccp-table td { border: 1px solid #dee2e6; padding: 6px 8px; font-size: 0.85rem; vertical-align: top; }
+    .ccp-table th { background: #e9ecef; }
+    pre.print-value { white-space: pre-wrap; word-wrap: break-word; font-family: inherit; margin: 0; background: none; border: none; padding: 0; font-size: inherit; }
+    .flow-box { position: absolute; border: 2px solid #0d6efd; border-radius: 8px; padding: 8px 16px; background: #f8f9fa; min-width: 120px; max-width: 200px; word-wrap: break-word; text-align: center; }
+    .flow-box-label { font-weight: bold; font-size: 0.9rem; }
+    .flow-arrow-line { fill: none; stroke: #6c757d; stroke-width: 2; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    {% if error %}
+    <div class="alert alert-warning">
+        <i class="bi bi-exclamation-triangle me-2"></i>{{ error }}
+        <div class="mt-2"><a href="{% url 'haccp' %}" class="btn btn-secondary btn-sm">Back to HACCP</a></div>
+    </div>
+    {% else %}
+    
+    <div class="d-flex justify-content-between align-items-center mb-4 no-print">
+        <div>
+            <h2>{{ company.companyname }} &mdash; {{ product_type }} &mdash; Print Set</h2>
+            <span class="badge bg-secondary">Version {{ version }}</span>
+            <span class="badge bg-success">Year {{ year }}</span>
+        </div>
+        <div>
+            <button class="btn btn-info me-2" onclick="printAll()">
+                <i class="bi bi-printer me-1"></i>Print All
+            </button>
+            <a href="{% url 'haccp' %}" class="btn btn-secondary">Back to HACCP</a>
+        </div>
+    </div>
+    
+    {% for doc_item in documents %}
+    <div class="print-document">
+        <div class="document-container" style="border: 1px solid #dee2e6; padding: 25px; background: white; margin-bottom: 20px;">
+            
+            <!-- Header -->
+            <div class="doc-header" {% if company.companyid != 0 %}style="grid-template-columns: 120px 1fr 2fr 1fr;"{% endif %}>
+                {% if company.companyid != 0 and company.logo %}
+                <div>
+                    <img src="{{ company.logo }}" alt="{{ company.companyname }} Logo" style="max-width: 100px; height: auto;">
+                    <div class="mt-1"><strong>{{ company.companyname }}</strong></div>
+                </div>
+                {% endif %}
+                <div>
+                    <strong>Originated:</strong><br>
+                    {{ doc_item.document.originated_date|date:"m/d/Y"|default:"-" }}<br>
+                    <strong>By:</strong> {{ doc_item.document.originated_by|default:"-" }}
+                </div>
+                <div style="text-align: center;">
+                    <h3 class="mb-1">HACCP {{ doc_item.type_name }}</h3>
+                    <h5 class="text-muted mb-1" style="text-transform: uppercase;">{{ product_type }}</h5>
+                    <div style="display: inline-block; font-size: 0.9rem; padding: 4px 10px; background: #e9ecef; border-radius: 4px;">SQF &mdash; 2.4.3</div>
+                </div>
+                <div style="text-align: right;">
+                    <strong>Version:</strong> {{ version }}<br>
+                    <strong>Year:</strong> {{ year }}
+                </div>
+            </div>
+            
+            <!-- PRODUCT DESCRIPTION -->
+            {% if doc_item.type == 'product_description' %}
+            <table class="print-table">
+                <tbody>
+                {% for row in doc_item.data.rows %}
+                <tr>
+                    <th style="width: 25%;">{{ row.label }}</th>
+                    <td><pre class="print-value">{{ row.value }}</pre></td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="2" class="text-muted">No data</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            {% endif %}
+            
+            <!-- FLOW CHART -->
+            {% if doc_item.type == 'flow_chart' %}
+            <div id="flowChartPrintCanvas" style="position: relative; width: 100%; min-height: 400px; background: white;"></div>
+            <script>window.flowChartPrintData = {{ doc_item.data_json|safe }};</script>
+            {% endif %}
+            
+            <!-- HAZARD ANALYSIS -->
+            {% if doc_item.type == 'hazard_analysis' %}
+            {% for step in doc_item.data.steps %}
+            <div class="hazard-step">
+                <div class="hazard-step-header">
+                    <h5 class="mb-0">{{ step.stepNumber }}. {{ step.stepName }}</h5>
+                </div>
+                <table class="hazard-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 8%;">Hazard Type</th>
+                            <th style="width: 18%;">Hazard Description</th>
+                            <th style="width: 7%;">Sig.?</th>
+                            <th style="width: 40%;">Justification</th>
+                            <th style="width: 22%;">Control Measures/Programs</th>
+                            <th style="width: 5%;">CCP?</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Biological</td>
+                            <td>{{ step.biological.description }}</td>
+                            <td>{{ step.biological.significant|default:"-" }}</td>
+                            <td>{{ step.biological.justification }}</td>
+                            <td rowspan="3">{{ step.controls }}</td>
+                            <td rowspan="3">{% if step.isCCP %}&#10004;{% endif %}</td>
+                        </tr>
+                        <tr>
+                            <td>Physical</td>
+                            <td>{{ step.physical.description }}</td>
+                            <td>{{ step.physical.significant|default:"-" }}</td>
+                            <td>{{ step.physical.justification }}</td>
+                        </tr>
+                        <tr>
+                            <td>Chemical</td>
+                            <td>{{ step.chemical.description }}</td>
+                            <td>{{ step.chemical.significant|default:"-" }}</td>
+                            <td>{{ step.chemical.justification }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            {% empty %}
+            <p class="text-muted">No hazard analysis data</p>
+            {% endfor %}
+            {% endif %}
+            
+            <!-- CCP SUMMARY -->
+            {% if doc_item.type == 'ccp_summary' %}
+            {% for ccp in doc_item.data.ccps %}
+            <div class="hazard-step mb-4">
+                <div class="hazard-step-header">
+                    <h5 class="mb-0">CCP #{{ ccp.ccpNumber }} - {{ ccp.processStep }}</h5>
+                </div>
+                <table class="ccp-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 14%;">Hazard</th>
+                            <th style="width: 16%;">Critical Limit</th>
+                            <th style="width: 18%;">Monitoring</th>
+                            <th style="width: 20%;">Corrective Actions</th>
+                            <th style="width: 16%;">Records</th>
+                            <th style="width: 16%;">Verification</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>{{ ccp.hazard }}</td>
+                            <td>{{ ccp.criticalLimit }}</td>
+                            <td>{{ ccp.monitoring }}</td>
+                            <td>{{ ccp.correctiveActions }}</td>
+                            <td>{{ ccp.records }}</td>
+                            <td>{{ ccp.verification }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            {% empty %}
+            <p class="text-muted">No CCP data</p>
+            {% endfor %}
+            {% endif %}
+            
+            <!-- Footer -->
+            <div class="doc-footer">
+                <div>
+                    <strong>Approved By:</strong><br>
+                    {{ doc_item.document.approved_by|default:"—" }}
+                </div>
+                <div>
+                    <strong>Date Approved:</strong><br>
+                    {{ doc_item.document.approved_date|date:"m/d/Y"|default:"—" }}
+                </div>
+                <div style="text-align: center;">
+                    <strong>Signature:</strong><br>
+                    {% if doc_item.document.approved_signature %}
+                    <img src="{{ doc_item.document.approved_signature }}" class="signature-img" alt="Signature">
+                    {% else %}
+                    —
+                    {% endif %}
+                </div>
+            </div>
+            
+        </div>
+    </div>
+    {% endfor %}
+    
+    {% endif %}
+</div>
+
+<script>
+function renderFlowChartForPrint() {
+    const container = document.getElementById('flowChartPrintCanvas');
+    if (!container || !window.flowChartPrintData || !window.flowChartPrintData.flowChart) return;
+
+    container.innerHTML = '';
+    const data = window.flowChartPrintData.flowChart;
+    const boxes = data.boxes || [];
+    const arrows = data.arrows || [];
+
+    if (boxes.length === 0) {
+        container.innerHTML = '<p class="text-muted">No flow chart data</p>';
+        return;
+    }
+
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.style.cssText = 'position:absolute;width:100%;height:100%;pointer-events:none;';
+    svg.innerHTML = '<defs><marker id="ah" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto"><polygon points="0 0,10 3.5,0 7" fill="#6c757d"/></marker><marker id="ah-r" markerWidth="10" markerHeight="7" refX="0" refY="3.5" orient="auto"><polygon points="10 0,0 3.5,10 7" fill="#6c757d"/></marker></defs>';
+    container.appendChild(svg);
+
+    boxes.forEach(function(box) {
+        const div = document.createElement('div');
+        div.id = 'fc-' + box.id;
+        div.className = 'flow-box';
+        div.style.cssText = 'position:absolute;left:' + box.x + 'px;top:' + box.y + 'px;';
+        div.innerHTML = '<div class="flow-box-label">' + box.label + '</div>';
+        container.appendChild(div);
+    });
+
+    setTimeout(function() {
+        arrows.forEach(function(arrow) {
+            const fb = boxes.find(function(b) { return b.id === arrow.from; });
+            const tb = boxes.find(function(b) { return b.id === arrow.to; });
+            if (!fb || !tb) return;
+
+            const fe = document.getElementById('fc-' + arrow.from);
+            const te = document.getElementById('fc-' + arrow.to);
+            if (!fe || !te) return;
+
+            const fw = fe.offsetWidth, fh = fe.offsetHeight;
+            const tw = te.offsetWidth, th = te.offsetHeight;
+
+            const line = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            let d;
+
+            if (arrow.isCircleBack) {
+                const vo = arrow.verticalOffset || 30;
+                const ho = arrow.horizontalOffset || 30;
+                const fx = fb.x + fw/2, fy = fb.y;
+                const tx = tb.x + tw, ty = tb.y + th/2;
+                d = 'M '+fx+' '+fy+' L '+fx+' '+(fy-vo)+' L '+(tx+ho)+' '+(fy-vo)+' L '+(tx+ho)+' '+ty+' L '+tx+' '+ty;
+            } else {
+                const isV = Math.abs(tb.y - fb.y) > Math.abs(tb.x - fb.x);
+                if (isV) {
+                    d = 'M '+(fb.x+fw/2)+' '+(fb.y+fh)+' L '+(fb.x+fw/2)+' '+tb.y;
+                } else {
+                    d = 'M '+(fb.x+fw)+' '+(fb.y+fh/2)+' L '+tb.x+' '+(fb.y+fh/2);
+                }
+            }
+
+            line.setAttribute('d', d);
+            line.setAttribute('class', 'flow-arrow-line');
+            const dir = arrow.direction || 'forward';
+            if (dir === 'forward') line.setAttribute('marker-end', 'url(#ah)');
+            else if (dir === 'reverse') line.setAttribute('marker-start', 'url(#ah-r)');
+            else { line.setAttribute('marker-start', 'url(#ah-r)'); line.setAttribute('marker-end', 'url(#ah)'); }
+            svg.appendChild(line);
+        });
+
+        let maxY = 0;
+        boxes.forEach(function(box) {
+            const el = document.getElementById('fc-' + box.id);
+            if (el) maxY = Math.max(maxY, box.y + el.offsetHeight);
+        });
+        container.style.height = (maxY + 50) + 'px';
+    }, 50);
+}
+
+function printAll() {
+    const fc = document.getElementById('flowChartPrintCanvas');
+    if (fc && typeof html2canvas !== 'undefined') {
+        html2canvas(fc, { scale: 2, backgroundColor: '#ffffff' }).then(function(canvas) {
+            const origHTML = fc.innerHTML;
+            const origHeight = fc.style.height;
+            fc.innerHTML = '<img src="' + canvas.toDataURL('image/png') + '" style="width:100%;height:auto;">';
+            fc.style.height = 'auto';
+            setTimeout(function() {
+                window.print();
+                setTimeout(function() {
+                    fc.innerHTML = origHTML;
+                    fc.style.height = origHeight;
+                    renderFlowChartForPrint();
+                }, 500);
+            }, 300);
+        });
+    } else {
+        window.print();
+    }
+}
+
+document.addEventListener('DOMContentLoaded', renderFlowChartForPrint);
+</script>
+{% endblock %}

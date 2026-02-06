@@ -89,9 +89,12 @@
                     {% for company in companies %}
                     <div class="col-md-6 col-lg-4 mb-4">
                         <div class="card company-card border-warning">
-                            <div class="card-header bg-warning text-white">
-                                <h5 class="mb-0">{{ company.companyname }}</h5>
-                            </div>
+                            <div class="card-header bg-warning text-white" style="min-height: 90px;">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <h5 class="mb-0" style="max-width: 55%;">{{ company.companyname }}</h5>
+                        <div class="d-flex flex-column align-items-end gap-1 company-header-actions" id="header-actions-{{ company.companyid }}"></div>
+                    </div>
+                </div>
                             <div class="card-body">
                                 <p class="text-muted mb-3">Product Types:</p>
                                 <div class="d-flex flex-wrap" id="product-types-{{ company.companyid }}">
@@ -200,12 +203,27 @@
     </div>
 </div>
 
+<!-- Print Modal -->
+<div class="modal fade" id="printModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="printModalTitle"><i class="bi bi-printer me-2"></i>Print Documents</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="printModalBody"></div>
+        </div>
+    </div>
+</div>
+
 <script>
 let productTypes = [];
 let productTypeModal;
 let masterVersionHistoryModal;
 let manageProductTypesModal;
 let recycleBinModal;
+let printModal;
+let companyCompletedTypes = {};
 let currentMasterProductType = '';
 let currentMasterProductName = '';
 let masterSelectedYear = {% now "Y" %};
@@ -248,6 +266,7 @@ document.addEventListener('DOMContentLoaded', function() {
     masterVersionHistoryModal = new bootstrap.Modal(document.getElementById('masterVersionHistoryModal'));
     manageProductTypesModal = new bootstrap.Modal(document.getElementById('manageProductTypesModal'));
     recycleBinModal = new bootstrap.Modal(document.getElementById('recycleBinModal'));
+    printModal = new bootstrap.Modal(document.getElementById('printModal'));
     
     loadAllProductTypes().then(() => {
         loadMasterProductTypes();
@@ -345,40 +364,38 @@ function loadProductTypes(companyId) {
                     const pt = productTypes.find(p => p.slug === slug);
                     const name = pt ? pt.name : slug;
                     const badge = document.createElement('span');
-                    badge.className = `badge ${isCompleted ? 'bg-success' : 'bg-secondary'} me-2 mb-2`;
-                    badge.style.cursor = 'pointer';
+                    badge.className = 'badge product-type-badge ' + (isCompleted ? 'bg-success' : 'bg-secondary');
+                    badge.style.cssText = 'cursor: pointer; font-size: 0.95rem; padding: 8px 14px; margin-bottom: 6px;';
                     badge.innerHTML = isCompleted 
-                        ? `<i class="bi bi-check-circle-fill me-1"></i>${name}`
-                        : name;
+                        ? `<i class="bi bi-check-circle-fill me-1"></i>${pt.name}`
+                        : pt.name;
                     badge.onclick = () => window.location.href = `/haccp/${companyId}/${slug}/`;
                     container.appendChild(badge);
                 });
             }
             
+            // Store completed types for print modal
+            companyCompletedTypes[companyId] = data.completed_types || [];
+            
             // Update compliance status
-            const companyCard = container.closest('.card');
-            const companyHeader = companyCard.querySelector('.card-header h5');
-            let complianceBadge = companyHeader.querySelector('.compliance-badge');
-            let certIcons = companyHeader.querySelector('.cert-icons');
+            const actionsContainer = document.getElementById(`header-actions-${companyId}`);
+            actionsContainer.innerHTML = '';
             
             if (allComplete && renderedCount > 0) {
-                if (!complianceBadge) {
-                    complianceBadge = document.createElement('span');
-                    complianceBadge.className = 'badge bg-success ms-2 compliance-badge';
-                    complianceBadge.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i>In Compliance';
-                    companyHeader.appendChild(complianceBadge);
-                }
-                
-                if (!certIcons) {
-                    loadCertificateIcons(companyId, companyHeader);
-                }
-            } else {
-                if (complianceBadge) {
-                    complianceBadge.remove();
-                }
-                if (certIcons) {
-                    certIcons.remove();
-                }
+                const complianceBadge = document.createElement('span');
+                complianceBadge.className = 'badge bg-success compliance-badge';
+                complianceBadge.style.cssText = 'font-size: 0.95rem; padding: 8px 14px;';
+                complianceBadge.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i>In Compliance';
+                actionsContainer.appendChild(complianceBadge);
+            }
+            
+            // Show Print button if there are completed types
+            if (companyCompletedTypes[companyId].length > 0) {
+                const printBtn = document.createElement('button');
+                printBtn.className = 'btn btn-sm btn-light print-btn';
+                printBtn.innerHTML = '<i class="bi bi-printer me-1"></i>Print';
+                printBtn.onclick = (e) => { e.stopPropagation(); openPrintModal(companyId); };
+                actionsContainer.appendChild(printBtn);
             }
         })
         .catch(err => console.error('Error loading product types:', err));
@@ -421,6 +438,34 @@ function loadCertificateIcons(companyId, companyHeader) {
             }
         })
         .catch(err => console.error('Error loading certificates:', err));
+}
+
+function openPrintModal(companyId) {
+    const companyCard = document.getElementById(`product-types-${companyId}`).closest('.card');
+    const companyName = companyCard.querySelector('.card-header h5').childNodes[0].textContent.trim();
+    document.getElementById('printModalTitle').innerHTML = `<i class="bi bi-printer me-2"></i>Print - ${companyName}`;
+    
+    let html = '<h6 class="mb-2">Certificates</h6>';
+    html += '<div class="d-flex flex-wrap gap-2 mb-4">';
+    html += `<a href="/haccp/certificate/${companyId}/haccp_certificate/" class="btn btn-success"><i class="bi bi-file-earmark-text me-1"></i>HACCP Certificate</a>`;
+    html += `<a href="/haccp/certificate/${companyId}/letter_of_guarantee/" class="btn btn-success"><i class="bi bi-file-earmark-check me-1"></i>Letter of Guarantee</a>`;
+    html += '</div>';
+    
+    const completedSlugs = companyCompletedTypes[companyId] || [];
+    if (completedSlugs.length > 0) {
+        html += '<h6 class="mb-2">Print Full HACCP Plans</h6>';
+        html += '<div class="d-flex flex-wrap gap-2">';
+        completedSlugs.forEach(slug => {
+            const pt = productTypes.find(p => p.slug === slug);
+            if (pt) {
+                html += `<a href="/haccp/${companyId}/${slug}/print/" class="btn btn-info text-white"><i class="bi bi-printer me-1"></i>${pt.name}</a>`;
+            }
+        });
+        html += '</div>';
+    }
+    
+    document.getElementById('printModalBody').innerHTML = html;
+    printModal.show();
 }
 
 function toggleProductTypeManager(companyId) {
