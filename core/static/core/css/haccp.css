@@ -605,8 +605,6 @@
     .hazard-step-header {
         padding: 4px 8px !important;
         margin: 0 !important;
-        break-after: avoid !important;
-        page-break-after: avoid !important;
     }
     
     .hazard-step .hazard-table {
@@ -658,6 +656,24 @@
     #ccpSummaryTable textarea {
         height: auto !important;
         min-height: auto !important;
+        overflow: visible !important;
+    }
+
+    /* CCP Summary: allow table to break across pages */
+    .hazard-table.ccp-columns,
+    .hazard-table.ccp-columns tbody,
+    .hazard-table.ccp-columns tr {
+        page-break-inside: auto !important;
+        break-inside: auto !important;
+    }
+    
+    .hazard-table.ccp-columns thead {
+        display: table-header-group;
+    }
+    
+    .hazard-table.ccp-columns td {
+        page-break-inside: auto !important;
+        break-inside: auto !important;
         overflow: visible !important;
     }
     
