@@ -501,7 +501,7 @@
 /* ==================== PRINT STYLES ==================== */
 @media print {
     @page {
-        margin: 0.3in 0.3in;
+        margin: 0.2in 0.15in;
     }
     
     .no-print,
@@ -640,8 +640,19 @@
         margin: 0 !important;
     }
 
-    .hazard-table textarea {
+    .hazard-table textarea,
+    .hazard-step .hazard-table textarea {
         display: none !important;
+    }
+
+    .ccp-print-div {
+        display: block !important;
+        white-space: pre-wrap !important;
+        word-wrap: break-word !important;
+        font-size: 9px !important;
+        line-height: 1.3 !important;
+        padding: 2px 3px !important;
+        margin: 0 !important;
     }
     
     #ccpSummaryTable textarea {
@@ -673,6 +684,33 @@
         print-color-adjust: exact !important;
     }
 
- 
+   
+
+    /* CCP Summary table print column widths */
+    .ccp-columns th:nth-child(1) { width: 10% !important; }
+    .ccp-columns th:nth-child(2) { width: 18% !important; }
+    .ccp-columns th:nth-child(3) { width: 22% !important; }
+    .ccp-columns th:nth-child(4) { width: 22% !important; }
+    .ccp-columns th:nth-child(5) { width: 11% !important; }
+    .ccp-columns th:nth-child(6) { width: 17% !important; }
+
+ .document-header {
+        padding-bottom: 2px !important;
+        margin-bottom: 2px !important;
+        border-bottom-width: 1px !important;
+    }
+    
+    .metadata-section {
+        margin-bottom: 0 !important;
+        padding-bottom: 0 !important;
+    }
+    
+    .document-container {
+        padding: 5px !important;
+        margin: 0 !important;
+        max-width: 100% !important;
+        border: none !important;
+        box-shadow: none !important;
+    }
     
 }
