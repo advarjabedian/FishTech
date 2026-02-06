@@ -494,6 +494,23 @@ def delete_zone(request):
         return JsonResponse({'success': False, 'error': str(e)})
 
 
+@require_http_methods(["POST"])
+@login_required
+def update_zone(request):
+    """Rename a zone"""
+    if not request.tenant:
+        return JsonResponse({'success': False, 'error': 'Not authenticated'})
+    
+    try:
+        data = json.loads(request.body)
+        zone = Zone.objects.get(id=data['zone_id'])
+        zone.name = data['name']
+        zone.save()
+        return JsonResponse({'success': True})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+
 @require_http_methods(["GET"])
 @login_required
 def get_calendar_data(request):

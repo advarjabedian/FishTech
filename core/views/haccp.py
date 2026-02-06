@@ -1239,3 +1239,40 @@ def haccp_print_set(request, company_id, product_type):
         'version': version,
         'year': current_year,
     })
+
+
+@require_http_methods(["POST"])
+def delete_haccp_version_set(request, company_id, product_type):
+    """Delete an entire HACCP version set (all 4 documents)"""
+    if not request.tenant:
+        return JsonResponse({'success': False, 'error': 'Not authenticated'})
+    
+    try:
+        data = json.loads(request.body)
+        year = int(data.get('year'))
+        version = int(data.get('version'))
+        
+        # Don't allow deleting the active (latest fully completed) version
+        completed_sets = HACCPDocument.objects.filter(
+            company_id=company_id if company_id != 0 else None,
+            product_type=product_type,
+            year=year
+        ).values('version').annotate(
+            total_docs=Count('id'),
+            completed_docs=Count('id', filter=Q(status='completed'))
+        ).filter(total_docs=4, completed_docs=4).order_by('-version')
+        
+        if completed_sets.exists() and completed_sets.first()['version'] == version:
+            return JsonResponse({'success': False, 'error': 'Cannot delete the active version'})
+        
+        deleted_count, _ = HACCPDocument.objects.filter(
+            company_id=company_id if company_id != 0 else None,
+            product_type=product_type,
+            year=year,
+            version=version
+        ).delete()
+        
+        return JsonResponse({'success': True, 'message': f'Deleted {deleted_count} document(s)'})
+        
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})

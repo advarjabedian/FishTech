@@ -21,6 +21,37 @@
         box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
         border-color: #dc3545;
     }
+    .version-table {
+        width: 100%;
+    }
+    .version-table th {
+        background-color: #f8f9fa;
+        padding: 12px;
+        text-align: left;
+        border: 1px solid #dee2e6;
+    }
+    .version-table td {
+        padding: 12px;
+        border: 1px solid #dee2e6;
+    }
+    .version-table tr:hover {
+        background-color: #f8f9fa;
+        cursor: pointer;
+    }
+    #masterVersionHistoryModal .modal-body {
+        color: #000;
+    }
+    #masterVersionHistoryModal table {
+        color: #000;
+    }
+    #masterVersionHistoryModal .badge {
+        color: #fff !important;
+    }
+    #masterYearNavigation .year-btn.active {
+        background-color: #0d6efd;
+        color: white;
+        border-color: #0d6efd;
+    }
 </style>
 {% endblock %}
 
@@ -620,13 +651,14 @@ function renderMasterVersionTable(versions) {
     newVersionBtn.style.display = (!inProgressSet && (activeSet || versions.length === 0)) ? 'block' : 'none';
     
     let html = `
-        <table class="table table-hover">
+        <table class="version-table">
             <thead>
                 <tr>
                     <th>Year</th>
                     <th>Version</th>
                     <th>Status</th>
                     <th>Last Updated</th>
+                    <th style="width: 50px; text-align: center;"></th>
                 </tr>
             </thead>
             <tbody>
@@ -653,18 +685,49 @@ function renderMasterVersionTable(versions) {
             rowClass = 'table-warning';
         }
         
+        const canDelete = !isActiveSet;
+        
         html += `
             <tr class="${rowClass}" onclick="viewMasterVersion(${v.year}, ${v.version})" style="cursor: pointer;">
                 <td>${v.year}</td>
                 <td>${versionLabel}</td>
                 <td><span class="badge bg-${badgeColor}">${v.status_display}</span></td>
                 <td>${new Date(v.updated_at).toLocaleDateString()}</td>
+                <td onclick="event.stopPropagation();">
+                    ${canDelete ? `<button class="btn btn-sm btn-outline-danger" onclick="deleteMasterVersion(${v.year}, ${v.version})" title="Delete version"><i class="bi bi-trash"></i></button>` : ''}
+                </td>
             </tr>
         `;
     });
     
     html += `</tbody></table>`;
     contentDiv.innerHTML = html;
+}
+
+function deleteMasterVersion(year, version) {
+    if (!confirm(`Delete version ${version} for year ${year}? This will delete all 4 documents in this version and cannot be undone.`)) return;
+    
+    fetch(`/api/haccp-delete-version-set/0/${currentMasterProductType}/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({ year: year, version: version })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message || 'Version deleted');
+            loadMasterVersionsForYear(masterSelectedYear);
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(err => {
+        console.error('Error:', err);
+        alert('Error deleting version');
+    });
 }
 
 function viewMasterVersion(year, version) {

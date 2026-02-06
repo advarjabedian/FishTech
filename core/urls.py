@@ -32,7 +32,7 @@ from .views import (
     haccp, haccp_company, haccp_documents, haccp_document_view,
     haccp_save_document, get_company_product_types, toggle_company_product_type,
     generate_new_version, get_version_history, get_flow_chart_data,
-    get_hazard_analysis_data, delete_haccp_version, get_haccp_version,
+    get_hazard_analysis_data, delete_haccp_version, delete_haccp_version_set, get_haccp_version,
     get_master_product_types, get_all_product_types, add_product_type,
     delete_product_type, get_inactive_product_types, restore_product_type,
     update_product_type,
@@ -49,7 +49,7 @@ from .views import (
     submit_verification, save_verifier_signature, get_verifier_signature,
     save_monitor_signature, get_monitor_signature, get_operations_config,
     get_sop_list, create_sop, update_sop, delete_sop, get_zones, create_zone,
-    delete_zone, get_calendar_data, get_inspection_images, get_companies, check_order_emails_api, get_email_settings_api, save_email_settings_api, test_email_connection_api,
+    update_zone, delete_zone, get_calendar_data, get_inspection_images, get_companies, check_order_emails_api, get_email_settings_api, save_email_settings_api, test_email_connection_api,
     twilio_sms_webhook, get_twilio_settings_api, save_twilio_settings_api, test_twilio_connection_api
 )
 from .views.operations_reports import generate_operational_report, generate_deviations_report, generate_bulk_report
@@ -84,6 +84,7 @@ urlpatterns = [
     path('api/haccp-flow-chart-data/<int:company_id>/<slug:product_type>/', get_flow_chart_data, name='get_flow_chart_data'),
     path('api/haccp-hazard-analysis-data/<int:company_id>/<slug:product_type>/', get_hazard_analysis_data, name='get_hazard_analysis_data'),
     path('api/haccp-delete-version/<int:company_id>/<slug:product_type>/<str:document_type>/', delete_haccp_version, name='delete_haccp_version'),
+    path('api/haccp-delete-version-set/<int:company_id>/<slug:product_type>/', delete_haccp_version_set, name='delete_haccp_version_set'),
     path('api/haccp-get-version/<int:company_id>/<slug:product_type>/<str:document_type>/', get_haccp_version, name='get_haccp_version'),
     path('api/haccp-master-product-types/', get_master_product_types, name='get_master_product_types'),
     path('api/haccp-all-product-types/', get_all_product_types, name='api_haccp_all_product_types'),
@@ -141,6 +142,7 @@ urlpatterns = [
     path('api/operations/sop-delete/', delete_sop, name='delete_sop'),
     path('api/operations/zones/', get_zones, name='get_zones'),
     path('api/operations/zone-create/', create_zone, name='create_zone'),
+    path('api/operations/zone-update/', update_zone, name='update_zone'),
     path('api/operations/zone-delete/', delete_zone, name='delete_zone'),
     path('api/operations/get-calendar-data/', get_calendar_data, name='get_calendar_data'),
     path('api/operations/get-inspection-images/<int:parent_id>/', get_inspection_images, name='get_inspection_images'),
