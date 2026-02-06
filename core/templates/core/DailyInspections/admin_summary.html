@@ -40,7 +40,7 @@
                     {% if company.config.company.logo %}
                     <img src="{{ company.config.company.logo }}" alt="{{ company.name }}" style="width: 50px; height: 35px; object-fit: contain; margin-right: 10px;">
                     {% endif %}
-                    <strong>{{ company.name }}</strong>
+                    <strong style="text-decoration: underline;">{{ company.name }}</strong>
                 </div>
             </td>
             
@@ -67,7 +67,7 @@
             <!-- Incomplete Days -->
             <td class="text-center" style="border-right: 2px solid #dc3545;">
                 <a href="{% url 'operations_admin' %}?company_id={{ company.id }}&filter=incomplete" 
-                   style="color: {% if company.incomplete_count > 0 %}#dc3545{% else %}#000{% endif %}; font-weight: bold; font-size: 1.1em; text-decoration: none;">
+                   style="color: {% if company.incomplete_count > 0 %}#dc3545{% else %}#000{% endif %}; font-weight: bold; font-size: 1.1em; text-decoration: underline;">
                     {{ company.incomplete_count }}
                 </a>
             </td>
@@ -98,7 +98,7 @@
             <!-- Unverified Logs -->
             <td class="text-center" style="border-right: 2px solid #0d6efd;">
                 <a href="{% url 'operations_admin' %}?company_id={{ company.id }}&filter=unverified" 
-                   style="color: {% if company.unverified_count > 0 %}#0d6efd{% else %}#000{% endif %}; font-weight: bold; font-size: 1.1em; text-decoration: none;">
+                   style="color: {% if company.unverified_count > 0 %}#0d6efd{% else %}#000{% endif %}; font-weight: bold; font-size: 1.1em; text-decoration: underline;">
                     {{ company.unverified_count }}
                 </a>
             </td>

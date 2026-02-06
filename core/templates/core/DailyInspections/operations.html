@@ -522,7 +522,7 @@ function checkAdminPassword(e) {
     
     function handleDateChange(dateValue) {
     const selectedCompanyId = '{{ selected_company_id }}';
-    window.location.href = `/operations/?date=${dateValue}&company_id=${selectedCompanyId}`;
+    window.location.href = `/operations/daily/?date=${dateValue}&company_id=${selectedCompanyId}`;
 }
     
     function handleShiftClick(shift) {
