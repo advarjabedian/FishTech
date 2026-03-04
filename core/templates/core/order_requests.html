@@ -202,7 +202,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function loadUsers() {
-    fetch('/api/operations/get-companies/')
+    fetch('/api/order-requests/users/')
         .then(r => r.json())
         .then(data => {
             users = data.users || [];

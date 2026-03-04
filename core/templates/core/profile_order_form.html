@@ -1,0 +1,495 @@
+{% extends 'core/base.html' %}
+{% block title %}{{ customer.name }} - Profile Order{% endblock %}
+
+{% block extra_css %}
+<style>
+.item-card {
+    border-bottom: 1px solid #dee2e6;
+    padding: 10px 12px;
+    position: relative;
+}
+.item-card:hover { background-color: #f8f9fa; }
+.item-card-content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.item-description { flex: 1; min-width: 0; }
+.item-name { font-weight: 600; font-size: 0.95rem; }
+.item-details { font-size: 0.8rem; color: #6c757d; margin-top: 2px; }
+.item-details span { margin-right: 12px; }
+.item-totals {
+    text-align: right;
+    min-width: 120px;
+    font-size: 0.85rem;
+    color: #495057;
+}
+.item-quantity { display: flex; align-items: center; gap: 6px; }
+.quantity-input { width: 80px; text-align: center; }
+.grand-totals-footer {
+    background: #343a40;
+    color: white;
+    padding: 12px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: bold;
+}
+.sticky-header {
+    position: sticky;
+    top: 56px;
+    z-index: 100;
+}
+.collapsible-header { cursor: pointer; }
+
+/* Calendar */
+.calendar-day-container { flex: 1; text-align: center; }
+.calendar-day-btn { width: 100%; padding: 6px 2px; font-size: 0.85rem; }
+.calendar-weekdays { border-bottom: 1px solid #dee2e6; margin-bottom: 8px; }
+.calendar-day-header { flex: 1; text-align: center; font-size: 0.8rem; color: #6c757d; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-3">
+
+    <!-- Back + Header -->
+    <div class="d-flex align-items-center gap-2 mb-3">
+        <a href="{% url 'customer_list' %}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left"></i> Back
+        </a>
+        <h4 class="mb-0">{{ customer.name }}</h4>
+        {% if customer.city %}<span class="text-muted small">{{ customer.city }}, {{ customer.state }}</span>{% endif %}
+    </div>
+
+    <form id="profileOrderForm">
+        {% csrf_token %}
+        <input type="hidden" name="customer_id" value="{{ customer.id }}">
+        <input type="hidden" name="customer_name" value="{{ customer.name }}">
+
+        <!-- Dispatch Date Card -->
+        <div class="card mb-3">
+            <div class="card-header text-white collapsible-header d-flex justify-content-between align-items-center" style="background-color:#4a90e2;" id="dateHeader">
+                <h5 class="mb-0"><span id="dateDisplay">Select Dispatch Date</span></h5>
+                <div class="d-flex gap-2 align-items-center">
+                    <button type="button" class="btn btn-outline-light btn-sm" onclick="if(confirm('Clear all quantities and restart?')) location.reload()">
+                        <i class="bi bi-arrow-clockwise"></i> Restart
+                    </button>
+                    <span class="collapse-arrow">▶</span>
+                </div>
+            </div>
+            <div class="card-body" id="dateBody" style="display:none;">
+                <div class="row">
+                    <div class="col-md-4">
+                        <label class="form-label">Dispatch Date *</label>
+                        <input type="date" id="deliveryDate" name="deliveryDate" class="form-control">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Order Type</label>
+                        <div class="btn-group w-100">
+                            <input type="radio" class="btn-check" name="orderType" id="delivery" value="delivery" checked>
+                            <label class="btn btn-outline-primary" for="delivery"><i class="bi bi-truck"></i> Delivery</label>
+                            <input type="radio" class="btn-check" name="orderType" id="pickup" value="pickup">
+                            <label class="btn btn-outline-secondary" for="pickup"><i class="bi bi-box-arrow-up"></i> Pickup</label>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Customer PO</label>
+                        <input type="text" id="customerPO" name="customerPO" class="form-control" placeholder="PO #">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Items Card -->
+        <div class="card mb-3">
+            <div class="card-header bg-secondary text-white sticky-header d-flex justify-content-between align-items-center">
+                <input type="text" id="itemSearch" class="form-control form-control-sm" placeholder="Search items..." style="max-width:250px;">
+                <span class="text-white small" id="itemCountLabel"></span>
+            </div>
+            <div class="card-body p-0">
+                {% if profiles %}
+                <div id="itemList">
+                    {% for profile in profiles %}
+                    <div class="item-card profile-row"
+                        data-pack-size="{{ profile.pack_size|default:'1' }}"
+                        data-price="{{ profile.sales_price|default:'0' }}"
+                        data-profile-id="{{ profile.id }}"
+                        data-description="{{ profile.description }}"
+                        data-unit-type="{{ profile.unit_type }}"
+                        data-comp-item-id="{{ profile.comp_item_id|default:'' }}"
+                        data-search="{{ profile.description|lower }}">
+                        <div class="item-card-content">
+                            <div class="item-description">
+                                <div class="item-name">{{ profile.description }}</div>
+                                <div class="item-details">
+                                    {% if profile.unit_type %}<span><strong>Unit:</strong> {{ profile.unit_type }}</span>{% endif %}
+                                    {% if profile.pack_size %}<span><strong>Pack:</strong> {{ profile.pack_size }}</span>{% endif %}
+                                    {% if profile.sales_price %}<span><strong>Price:</strong> ${{ profile.sales_price }}</span>{% endif %}
+                                </div>
+                            </div>
+                            <div class="item-totals">
+                                <div class="total-lbs text-muted"></div>
+                                <div class="total-price fw-bold"></div>
+                            </div>
+                            <div class="item-quantity">
+                                <input type="number" class="form-control quantity-input"
+                                    min="0" placeholder="Qty"
+                                    name="quantity_{{ profile.id }}"
+                                    data-profile-id="{{ profile.id }}">
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                <div class="grand-totals-footer">
+                    <span>Grand Total:</span>
+                    <div class="d-flex gap-4">
+                        <span id="grandWeight"></span>
+                        <span id="grandTotal">$0.00</span>
+                    </div>
+                </div>
+                {% else %}
+                <div class="text-center text-muted py-5">
+                    <i class="bi bi-inbox" style="font-size:2rem;"></i>
+                    <p class="mt-2">No profile items set up for this customer yet.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Comments + Submit -->
+        <div class="card mb-3">
+            <div class="card-body">
+                <label class="form-label">Comments</label>
+                <textarea id="comments" name="comments" class="form-control" rows="2"></textarea>
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-end gap-2 mb-4">
+            <button type="button" id="previewBtn" class="btn btn-outline-primary btn-lg" disabled
+                data-bs-toggle="modal" data-bs-target="#previewModal">
+                <i class="bi bi-eye"></i> Preview
+            </button>
+            <button type="submit" id="submitBtn" class="btn btn-primary btn-lg" disabled>
+                <i class="bi bi-check-circle"></i> Submit Order
+            </button>
+        </div>
+    </form>
+</div>
+
+<!-- Date Selection Modal -->
+<div class="modal fade" id="dateModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header text-white" style="background-color:#4a90e2;">
+                <h5 class="modal-title">Select Dispatch Date</h5>
+            </div>
+            <div class="modal-body text-center">
+                <div id="calendarContainer" style="max-width:480px; margin:0 auto;"></div>
+            </div>
+            <div class="modal-footer justify-content-center">
+                <button type="button" class="btn btn-primary btn-lg" onclick="selectTomorrow()">
+                    Order for Tomorrow (<span id="tomorrowText"></span>)
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Preview Modal -->
+<div class="modal fade" id="previewModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header text-white" style="background-color:#4a90e2;">
+                <h5 class="modal-title">Order Preview — {{ customer.name }}</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="previewContent"></div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal"
+                    onclick="document.getElementById('submitBtn').scrollIntoView({behavior:'smooth'})">
+                    Continue to Submit
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Success Modal -->
+<div class="modal fade" id="successModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="bi bi-check-circle me-2"></i>Order Submitted</h5>
+            </div>
+            <div class="modal-body text-center py-4">
+                <p class="fs-5" id="successMessage"></p>
+            </div>
+            <div class="modal-footer justify-content-center">
+                <a href="{% url 'customer_list' %}" class="btn btn-outline-secondary">Back to Customers</a>
+                <button type="button" class="btn btn-primary" onclick="location.reload()">New Order</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let selectedDate = null;
+let selectedDateDisplay = '';
+
+// ── On load ──────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', function() {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    if (tomorrow.getDay() === 0) tomorrow.setDate(tomorrow.getDate() + 1);
+    document.getElementById('tomorrowText').textContent = tomorrow.toLocaleDateString();
+
+    buildCalendar();
+    new bootstrap.Modal(document.getElementById('dateModal')).show();
+
+    // Collapsible date header
+    document.getElementById('dateHeader').addEventListener('click', function() {
+        const body = document.getElementById('dateBody');
+        const arrow = this.querySelector('.collapse-arrow');
+        const open = body.style.display !== 'none';
+        body.style.display = open ? 'none' : 'block';
+        arrow.textContent = open ? '▶' : '▼';
+    });
+
+    // Search
+    document.getElementById('itemSearch').addEventListener('input', function() {
+        const q = this.value.toLowerCase();
+        document.querySelectorAll('.profile-row').forEach(row => {
+            row.style.display = row.dataset.search.includes(q) ? '' : 'none';
+        });
+        updateItemCount();
+    });
+
+    // Quantity inputs
+    document.querySelectorAll('.quantity-input').forEach(input => {
+        input.addEventListener('input', updateTotals);
+    });
+
+    updateItemCount();
+    updateTotals();
+});
+
+// ── Calendar ──────────────────────────────────────────────────────────────────
+let calYear, calMonth;
+function buildCalendar() {
+    const today = new Date();
+    calYear = today.getFullYear();
+    calMonth = today.getMonth();
+    renderCalendar();
+}
+
+function renderCalendar() {
+    const monthNames = ['January','February','March','April','May','June',
+        'July','August','September','October','November','December'];
+    const today = new Date();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
+
+    const firstDay = new Date(calYear, calMonth, 1);
+    const startDate = new Date(firstDay);
+    startDate.setDate(startDate.getDate() - firstDay.getDay());
+
+    let html = `
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <button type="button" class="btn btn-sm btn-outline-primary" onclick="changeMonth(-1)">←</button>
+            <h5 class="mb-0">${monthNames[calMonth]} ${calYear}</h5>
+            <button type="button" class="btn btn-sm btn-outline-primary" onclick="changeMonth(1)">→</button>
+        </div>
+        <div class="d-flex text-center fw-bold mb-2">
+            ${['Su','Mo','Tu','We','Th','Fr','Sa'].map(d => `<div class="calendar-day-header">${d}</div>`).join('')}
+        </div>`;
+
+    const cur = new Date(startDate);
+    for (let w = 0; w < 6; w++) {
+        html += '<div class="d-flex mb-1">';
+        for (let d = 0; d < 7; d++) {
+            const dateStr = cur.toISOString().split('T')[0];
+            const tomorrowStr = tomorrow.toISOString().split('T')[0];
+            const isSunday = cur.getDay() === 0;
+            const isPast = dateStr < tomorrowStr;
+            const disabled = isPast || isSunday;
+            const inMonth = cur.getMonth() === calMonth;
+            html += `<div class="calendar-day-container">
+                <button type="button" class="btn btn-sm calendar-day-btn ${inMonth ? (disabled ? 'btn-outline-secondary' : 'btn-outline-primary') : 'text-muted'}"
+                    ${disabled ? 'disabled' : `onclick="selectDate('${dateStr}')"`}>${cur.getDate()}</button>
+            </div>`;
+            cur.setDate(cur.getDate() + 1);
+        }
+        html += '</div>';
+    }
+
+    document.getElementById('calendarContainer').innerHTML = html;
+}
+
+window.changeMonth = function(delta) {
+    calMonth += delta;
+    if (calMonth < 0) { calMonth = 11; calYear--; }
+    else if (calMonth > 11) { calMonth = 0; calYear++; }
+    renderCalendar();
+};
+
+window.selectDate = function(dateStr) {
+    selectedDate = dateStr;
+    const d = new Date(dateStr + 'T12:00:00');
+    selectedDateDisplay = d.toLocaleDateString('en-US', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
+    document.getElementById('deliveryDate').value = dateStr;
+    document.getElementById('dateDisplay').textContent = selectedDateDisplay;
+    document.getElementById('dateBody').style.display = 'block';
+    document.getElementById('dateHeader').querySelector('.collapse-arrow').textContent = '▼';
+    bootstrap.Modal.getInstance(document.getElementById('dateModal')).hide();
+    updateSubmitState();
+};
+
+window.selectTomorrow = function() {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    if (tomorrow.getDay() === 0) tomorrow.setDate(tomorrow.getDate() + 1);
+    const dateStr = tomorrow.toISOString().split('T')[0];
+    selectDate(dateStr);
+};
+
+// ── Totals ────────────────────────────────────────────────────────────────────
+function updateTotals() {
+    let grandTotal = 0;
+    let grandLbs = 0;
+
+    document.querySelectorAll('.profile-row').forEach(row => {
+        const qty = parseInt(row.querySelector('.quantity-input').value) || 0;
+        const price = parseFloat(row.dataset.price) || 0;
+        const pack = parseFloat(row.dataset.packSize) || 1;
+        const lineTotal = qty * pack * price;
+        const lineLbs = qty * pack;
+
+        row.querySelector('.total-price').textContent = qty > 0 ? '$' + lineTotal.toFixed(2) : '';
+        row.querySelector('.total-lbs').textContent = qty > 0 ? lineLbs.toFixed(1) + ' lbs' : '';
+
+        grandTotal += lineTotal;
+        grandLbs += lineLbs;
+    });
+
+    document.getElementById('grandTotal').textContent = '$' + grandTotal.toFixed(2);
+    document.getElementById('grandWeight').textContent = grandLbs > 0 ? grandLbs.toFixed(1) + ' lbs' : '';
+    updateSubmitState();
+}
+
+function updateSubmitState() {
+    const hasDate = !!selectedDate;
+    const hasItems = Array.from(document.querySelectorAll('.quantity-input')).some(i => parseInt(i.value) > 0);
+    document.getElementById('submitBtn').disabled = !(hasDate && hasItems);
+    document.getElementById('previewBtn').disabled = !(hasDate && hasItems);
+}
+
+function updateItemCount() {
+    const visible = document.querySelectorAll('.profile-row:not([style*="display: none"])').length;
+    document.getElementById('itemCountLabel').textContent = visible + ' items';
+}
+
+// ── Preview ───────────────────────────────────────────────────────────────────
+document.getElementById('previewModal').addEventListener('show.bs.modal', function() {
+    const items = getOrderItems();
+    if (!items.length) return;
+
+    let html = `<p><strong>Dispatch Date:</strong> ${selectedDateDisplay}</p>
+        <table class="table table-sm table-bordered">
+            <thead class="table-dark"><tr><th>Item</th><th>Unit</th><th>Pack</th><th>Qty</th><th>Total</th></tr></thead>
+            <tbody>`;
+    items.forEach(item => {
+        html += `<tr>
+            <td>${item.name}</td>
+            <td>${item.unitType}</td>
+            <td>${item.packSize}</td>
+            <td>${item.quantity}</td>
+            <td>$${item.total.toFixed(2)}</td>
+        </tr>`;
+    });
+    const grand = items.reduce((s, i) => s + i.total, 0);
+    html += `</tbody><tfoot><tr><td colspan="4" class="text-end fw-bold">Grand Total:</td>
+        <td class="fw-bold">$${grand.toFixed(2)}</td></tr></tfoot></table>`;
+    document.getElementById('previewContent').innerHTML = html;
+});
+
+// ── Submit ────────────────────────────────────────────────────────────────────
+document.getElementById('profileOrderForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const items = getOrderItems();
+    if (!items.length || !selectedDate) return;
+
+    const btn = document.getElementById('submitBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Submitting...';
+
+    const d = new Date(selectedDate + 'T12:00:00');
+    const mmddyyyy = `${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}/${d.getFullYear()}`;
+
+    fetch('/api/profile-orders/submit/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({
+            orderData: {
+                customerId: document.querySelector('[name="customer_id"]').value,
+                dispatchDate: mmddyyyy,
+                comments: document.getElementById('comments').value,
+                customerPO: document.getElementById('customerPO').value,
+                total: items.reduce((s, i) => s + i.total, 0),
+            },
+            orderItems: items
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            document.getElementById('successMessage').textContent = data.message;
+            new bootstrap.Modal(document.getElementById('successModal')).show();
+        } else {
+            alert('Error: ' + (data.error || 'Unknown error'));
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-check-circle"></i> Submit Order';
+        }
+    })
+    .catch(err => {
+        alert('Error: ' + err.message);
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-check-circle"></i> Submit Order';
+    });
+});
+
+function getOrderItems() {
+    const items = [];
+    document.querySelectorAll('.profile-row').forEach(row => {
+        const qty = parseInt(row.querySelector('.quantity-input').value) || 0;
+        if (qty > 0) {
+            const pack = parseFloat(row.dataset.packSize) || 1;
+            const price = parseFloat(row.dataset.price) || 0;
+            items.push({
+                id: row.dataset.compItemId,
+                name: row.dataset.description,
+                unitType: row.dataset.unitType,
+                packSize: pack,
+                price: price,
+                quantity: qty,
+                total: qty * pack * price,
+                instructions: '',
+            });
+        }
+    });
+    return items;
+}
+
+function getCookie(name) {
+    const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+    return match ? decodeURIComponent(match[2]) : '';
+}
+</script>
+{% endblock %}

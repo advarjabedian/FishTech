@@ -1,11 +1,12 @@
 from django.urls import path
 from .views.public_pages import sms_opt_in, privacy_policy, terms_of_service
 from .views.platform_admin import platform_admin
+from .views.profile_orders import customer_list, profile_order_form, submit_profile_order
 from .views import (
     # Auth views
     login_view, logout_view, operations_hub, register_view,
     # Order Requests
-    order_requests, get_order_requests_api, get_order_requests_complete_api,
+    orders_hub, order_requests, get_order_requests_api, get_order_requests_complete_api,
     view_order_request_api, assign_order_request_user_api, complete_order_request_api,
     uncomplete_order_request_api, update_order_request_notes_api, update_order_request_customer_api,
     check_order_emails_api, get_email_settings_api, save_email_settings_api, test_email_connection_api,
@@ -52,7 +53,8 @@ from .views import (
     update_zone, delete_zone, get_calendar_data, get_inspection_images, get_companies,
     upload_inspection_image, view_inspection_image,
     check_order_emails_api, get_email_settings_api, save_email_settings_api, test_email_connection_api,
-    twilio_sms_webhook, get_twilio_settings_api, save_twilio_settings_api, test_twilio_connection_api
+    twilio_sms_webhook, get_twilio_settings_api, save_twilio_settings_api, test_twilio_connection_api,
+     get_order_request_users_api
 )
 from .views.operations_reports import generate_operational_report, generate_deviations_report, generate_bulk_report
 from .views.stripe_billing import (
@@ -258,8 +260,13 @@ urlpatterns = [
     path('platform-admin/', platform_admin, name='platform_admin'),
     
     # Order Requests
+    path('orders/', orders_hub, name='orders_hub'),
+    path('orders/customers/', customer_list, name='customer_list'),
+path('orders/customers/<int:customer_id>/', profile_order_form, name='profile_order_form'),
+path('api/profile-orders/submit/', submit_profile_order, name='submit_profile_order'),
     path('order-requests/', order_requests, name='order_requests'),
     path('api/order-requests/', get_order_requests_api, name='get_order_requests_api'),
+    path('api/order-requests/users/', get_order_request_users_api, name='get_order_request_users_api'),
     path('api/order-requests/complete/', get_order_requests_complete_api, name='get_order_requests_complete_api'),
     path('api/order-request/<int:order_request_id>/view/', view_order_request_api, name='view_order_request_api'),
     path('api/order-request/<int:order_request_id>/assign-user/', assign_order_request_user_api, name='assign_order_request_user_api'),
