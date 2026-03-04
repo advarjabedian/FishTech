@@ -775,3 +775,46 @@ def add_profile_item_api(request, customer_id):
         })
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+
+
+@login_required
+@require_POST
+def update_profile_item_api(request, profile_id):
+    tenant = get_current_tenant()
+    if not tenant:
+        return JsonResponse({'error': 'No tenant context'}, status=400)
+    try:
+        profile = get_object_or_404(CustomerProfile, id=profile_id)
+        data = json.loads(request.body)
+        description = data.get('description', '').strip()
+        if not description:
+            return JsonResponse({'error': 'Description is required'}, status=400)
+        profile.description = description
+        profile.unit_type = data.get('unit_type', '')
+        profile.pack_size = float(data.get('pack_size') or 1)
+        profile.sales_price = float(data.get('sales_price') or 0)
+        profile.save()
+        return JsonResponse({
+            'success': True,
+            'id': profile.id,
+            'description': profile.description,
+            'unit_type': profile.unit_type,
+            'pack_size': str(profile.pack_size),
+            'sales_price': str(profile.sales_price),
+        })
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@login_required
+@require_POST
+def delete_profile_item_api(request, profile_id):
+    tenant = get_current_tenant()
+    if not tenant:
+        return JsonResponse({'error': 'No tenant context'}, status=400)
+    try:
+        profile = get_object_or_404(CustomerProfile, id=profile_id)
+        profile.delete()
+        return JsonResponse({'success': True})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)

@@ -1,68 +1,10 @@
 from django.urls import path
-from .views.public_pages import sms_opt_in, privacy_policy, terms_of_service
-from .views.platform_admin import platform_admin
-from .views.profile_orders import (
-    customer_list, profile_order_form, submit_profile_order,
-    import_customers_page, download_import_template, import_preview, import_confirm, add_customer_api, add_profile_item_api
-)
-from .views import (
-    # Auth views
-    login_view, logout_view, operations_hub, register_view,
-    # Order Requests
-    orders_hub, order_requests, get_order_requests_api, get_order_requests_complete_api,
-    view_order_request_api, assign_order_request_user_api, complete_order_request_api,
-    uncomplete_order_request_api, update_order_request_notes_api, update_order_request_customer_api,
-    check_order_emails_api, get_email_settings_api, save_email_settings_api, test_email_connection_api,
-    # Document views
-    documents_home, so_documents, po_documents, customer_documents, vendor_documents,
-    licenses, vehicles,
-    get_licenses_api, upload_license_api, update_license_api, view_license_file_api, delete_license_api,
-    get_vehicles_api, add_vehicle_api, update_vehicle_api, delete_vehicle_api,
-    get_expiration_counts_api,
-    # Document APIs
-    search_customers, search_vendors,
-    get_sales_orders, get_so_files, view_so_file, upload_so_file, delete_so_file,
-    get_purchase_orders, get_po_files, view_po_file, upload_po_file, delete_po_file,
-    get_pod_items, download_bulk_po_files, email_bulk_po_files, email_po_files,
-    get_vendor_emails, add_vendor_email, delete_vendor_email,
-    get_customer_emails, add_customer_email, delete_customer_email,
-    get_tenant_emails, add_tenant_email, delete_tenant_email,
-    get_customer_documents, get_customer_files, view_customer_file,
-    upload_customer_file, delete_customer_file, email_customer_files,
-    get_vendor_documents, get_vendor_files, view_vendor_file,
-    upload_vendor_file, delete_vendor_file, email_vendor_files,
-    download_bulk_so_files, email_bulk_so_files, email_so_files,
-    # HACCP views
-    haccp, haccp_company, haccp_documents, haccp_document_view,
-    haccp_save_document, get_company_product_types, toggle_company_product_type,
-    generate_new_version, get_version_history, get_flow_chart_data,
-    get_hazard_analysis_data, delete_haccp_version, delete_haccp_version_set, get_haccp_version,
-    get_master_product_types, get_all_product_types, add_product_type,
-    delete_product_type, get_inactive_product_types, restore_product_type,
-    update_product_type,
-    set_haccp_owner, get_company_certificates, save_company_certificate,
-    view_company_certificate, haccp_print_set, add_company, edit_company, delete_company,
-    # User management
-    manage_users, add_user, edit_user, delete_user, update_company_logo,
-    toggle_user_company, toggle_user_admin,
-    # Operations views
-    operations_dashboard, inspection_form, operations_admin, print_sop_schedule,
-    # Operations API
-    start_inspection, save_inspection, update_inspection_time, update_inspection_inspector,
-    update_company_config, toggle_holiday, get_deviations, save_corrective_actions,
-    submit_verification, save_verifier_signature, get_verifier_signature,
-    save_monitor_signature, get_monitor_signature, get_operations_config,
-    get_sop_list, create_sop, update_sop, delete_sop, get_zones, create_zone,
-    update_zone, delete_zone, get_calendar_data, get_inspection_images, get_companies,
-    upload_inspection_image, view_inspection_image,
-    check_order_emails_api, get_email_settings_api, save_email_settings_api, test_email_connection_api,
-    twilio_sms_webhook, get_twilio_settings_api, save_twilio_settings_api, test_twilio_connection_api,
-     get_order_request_users_api
-)
-from .views.operations_reports import generate_operational_report, generate_deviations_report, generate_bulk_report
-from .views.stripe_billing import (
-    get_billing_status, create_checkout_session, create_portal_session, stripe_webhook
-)
+from .views.public_pages import *
+from .views.platform_admin import *
+from .views.profile_orders import *
+from .views import *
+from .views.operations_reports import *
+from .views.stripe_billing import *
 
 urlpatterns = [
     # Auth routes
@@ -272,6 +214,8 @@ path('api/profile-orders/import/preview/', import_preview, name='import_preview'
 path('api/profile-orders/import/confirm/', import_confirm, name='import_confirm'),
     path('api/customers/add/', add_customer_api, name='add_customer_api'),
     path('api/customers/<int:customer_id>/add-profile-item/', add_profile_item_api, name='add_profile_item_api'),
+    path('api/profile-item/<int:profile_id>/update/', update_profile_item_api, name='update_profile_item_api'),
+    path('api/profile-item/<int:profile_id>/delete/', delete_profile_item_api, name='delete_profile_item_api'),
 path('api/profile-orders/import/template/', download_import_template, name='download_import_template'),
     path('order-requests/', order_requests, name='order_requests'),
     path('api/order-requests/', get_order_requests_api, name='get_order_requests_api'),

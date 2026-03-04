@@ -136,7 +136,20 @@
                                 <div class="total-lbs text-muted"></div>
                                 <div class="total-price fw-bold"></div>
                             </div>
-                            <div class="item-quantity">
+                            <div class="d-flex align-items-center gap-2">
+                                <button type="button" class="btn btn-outline-secondary btn-sm"
+                                    onclick="openEditItem(this)" 
+                                    data-id="{{ profile.id }}"
+                                    data-description="{{ profile.description }}"
+                                    data-unit-type="{{ profile.unit_type }}"
+                                    data-pack-size="{{ profile.pack_size }}"
+                                    data-sales-price="{{ profile.sales_price }}">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button type="button" class="btn btn-outline-danger btn-sm"
+                                    onclick="deleteItem({{ profile.id }}, this)">
+                                    <i class="bi bi-trash"></i>
+                                </button>
                                 <input type="number" class="form-control quantity-input"
                                     min="0" placeholder="Qty"
                                     name="quantity_{{ profile.id }}"
@@ -496,6 +509,44 @@ function getCookie(name) {
 }
 </script>
 
+<!-- Edit Profile Item Modal -->
+<div class="modal fade" id="editItemModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Profile Item</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="editItemId">
+                <div id="editItemError" class="alert alert-danger" style="display:none;"></div>
+                <div class="mb-2">
+                    <label class="form-label">Description *</label>
+                    <input type="text" id="editItemDesc" class="form-control">
+                </div>
+                <div class="row g-2">
+                    <div class="col-md-4">
+                        <label class="form-label">Unit Type</label>
+                        <input type="text" id="editItemUnit" class="form-control">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Pack Size</label>
+                        <input type="number" id="editItemPack" class="form-control" step="0.01">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Price</label>
+                        <input type="number" id="editItemPrice" class="form-control" step="0.01">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button class="btn btn-primary" onclick="saveEditItem()">Save Changes</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Add Profile Item Modal -->
 <div class="modal fade" id="addItemModal" tabindex="-1">
     <div class="modal-dialog">
@@ -534,6 +585,75 @@ function getCookie(name) {
 </div>
 
 <script>
+function openEditItem(btn) {
+    document.getElementById('editItemId').value = btn.dataset.id;
+    document.getElementById('editItemDesc').value = btn.dataset.description;
+    document.getElementById('editItemUnit').value = btn.dataset.unitType;
+    document.getElementById('editItemPack').value = btn.dataset.packSize;
+    document.getElementById('editItemPrice').value = btn.dataset.salesPrice;
+    document.getElementById('editItemError').style.display = 'none';
+    new bootstrap.Modal(document.getElementById('editItemModal')).show();
+}
+
+function saveEditItem() {
+    const id = document.getElementById('editItemId').value;
+    const description = document.getElementById('editItemDesc').value.trim();
+    if (!description) { document.getElementById('editItemError').textContent = 'Description is required.'; document.getElementById('editItemError').style.display = ''; return; }
+
+    fetch(`/api/profile-item/${id}/update/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+        body: JSON.stringify({
+            description,
+            unit_type: document.getElementById('editItemUnit').value,
+            pack_size: document.getElementById('editItemPack').value || 1,
+            sales_price: document.getElementById('editItemPrice').value || 0,
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.error) { document.getElementById('editItemError').textContent = data.error; document.getElementById('editItemError').style.display = ''; return; }
+        // Update the row in the DOM
+        const row = document.querySelector(`[data-profile-id="${id}"]`)?.closest('.profile-row');
+        if (row) {
+            row.dataset.price = data.sales_price;
+            row.dataset.packSize = data.pack_size;
+            row.dataset.description = data.description;
+            row.dataset.unitType = data.unit_type;
+            row.dataset.search = data.description.toLowerCase();
+            row.querySelector('.item-name').textContent = data.description;
+            row.querySelector('.item-details').innerHTML =
+                (data.unit_type ? `<span><strong>Unit:</strong> ${data.unit_type}</span>` : '') +
+                (data.pack_size ? `<span><strong>Pack:</strong> ${data.pack_size}</span>` : '') +
+                (data.sales_price ? `<span><strong>Price:</strong> $${data.sales_price}</span>` : '');
+            // Update edit button data attrs
+            const editBtn = row.querySelector('[onclick^="openEditItem"]');
+            editBtn.dataset.description = data.description;
+            editBtn.dataset.unitType = data.unit_type;
+            editBtn.dataset.packSize = data.pack_size;
+            editBtn.dataset.salesPrice = data.sales_price;
+        }
+        bootstrap.Modal.getInstance(document.getElementById('editItemModal')).hide();
+        updateTotals();
+    });
+}
+
+function deleteItem(id, btn) {
+    if (!confirm('Delete this profile item?')) return;
+    fetch(`/api/profile-item/${id}/delete/`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCookie('csrftoken') }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.error) { alert('Error: ' + data.error); return; }
+        const row = btn.closest('.profile-row');
+        row.remove();
+        updateTotals();
+        updateItemCount();
+    });
+}
+
 function saveNewItem() {
     const description = document.getElementById('newItemDesc').value.trim();
     if (!description) { document.getElementById('addItemError').textContent = 'Description is required.'; document.getElementById('addItemError').style.display = ''; return; }
