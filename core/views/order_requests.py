@@ -100,11 +100,11 @@ def test_email_connection_api(request):
 
 def orders_hub(request):
     """Display orders hub page"""
-    return render(request, 'core/orders_hub.html')
+    return render(request, 'core/Orders/orders_hub.html')
 
 def order_requests(request):
     """Display order requests page"""
-    return render(request, 'core/order_requests.html')
+    return render(request, 'core/Orders/order_requests.html')
 
 
 def get_order_requests_api(request):

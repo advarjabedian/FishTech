@@ -1,0 +1,240 @@
+{% extends 'core/base.html' %}
+{% block title %}Import Customers - FishTeck{% endblock %}
+
+{% block content %}
+<div class="container mt-4" style="max-width: 900px;">
+
+    <div class="d-flex align-items-center gap-2 mb-4">
+        <a href="{% url 'customer_list' %}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left"></i> Back
+        </a>
+        <h3 class="mb-0"><i class="bi bi-upload me-2"></i>Import Customers & Profiles</h3>
+    </div>
+
+    <!-- Step 1: Download Template + Upload -->
+    <div id="step-upload">
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <strong>Step 1 — Download the template</strong>
+            </div>
+            <div class="card-body">
+                <p class="mb-2">Fill in your customer and profile item data using this template. Each row is one profile item.</p>
+                <a href="{% url 'download_import_template' %}" class="btn btn-outline-primary">
+                    <i class="bi bi-file-earmark-excel me-1"></i>Download Excel Template
+                </a>
+                <div class="mt-3">
+                    <small class="text-muted">
+                        <strong>Required columns:</strong> CustomerID, CustomerName, ItemDescription, UnitType, PackSize, Price<br>
+                        <strong>Optional columns:</strong> ContactName, Phone, Email, City, State, ItemID (your internal ref)
+                    </small>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <strong>Step 2 — Upload your file</strong>
+            </div>
+            <div class="card-body">
+                <div id="uploadError" class="alert alert-danger" style="display:none;"></div>
+                <div class="mb-3">
+                    <input type="file" id="importFile" class="form-control" accept=".xlsx,.xls,.csv">
+                </div>
+                <button type="button" class="btn btn-primary" onclick="uploadFile()">
+                    <span id="uploadSpinner" class="spinner-border spinner-border-sm me-1" style="display:none;"></span>
+                    <i class="bi bi-search me-1" id="uploadIcon"></i>Preview Import
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Step 2: Preview -->
+    <div id="step-preview" style="display:none;">
+        <div class="card mb-4">
+            <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
+                <strong>Step 3 — Review and confirm</strong>
+                <button class="btn btn-sm btn-outline-dark" onclick="resetUpload()">
+                    <i class="bi bi-arrow-left me-1"></i>Upload Different File
+                </button>
+            </div>
+            <div class="card-body">
+                <div id="previewSummary" class="mb-3"></div>
+                <div id="previewErrors" class="alert alert-warning" style="display:none;"></div>
+
+                <!-- Customer breakdown -->
+                <div class="table-responsive mb-3">
+                    <table class="table table-sm table-bordered" id="previewTable">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Customer ID</th>
+                                <th>Customer Name</th>
+                                <th>Contact</th>
+                                <th>Items</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="previewTableBody"></tbody>
+                    </table>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-success btn-lg" onclick="confirmImport()">
+                        <span id="confirmSpinner" class="spinner-border spinner-border-sm me-1" style="display:none;"></span>
+                        <i class="bi bi-check-circle me-1" id="confirmIcon"></i>Confirm Import
+                    </button>
+                    <button class="btn btn-outline-secondary btn-lg" onclick="resetUpload()">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Step 3: Done -->
+    <div id="step-done" style="display:none;">
+        <div class="card border-success">
+            <div class="card-header bg-success text-white">
+                <strong><i class="bi bi-check-circle me-2"></i>Import Complete</strong>
+            </div>
+            <div class="card-body text-center py-4">
+                <p class="fs-5" id="doneMessage"></p>
+                <div class="d-flex gap-2 justify-content-center">
+                    <a href="{% url 'customer_list' %}" class="btn btn-primary">View Customers</a>
+                    <button class="btn btn-outline-secondary" onclick="resetUpload()">Import Another File</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let previewData = null;
+
+function getCookie(name) {
+    const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+    return match ? decodeURIComponent(match[2]) : '';
+}
+
+function uploadFile() {
+    const file = document.getElementById('importFile').files[0];
+    if (!file) { showUploadError('Please select a file.'); return; }
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    setUploadLoading(true);
+    hideUploadError();
+
+    fetch('/api/profile-orders/import/preview/', {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCookie('csrftoken') },
+        body: formData
+    })
+    .then(r => r.json())
+    .then(data => {
+        setUploadLoading(false);
+        if (data.error) { showUploadError(data.error); return; }
+        previewData = data;
+        showPreview(data);
+    })
+    .catch(err => {
+        setUploadLoading(false);
+        showUploadError('Upload failed: ' + err.message);
+    });
+}
+
+function showPreview(data) {
+    document.getElementById('step-upload').style.display = 'none';
+    document.getElementById('step-preview').style.display = 'block';
+
+    // Summary
+    document.getElementById('previewSummary').innerHTML = `
+        <div class="d-flex gap-4">
+            <div class="text-center"><div class="fs-3 fw-bold text-primary">${data.customer_count}</div><div class="text-muted small">Customers</div></div>
+            <div class="text-center"><div class="fs-3 fw-bold text-success">${data.new_customers}</div><div class="text-muted small">New</div></div>
+            <div class="text-center"><div class="fs-3 fw-bold text-warning">${data.existing_customers}</div><div class="text-muted small">Existing (will update)</div></div>
+            <div class="text-center"><div class="fs-3 fw-bold text-info">${data.profile_count}</div><div class="text-muted small">Profile Items</div></div>
+            <div class="text-center"><div class="fs-3 fw-bold text-danger">${data.error_count}</div><div class="text-muted small">Errors</div></div>
+        </div>`;
+
+    // Errors
+    if (data.errors && data.errors.length) {
+        const errEl = document.getElementById('previewErrors');
+        errEl.style.display = 'block';
+        errEl.innerHTML = '<strong>Rows with issues (will be skipped):</strong><ul class="mb-0 mt-1">' +
+            data.errors.map(e => `<li>Row ${e.row}: ${e.message}</li>`).join('') + '</ul>';
+    }
+
+    // Customer table
+    const tbody = document.getElementById('previewTableBody');
+    tbody.innerHTML = data.customers.map(c => `
+        <tr>
+            <td>${c.customer_id}</td>
+            <td>${c.name}</td>
+            <td>${c.contact_name || ''}</td>
+            <td><span class="badge bg-secondary">${c.item_count} items</span></td>
+            <td>${c.is_new
+                ? '<span class="badge bg-success">New</span>'
+                : '<span class="badge bg-warning text-dark">Existing</span>'}</td>
+        </tr>`).join('');
+}
+
+function confirmImport() {
+    if (!previewData) return;
+
+    setConfirmLoading(true);
+
+    fetch('/api/profile-orders/import/confirm/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({ rows: previewData.rows })
+    })
+    .then(r => r.json())
+    .then(data => {
+        setConfirmLoading(false);
+        if (data.error) { alert('Error: ' + data.error); return; }
+        document.getElementById('step-preview').style.display = 'none';
+        document.getElementById('step-done').style.display = 'block';
+        document.getElementById('doneMessage').textContent =
+            `Imported ${data.customers_created} new customers, updated ${data.customers_updated}, and created ${data.profiles_created} profile items.`;
+    })
+    .catch(err => {
+        setConfirmLoading(false);
+        alert('Error: ' + err.message);
+    });
+}
+
+function resetUpload() {
+    previewData = null;
+    document.getElementById('importFile').value = '';
+    document.getElementById('step-preview').style.display = 'none';
+    document.getElementById('step-done').style.display = 'none';
+    document.getElementById('step-upload').style.display = 'block';
+    hideUploadError();
+}
+
+function setUploadLoading(on) {
+    document.getElementById('uploadSpinner').style.display = on ? '' : 'none';
+    document.getElementById('uploadIcon').style.display = on ? 'none' : '';
+}
+
+function setConfirmLoading(on) {
+    document.getElementById('confirmSpinner').style.display = on ? '' : 'none';
+    document.getElementById('confirmIcon').style.display = on ? 'none' : '';
+}
+
+function showUploadError(msg) {
+    const el = document.getElementById('uploadError');
+    el.textContent = msg;
+    el.style.display = 'block';
+}
+
+function hideUploadError() {
+    document.getElementById('uploadError').style.display = 'none';
+}
+</script>
+{% endblock %}

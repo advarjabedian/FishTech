@@ -105,10 +105,14 @@
         <div class="card mb-3">
             <div class="card-header bg-secondary text-white sticky-header d-flex justify-content-between align-items-center">
                 <input type="text" id="itemSearch" class="form-control form-control-sm" placeholder="Search items..." style="max-width:250px;">
-                <span class="text-white small" id="itemCountLabel"></span>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="text-white small" id="itemCountLabel"></span>
+                    <button type="button" class="btn btn-outline-light btn-sm" data-bs-toggle="modal" data-bs-target="#addItemModal">
+                        <i class="bi bi-plus"></i> Add Item
+                    </button>
+                </div>
             </div>
             <div class="card-body p-0">
-                {% if profiles %}
                 <div id="itemList">
                     {% for profile in profiles %}
                     <div class="item-card profile-row"
@@ -140,6 +144,11 @@
                             </div>
                         </div>
                     </div>
+                    {% empty %}
+                    <div id="noItemsMsg" class="text-center text-muted py-5">
+                        <i class="bi bi-inbox" style="font-size:2rem;"></i>
+                        <p class="mt-2">No profile items set up for this customer yet.</p>
+                    </div>
                     {% endfor %}
                 </div>
                 <div class="grand-totals-footer">
@@ -149,12 +158,6 @@
                         <span id="grandTotal">$0.00</span>
                     </div>
                 </div>
-                {% else %}
-                <div class="text-center text-muted py-5">
-                    <i class="bi bi-inbox" style="font-size:2rem;"></i>
-                    <p class="mt-2">No profile items set up for this customer yet.</p>
-                </div>
-                {% endif %}
             </div>
         </div>
 
@@ -490,6 +493,103 @@ function getOrderItems() {
 function getCookie(name) {
     const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
     return match ? decodeURIComponent(match[2]) : '';
+}
+</script>
+
+<!-- Add Profile Item Modal -->
+<div class="modal fade" id="addItemModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add Profile Item</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="addItemError" class="alert alert-danger" style="display:none;"></div>
+                <div class="mb-2">
+                    <label class="form-label">Description *</label>
+                    <input type="text" id="newItemDesc" class="form-control">
+                </div>
+                <div class="row g-2">
+                    <div class="col-md-4">
+                        <label class="form-label">Unit Type</label>
+                        <input type="text" id="newItemUnit" class="form-control" placeholder="LB">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Pack Size</label>
+                        <input type="number" id="newItemPack" class="form-control" placeholder="1" step="0.01">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Price</label>
+                        <input type="number" id="newItemPrice" class="form-control" placeholder="0.00" step="0.01">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button class="btn btn-primary" onclick="saveNewItem()">Save Item</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function saveNewItem() {
+    const description = document.getElementById('newItemDesc').value.trim();
+    if (!description) { document.getElementById('addItemError').textContent = 'Description is required.'; document.getElementById('addItemError').style.display = ''; return; }
+
+    fetch('/api/customers/{{ customer.id }}/add-profile-item/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+        body: JSON.stringify({
+            description,
+            unit_type: document.getElementById('newItemUnit').value,
+            pack_size: document.getElementById('newItemPack').value || 1,
+            sales_price: document.getElementById('newItemPrice').value || 0,
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.error) { document.getElementById('addItemError').textContent = data.error; document.getElementById('addItemError').style.display = ''; return; }
+        // Add new item row to the list without reloading
+        const itemList = document.getElementById('itemList');
+        const div = document.createElement('div');
+        div.className = 'item-card profile-row';
+        div.dataset.packSize = data.pack_size;
+        div.dataset.price = data.sales_price;
+        div.dataset.profileId = data.id;
+        div.dataset.description = data.description;
+        div.dataset.unitType = data.unit_type;
+        div.dataset.compItemId = '';
+        div.dataset.search = data.description.toLowerCase();
+        div.innerHTML = `
+            <div class="item-card-content">
+                <div class="item-description">
+                    <div class="item-name">${data.description}</div>
+                    <div class="item-details">
+                        ${data.unit_type ? `<span><strong>Unit:</strong> ${data.unit_type}</span>` : ''}
+                        ${data.pack_size ? `<span><strong>Pack:</strong> ${data.pack_size}</span>` : ''}
+                        ${data.sales_price ? `<span><strong>Price:</strong> $${data.sales_price}</span>` : ''}
+                    </div>
+                </div>
+                <div class="item-totals"><div class="total-lbs text-muted"></div><div class="total-price fw-bold"></div></div>
+                <div class="item-quantity">
+                    <input type="number" class="form-control quantity-input" min="0" placeholder="Qty"
+                        name="quantity_${data.id}" data-profile-id="${data.id}">
+                </div>
+            </div>`;
+        const noMsg = document.getElementById('noItemsMsg');
+        if (noMsg) noMsg.remove();
+        itemList.appendChild(div);
+        // Wire up the quantity input
+        div.querySelector('.quantity-input').addEventListener('input', updateTotals);
+        bootstrap.Modal.getInstance(document.getElementById('addItemModal')).hide();
+        document.getElementById('newItemDesc').value = '';
+        document.getElementById('newItemUnit').value = '';
+        document.getElementById('newItemPack').value = '';
+        document.getElementById('newItemPrice').value = '';
+        updateItemCount();
+    });
 }
 </script>
 {% endblock %}

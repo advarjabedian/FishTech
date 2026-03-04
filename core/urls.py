@@ -1,7 +1,10 @@
 from django.urls import path
 from .views.public_pages import sms_opt_in, privacy_policy, terms_of_service
 from .views.platform_admin import platform_admin
-from .views.profile_orders import customer_list, profile_order_form, submit_profile_order
+from .views.profile_orders import (
+    customer_list, profile_order_form, submit_profile_order,
+    import_customers_page, download_import_template, import_preview, import_confirm, add_customer_api, add_profile_item_api
+)
 from .views import (
     # Auth views
     login_view, logout_view, operations_hub, register_view,
@@ -262,8 +265,14 @@ urlpatterns = [
     # Order Requests
     path('orders/', orders_hub, name='orders_hub'),
     path('orders/customers/', customer_list, name='customer_list'),
+path('orders/customers/import/', import_customers_page, name='import_customers_page'),
 path('orders/customers/<int:customer_id>/', profile_order_form, name='profile_order_form'),
 path('api/profile-orders/submit/', submit_profile_order, name='submit_profile_order'),
+path('api/profile-orders/import/preview/', import_preview, name='import_preview'),
+path('api/profile-orders/import/confirm/', import_confirm, name='import_confirm'),
+    path('api/customers/add/', add_customer_api, name='add_customer_api'),
+    path('api/customers/<int:customer_id>/add-profile-item/', add_profile_item_api, name='add_profile_item_api'),
+path('api/profile-orders/import/template/', download_import_template, name='download_import_template'),
     path('order-requests/', order_requests, name='order_requests'),
     path('api/order-requests/', get_order_requests_api, name='get_order_requests_api'),
     path('api/order-requests/users/', get_order_request_users_api, name='get_order_request_users_api'),
