@@ -206,7 +206,13 @@ urlpatterns = [
     
     # Order Requests
     path('orders/', orders_hub, name='orders_hub'),
+    path('orders/view/', profile_orders_list, name='profile_orders_list'),
     path('orders/customers/', customer_list, name='customer_list'),
+    path('api/profile-orders/list/', get_profile_orders_api, name='get_profile_orders_api'),
+    path('api/profile-orders/<int:soid>/assign/', assign_profile_order_api, name='assign_profile_order_api'),
+    path('api/profile-orders/<int:soid>/complete/', complete_profile_order_api, name='complete_profile_order_api'),
+    path('api/profile-orders/<int:soid>/uncomplete/', uncomplete_profile_order_api, name='uncomplete_profile_order_api'),
+    path('api/profile-orders/<int:soid>/items/', get_profile_order_items_api, name='get_profile_order_items_api'),
 path('orders/customers/import/', import_customers_page, name='import_customers_page'),
 path('orders/customers/<int:customer_id>/', profile_order_form, name='profile_order_form'),
 path('api/profile-orders/submit/', submit_profile_order, name='submit_profile_order'),

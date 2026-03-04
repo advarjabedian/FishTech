@@ -1,0 +1,261 @@
+{% extends 'core/base.html' %}
+{% block title %}View Orders - FishTeck{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+
+    <div class="d-flex align-items-center gap-2 mb-3">
+        <a href="{% url 'orders_hub' %}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left"></i> Back
+        </a>
+        <h2 class="mb-0"><i class="bi bi-list-check me-2"></i>View Orders</h2>
+    </div>
+
+    <ul class="nav nav-tabs mb-3" id="orderTabs">
+        <li class="nav-item">
+            <a class="nav-link active" href="#" onclick="switchTab('pending'); return false;">
+                Pending <span class="badge bg-primary ms-1" id="pendingBadge">0</span>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" href="#" onclick="switchTab('completed'); return false;">
+                Completed <span class="badge bg-success ms-1" id="completedBadge">0</span>
+            </a>
+        </li>
+    </ul>
+
+    <div id="loadingSpinner" class="text-center py-5">
+        <div class="spinner-border text-primary"></div>
+    </div>
+
+    <!-- Pending -->
+    <div id="pendingSection">
+        <div class="card">
+            <div class="card-body p-0">
+                <table class="table table-hover mb-0" id="pendingTable">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>SO#</th>
+                            <th>Customer</th>
+                            <th>Dispatch Date</th>
+                            <th>Total</th>
+                            <th>Assigned To</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="pendingBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Completed -->
+    <div id="completedSection" style="display:none;">
+        <div class="card">
+            <div class="card-body p-0">
+                <table class="table table-hover mb-0">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>SO#</th>
+                            <th>Customer</th>
+                            <th>Dispatch Date</th>
+                            <th>Total</th>
+                            <th>Completed By</th>
+                            <th>Completed At</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="completedBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- Order Detail Modal -->
+<div class="modal fade" id="detailModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="detailTitle">Order Detail</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="detailBody"></div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const USERS = [
+    {% for u in users %}
+    { id: {{ u.id }}, name: "{{ u.get_full_name|default:u.username }}" },
+    {% endfor %}
+];
+
+let currentTab = 'pending';
+
+function getCookie(name) {
+    const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+    return match ? decodeURIComponent(match[2]) : '';
+}
+
+function switchTab(tab) {
+    currentTab = tab;
+    document.querySelectorAll('#orderTabs .nav-link').forEach((el, i) => {
+        el.classList.toggle('active', (i === 0 && tab === 'pending') || (i === 1 && tab === 'completed'));
+    });
+    document.getElementById('pendingSection').style.display = tab === 'pending' ? '' : 'none';
+    document.getElementById('completedSection').style.display = tab === 'completed' ? '' : 'none';
+    loadOrders(tab);
+}
+
+function loadOrders(tab) {
+    const completed = tab === 'completed';
+    document.getElementById('loadingSpinner').style.display = '';
+    fetch(`/api/profile-orders/list/?completed=${completed}`)
+        .then(r => r.json())
+        .then(data => {
+            document.getElementById('loadingSpinner').style.display = 'none';
+            if (completed) {
+                renderCompleted(data.orders);
+                document.getElementById('completedBadge').textContent = data.orders.length;
+            } else {
+                renderPending(data.orders);
+                document.getElementById('pendingBadge').textContent = data.orders.length;
+            }
+        });
+}
+
+function renderPending(orders) {
+    const tbody = document.getElementById('pendingBody');
+    if (!orders.length) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">No pending orders.</td></tr>';
+        return;
+    }
+    tbody.innerHTML = orders.map(o => `
+        <tr>
+            <td><a href="#" onclick="viewDetail(${o.soid}, '${escHtml(o.customer)}'); return false;">SO-${o.soid}</a></td>
+            <td>${escHtml(o.customer)}</td>
+            <td>${o.dispatch_date}</td>
+            <td>$${o.total.toFixed(2)}</td>
+            <td>
+                <select class="form-select form-select-sm" style="min-width:140px;"
+                    onchange="assignOrder(${o.soid}, this.value)">
+                    <option value="">— Unassigned —</option>
+                    ${USERS.map(u => `<option value="${u.id}" ${o.assigned_to_id == u.id ? 'selected' : ''}>${escHtml(u.name)}</option>`).join('')}
+                </select>
+            </td>
+            <td class="text-end">
+                <button class="btn btn-success btn-sm" onclick="completeOrder(${o.soid}, this)">
+                    <i class="bi bi-check-lg"></i> Complete
+                </button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function renderCompleted(orders) {
+    const tbody = document.getElementById('completedBody');
+    if (!orders.length) {
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">No completed orders.</td></tr>';
+        return;
+    }
+    tbody.innerHTML = orders.map(o => `
+        <tr>
+            <td><a href="#" onclick="viewDetail(${o.soid}, '${escHtml(o.customer)}'); return false;">SO-${o.soid}</a></td>
+            <td>${escHtml(o.customer)}</td>
+            <td>${o.dispatch_date}</td>
+            <td>$${o.total.toFixed(2)}</td>
+            <td>${escHtml(o.completed_by)}</td>
+            <td>${o.completed_at}</td>
+            <td class="text-end">
+                <button class="btn btn-outline-secondary btn-sm" onclick="uncompleteOrder(${o.soid}, this)">
+                    <i class="bi bi-arrow-counterclockwise"></i> Reopen
+                </button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function assignOrder(soid, userId) {
+    fetch(`/api/profile-orders/${soid}/assign/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+        body: JSON.stringify({ user_id: userId || null })
+    });
+}
+
+function completeOrder(soid, btn) {
+    if (!confirm('Mark this order as complete?')) return;
+    btn.disabled = true;
+    fetch(`/api/profile-orders/${soid}/complete/`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCookie('csrftoken') }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) loadOrders('pending');
+        else { alert('Error: ' + data.error); btn.disabled = false; }
+    });
+}
+
+function uncompleteOrder(soid, btn) {
+    if (!confirm('Reopen this order?')) return;
+    btn.disabled = true;
+    fetch(`/api/profile-orders/${soid}/uncomplete/`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCookie('csrftoken') }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) loadOrders('completed');
+        else { alert('Error: ' + data.error); btn.disabled = false; }
+    });
+}
+
+function viewDetail(soid, customerName) {
+    document.getElementById('detailTitle').textContent = `SO-${soid} — ${customerName}`;
+    document.getElementById('detailBody').innerHTML = '<div class="text-center py-3"><div class="spinner-border spinner-border-sm"></div></div>';
+    new bootstrap.Modal(document.getElementById('detailModal')).show();
+    fetch(`/api/profile-orders/${soid}/items/`)
+        .then(r => r.json())
+        .then(data => {
+            if (!data.items.length) {
+                document.getElementById('detailBody').innerHTML = '<p class="text-muted">No items found.</p>';
+                return;
+            }
+            const grand = data.items.reduce((s, i) => s + i.total, 0);
+            document.getElementById('detailBody').innerHTML = `
+                <table class="table table-sm table-bordered">
+                    <thead class="table-dark">
+                        <tr><th>Item</th><th>Qty</th><th>Pack</th><th>Price</th><th>Total</th></tr>
+                    </thead>
+                    <tbody>
+                        ${data.items.map(i => `
+                        <tr>
+                            <td>${escHtml(i.description)}${i.instructions ? `<br><small class="text-muted">${escHtml(i.instructions)}</small>` : ''}</td>
+                            <td>${i.qty}</td>
+                            <td>${i.pack}</td>
+                            <td>$${i.price.toFixed(2)}</td>
+                            <td>$${i.total.toFixed(2)}</td>
+                        </tr>`).join('')}
+                    </tbody>
+                    <tfoot>
+                        <tr><td colspan="4" class="text-end fw-bold">Grand Total</td><td class="fw-bold">$${grand.toFixed(2)}</td></tr>
+                    </tfoot>
+                </table>`;
+        });
+}
+
+function escHtml(str) {
+    return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// Initial load
+loadOrders('pending');
+</script>
+{% endblock %}

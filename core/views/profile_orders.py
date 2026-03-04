@@ -369,7 +369,7 @@ def submit_profile_order(request):
                 sodid=next_sodid,
                 so=so,
                 soid=so.soid,
-                productid=item.get('id'),
+                productid=item.get('id') or None,
                 descriptionmemo=item.get('name', ''),
                 orderedunits=item.get('quantity', 0),
                 unitsize=item.get('packSize', 1),
@@ -815,6 +815,126 @@ def delete_profile_item_api(request, profile_id):
     try:
         profile = get_object_or_404(CustomerProfile, id=profile_id)
         profile.delete()
+        return JsonResponse({'success': True})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+    
+# =============================================================================
+# VIEW ORDERS
+# =============================================================================
+
+@login_required
+def profile_orders_list(request):
+    from django.contrib.auth import get_user_model
+    User = get_user_model()
+    tenant = get_current_tenant()
+    users = User.objects.filter(tenantuser__tenant=tenant).order_by('first_name', 'username')
+    return render(request, 'core/Orders/profile_orders_list.html', {'users': users})
+
+
+@login_required
+def get_profile_orders_api(request):
+    tenant = get_current_tenant()
+    if not tenant:
+        return JsonResponse({'error': 'No tenant context'}, status=400)
+
+    completed = request.GET.get('completed', 'false') == 'true'
+    orders = SO.objects.filter(is_completed=completed).select_related(
+        'customer', 'assigned_to', 'completed_by'
+    ).order_by('-soid')
+
+    data = []
+    for o in orders:
+        data.append({
+            'soid': o.soid,
+            'customer': o.billto1 or '',
+            'dispatch_date': o.dispatchdate.strftime('%m/%d/%Y') if o.dispatchdate else '',
+            'total': float(o.totalamount or 0),
+            'customerpo': o.customerpo or '',
+            'comments': o.comments or '',
+            'assigned_to_id': o.assigned_to_id,
+            'assigned_to_name': (o.assigned_to.get_full_name() or o.assigned_to.username) if o.assigned_to else '',
+            'completed_at': o.completed_at.strftime('%m/%d/%Y %I:%M %p') if o.completed_at else '',
+            'completed_by': (o.completed_by.get_full_name() or o.completed_by.username) if o.completed_by else '',
+        })
+
+    return JsonResponse({'orders': data})
+
+
+@login_required
+def get_profile_order_items_api(request, soid):
+    tenant = get_current_tenant()
+    if not tenant:
+        return JsonResponse({'error': 'No tenant context'}, status=400)
+
+    so = get_object_or_404(SO, soid=soid)
+    items = SOD.objects.filter(so=so).order_by('sodid')
+    data = [{
+        'description': i.descriptionmemo or '',
+        'qty': float(i.orderedunits or 0),
+        'pack': float(i.unitsize or 1),
+        'price': float(i.salesprice or 0),
+        'total': float((i.orderedunits or 0) * (i.unitsize or 1) * (i.salesprice or 0)),
+        'instructions': i.specialinstructions or '',
+    } for i in items]
+
+    return JsonResponse({'items': data})
+
+
+@login_required
+@require_POST
+def assign_profile_order_api(request, soid):
+    tenant = get_current_tenant()
+    if not tenant:
+        return JsonResponse({'error': 'No tenant context'}, status=400)
+    try:
+        so = get_object_or_404(SO, soid=soid)
+        data = json.loads(request.body)
+        user_id = data.get('user_id')
+
+        if user_id:
+            from django.contrib.auth import get_user_model
+            User = get_user_model()
+            user = get_object_or_404(User, id=user_id)
+            so.assigned_to = user
+        else:
+            so.assigned_to = None
+        so.save()
+        return JsonResponse({'success': True})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@login_required
+@require_POST
+def complete_profile_order_api(request, soid):
+    tenant = get_current_tenant()
+    if not tenant:
+        return JsonResponse({'error': 'No tenant context'}, status=400)
+    try:
+        from django.utils import timezone
+        so = get_object_or_404(SO, soid=soid)
+        so.is_completed = True
+        so.completed_at = timezone.now()
+        so.completed_by = request.user
+        so.save()
+        return JsonResponse({'success': True})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@login_required
+@require_POST
+def uncomplete_profile_order_api(request, soid):
+    tenant = get_current_tenant()
+    if not tenant:
+        return JsonResponse({'error': 'No tenant context'}, status=400)
+    try:
+        so = get_object_or_404(SO, soid=soid)
+        so.is_completed = False
+        so.completed_at = None
+        so.completed_by = None
+        so.save()
         return JsonResponse({'success': True})
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)

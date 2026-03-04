@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import User as DjangoUser
 from threading import local
+from django.conf import settings
 
 _thread_locals = local()
 
@@ -465,6 +466,10 @@ class SO(TenantModel):
     # Metadata
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    assigned_to = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='assigned_orders')
+    is_completed = models.BooleanField(default=False)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    completed_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='completed_orders')
     
     class Meta:
         db_table = 'documents_so'
