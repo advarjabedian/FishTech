@@ -1111,13 +1111,16 @@ def add_company(request):
         if Company.objects.filter(companyname=companyname, tenant=request.tenant).exists():
             return JsonResponse({'success': False, 'error': 'Company name already exists'})
         
+        from core.utils import get_default_company_logo
+        count = Company.objects.count() + 1
         company = Company.objects.create(
             tenant=request.tenant,
             companyname=companyname,
             address=address,
             city=city,
             state=state,
-            zipcode=zipcode
+            zipcode=zipcode,
+            logo=get_default_company_logo(count),
         )
         
         return JsonResponse({'success': True, 'company_id': company.companyid})
