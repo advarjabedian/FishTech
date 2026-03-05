@@ -8,8 +8,8 @@ from .views.stripe_billing import *
 
 urlpatterns = [
     # Auth routes
-    path('', login_view, name='login'),
-    path('login/', login_view, name='login'),
+    path('', public_home, name='public_home'),
+path('login/', login_view, name='login'),
     path('register/', register_view, name='register'),
     path('logout/', logout_view, name='logout'),
     
