@@ -1,0 +1,503 @@
+{% extends 'core/base.html' %}
+{% block title %}Inventory - FishTeck{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div class="d-flex align-items-center gap-2">
+            <a href="{% url 'operations_hub' %}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-arrow-left"></i> Back
+            </a>
+            <h2 class="mb-0"><i class="bi bi-boxes me-2"></i>Inventory</h2>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <span class="text-muted small" id="inventory-count"></span>
+            <button class="btn btn-outline-primary btn-sm" onclick="openAddModal()">
+                <i class="bi bi-plus me-1"></i>Add Record
+            </button>
+            <button class="btn btn-outline-success btn-sm" onclick="document.getElementById('csvFileInput').click()">
+                <i class="bi bi-upload me-1"></i>Import CSV
+            </button>
+            <a href="/api/inventory/import/template/" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-download me-1"></i>Template
+            </a>
+            <input type="file" id="csvFileInput" accept=".csv" style="display:none;" onchange="handleCsvUpload(this)">
+        </div>
+    </div>
+
+    <div class="row mb-2">
+        <div class="col-md-3">
+            <select id="companyFilter" class="form-select form-select-sm">
+                <option value="">All Companies</option>
+            </select>
+        </div>
+        <div class="col-md-4">
+            <input type="text" id="inventorySearch" class="form-control form-control-sm" placeholder="Search...">
+        </div>
+        <div class="col-md-4">
+            <input type="text" id="inventoryExclude" class="form-control form-control-sm" placeholder="Exclude...">
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body p-0">
+            <table class="table table-striped table-hover mb-0">
+                <thead class="table-dark">
+                    <tr>
+                        <th class="sortable" data-sort="item_number" style="cursor:pointer;">Item # <i class="bi bi-arrow-down-up sort-icon"></i></th>
+                        <th class="sortable" data-sort="desc" style="cursor:pointer;">Description <i class="bi bi-arrow-down-up sort-icon"></i></th>
+                        <th class="sortable text-end" data-sort="unitsavailable" style="cursor:pointer;">Units Avail <i class="bi bi-arrow-down-up sort-icon"></i></th>
+                        <th class="sortable text-end" data-sort="availableweight" style="cursor:pointer;">Avail Weight <i class="bi bi-arrow-down-up sort-icon"></i></th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody id="inventoryTable"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="loadingIndicator" class="text-center py-3" style="display:none;">
+        <div class="spinner-border spinner-border-sm"></div> Loading...
+    </div>
+    <div id="noMoreItems" class="text-center py-3 text-muted small" style="display:none;">All items loaded</div>
+</div>
+
+{% include 'core/Inventory/inventory_info_modal.html' %}
+
+<!-- Add/Edit Record Modal -->
+<div class="modal fade" id="addRecordModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addRecordModalTitle">Add Inventory Record</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="addRecordError" class="alert alert-danger" style="display:none;"></div>
+                <input type="hidden" id="editRecordId">
+                <p class="text-muted small mb-3"><span class="text-danger">*</span> Required field</p>
+
+                <!-- Required -->
+                <div class="row g-2 mb-3">
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Product ID <span class="text-danger">*</span></label>
+                        <input type="text" id="rec_productid" class="form-control form-control-sm border-danger" placeholder="e.g. SALMON01">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Description <span class="text-danger">*</span></label>
+                        <input type="text" id="rec_desc" class="form-control form-control-sm border-danger" placeholder="e.g. Atlantic Salmon 10lb">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Units Available <span class="text-danger">*</span></label>
+                        <input type="number" step="0.01" id="rec_unitsavailable" class="form-control form-control-sm border-danger" placeholder="0">
+                    </div>
+                </div>
+
+                <!-- Optional -->
+                <hr class="my-2">
+                <p class="text-muted small mb-2">Optional fields</p>
+                <div class="row g-2">
+                    <div class="col-md-4">
+                        <label class="form-label small">Item Number</label>
+                        <input type="text" id="rec_item_number" class="form-control form-control-sm">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small">Unit Type</label>
+                        <input type="text" id="rec_unittype" class="form-control form-control-sm" placeholder="CS, LB, EA...">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small">Origin</label>
+                        <input type="text" id="rec_origin" class="form-control form-control-sm">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small">Vendor ID</label>
+                        <input type="text" id="rec_vendorid" class="form-control form-control-sm">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small">Vendor Lot</label>
+                        <input type="text" id="rec_vendorlot" class="form-control form-control-sm">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small">Receive Date</label>
+                        <input type="date" id="rec_receivedate" class="form-control form-control-sm">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small">Units In</label>
+                        <input type="number" step="0.01" id="rec_unitsin" class="form-control form-control-sm">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small">Units On Hand</label>
+                        <input type="number" step="0.01" id="rec_unitsonhand" class="form-control form-control-sm">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small">Weight In</label>
+                        <input type="number" step="0.01" id="rec_weightin" class="form-control form-control-sm">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small">Available Weight</label>
+                        <input type="number" step="0.01" id="rec_availableweight" class="form-control form-control-sm">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small">Actual Cost</label>
+                        <input type="number" step="0.01" id="rec_actualcost" class="form-control form-control-sm">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small">PO ID</label>
+                        <input type="text" id="rec_poid" class="form-control form-control-sm">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small">POD ID</label>
+                        <input type="text" id="rec_podid" class="form-control form-control-sm">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button class="btn btn-primary" onclick="saveRecord()">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Import Preview Modal -->
+<div class="modal fade" id="importPreviewModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Import Preview</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="importSummary" class="alert alert-info mb-3"></div>
+                <div id="importErrors" class="alert alert-warning" style="display:none;"></div>
+                <div class="table-responsive" style="max-height:400px; overflow-y:auto;">
+                    <table class="table table-sm table-striped">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Product ID</th>
+                                <th>Description</th>
+                                <th>Vendor ID</th>
+                                <th>Receive Date</th>
+                                <th>Vendor Lot</th>
+                                <th class="text-end">Units Avail</th>
+                                <th class="text-end">Avail Weight</th>
+                            </tr>
+                        </thead>
+                        <tbody id="importPreviewTable"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button class="btn btn-success" id="confirmImportBtn" onclick="confirmImport()">
+                    <i class="bi bi-check-lg me-1"></i>Import All
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+console.log('Inventory script starting...');
+window.onerror = function(msg, src, line, col, err) {
+    console.error('JS Error:', msg, 'at', src, line + ':' + col);
+};
+let currentPage = 1, isLoading = false, hasMoreItems = true, allItems = [];
+let currentFilters = { search: '', exclude: '', company: '' };
+let currentSort = { field: '', direction: 'asc' };
+let pendingImportRows = [];
+
+function getCookie(name) {
+    const m = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+    return m ? decodeURIComponent(m[2]) : '';
+}
+
+function fmt(n) {
+    const v = parseFloat(n);
+    return isNaN(v) ? '0.00' : v.toFixed(2);
+}
+
+// ── List / Load ──────────────────────────────────────────────────────────────
+
+async function loadInventory(page = 1, append = false) {
+    if (isLoading) return;
+    isLoading = true;
+    document.getElementById('loadingIndicator').style.display = 'block';
+    document.getElementById('noMoreItems').style.display = 'none';
+
+    const params = new URLSearchParams({ page, page_size: 50 });
+    if (currentFilters.search) params.append('search', currentFilters.search);
+    if (currentFilters.exclude) params.append('exclude', currentFilters.exclude);
+    if (currentFilters.company) params.append('company', currentFilters.company);
+    if (currentSort.field) { params.append('sort', currentSort.field); params.append('direction', currentSort.direction); }
+
+    try {
+        const r = await fetch(`/api/inventory/?${params}`);
+        const data = await r.json();
+        if (data.results && data.results.length > 0) {
+            allItems = append ? [...allItems, ...data.results] : data.results;
+            renderInventory(allItems, !append);
+            hasMoreItems = data.has_next;
+            currentPage = page;
+        } else {
+            hasMoreItems = false;
+            if (!append) document.getElementById('inventoryTable').innerHTML =
+                '<tr><td colspan="4" class="text-center text-muted py-4">No items found</td></tr>';
+        }
+        document.getElementById('inventory-count').textContent = (data.total || allItems.length) + ' items';
+        if (!hasMoreItems) document.getElementById('noMoreItems').style.display = 'block';
+    } catch(e) {
+        document.getElementById('inventoryTable').innerHTML =
+            '<tr><td colspan="4" class="text-center text-danger">Error loading inventory</td></tr>';
+    } finally {
+        isLoading = false;
+        document.getElementById('loadingIndicator').style.display = 'none';
+    }
+}
+
+function renderInventory(items, clear = true) {
+    const tbody = document.getElementById('inventoryTable');
+    if (clear) tbody.innerHTML = '';
+    items.forEach(item => {
+        const tr = document.createElement('tr');
+        tr.style.cursor = 'pointer';
+        Object.keys(item).forEach(k => tr.setAttribute(`data-${k}`, item[k] ?? ''));
+        tr.innerHTML = `
+            <td>${item.item_number || item.productid || ''}</td>
+            <td>${item.desc || ''}</td>
+            <td class="text-end">${fmt(item.unitsavailable)}</td>
+            <td class="text-end">${fmt(item.availableweight)}</td>
+            <td class="text-end">
+                <button class="btn btn-outline-danger btn-sm" onclick="deleteProduct(event, '${item.productid}', '${(item.desc||'').replace(/'/g,"\\'")}')">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </td>`;
+        tr.addEventListener('click', () => window.showInventoryInfoModal && window.showInventoryInfoModal(item));
+        tbody.appendChild(tr);
+    });
+}
+
+// ── Infinite scroll ──────────────────────────────────────────────────────────
+window.addEventListener('scroll', () => {
+    if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 200 && hasMoreItems && !isLoading)
+        loadInventory(currentPage + 1, true);
+});
+
+// ── Filters / Sort ───────────────────────────────────────────────────────────
+let searchTimer;
+function resetAndLoad() { allItems = []; currentPage = 1; hasMoreItems = true; loadInventory(1, false); }
+
+document.getElementById('inventorySearch').addEventListener('input', function() {
+    clearTimeout(searchTimer);
+    currentFilters.search = this.value.trim();
+    searchTimer = setTimeout(resetAndLoad, 400);
+});
+document.getElementById('inventoryExclude').addEventListener('input', function() {
+    clearTimeout(searchTimer);
+    currentFilters.exclude = this.value.trim();
+    searchTimer = setTimeout(resetAndLoad, 400);
+});
+document.getElementById('companyFilter').addEventListener('change', function() {
+    currentFilters.company = this.value;
+    resetAndLoad();
+});
+
+document.querySelectorAll('.sortable').forEach(th => {
+    th.addEventListener('click', function() {
+        const f = this.dataset.sort;
+        currentSort.direction = (currentSort.field === f && currentSort.direction === 'asc') ? 'desc' : 'asc';
+        currentSort.field = f;
+        document.querySelectorAll('.sort-icon').forEach(i => i.className = 'bi bi-arrow-down-up sort-icon');
+        const icon = this.querySelector('.sort-icon');
+        if (icon) icon.className = `bi bi-arrow-${currentSort.direction === 'asc' ? 'up' : 'down'} sort-icon`;
+        resetAndLoad();
+    });
+});
+
+// ── Companies ────────────────────────────────────────────────────────────────
+async function loadCompanies() {
+    try {
+        const r = await fetch('/api/operations/get-companies/');
+        const data = await r.json();
+        const sel = document.getElementById('companyFilter');
+        (data.companies || []).forEach(c => {
+            const o = document.createElement('option');
+            o.value = c.id; o.textContent = c.name;
+            sel.appendChild(o);
+        });
+    } catch(e) {}
+}
+
+// ── Add / Edit Record ────────────────────────────────────────────────────────
+function openAddModal() {
+    console.log('openAddModal called');
+
+    const modalEl = document.getElementById('addRecordModal');
+    console.log('modal element found:', modalEl);
+    console.log('bootstrap available:', typeof bootstrap);
+
+    if (!modalEl) { alert('ERROR: addRecordModal element not found in DOM'); return; }
+    if (typeof bootstrap === 'undefined') { alert('ERROR: Bootstrap JS not loaded'); return; }
+
+    document.getElementById('addRecordModalTitle').textContent = 'Add Inventory Record';
+    document.getElementById('editRecordId').value = '';
+    document.getElementById('addRecordError').style.display = 'none';
+    ['productid','item_number','unittype','desc','origin','vendorid','vendorlot',
+     'receivedate','unitsin','unitsavailable','unitsonhand','actualcost',
+     'weightin','availableweight','poid','podid'].forEach(f => {
+        const el = document.getElementById('rec_' + f);
+        if (!el) console.warn('Missing input: rec_' + f);
+        else el.value = '';
+    });
+
+    try {
+        new bootstrap.Modal(modalEl).show();
+        console.log('Modal show() called successfully');
+    } catch(e) {
+        alert('ERROR opening modal: ' + e.message);
+        console.error(e);
+    }
+}
+
+window.openEditModal = function(record) {
+    document.getElementById('addRecordModalTitle').textContent = 'Edit Inventory Record';
+    document.getElementById('editRecordId').value = record.id;
+    document.getElementById('addRecordError').style.display = 'none';
+    const fields = ['productid','item_number','unittype','desc','origin','vendorid','vendorlot',
+                    'receivedate','unitsin','unitsavailable','unitsonhand','actualcost',
+                    'weightin','availableweight','poid','podid'];
+    fields.forEach(f => {
+        const el = document.getElementById('rec_' + f);
+        if (el) el.value = record[f] || '';
+    });
+    new bootstrap.Modal(document.getElementById('addRecordModal')).show();
+};
+
+async function saveRecord() {
+    const id = document.getElementById('editRecordId').value;
+    const payload = {};
+    ['productid','item_number','unittype','desc','origin','vendorid','vendorlot',
+     'receivedate','unitsin','unitsavailable','unitsonhand','actualcost',
+     'weightin','availableweight','poid','podid'].forEach(f => {
+        payload[f] = document.getElementById('rec_' + f).value;
+    });
+
+    if (!payload.productid || !payload.desc || payload.unitsavailable === '') {
+        document.getElementById('addRecordError').textContent = 'Product ID, Description, and Units Available are required.';
+        document.getElementById('addRecordError').style.display = '';
+        return;
+    }
+
+    const url = id ? `/api/inventory/${id}/update/` : '/api/inventory/create/';
+    try {
+        const r = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+            body: JSON.stringify(payload),
+        });
+        const data = await r.json();
+        if (data.error) throw new Error(data.error);
+        bootstrap.Modal.getInstance(document.getElementById('addRecordModal')).hide();
+        resetAndLoad();
+    } catch(e) {
+        document.getElementById('addRecordError').textContent = e.message;
+        document.getElementById('addRecordError').style.display = '';
+    }
+}
+
+// ── CSV Import ───────────────────────────────────────────────────────────────
+async function handleCsvUpload(input) {
+    const file = input.files[0];
+    if (!file) return;
+    input.value = '';
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+        const r = await fetch('/api/inventory/import/preview/', {
+            method: 'POST',
+            headers: { 'X-CSRFToken': getCookie('csrftoken') },
+            body: formData,
+        });
+        const data = await r.json();
+        if (data.error) { alert('Error: ' + data.error); return; }
+
+        pendingImportRows = data.rows;
+
+        document.getElementById('importSummary').textContent =
+            `${data.total_rows} records ready to import.${data.error_count ? ' ' + data.error_count + ' rows skipped.' : ''}`;
+
+        if (data.errors && data.errors.length) {
+            document.getElementById('importErrors').textContent = data.errors.join('\n');
+            document.getElementById('importErrors').style.display = '';
+        } else {
+            document.getElementById('importErrors').style.display = 'none';
+        }
+
+        const tbody = document.getElementById('importPreviewTable');
+        tbody.innerHTML = '';
+        data.rows.slice(0, 100).forEach(row => {
+            tbody.innerHTML += `<tr>
+                <td>${row.productid || ''}</td>
+                <td>${row.desc || ''}</td>
+                <td>${row.vendorid || ''}</td>
+                <td>${row.receivedate || ''}</td>
+                <td>${row.vendorlot || ''}</td>
+                <td class="text-end">${row.unitsavailable || ''}</td>
+                <td class="text-end">${row.availableweight || ''}</td>
+            </tr>`;
+        });
+
+        new bootstrap.Modal(document.getElementById('importPreviewModal')).show();
+    } catch(e) {
+        alert('Upload failed: ' + e.message);
+    }
+}
+
+async function confirmImport() {
+    const btn = document.getElementById('confirmImportBtn');
+    btn.disabled = true;
+    btn.textContent = 'Importing...';
+    try {
+        const r = await fetch('/api/inventory/import/confirm/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+            body: JSON.stringify({ rows: pendingImportRows }),
+        });
+        const data = await r.json();
+        if (data.error) throw new Error(data.error);
+        bootstrap.Modal.getInstance(document.getElementById('importPreviewModal')).hide();
+        resetAndLoad();
+    } catch(e) {
+        alert('Import failed: ' + e.message);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Import All';
+    }
+}
+
+// ── Delete product ───────────────────────────────────────────────────────────
+async function deleteProduct(event, productId, desc) {
+    event.stopPropagation(); // prevent row click opening modal
+    if (!confirm(`Delete ALL inventory records for "${desc}" (${productId})?\n\nThis cannot be undone.`)) return;
+    try {
+        const r = await fetch(`/api/inventory/product/${productId}/delete/`, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': getCookie('csrftoken') },
+        });
+        const data = await r.json();
+        if (data.error) throw new Error(data.error);
+        resetAndLoad();
+    } catch(e) {
+        alert('Delete failed: ' + e.message);
+    }
+}
+
+// ── Init ─────────────────────────────────────────────────────────────────────
+loadCompanies();
+loadInventory(1, false);
+document.getElementById('inventorySearch').focus();
+</script>
+{% endblock %}
