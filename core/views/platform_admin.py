@@ -21,6 +21,23 @@ def superuser_required(view_func):
 
 
 @superuser_required
+def delete_tenant(request, tenant_id):
+    if request.method != 'POST':
+        from django.http import JsonResponse
+        return JsonResponse({'error': 'POST required'}, status=405)
+    try:
+        from django.http import JsonResponse
+        tenant = Tenant.objects.get(id=tenant_id)
+        name = tenant.name
+        tenant.delete()
+        return JsonResponse({'success': True})
+    except Tenant.DoesNotExist:
+        return JsonResponse({'error': 'Tenant not found'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@superuser_required
 def platform_admin(request):
     """Platform admin dashboard - superusers only"""
     

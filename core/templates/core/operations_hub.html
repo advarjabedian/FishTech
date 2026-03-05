@@ -39,7 +39,8 @@
 {% block content %}
 <div class="container mt-4">
     <div class="row justify-content-center">
-        <!-- Company Card -->
+        <!-- Company Card (only shown if multiple companies) -->
+        {% if request.companies|length > 1 %}
         <div class="col-md-4 mb-3">
             <div class="card card-dashboard bg-secondary bg-opacity-10" style="border-color: #6c757d !important;">
                 <div class="card-body text-center py-4">
@@ -79,6 +80,7 @@
                 </div>
             </div>
         </div>
+        {% endif %}
 
         <!-- HACCP Card -->
         <div class="col-md-4 mb-3">
