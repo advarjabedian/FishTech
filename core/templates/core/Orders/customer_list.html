@@ -36,10 +36,6 @@
                 <thead class="table-dark">
                     <tr>
                         <th>Customer Name</th>
-                        <th>City</th>
-                        <th>State</th>
-                        <th>Phone</th>
-                        <th>Contact</th>
                         <th></th>
                     </tr>
                 </thead>
@@ -47,10 +43,6 @@
                     {% for customer in customers %}
                     <tr class="customer-row" data-name="{{ customer.name|lower }}">
                         <td class="fw-semibold">{{ customer.name }}</td>
-                        <td>{{ customer.city }}</td>
-                        <td>{{ customer.state }}</td>
-                        <td>{{ customer.phone }}</td>
-                        <td>{{ customer.contact_name }}</td>
                         <td class="text-end d-flex justify-content-end gap-2">
                             <button class="btn btn-outline-secondary btn-sm"
                                 onclick="copyOrderLink('{{ request.scheme }}://{{ request.get_host }}{% url 'public_profile_order_form' customer.public_token %}', this)">
@@ -63,7 +55,7 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="6" class="text-center text-muted py-5">
+                        <td colspan="2" class="text-center text-muted py-5">
                             <i class="bi bi-people" style="font-size: 2rem;"></i>
                             <p class="mt-2 mb-0">No customers found.</p>
                         </td>
