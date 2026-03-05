@@ -81,7 +81,10 @@ def register_view(request):
         password_confirm = request.POST.get('password_confirm', '').strip()
         
         # Validation
-        if not all([company_name, subdomain, username, password]):
+        import re
+        subdomain = re.sub(r'[^a-z0-9-]', '', company_name.lower().replace(' ', '-'))
+
+        if not all([company_name, username, password]):
             messages.error(request, 'All required fields must be filled out.')
             return render(request, 'core/register.html')
         
@@ -91,7 +94,7 @@ def register_view(request):
         
         # Check if subdomain already exists
         if Tenant.objects.filter(subdomain=subdomain).exists():
-            messages.error(request, 'This subdomain is already taken.')
+            messages.error(request, 'A company with that name already exists.')
             return render(request, 'core/register.html')
         
         # Check if username already exists
