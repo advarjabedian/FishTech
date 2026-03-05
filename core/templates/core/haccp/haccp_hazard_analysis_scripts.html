@@ -139,12 +139,12 @@ function renderHazardAnalysis() {
             <table class="hazard-table">
                 <thead>
                     <tr>
-                        <th class="hazard-type">Hazard Type</th>
-                        <th class="hazard-description">Hazard Description</th>
-                        <th class="hazard-significant">Significant?</th>
-                        <th class="hazard-justification">Justification</th>
-                        <th class="hazard-controls">Control Measures/Programs</th>
-                        <th class="hazard-ccp">CCP?</th>
+                        <th style="width: 8%;">Hazard Type</th>
+                        <th style="width: 18%;">Hazard Description</th>
+                        <th style="width: 7%;">Sig?</th>
+                        <th style="width: 40%;">Justification</th>
+                        <th style="width: 22%;">Control Measures/Programs</th>
+                        <th style="width: 5%;">CCP</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -232,9 +232,10 @@ function renderHazardRow(step, hazardType, label, isFirst) {
     const hazard = step[hazardType];
     const isReadOnly = {% if is_read_only %}true{% else %}false{% endif %};
     
+    const shortLabels = { 'Biological': 'Bio', 'Physical': 'Phys', 'Chemical': 'Chem' };
     let html = `
         <tr>
-            <td class="hazard-type">${label}</td>
+            <td class="hazard-type">${shortLabels[label] || label}</td>
             <td class="hazard-description">
                 <textarea class="form-control form-control-sm" rows="2" 
                           onchange="updateHazardField('${step.id}', '${hazardType}', 'description', this.value)"
@@ -337,12 +338,34 @@ validateDocument = function() {
 };
 
 // Override collectFormData
+// Override collectFormData
 const originalCollectFormData = collectFormData;
 collectFormData = function() {
     const data = originalCollectFormData();
     data.document_data = { steps: hazardData.steps };
     return data;
 };
+
+// Override prepareForPrint for hazard analysis - convert textareas to divs so page breaks work
+const originalPrepareForPrint = prepareForPrint;
+prepareForPrint = function() {
+    document.querySelectorAll('.hazard-table textarea').forEach(ta => {
+        const div = document.createElement('div');
+        div.className = 'hazard-print-div';
+        div.textContent = ta.value;
+        ta.parentNode.insertBefore(div, ta.nextSibling);
+    });
+
+    expandTextareasForPrint();
+
+    setTimeout(() => {
+        window.print();
+        setTimeout(() => {
+            document.querySelectorAll('.hazard-print-div').forEach(d => d.remove());
+        }, 500);
+    }, 300);
+};
+
 
 function startEditStepName(stepId) {
     const el = document.getElementById('stepname-' + stepId);

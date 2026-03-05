@@ -1,61 +1,10 @@
 from django.urls import path
-from .views.public_pages import sms_opt_in, privacy_policy, terms_of_service
-from .views.platform_admin import platform_admin
-from .views import (
-    # Auth views
-    login_view, logout_view, operations_hub, register_view,
-    # Order Requests
-    order_requests, get_order_requests_api, get_order_requests_complete_api,
-    view_order_request_api, assign_order_request_user_api, complete_order_request_api,
-    uncomplete_order_request_api, update_order_request_notes_api, update_order_request_customer_api,
-    check_order_emails_api, get_email_settings_api, save_email_settings_api, test_email_connection_api,
-    # Document views
-    documents_home, so_documents, po_documents, customer_documents, vendor_documents,
-    licenses, vehicles,
-    get_licenses_api, upload_license_api, update_license_api, view_license_file_api, delete_license_api,
-    get_vehicles_api, add_vehicle_api, update_vehicle_api, delete_vehicle_api,
-    get_expiration_counts_api,
-    # Document APIs
-    search_customers, search_vendors,
-    get_sales_orders, get_so_files, view_so_file, upload_so_file, delete_so_file,
-    get_purchase_orders, get_po_files, view_po_file, upload_po_file, delete_po_file,
-    get_pod_items, download_bulk_po_files, email_bulk_po_files, email_po_files,
-    get_vendor_emails, add_vendor_email, delete_vendor_email,
-    get_customer_emails, add_customer_email, delete_customer_email,
-    get_tenant_emails, add_tenant_email, delete_tenant_email,
-    get_customer_documents, get_customer_files, view_customer_file,
-    upload_customer_file, delete_customer_file, email_customer_files,
-    get_vendor_documents, get_vendor_files, view_vendor_file,
-    upload_vendor_file, delete_vendor_file, email_vendor_files,
-    download_bulk_so_files, email_bulk_so_files, email_so_files,
-    # HACCP views
-    haccp, haccp_company, haccp_documents, haccp_document_view,
-    haccp_save_document, get_company_product_types, toggle_company_product_type,
-    generate_new_version, get_version_history, get_flow_chart_data,
-    get_hazard_analysis_data, delete_haccp_version, get_haccp_version,
-    get_master_product_types, get_all_product_types, add_product_type,
-    delete_product_type, get_inactive_product_types, restore_product_type,
-    update_product_type,
-    set_haccp_owner, get_company_certificates, save_company_certificate,
-    view_company_certificate, add_company, edit_company, delete_company,
-    # User management
-    manage_users, add_user, edit_user, delete_user, update_company_logo,
-    toggle_user_company, toggle_user_admin,
-    # Operations views
-    operations_dashboard, inspection_form, operations_admin, print_sop_schedule,
-    # Operations API
-    start_inspection, save_inspection, update_inspection_time, update_inspection_inspector,
-    update_company_config, toggle_holiday, get_deviations, save_corrective_actions,
-    submit_verification, save_verifier_signature, get_verifier_signature,
-    save_monitor_signature, get_monitor_signature, get_operations_config,
-    get_sop_list, create_sop, update_sop, delete_sop, get_zones, create_zone,
-    delete_zone, get_calendar_data, get_inspection_images, get_companies, check_order_emails_api, get_email_settings_api, save_email_settings_api, test_email_connection_api,
-    twilio_sms_webhook, get_twilio_settings_api, save_twilio_settings_api, test_twilio_connection_api
-)
-from .views.operations_reports import generate_operational_report, generate_deviations_report, generate_bulk_report
-from .views.stripe_billing import (
-    get_billing_status, create_checkout_session, create_portal_session, stripe_webhook
-)
+from .views.public_pages import *
+from .views.platform_admin import *
+from .views.profile_orders import *
+from .views import *
+from .views.operations_reports import *
+from .views.stripe_billing import *
 
 urlpatterns = [
     # Auth routes
@@ -71,6 +20,7 @@ urlpatterns = [
     path('haccp/', haccp, name='haccp'),
     path('haccp/<int:company_id>/', haccp_company, name='haccp_company'),
     path('haccp/<int:company_id>/<slug:product_type>/', haccp_documents, name='haccp_documents'),
+    path('haccp/<int:company_id>/<slug:product_type>/print/', haccp_print_set, name='haccp_print_set'),
     path('haccp/<int:company_id>/<slug:product_type>/<str:document_type>/', haccp_document_view, name='haccp_document_view'),
     path('haccp/certificate/<int:company_id>/<str:certificate_type>/', view_company_certificate, name='view_company_certificate'),
     
@@ -83,6 +33,7 @@ urlpatterns = [
     path('api/haccp-flow-chart-data/<int:company_id>/<slug:product_type>/', get_flow_chart_data, name='get_flow_chart_data'),
     path('api/haccp-hazard-analysis-data/<int:company_id>/<slug:product_type>/', get_hazard_analysis_data, name='get_hazard_analysis_data'),
     path('api/haccp-delete-version/<int:company_id>/<slug:product_type>/<str:document_type>/', delete_haccp_version, name='delete_haccp_version'),
+    path('api/haccp-delete-version-set/<int:company_id>/<slug:product_type>/', delete_haccp_version_set, name='delete_haccp_version_set'),
     path('api/haccp-get-version/<int:company_id>/<slug:product_type>/<str:document_type>/', get_haccp_version, name='get_haccp_version'),
     path('api/haccp-master-product-types/', get_master_product_types, name='get_master_product_types'),
     path('api/haccp-all-product-types/', get_all_product_types, name='api_haccp_all_product_types'),
@@ -140,9 +91,12 @@ urlpatterns = [
     path('api/operations/sop-delete/', delete_sop, name='delete_sop'),
     path('api/operations/zones/', get_zones, name='get_zones'),
     path('api/operations/zone-create/', create_zone, name='create_zone'),
+    path('api/operations/zone-update/', update_zone, name='update_zone'),
     path('api/operations/zone-delete/', delete_zone, name='delete_zone'),
     path('api/operations/get-calendar-data/', get_calendar_data, name='get_calendar_data'),
     path('api/operations/get-inspection-images/<int:parent_id>/', get_inspection_images, name='get_inspection_images'),
+    path('api/operations/upload-inspection-image/', upload_inspection_image, name='upload_inspection_image'),
+    path('api/operations/inspection-image/<int:parent_id>/<str:filename>/', view_inspection_image, name='view_inspection_image'),
     path('api/operations/get-companies/', get_companies, name='get_companies'),
 
     path('api/update-company-logo/<int:company_id>/', update_company_logo, name='update_company_logo'),
@@ -251,8 +205,28 @@ urlpatterns = [
     path('platform-admin/', platform_admin, name='platform_admin'),
     
     # Order Requests
+    path('orders/', orders_hub, name='orders_hub'),
+    path('orders/view/', profile_orders_list, name='profile_orders_list'),
+    path('orders/customers/', customer_list, name='customer_list'),
+    path('api/profile-orders/list/', get_profile_orders_api, name='get_profile_orders_api'),
+    path('api/profile-orders/<int:soid>/assign/', assign_profile_order_api, name='assign_profile_order_api'),
+    path('api/profile-orders/<int:soid>/complete/', complete_profile_order_api, name='complete_profile_order_api'),
+    path('api/profile-orders/<int:soid>/uncomplete/', uncomplete_profile_order_api, name='uncomplete_profile_order_api'),
+    path('api/profile-orders/<int:soid>/items/', get_profile_order_items_api, name='get_profile_order_items_api'),
+path('orders/customers/import/', import_customers_page, name='import_customers_page'),
+path('orders/customers/<int:customer_id>/', profile_order_form, name='profile_order_form'),
+path('order/<uuid:token>/', public_profile_order_form, name='public_profile_order_form'),
+path('api/profile-orders/submit/', submit_profile_order, name='submit_profile_order'),
+path('api/profile-orders/import/preview/', import_preview, name='import_preview'),
+path('api/profile-orders/import/confirm/', import_confirm, name='import_confirm'),
+    path('api/customers/add/', add_customer_api, name='add_customer_api'),
+    path('api/customers/<int:customer_id>/add-profile-item/', add_profile_item_api, name='add_profile_item_api'),
+    path('api/profile-item/<int:profile_id>/update/', update_profile_item_api, name='update_profile_item_api'),
+    path('api/profile-item/<int:profile_id>/delete/', delete_profile_item_api, name='delete_profile_item_api'),
+path('api/profile-orders/import/template/', download_import_template, name='download_import_template'),
     path('order-requests/', order_requests, name='order_requests'),
     path('api/order-requests/', get_order_requests_api, name='get_order_requests_api'),
+    path('api/order-requests/users/', get_order_request_users_api, name='get_order_request_users_api'),
     path('api/order-requests/complete/', get_order_requests_complete_api, name='get_order_requests_complete_api'),
     path('api/order-request/<int:order_request_id>/view/', view_order_request_api, name='view_order_request_api'),
     path('api/order-request/<int:order_request_id>/assign-user/', assign_order_request_user_api, name='assign_order_request_user_api'),

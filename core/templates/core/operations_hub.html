@@ -41,7 +41,7 @@
     <!-- Company Selection -->
     <div class="row justify-content-center mb-4">
         <div class="col-md-6">
-            <div class="card">
+            <div class="card border-0">
                 <div class="card-body text-center">
                     <h5 class="card-title"><i class="bi bi-building me-2"></i>Select Company</h5>
                     <div id="company-grid" {% if request.selected_company %}style="display: none;"{% endif %}>
@@ -60,9 +60,9 @@
                         </div>
                     </div>
                     <div id="selected-company-display" {% if not request.selected_company %}style="display: none;"{% endif %}>
-                        <div class="company-box shadow-sm mx-auto" onclick="resetCompanySelection()" style="cursor: pointer; width: 200px; height: 100px; border: 2px solid #0d6efd; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                        <div class="company-box mx-auto" onclick="resetCompanySelection()" style="cursor: pointer; width: 260px; height: 130px; border: none; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
                             {% if request.selected_company.logo %}
-                            <img src="{{ request.selected_company.logo }}" alt="{{ request.selected_company.companyname }}" style="max-height: 80px; max-width: 100%; object-fit: contain;">
+                            <img src="{{ request.selected_company.logo }}" alt="{{ request.selected_company.companyname }}" style="max-height: 120px; max-width: 100%; object-fit: contain;">
                             {% else %}
                             <span>{{ request.selected_company.companyname }}</span>
                             {% endif %}
@@ -112,13 +112,14 @@
         </div>
 
         <!-- Order Requests Card -->
+        <!-- Orders Card -->
         <div class="col-md-4 mb-3">
-            <div class="card card-dashboard bg-danger bg-opacity-10" style="border-color: #dc3545 !important;" onclick="window.location.href='{% url 'order_requests' %}'">
+            <div class="card card-dashboard bg-danger bg-opacity-10" style="border-color: #dc3545 !important;" onclick="window.location.href='{% url 'orders_hub' %}'">
                 <div class="card-body text-center py-5">
-                    <i class="bi bi-envelope-paper card-icon text-danger"></i>
-                    <h3>Order Requests</h3>
-                    <p class="text-muted">Email orders from customers</p>
-                    <a href="{% url 'order_requests' %}" class="btn btn-danger mt-2">View Orders</a>
+                    <i class="bi bi-bag card-icon text-danger"></i>
+                    <h3>Orders</h3>
+                    <p class="text-muted">Profile orders and order requests</p>
+                    <a href="{% url 'orders_hub' %}" class="btn btn-danger mt-2">View Orders</a>
                 </div>
             </div>
         </div>

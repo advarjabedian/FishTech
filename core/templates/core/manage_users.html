@@ -465,6 +465,7 @@
 </div>
 
 <script>
+// Helper to get CSRF token from cookie
 function getCookie(name) {
     let cookieValue = null;
     if (document.cookie && document.cookie !== '') {
@@ -478,6 +479,75 @@ function getCookie(name) {
         }
     }
     return cookieValue;
+}
+
+// Twilio Settings
+function loadTwilioSettings() {
+    fetch('/api/twilio-settings/')
+        .then(r => r.json())
+        .then(data => {
+            document.getElementById('twilioAccountSid').value = data.twilio_account_sid || '';
+            document.getElementById('twilioPhoneNumber').value = data.twilio_phone_number || '';
+            document.getElementById('twilioAuthToken').placeholder = data.has_token ? 'Leave blank to keep existing' : 'Enter auth token';
+        });
+}
+
+function saveTwilioSettings() {
+    const data = {
+        twilio_account_sid: document.getElementById('twilioAccountSid').value,
+        twilio_auth_token: document.getElementById('twilioAuthToken').value,
+        twilio_phone_number: document.getElementById('twilioPhoneNumber').value,
+    };
+    
+    fetch('/api/twilio-settings/save/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify(data)
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            document.getElementById('twilioStatus').innerHTML = '<div class="alert alert-success py-1"><i class="bi bi-check-circle"></i> Settings saved!</div>';
+            document.getElementById('twilioAuthToken').value = '';
+            loadTwilioSettings();
+        } else {
+            document.getElementById('twilioStatus').innerHTML = `<div class="alert alert-danger py-1"><i class="bi bi-x-circle"></i> ${data.error}</div>`;
+        }
+    });
+}
+
+function testTwilioConnection() {
+    document.getElementById('twilioStatus').innerHTML = '<div class="alert alert-info py-1"><i class="bi bi-hourglass-split"></i> Testing...</div>';
+    
+    fetch('/api/twilio-settings/test/', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken')
+        }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            document.getElementById('twilioStatus').innerHTML = `<div class="alert alert-success py-1"><i class="bi bi-check-circle"></i> ${data.message}</div>`;
+        } else {
+            document.getElementById('twilioStatus').innerHTML = `<div class="alert alert-danger py-1"><i class="bi bi-x-circle"></i> ${data.error}</div>`;
+        }
+    });
+}
+
+function toggleTwilioToken() {
+    const input = document.getElementById('twilioAuthToken');
+    const icon = document.getElementById('twilioTokenIcon');
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.classList.replace('bi-eye', 'bi-eye-slash');
+    } else {
+        input.type = 'password';
+        icon.classList.replace('bi-eye-slash', 'bi-eye');
+    }
 }
 
 function filterByCompany(companyId) {
@@ -1130,80 +1200,7 @@ function deleteTenantEmail(emailId) {
 }
 
 
-// Twilio Settings
-function loadTwilioSettings() {
-    fetch('/api/twilio-settings/')
-        .then(r => r.json())
-        .then(data => {
-            document.getElementById('twilioAccountSid').value = data.twilio_account_sid || '';
-            document.getElementById('twilioPhoneNumber').value = data.twilio_phone_number || '';
-            document.getElementById('twilioAuthToken').placeholder = data.has_token ? 'Leave blank to keep existing' : 'Enter auth token';
-        });
-}
 
-function saveTwilioSettings() {
-    const data = {
-        twilio_account_sid: document.getElementById('twilioAccountSid').value,
-        twilio_auth_token: document.getElementById('twilioAuthToken').value,
-        twilio_phone_number: document.getElementById('twilioPhoneNumber').value,
-    };
-    
-    fetch('/api/twilio-settings/save/', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-        },
-        body: JSON.stringify(data)
-    })
-    .then(r => r.json())
-    .then(data => {
-        if (data.success) {
-            document.getElementById('twilioStatus').innerHTML = '<div class="alert alert-success py-1"><i class="bi bi-check-circle"></i> Settings saved!</div>';
-            document.getElementById('twilioAuthToken').value = '';
-            loadTwilioSettings();
-        } else {
-            document.getElementById('twilioStatus').innerHTML = `<div class="alert alert-danger py-1"><i class="bi bi-x-circle"></i> ${data.error}</div>`;
-        }
-    });
-}
-
-function testTwilioConnection() {
-    document.getElementById('twilioStatus').innerHTML = '<div class="alert alert-info py-1"><i class="bi bi-hourglass-split"></i> Testing...</div>';
-    
-    fetch('/api/twilio-settings/test/', {
-        method: 'POST',
-        headers: {
-            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-        }
-    })
-    .then(r => r.json())
-    .then(data => {
-        if (data.success) {
-            document.getElementById('twilioStatus').innerHTML = `<div class="alert alert-success py-1"><i class="bi bi-check-circle"></i> ${data.message}</div>`;
-        } else {
-            document.getElementById('twilioStatus').innerHTML = `<div class="alert alert-danger py-1"><i class="bi bi-x-circle"></i> ${data.error}</div>`;
-        }
-    });
-}
-
-function toggleTwilioToken() {
-    const input = document.getElementById('twilioAuthToken');
-    const icon = document.getElementById('twilioTokenIcon');
-    if (input.type === 'password') {
-        input.type = 'text';
-        icon.classList.replace('bi-eye', 'bi-eye-slash');
-    } else {
-        input.type = 'password';
-        icon.classList.replace('bi-eye-slash', 'bi-eye');
-    }
-}
-
-// Load on page load - add to your DOMContentLoaded
-document.addEventListener('DOMContentLoaded', function() {
-    // ... existing code ...
-    loadTwilioSettings();
-});
 
 </script>
 {% endblock %}

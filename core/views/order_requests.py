@@ -98,9 +98,13 @@ def test_email_connection_api(request):
         })
 
 
+def orders_hub(request):
+    """Display orders hub page"""
+    return render(request, 'core/Orders/orders_hub.html')
+
 def order_requests(request):
     """Display order requests page"""
-    return render(request, 'core/order_requests.html')
+    return render(request, 'core/Orders/order_requests.html')
 
 
 def get_order_requests_api(request):
@@ -536,3 +540,27 @@ def test_twilio_connection_api(request):
         })
     except Exception as e:
         return JsonResponse({'error': f'Connection failed: {str(e)}'}, status=400)
+    
+
+@login_required
+def get_order_request_users_api(request):
+    """Get users for order request assignment"""
+    from django.contrib.auth.models import User as DjangoUser
+    tenant = get_current_tenant()
+    if not tenant:
+        return JsonResponse({'users': [], 'current_user_id': None})
+
+    users = User.objects.filter(tenant=tenant).values('id', 'name')
+    
+    # Get current django user's linked core User
+    current_user_id = None
+    try:
+        current_core_user = User.objects.get(tenant=tenant, email=request.user.email)
+        current_user_id = current_core_user.id
+    except User.DoesNotExist:
+        pass
+
+    return JsonResponse({
+        'users': list(users),
+        'current_user_id': current_user_id,
+    })

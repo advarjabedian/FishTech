@@ -1,5 +1,5 @@
 import json
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required
 from django.db.models import Max
@@ -7,6 +7,7 @@ from core.models import (
     SOP, SOPParent, SOPChild, CompanyOperationConfig, 
     CompanyHoliday, Zone
 )
+
 from datetime import date, datetime
 
 
@@ -494,6 +495,23 @@ def delete_zone(request):
         return JsonResponse({'success': False, 'error': str(e)})
 
 
+@require_http_methods(["POST"])
+@login_required
+def update_zone(request):
+    """Rename a zone"""
+    if not request.tenant:
+        return JsonResponse({'success': False, 'error': 'Not authenticated'})
+    
+    try:
+        data = json.loads(request.body)
+        zone = Zone.objects.get(id=data['zone_id'])
+        zone.name = data['name']
+        zone.save()
+        return JsonResponse({'success': True})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+
 @require_http_methods(["GET"])
 @login_required
 def get_calendar_data(request):
@@ -560,6 +578,12 @@ def get_inspection_images(request, parent_id):
         images = []
         for child in children:
             sop = SOP.objects.filter(sop_did=child.sop_did).first()
+            image_url = child.image
+            if image_url and not image_url.startswith('data:'):
+                # It's a file path — build the view URL
+                filename = image_url.split('/')[-1]
+                image_url = f'/api/operations/inspection-image/{parent_id}/{filename}/'
+            
             images.append({
                 'sop_did': child.sop_did,
                 'description': sop.description if sop else '',
@@ -567,13 +591,71 @@ def get_inspection_images(request, parent_id):
                 'failed': child.failed,
                 'notes': child.notes or '',
                 'deviation_reason': child.deviation_reason or '',
-                'image': child.image
+                'image': image_url
             })
         
         return JsonResponse({'success': True, 'images': images})
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)})
     
+
+@require_http_methods(["POST"])
+@login_required
+def upload_inspection_image(request):
+    """Upload an inspection image to media folder"""
+    if not request.tenant:
+        return JsonResponse({'success': False, 'error': 'Not authenticated'})
+    
+    import os
+    from django.conf import settings
+    
+    try:
+        file = request.FILES.get('image')
+        parent_id = request.POST.get('parent_id')
+        sop_did = request.POST.get('sop_did')
+        
+        if not file:
+            return JsonResponse({'success': False, 'error': 'No file provided'})
+        
+        # Save to media/inspections/{tenant_id}/{parent_id}/
+        upload_dir = os.path.join(settings.MEDIA_ROOT, 'inspections', str(request.tenant.id), str(parent_id))
+        os.makedirs(upload_dir, exist_ok=True)
+        
+        filename = f"sop_{sop_did}_{file.name}"
+        filepath = os.path.join(upload_dir, filename)
+        
+        with open(filepath, 'wb+') as dest:
+            for chunk in file.chunks():
+                dest.write(chunk)
+        
+        # Return the relative path
+        relative_path = f"inspections/{request.tenant.id}/{parent_id}/{filename}"
+        
+        return JsonResponse({'success': True, 'image_path': relative_path})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+
+@require_http_methods(["GET"])
+@login_required
+def view_inspection_image(request, parent_id, filename):
+    """Serve an inspection image"""
+    if not request.tenant:
+        return JsonResponse({'success': False, 'error': 'Not authenticated'})
+    
+    import os
+    import mimetypes
+    from django.conf import settings
+    
+    filepath = os.path.join(settings.MEDIA_ROOT, 'inspections', str(request.tenant.id), str(parent_id), filename)
+    
+    if not os.path.exists(filepath):
+        return HttpResponse('Not found', status=404)
+    
+    content_type = mimetypes.guess_type(filepath)[0] or 'application/octet-stream'
+    with open(filepath, 'rb') as f:
+        return HttpResponse(f.read(), content_type=content_type)
+
 
 @require_http_methods(["GET"])
 @login_required

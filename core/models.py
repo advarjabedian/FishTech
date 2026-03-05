@@ -1,6 +1,8 @@
 from django.db import models
 from django.contrib.auth.models import User as DjangoUser
 from threading import local
+from django.conf import settings
+import uuid
 
 _thread_locals = local()
 
@@ -354,6 +356,7 @@ class Customer(TenantModel):
     ship_state = models.CharField(max_length=50, blank=True)
     ship_zipcode = models.CharField(max_length=20, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    public_token = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     
     class Meta:
         db_table = 'documents_customer'
@@ -465,6 +468,10 @@ class SO(TenantModel):
     # Metadata
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    assigned_to = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='assigned_orders')
+    is_completed = models.BooleanField(default=False)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    completed_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='completed_orders')
     
     class Meta:
         db_table = 'documents_so'
@@ -803,3 +810,32 @@ class InboundMessage(TenantModel):
         return f"{self.get_source_display()} {self.id} - {self.subject[:50] if self.subject else self.sender}"
     
 
+class CustomerProfile(TenantModel):
+    """Order profile items for a customer — what they regularly order"""
+    customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='profiles')
+    
+    # Item info
+    profile_did = models.IntegerField(null=True, blank=True)  # Legacy line ID
+    comp_item_id = models.IntegerField(null=True, blank=True)
+    description = models.CharField(max_length=255, blank=True)
+    instruction = models.TextField(blank=True)
+    
+    # Pricing / units
+    unit_type = models.CharField(max_length=50, blank=True)
+    pack_size = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    sales_price = models.DecimalField(max_digits=10, decimal_places=4, null=True, blank=True)
+    comp_price_id = models.IntegerField(null=True, blank=True)
+    origin_id = models.IntegerField(null=True, blank=True)
+    
+    # Flags
+    is_active = models.BooleanField(default=True)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'profile_customerprofile'
+        ordering = ['description']
+
+    def __str__(self):
+        return f"{self.customer.name} - {self.description}"

@@ -124,7 +124,7 @@
                                 <button type="button" class="btn btn-outline-secondary btn-sm" 
                                         style="padding: 2px 8px; font-weight: bold;" 
                                         onclick="toggleNegative({{ sop.SopDId }})">−</button>
-                                <input type="text" inputmode="decimal" pattern="[-0-9.]*" class="notes-input" id="notes-{{ sop.SopDId }}" 
+                                <input type="text" inputmode="decimal" pattern="[0-9.\-]*" class="notes-input" id="notes-{{ sop.SopDId }}" 
                                     value="{{ sop.existing_notes }}"
                                     placeholder="Enter temp (required)"
                                     onblur="saveItem({{ sop.SopDId }})"
@@ -408,7 +408,7 @@
             document.getElementById('confirmDeviationBtn').disabled = existingDeviation.trim().length === 0;
             
             // Show the modal
-            new bootstrap.Modal(document.getElementById('deviationModal')).show();
+            $('#deviationModal').modal('show');
         }
     }
     
@@ -462,7 +462,7 @@
             saveItem(pendingSopId);
             
             // Close modal and reset
-            bootstrap.Modal.getInstance(document.getElementById('deviationModal')).hide();
+            $('#deviationModal').modal('hide');
             pendingSopId = null;
         }
     }
@@ -758,7 +758,7 @@ function showCompleteSignatureModal() {
     
     // Show signature modal
     console.log('Showing modal...');
-    new bootstrap.Modal(document.getElementById('inspectorSignatureModal')).show();
+    $('#inspectorSignatureModal').modal('show');
     setTimeout(initInspectorSignaturePad, 300);
     
     // Check if current inspector has a saved signature
@@ -988,69 +988,55 @@ function useSavedInspectorSignature() {
 }
 
 function handleImageCapture(sopId, input) {
-    console.log('handleImageCapture called for sopId:', sopId);
-    console.log('Files:', input.files);
-    
     const file = input.files[0];
-    if (!file) {
-        console.log('No file selected');
-        return;
-    }
+    if (!file) return;
     
-    console.log('File selected:', file.name, file.type, file.size);
-    
-    // Validate file type
     if (!file.type.startsWith('image/')) {
         alert('Please select an image file');
         input.value = '';
         return;
     }
     
-    // Check file size (limit to 10MB)
     if (file.size > 10 * 1024 * 1024) {
         alert('Image file is too large. Please select an image under 10MB');
         input.value = '';
         return;
     }
     
-    const reader = new FileReader();
+    // Upload to server
+    const formData = new FormData();
+    formData.append('image', file);
+    formData.append('parent_id', '{{ sop_parent.id }}');
+    formData.append('sop_did', sopId);
     
-    reader.onerror = function(error) {
-        console.error('FileReader error:', error);
-        alert('Error reading file. Please try again.');
-    };
-    
-    reader.onload = function(e) {
-        console.log('File loaded successfully');
-        const imageData = e.target.result;
-        
-        // Store image in inspectionData
-        if (!inspectionData[sopId]) {
-            inspectionData[sopId] = {};
+    fetch('/api/operations/upload-inspection-image/', {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCookie('csrftoken') },
+        body: formData
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            if (!inspectionData[sopId]) {
+                inspectionData[sopId] = {};
+            }
+            inspectionData[sopId].image = data.image_path;
+            
+            const btnText = document.getElementById(`image-btn-text-${sopId}`);
+            if (btnText) btnText.textContent = 'Retake Photo';
+            
+            const viewBtn = document.getElementById(`view-btn-${sopId}`);
+            if (viewBtn) viewBtn.style.display = 'inline-block';
+            
+            saveItem(sopId);
+        } else {
+            alert('Error uploading image: ' + (data.error || 'Unknown error'));
         }
-        inspectionData[sopId].image = imageData;
-        
-        console.log('Image stored in inspectionData for sopId:', sopId);
-        
-        // Update button text
-        const btnText = document.getElementById(`image-btn-text-${sopId}`);
-        if (btnText) {
-            btnText.textContent = 'Retake Photo';
-        }
-        
-        // Show view button
-        const viewBtn = document.getElementById(`view-btn-${sopId}`);
-        if (viewBtn) {
-            viewBtn.style.display = 'inline-block';
-        }
-        
-        // Save immediately
-        saveItem(sopId);
-        
-        console.log('Image capture complete for sopId:', sopId);
-    };
-    
-    reader.readAsDataURL(file);
+    })
+    .catch(error => {
+        console.error('Upload error:', error);
+        alert('Error uploading image');
+    });
     
     // Clear the input so the same file can be selected again
     input.value = '';
@@ -1068,10 +1054,13 @@ function viewInspectionImage(event, sopId) {
     
     const imageData = inspectionData[sopId]?.image;
     if (!imageData) {
-        console.log('No image data found for sopId:', sopId);
         alert('No image available');
         return;
     }
+    
+    const src = imageData.startsWith('data:') ? imageData : `/api/operations/inspection-image/{{ sop_parent.id }}/${imageData.split('/').pop()}/`;
+    window.open(src, '_blank');
+    return;
     
     console.log('Opening image in new window');
     

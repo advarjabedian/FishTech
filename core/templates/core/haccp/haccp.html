@@ -21,6 +21,37 @@
         box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
         border-color: #dc3545;
     }
+    .version-table {
+        width: 100%;
+    }
+    .version-table th {
+        background-color: #f8f9fa;
+        padding: 12px;
+        text-align: left;
+        border: 1px solid #dee2e6;
+    }
+    .version-table td {
+        padding: 12px;
+        border: 1px solid #dee2e6;
+    }
+    .version-table tr:hover {
+        background-color: #f8f9fa;
+        cursor: pointer;
+    }
+    #masterVersionHistoryModal .modal-body {
+        color: #000;
+    }
+    #masterVersionHistoryModal table {
+        color: #000;
+    }
+    #masterVersionHistoryModal .badge {
+        color: #fff !important;
+    }
+    #masterYearNavigation .year-btn.active {
+        background-color: #0d6efd;
+        color: white;
+        border-color: #0d6efd;
+    }
 </style>
 {% endblock %}
 
@@ -90,17 +121,21 @@
                     <div class="col-md-6 col-lg-4 mb-4">
                         <div class="card company-card border-warning">
                             <div class="card-header bg-warning text-white">
-                                <h5 class="mb-0">{{ company.companyname }}</h5>
-                            </div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">{{ company.companyname }}</h5>
+                        <div class="d-flex align-items-center gap-1 company-header-actions" id="header-actions-{{ company.companyid }}"></div>
+                    </div>
+                </div>
                             <div class="card-body">
                                 <p class="text-muted mb-3">Product Types:</p>
                                 <div class="d-flex flex-wrap" id="product-types-{{ company.companyid }}">
                                     <!-- Product types will be loaded via JS -->
                                 </div>
-                                <div class="mt-3">
+                                <div class="mt-3 d-flex flex-column gap-2">
                                     <button class="btn btn-warning btn-sm w-100" onclick="toggleProductTypeManager({{ company.companyid }})">
                                         <i class="bi bi-gear me-1"></i>Manage Product Types
                                     </button>
+                                    <div id="print-btn-{{ company.companyid }}"></div>
                                 </div>
                             </div>
                         </div>
@@ -200,12 +235,27 @@
     </div>
 </div>
 
+<!-- Print Modal -->
+<div class="modal fade" id="printModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="printModalTitle"><i class="bi bi-printer me-2"></i>Print Documents</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="printModalBody"></div>
+        </div>
+    </div>
+</div>
+
 <script>
 let productTypes = [];
 let productTypeModal;
 let masterVersionHistoryModal;
 let manageProductTypesModal;
 let recycleBinModal;
+let printModal;
+let companyCompletedTypes = {};
 let currentMasterProductType = '';
 let currentMasterProductName = '';
 let masterSelectedYear = {% now "Y" %};
@@ -248,6 +298,7 @@ document.addEventListener('DOMContentLoaded', function() {
     masterVersionHistoryModal = new bootstrap.Modal(document.getElementById('masterVersionHistoryModal'));
     manageProductTypesModal = new bootstrap.Modal(document.getElementById('manageProductTypesModal'));
     recycleBinModal = new bootstrap.Modal(document.getElementById('recycleBinModal'));
+    printModal = new bootstrap.Modal(document.getElementById('printModal'));
     
     loadAllProductTypes().then(() => {
         loadMasterProductTypes();
@@ -345,39 +396,38 @@ function loadProductTypes(companyId) {
                     const pt = productTypes.find(p => p.slug === slug);
                     const name = pt ? pt.name : slug;
                     const badge = document.createElement('span');
-                    badge.className = `badge ${isCompleted ? 'bg-success' : 'bg-secondary'} me-2 mb-2`;
-                    badge.style.cursor = 'pointer';
+                    badge.className = 'badge product-type-badge ' + (isCompleted ? 'bg-success' : 'bg-secondary');
+                    badge.style.cssText = 'cursor: pointer; font-size: 0.95rem; padding: 8px 14px; margin-bottom: 6px;';
                     badge.innerHTML = isCompleted 
-                        ? `<i class="bi bi-check-circle-fill me-1"></i>${name}`
-                        : name;
+                        ? `<i class="bi bi-check-circle-fill me-1"></i>${pt.name}`
+                        : pt.name;
                     badge.onclick = () => window.location.href = `/haccp/${companyId}/${slug}/`;
                     container.appendChild(badge);
                 });
             }
             
+            // Store completed types for print modal
+            companyCompletedTypes[companyId] = data.completed_types || [];
+            
             // Update compliance status
-            const companyCard = container.closest('.card');
-            const companyHeader = companyCard.querySelector('.card-header h5');
-            let complianceBadge = companyHeader.querySelector('.compliance-badge');
-            let certIcons = companyHeader.querySelector('.cert-icons');
+            const actionsContainer = document.getElementById(`header-actions-${companyId}`);
+            actionsContainer.innerHTML = '';
             
             if (allComplete && renderedCount > 0) {
-                if (!complianceBadge) {
-                    complianceBadge = document.createElement('span');
-                    complianceBadge.className = 'badge bg-success ms-2 compliance-badge';
-                    complianceBadge.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i>In Compliance';
-                    companyHeader.appendChild(complianceBadge);
-                }
-                
-                if (!certIcons) {
-                    loadCertificateIcons(companyId, companyHeader);
-                }
-            } else {
-                if (complianceBadge) {
-                    complianceBadge.remove();
-                }
-                if (certIcons) {
-                    certIcons.remove();
+                const complianceBadge = document.createElement('span');
+                complianceBadge.className = 'badge bg-success compliance-badge';
+                complianceBadge.style.cssText = 'font-size: 0.95rem; padding: 8px 14px;';
+                complianceBadge.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i>In Compliance';
+                actionsContainer.appendChild(complianceBadge);
+            }
+            
+            // Show Print button below Manage Product Types
+            const printContainer = document.getElementById(`print-btn-${companyId}`);
+            if (printContainer) {
+                if (companyCompletedTypes[companyId].length > 0) {
+                    printContainer.innerHTML = `<button class="btn btn-outline-secondary btn-sm w-100" onclick="openPrintModal(${companyId})"><i class="bi bi-printer me-1"></i>Print Documents</button>`;
+                } else {
+                    printContainer.innerHTML = '';
                 }
             }
         })
@@ -421,6 +471,34 @@ function loadCertificateIcons(companyId, companyHeader) {
             }
         })
         .catch(err => console.error('Error loading certificates:', err));
+}
+
+function openPrintModal(companyId) {
+    const companyCard = document.getElementById(`product-types-${companyId}`).closest('.card');
+    const companyName = companyCard.querySelector('.card-header h5').childNodes[0].textContent.trim();
+    document.getElementById('printModalTitle').innerHTML = `<i class="bi bi-printer me-2"></i>Print - ${companyName}`;
+    
+    let html = '<h6 class="mb-2">Certificates</h6>';
+    html += '<div class="d-flex flex-wrap gap-2 mb-4">';
+    html += `<a href="/haccp/certificate/${companyId}/haccp_certificate/" class="btn btn-success"><i class="bi bi-file-earmark-text me-1"></i>HACCP Certificate</a>`;
+    html += `<a href="/haccp/certificate/${companyId}/letter_of_guarantee/" class="btn btn-success"><i class="bi bi-file-earmark-check me-1"></i>Letter of Guarantee</a>`;
+    html += '</div>';
+    
+    const completedSlugs = companyCompletedTypes[companyId] || [];
+    if (completedSlugs.length > 0) {
+        html += '<h6 class="mb-2">Print Full HACCP Plans</h6>';
+        html += '<div class="d-flex flex-wrap gap-2">';
+        completedSlugs.forEach(slug => {
+            const pt = productTypes.find(p => p.slug === slug);
+            if (pt) {
+                html += `<a href="/haccp/${companyId}/${slug}/print/" class="btn btn-info text-white"><i class="bi bi-printer me-1"></i>${pt.name}</a>`;
+            }
+        });
+        html += '</div>';
+    }
+    
+    document.getElementById('printModalBody').innerHTML = html;
+    printModal.show();
 }
 
 function toggleProductTypeManager(companyId) {
@@ -575,13 +653,14 @@ function renderMasterVersionTable(versions) {
     newVersionBtn.style.display = (!inProgressSet && (activeSet || versions.length === 0)) ? 'block' : 'none';
     
     let html = `
-        <table class="table table-hover">
+        <table class="version-table">
             <thead>
                 <tr>
                     <th>Year</th>
                     <th>Version</th>
                     <th>Status</th>
                     <th>Last Updated</th>
+                    <th style="width: 50px; text-align: center;"></th>
                 </tr>
             </thead>
             <tbody>
@@ -608,18 +687,49 @@ function renderMasterVersionTable(versions) {
             rowClass = 'table-warning';
         }
         
+        const canDelete = !isActiveSet;
+        
         html += `
             <tr class="${rowClass}" onclick="viewMasterVersion(${v.year}, ${v.version})" style="cursor: pointer;">
                 <td>${v.year}</td>
                 <td>${versionLabel}</td>
                 <td><span class="badge bg-${badgeColor}">${v.status_display}</span></td>
                 <td>${new Date(v.updated_at).toLocaleDateString()}</td>
+                <td onclick="event.stopPropagation();">
+                    ${canDelete ? `<button class="btn btn-sm btn-outline-danger" onclick="deleteMasterVersion(${v.year}, ${v.version})" title="Delete version"><i class="bi bi-trash"></i></button>` : ''}
+                </td>
             </tr>
         `;
     });
     
     html += `</tbody></table>`;
     contentDiv.innerHTML = html;
+}
+
+function deleteMasterVersion(year, version) {
+    if (!confirm(`Delete version ${version} for year ${year}? This will delete all 4 documents in this version and cannot be undone.`)) return;
+    
+    fetch(`/api/haccp-delete-version-set/0/${currentMasterProductType}/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({ year: year, version: version })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message || 'Version deleted');
+            loadMasterVersionsForYear(masterSelectedYear);
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(err => {
+        console.error('Error:', err);
+        alert('Error deleting version');
+    });
 }
 
 function viewMasterVersion(year, version) {

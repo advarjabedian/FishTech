@@ -275,6 +275,7 @@ function renderVersionTable(versions) {
                     <th>Version</th>
                     <th>Status</th>
                     <th>Last Updated</th>
+                    <th style="width: 60px;"></th>
                 </tr>
             </thead>
             <tbody>
@@ -304,12 +305,17 @@ function renderVersionTable(versions) {
             badgeColor = 'secondary';
         }
         
+        const canDelete = !isActiveSet;
+        
         html += `
             <tr class="${rowClass}" onclick="viewVersion(${v.year}, ${v.version})" style="cursor: pointer;">
                 <td>${v.year}</td>
                 <td>${versionLabel}</td>
                 <td><span class="badge bg-${badgeColor}">${badgeText}</span></td>
                 <td>${new Date(v.updated_at).toLocaleDateString()}</td>
+                <td onclick="event.stopPropagation();">
+                    ${canDelete ? `<button class="btn btn-sm btn-outline-danger" onclick="deleteVersionSet(${v.year}, ${v.version})" title="Delete version"><i class="bi bi-trash"></i></button>` : ''}
+                </td>
             </tr>
         `;
     });
@@ -350,6 +356,31 @@ function createNewVersion() {
     .catch(err => {
         console.error('Error:', err);
         alert('Error creating new version');
+    });
+}
+function deleteVersionSet(year, version) {
+    if (!confirm(`Delete version ${version} for year ${year}? This will delete all 4 documents in this version and cannot be undone.`)) return;
+    
+    fetch(`/api/haccp-delete-version-set/{{ company.companyid }}/{{ product_type_slug }}/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({ year: year, version: version })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message || 'Version deleted');
+            loadVersionsForYear(selectedYear);
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(err => {
+        console.error('Error:', err);
+        alert('Error deleting version');
     });
 }
 </script>

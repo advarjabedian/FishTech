@@ -196,6 +196,34 @@ function setupChangeTracking() {
 }
 
 // ========== PRINT FUNCTION ==========
+function expandTextareasForPrint() {
+    document.querySelectorAll('textarea').forEach(textarea => {
+        if (textarea.value) {
+            textarea.value = textarea.value.trim();
+        }
+        
+        const wasDisabled = textarea.disabled;
+        if (wasDisabled) textarea.disabled = false;
+        
+        textarea.style.setProperty('height', 'auto', 'important');
+        textarea.style.setProperty('min-height', '0', 'important');
+        textarea.style.setProperty('max-height', 'none', 'important');
+        textarea.style.setProperty('overflow', 'hidden', 'important');
+        
+        void textarea.offsetHeight;
+        
+        const fullHeight = textarea.scrollHeight + 8;
+        textarea.style.setProperty('height', fullHeight + 'px', 'important');
+        textarea.style.setProperty('overflow', 'visible', 'important');
+        textarea.style.setProperty('border', 'none', 'important');
+        textarea.style.setProperty('resize', 'none', 'important');
+        textarea.style.setProperty('-webkit-appearance', 'none', 'important');
+        textarea.style.setProperty('appearance', 'none', 'important');
+        
+        if (wasDisabled) textarea.disabled = true;
+    });
+}
+
 function prepareForPrint() {
     document.querySelectorAll('textarea').forEach(textarea => {
         // Trim whitespace

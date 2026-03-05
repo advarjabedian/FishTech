@@ -614,6 +614,7 @@ function showAddZoneForm() {
     }
     document.getElementById('add-zone-form').style.display = 'block';
     document.getElementById('add-sop-form').style.display = 'none';
+    loadZoneList();
 }
 
 function hideAddZoneForm() {
@@ -621,30 +622,81 @@ function hideAddZoneForm() {
     document.getElementById('new-zone-name').value = '';
 }
 
+function loadZoneList() {
+    const companyId = document.getElementById('sop-company-select').value;
+    fetch(`/api/operations/zones/?company_id=${companyId}`)
+        .then(r => r.json())
+        .then(data => {
+            if (!data.success) return;
+            const container = document.getElementById('zone-list');
+            if (data.zones.length === 0) {
+                container.innerHTML = '<p class="text-muted">No zones yet.</p>';
+                return;
+            }
+            let html = '';
+            data.zones.forEach(zone => {
+                html += `<div class="d-flex align-items-center gap-2 mb-2" id="zone-row-${zone.id}">
+                    <input type="text" class="form-control form-control-sm" value="${zone.name}" id="zone-name-${zone.id}" style="max-width: 250px;">
+                    <span class="text-muted small">(${zone.sop_count} SOPs)</span>
+                    <button class="btn btn-sm btn-outline-primary" onclick="saveZoneName(${zone.id})"><i class="bi bi-check-lg"></i></button>
+                    <button class="btn btn-sm btn-outline-danger" onclick="deleteZone(${zone.id}, ${zone.sop_count})"><i class="bi bi-trash"></i></button>
+                </div>`;
+            });
+            container.innerHTML = html;
+        });
+}
+
+function saveZoneName(zoneId) {
+    const name = document.getElementById('zone-name-' + zoneId).value.trim();
+    if (!name) { alert('Zone name cannot be empty'); return; }
+    
+    fetch('/api/operations/zone-update/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+        body: JSON.stringify({ zone_id: zoneId, name: name })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) loadSOPList();
+        else alert('Error: ' + (data.error || 'Failed to rename zone'));
+    });
+}
+
+function deleteZone(zoneId, sopCount) {
+    if (sopCount > 0) {
+        alert(`Cannot delete zone — ${sopCount} SOPs are using it. Reassign them first.`);
+        return;
+    }
+    if (!confirm('Delete this zone?')) return;
+    
+    fetch('/api/operations/zone-delete/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+        body: JSON.stringify({ zone_id: zoneId })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) { loadZoneList(); loadSOPList(); }
+        else alert('Error: ' + (data.error || 'Failed to delete zone'));
+    });
+}
+
 function saveNewZone() {
     const companyId = document.getElementById('sop-company-select').value;
     const zoneName = document.getElementById('new-zone-name').value.trim();
     
-    if (!zoneName) {
-        alert('Please enter a zone name');
-        return;
-    }
+    if (!zoneName) { alert('Please enter a zone name'); return; }
     
     fetch('/api/operations/zone-create/', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': getCookie('csrftoken')
-        },
-        body: JSON.stringify({
-            company_id: companyId,
-            zone_name: zoneName
-        })
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+        body: JSON.stringify({ company_id: companyId, zone_name: zoneName })
     })
-    .then(response => response.json())
+    .then(r => r.json())
     .then(data => {
         if (data.success) {
-            hideAddZoneForm();
+            document.getElementById('new-zone-name').value = '';
+            loadZoneList();
             loadSOPList();
         } else {
             alert('Error: ' + (data.error || 'Failed to save zone'));

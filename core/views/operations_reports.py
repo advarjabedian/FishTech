@@ -304,6 +304,64 @@ def generate_bulk_report(request):
                 dev_buffer = BytesIO(dev_response.content)
                 merger.append(dev_buffer)
     
+    # Generate images report if any images exist
+    for parent in parents:
+        image_children = SOPChild.objects.filter(
+            sop_parent=parent
+        ).exclude(image='').exclude(image__isnull=True)
+        
+        if image_children.exists():
+            img_buffer = BytesIO()
+            img_doc = SimpleDocTemplate(img_buffer, pagesize=letter, topMargin=0.5*inch, bottomMargin=0.5*inch)
+            img_elements = []
+            
+            styles = getSampleStyleSheet()
+            title_style = ParagraphStyle('Title', parent=styles['Heading1'], fontSize=18, alignment=TA_CENTER, textColor=colors.HexColor('#1a5276'))
+            
+            img_elements.append(Paragraph(f"{parent.shift} Inspection Images - {parent.date.strftime('%m/%d/%Y')}", title_style))
+            img_elements.append(Spacer(1, 0.3*inch))
+            
+            sop_ids = [c.sop_did for c in image_children]
+            sops = {s.sop_did: s for s in SOP.objects.filter(sop_did__in=sop_ids, company=parent.company)}
+            
+            for child in image_children:
+                sop = sops.get(child.sop_did)
+                desc = sop.description if sop else f'SOP {child.sop_did}'
+                status = 'PASS' if child.passed else ('FAIL' if child.failed else 'N/A')
+                
+                img_elements.append(Paragraph(f"<b>#{child.sop_did}</b> - {desc} [{status}]", styles['Normal']))
+                img_elements.append(Spacer(1, 0.1*inch))
+                
+                # Load image from file path
+                try:
+                    import os
+                    from django.conf import settings
+                    
+                    image_path = child.image
+                    if not image_path.startswith('data:'):
+                        full_path = os.path.join(settings.MEDIA_ROOT, image_path)
+                        if os.path.exists(full_path):
+                            img = Image(full_path, width=4*inch, height=3*inch)
+                            img.hAlign = 'CENTER'
+                            img_elements.append(img)
+                    else:
+                        # Base64 image (legacy)
+                        import base64
+                        if ',' in image_path:
+                            image_path = image_path.split(',')[1]
+                        img_bytes = base64.b64decode(image_path)
+                        img = Image(BytesIO(img_bytes), width=4*inch, height=3*inch)
+                        img.hAlign = 'CENTER'
+                        img_elements.append(img)
+                except Exception:
+                    img_elements.append(Paragraph("<i>Image could not be loaded</i>", styles['Normal']))
+                
+                img_elements.append(Spacer(1, 0.3*inch))
+            
+            img_doc.build(img_elements)
+            img_buffer.seek(0)
+            merger.append(img_buffer)
+    
     merger.write(buffer)
     merger.close()
     

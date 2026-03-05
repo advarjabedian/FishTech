@@ -501,7 +501,7 @@
 /* ==================== PRINT STYLES ==================== */
 @media print {
     @page {
-        margin: 0.3in 0.3in;
+        margin: 0.2in 0.15in;
     }
     
     .no-print,
@@ -592,13 +592,88 @@
         box-shadow: none !important;
     }
     
+    /* CRITICAL: Allow hazard steps to break across pages */
     .hazard-step {
+        page-break-inside: auto !important;
+        break-inside: auto !important;
+        margin-bottom: 8px !important;
+        padding: 0 !important;
+        border: 1px solid #dee2e6 !important;
+        overflow: visible !important;
+    }
+    
+    .hazard-step-header {
+        padding: 4px 8px !important;
+        margin: 0 !important;
+    }
+    
+    .hazard-step .hazard-table {
+        page-break-inside: auto !important;
+    }
+    
+    .hazard-step .hazard-table tr {
         page-break-inside: avoid;
+        break-inside: avoid;
+    }
+    
+    .hazard-table { 
+        table-layout: fixed !important; 
+        width: 100% !important; 
+    }
+    
+    .hazard-table th:nth-child(1) { width: 8% !important; }
+    .hazard-table th:nth-child(2) { width: 14% !important; }
+    .hazard-table th:nth-child(3) { width: 9% !important; }
+    .hazard-table th:nth-child(4) { width: 38% !important; }
+    .hazard-table th:nth-child(5) { width: 26% !important; }
+    .hazard-table th:nth-child(6) { width: 5% !important; }
+
+    .hazard-print-div {
+        display: block !important;
+        white-space: pre-wrap !important;
+        word-wrap: break-word !important;
+        font-size: 10px !important;
+        line-height: 1.3 !important;
+        padding: 2px 3px !important;
+        margin: 0 !important;
+    }
+
+    .hazard-table textarea,
+    .hazard-step .hazard-table textarea {
+        display: none !important;
+    }
+
+    .ccp-print-div {
+        display: block !important;
+        white-space: pre-wrap !important;
+        word-wrap: break-word !important;
+        font-size: 9px !important;
+        line-height: 1.3 !important;
+        padding: 2px 3px !important;
+        margin: 0 !important;
     }
     
     #ccpSummaryTable textarea {
         height: auto !important;
         min-height: auto !important;
+        overflow: visible !important;
+    }
+
+    /* CCP Summary: allow table to break across pages */
+    .hazard-table.ccp-columns,
+    .hazard-table.ccp-columns tbody,
+    .hazard-table.ccp-columns tr {
+        page-break-inside: auto !important;
+        break-inside: auto !important;
+    }
+    
+    .hazard-table.ccp-columns thead {
+        display: table-header-group;
+    }
+    
+    .hazard-table.ccp-columns td {
+        page-break-inside: auto !important;
+        break-inside: auto !important;
         overflow: visible !important;
     }
     
@@ -625,6 +700,33 @@
         print-color-adjust: exact !important;
     }
 
- 
+   
+
+    /* CCP Summary table print column widths */
+    .ccp-columns th:nth-child(1) { width: 10% !important; }
+    .ccp-columns th:nth-child(2) { width: 18% !important; }
+    .ccp-columns th:nth-child(3) { width: 22% !important; }
+    .ccp-columns th:nth-child(4) { width: 22% !important; }
+    .ccp-columns th:nth-child(5) { width: 11% !important; }
+    .ccp-columns th:nth-child(6) { width: 17% !important; }
+
+ .document-header {
+        padding-bottom: 2px !important;
+        margin-bottom: 2px !important;
+        border-bottom-width: 1px !important;
+    }
+    
+    .metadata-section {
+        margin-bottom: 0 !important;
+        padding-bottom: 0 !important;
+    }
+    
+    .document-container {
+        padding: 5px !important;
+        margin: 0 !important;
+        max-width: 100% !important;
+        border: none !important;
+        box-shadow: none !important;
+    }
     
 }

@@ -12,5 +12,6 @@ from .documents_api_entities import *
 from .licenses_vehicles import *
 from .platform_admin import *
 from .order_requests import *
+from .profile_orders import *
 
 
