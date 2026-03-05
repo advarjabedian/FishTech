@@ -9,6 +9,9 @@
             <i class="bi bi-arrow-left"></i> Back
         </a>
         <h2 class="mb-0"><i class="bi bi-list-check me-2"></i>View Orders</h2>
+        <span id="emailSettingsBadge" class="text-muted small ms-2" style="display:none;">
+            <i class="bi bi-envelope me-1"></i><span id="emailSettingsAddress"></span>
+        </span>
     </div>
 
     <ul class="nav nav-tabs mb-3" id="orderTabs">
@@ -529,7 +532,25 @@ function checkEmails() {
     .finally(() => { btn.disabled = false; btn.innerHTML = orig; });
 }
 
+// Load email settings display
+fetch('/api/email-settings/')
+    .then(r => r.json())
+    .then(data => {
+        if (data.email_address) {
+            document.getElementById('emailSettingsAddress').textContent = data.email_address;
+            document.getElementById('emailSettingsBadge').style.display = '';
+        }
+    });
+
 // Initial load
 loadOrders('pending');
+
+// Pre-load message count for badge
+fetch('/api/order-requests/')
+    .then(r => r.json())
+    .then(data => {
+        const count = (data.messages || []).filter(m => m.status !== 'Complete').length;
+        document.getElementById('messagesBadge').textContent = count;
+    });
 </script>
 {% endblock %}

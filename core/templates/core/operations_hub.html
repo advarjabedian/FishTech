@@ -38,43 +38,48 @@
 
 {% block content %}
 <div class="container mt-4">
-    <!-- Company Selection -->
-    <div class="row justify-content-center mb-4">
-        <div class="col-md-6">
-            <div class="card border-0">
-                <div class="card-body text-center">
-                    <h5 class="card-title"><i class="bi bi-building me-2"></i>Select Company</h5>
+    <div class="row justify-content-center">
+        <!-- Company Card -->
+        <div class="col-md-4 mb-3">
+            <div class="card card-dashboard bg-secondary bg-opacity-10" style="border-color: #6c757d !important;">
+                <div class="card-body text-center py-4">
+                    <i class="bi bi-building card-icon text-secondary"></i>
+                    <h3>Select Company</h3>
+
+                    <!-- No company selected: show grid -->
                     <div id="company-grid" {% if request.selected_company %}style="display: none;"{% endif %}>
-                        <div class="row row-cols-2 g-2 justify-content-center">
+                        <div class="row row-cols-2 g-2 justify-content-center mt-1">
                             {% for company in request.companies %}
                             <div class="col">
-                                <div class="company-box shadow-sm" onclick="selectCompany({{ company.companyid }})" style="cursor: pointer; height: 100px; border: 2px solid #dee2e6; border-radius: 8px; display: flex; align-items: center; justify-content: center; transition: all 0.2s ease;">
+                                <div class="company-box shadow-sm" onclick="selectCompany({{ company.companyid }})"
+                                    style="cursor: pointer; height: 70px; border: 2px solid #dee2e6; border-radius: 8px; display: flex; align-items: center; justify-content: center; transition: all 0.2s ease; background: white;">
                                     {% if company.logo %}
-                                    <img src="{{ company.logo }}" alt="{{ company.companyname }}" style="max-height: 80px; max-width: 100%; object-fit: contain;">
+                                    <img src="{{ company.logo }}" alt="{{ company.companyname }}" style="max-height: 55px; max-width: 100%; object-fit: contain;">
                                     {% else %}
-                                    <span class="text-muted">{{ company.companyname }}</span>
+                                    <span class="text-muted small">{{ company.companyname }}</span>
                                     {% endif %}
                                 </div>
                             </div>
                             {% endfor %}
                         </div>
                     </div>
+
+                    <!-- Company selected: show logo/name -->
                     <div id="selected-company-display" {% if not request.selected_company %}style="display: none;"{% endif %}>
-                        <div class="company-box mx-auto" onclick="resetCompanySelection()" style="cursor: pointer; width: 260px; height: 130px; border: none; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                        <div class="mx-auto mt-2" onclick="resetCompanySelection()"
+                            style="cursor: pointer; height: 80px; display: flex; align-items: center; justify-content: center;">
                             {% if request.selected_company.logo %}
-                            <img src="{{ request.selected_company.logo }}" alt="{{ request.selected_company.companyname }}" style="max-height: 120px; max-width: 100%; object-fit: contain;">
+                            <img src="{{ request.selected_company.logo }}" alt="{{ request.selected_company.companyname }}" style="max-height: 75px; max-width: 100%; object-fit: contain;">
                             {% else %}
-                            <span>{{ request.selected_company.companyname }}</span>
+                            <span class="fs-5">{{ request.selected_company.companyname }}</span>
                             {% endif %}
                         </div>
-                        <small class="text-muted mt-2 d-block">Click to change</small>
                     </div>
+
                 </div>
             </div>
         </div>
-    </div>
-    
-    <div class="row justify-content-center">
+
         <!-- HACCP Card -->
         <div class="col-md-4 mb-3">
             <div class="card card-dashboard bg-warning bg-opacity-10" style="border-color: #fd7e14 !important;" onclick="window.location.href='{% url 'haccp' %}'">
