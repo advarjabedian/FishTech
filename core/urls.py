@@ -224,7 +224,7 @@ path('api/profile-orders/import/confirm/', import_confirm, name='import_confirm'
     path('api/profile-item/<int:profile_id>/update/', update_profile_item_api, name='update_profile_item_api'),
     path('api/profile-item/<int:profile_id>/delete/', delete_profile_item_api, name='delete_profile_item_api'),
 path('api/profile-orders/import/template/', download_import_template, name='download_import_template'),
-    path('order-requests/', order_requests, name='order_requests'),
+    
     path('api/order-requests/', get_order_requests_api, name='get_order_requests_api'),
     path('api/order-requests/users/', get_order_request_users_api, name='get_order_request_users_api'),
     path('api/order-requests/complete/', get_order_requests_complete_api, name='get_order_requests_complete_api'),

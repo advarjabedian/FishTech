@@ -102,10 +102,6 @@ def orders_hub(request):
     """Display orders hub page"""
     return render(request, 'core/Orders/orders_hub.html')
 
-def order_requests(request):
-    """Display order requests page"""
-    return render(request, 'core/Orders/order_requests.html')
-
 
 def get_order_requests_api(request):
     """Get active order requests (excludes Complete)"""
@@ -430,9 +426,6 @@ def check_order_emails_api(request):
         logger.error(traceback.format_exc())
         return JsonResponse({'error': str(e)}, status=500)
 
-from django.views.decorators.csrf import csrf_exempt
-from django.http import HttpResponse
-from django.contrib.auth.decorators import login_required
 
 @csrf_exempt
 def twilio_sms_webhook(request):
@@ -475,6 +468,8 @@ def twilio_sms_webhook(request):
     return HttpResponse('<Response></Response>', content_type='text/xml')
 
 
+from django.contrib.auth.decorators import login_required
+
 @login_required
 def get_twilio_settings_api(request):
     """Get tenant's Twilio settings"""
@@ -489,6 +484,7 @@ def get_twilio_settings_api(request):
         'has_token': bool(tenant.twilio_auth_token),
     })
 
+
 @login_required
 def save_twilio_settings_api(request):
     """Save tenant's Twilio settings"""
@@ -499,7 +495,6 @@ def save_twilio_settings_api(request):
     if not tenant:
         return JsonResponse({'error': 'No tenant'}, status=400)
     
-    import json
     data = json.loads(request.body)
     
     tenant.twilio_account_sid = data.get('twilio_account_sid', '').strip()
@@ -513,6 +508,7 @@ def save_twilio_settings_api(request):
     tenant.save()
     
     return JsonResponse({'success': True})
+
 
 @login_required
 def test_twilio_connection_api(request):
@@ -530,22 +526,18 @@ def test_twilio_connection_api(request):
     try:
         from twilio.rest import Client
         client = Client(tenant.twilio_account_sid, tenant.twilio_auth_token)
-        
-        # Verify credentials by fetching account info
         account = client.api.accounts(tenant.twilio_account_sid).fetch()
-        
         return JsonResponse({
             'success': True,
             'message': f'Connected! Account: {account.friendly_name}'
         })
     except Exception as e:
         return JsonResponse({'error': f'Connection failed: {str(e)}'}, status=400)
-    
+
 
 @login_required
 def get_order_request_users_api(request):
     """Get users for order request assignment"""
-    from django.contrib.auth.models import User as DjangoUser
     tenant = get_current_tenant()
     if not tenant:
         return JsonResponse({'users': [], 'current_user_id': None})
@@ -555,8 +547,8 @@ def get_order_request_users_api(request):
     # Get current django user's linked core User
     current_user_id = None
     try:
-        current_core_user = User.objects.get(tenant=tenant, email=request.user.email)
-        current_user_id = current_core_user.id
+        current_core_user = User.objects.filter(tenant=tenant, email=request.user.email).first()
+        current_user_id = current_core_user.id if current_core_user else None
     except User.DoesNotExist:
         pass
 
