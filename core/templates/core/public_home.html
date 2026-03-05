@@ -1,3 +1,4 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -673,6 +674,7 @@
         <div class="nav-links">
             <a href="#features">Features</a>
             <a href="#compliance">Compliance</a>
+            <a href="#customers">Customers</a>
             <a href="#about">About</a>
             <a href="#pricing">Pricing</a>
             <a href="#contact">Contact</a>
@@ -980,6 +982,35 @@
     </div>
 </section>
 
+<!-- CUSTOMERS -->
+<section id="customers">
+    <div class="section-inner" style="text-align: center;">
+        <div class="section-label">Trusted By</div>
+        <h2 class="section-title">Seafood businesses running on FishTeck</h2>
+        <p class="section-sub" style="margin: 0 auto;">Leading seafood processors and distributors in California rely on FishTeck for daily compliance and operations management.</p>
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 56px;">
+    <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 32px 24px; display: flex; align-items: center; justify-content: center; transition: all 0.3s;" onmouseover="this.style.borderColor='rgba(0,180,216,0.3)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.08)'">
+        <img src="{% static 'core/images/customers/golden_state_seafood_logo.png' %}" alt="Golden State Seafood" style="max-height: 70px; max-width: 100%; object-fit: contain; filter: brightness(0) invert(1); opacity: 0.85;">
+    </div>
+    <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 32px 24px; display: flex; align-items: center; justify-content: center; transition: all 0.3s;" onmouseover="this.style.borderColor='rgba(0,180,216,0.3)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.08)'">
+        <img src="{% static 'core/images/customers/pacific_fresh_fish_logo.png' %}" alt="Pacific Fresh Fish" style="max-height: 70px; max-width: 100%; object-fit: contain; filter: brightness(0) invert(1); opacity: 0.85;">
+    </div>
+    <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 32px 24px; display: flex; align-items: center; justify-content: center; transition: all 0.3s;" onmouseover="this.style.borderColor='rgba(0,180,216,0.3)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.08)'">
+        <img src="{% static 'core/images/customers/fog_river_logo.png' %}" alt="Fog River Seafood" style="max-height: 70px; max-width: 100%; object-fit: contain; filter: brightness(0) invert(1); opacity: 0.85;">
+    </div>
+    <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 32px 24px; display: flex; align-items: center; justify-content: center; transition: all 0.3s;" onmouseover="this.style.borderColor='rgba(0,180,216,0.3)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.08)'">
+        <img src="{% static 'core/images/customers/unified_logo.png' %}" alt="Unified Seafood Group" style="max-height: 70px; max-width: 100%; object-fit: contain; filter: brightness(0) invert(1); opacity: 0.85;">
+    </div>
+    <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 32px 24px; display: flex; align-items: center; justify-content: center; transition: all 0.3s;" onmouseover="this.style.borderColor='rgba(0,180,216,0.3)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.08)'">
+        <img src="{% static 'core/images/customers/coastal_provisions_logo.png' %}" alt="Coastal Provisions" style="max-height: 70px; max-width: 100%; object-fit: contain; filter: brightness(0) invert(1); opacity: 0.85;">
+    </div>
+    <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 32px 24px; display: flex; align-items: center; justify-content: center; transition: all 0.3s;" onmouseover="this.style.borderColor='rgba(0,180,216,0.3)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.08)'">
+        <img src="{% static 'core/images/customers/native_cure_logo.png' %}" alt="Native Cure" style="max-height: 70px; max-width: 100%; object-fit: contain; filter: brightness(0) invert(1); opacity: 0.85;">
+    </div>
+</div>
+    </div>
+</section>
+
 <!-- PRICING -->
 <section id="pricing">
     <div class="section-inner" style="text-align: center;">
@@ -1039,14 +1070,21 @@
                         <div class="contact-icon"><i class="bi bi-envelope"></i></div>
                         <div>
                             <div class="contact-label">Email</div>
-                            <div class="contact-val"><a href="mailto:support@fishteck.com">support@fishteck.com</a></div>
+                            <div class="contact-val"><a href="mailto:arev@goldenstateseafood.com">arev@goldenstateseafood.com</a></div>
                         </div>
                     </div>
                     <div class="contact-item">
                         <div class="contact-icon"><i class="bi bi-geo-alt"></i></div>
                         <div>
-                            <div class="contact-label">Serving</div>
-                            <div class="contact-val">Seafood processing facilities across the United States</div>
+                            <div class="contact-label">Address</div>
+                            <div class="contact-val">700 E 6th St<br>Los Angeles, CA 90021</div>
+                        </div>
+                    </div>
+                    <div class="contact-item">
+                        <div class="contact-icon"><i class="bi bi-telephone"></i></div>
+                        <div>
+                            <div class="contact-label">Phone</div>
+                            <div class="contact-val"><a href="tel:+17036187120">+1 (703) 618-7120</a></div>
                         </div>
                     </div>
                     <div class="contact-item">
@@ -1109,7 +1147,7 @@
                 <h5>Company</h5>
                 <a href="#about">About</a>
                 <a href="#contact">Contact</a>
-                <a href="mailto:support@fishteck.com">Support</a>
+                <a href="mailto:arev@goldenstateseafood.com">Support</a>
             </div>
             <div class="footer-col">
                 <h5>Legal</h5>
