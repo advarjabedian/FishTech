@@ -3,89 +3,271 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Register - FishTech</title>
+    <title>Register - FishTeck</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🐟</text></svg>">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;600;700;800&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --navy: #0a1628;
+            --deep: #0d1f3c;
+            --teal: #00b4d8;
+            --seafoam: #48cae4;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
         body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Sora', sans-serif;
+            background: var(--navy);
+            color: white;
             min-height: 100vh;
             display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px 0;
+            flex-direction: column;
         }
-        .register-card {
-            max-width: 500px;
+
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image: linear-gradient(rgba(0,180,216,0.04) 1px, transparent 1px),
+                              linear-gradient(90deg, rgba(0,180,216,0.04) 1px, transparent 1px);
+            background-size: 60px 60px;
+            pointer-events: none;
+        }
+
+        body::after {
+            content: '';
+            position: fixed;
+            top: -20%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 800px;
+            height: 600px;
+            background: radial-gradient(ellipse, rgba(0,180,216,0.08) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        nav {
+            position: relative;
+            z-index: 10;
+            padding: 20px 32px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid rgba(0,180,216,0.1);
+        }
+        .nav-logo { font-size: 1.4rem; font-weight: 800; color: white; text-decoration: none; letter-spacing: -0.5px; }
+        .nav-logo span { color: var(--teal); }
+        .nav-login { font-size: 0.85rem; color: rgba(255,255,255,0.5); text-decoration: none; display: flex; align-items: center; gap: 6px; transition: color 0.2s; }
+        .nav-login:hover { color: var(--teal); }
+
+        main {
+            flex: 1;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            padding: 60px 20px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .page-wrapper {
             width: 100%;
+            max-width: 520px;
+            animation: fadeUp 0.5s ease both;
+        }
+
+        .page-header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+        .page-header .icon {
+            width: 64px; height: 64px;
+            background: rgba(0,180,216,0.12);
+            border: 1px solid rgba(0,180,216,0.3);
+            border-radius: 16px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.8rem;
+            margin: 0 auto 20px;
+        }
+        .page-header h1 { font-size: 2rem; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 8px; }
+        .page-header p { font-size: 0.9rem; color: rgba(255,255,255,0.45); }
+
+        .card-dark {
+            background: var(--deep);
+            border: 1px solid rgba(0,180,216,0.2);
+            border-radius: 14px;
+            padding: 36px;
+            position: relative;
+            overflow: hidden;
+            margin-bottom: 16px;
+        }
+        .card-dark::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, var(--teal), var(--seafoam), transparent);
+        }
+
+        .section-label {
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--teal);
+            margin-bottom: 16px;
+        }
+
+        .form-input {
+            width: 100%;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 8px;
+            padding: 13px 16px;
+            color: white;
+            font-family: 'Sora', sans-serif;
+            font-size: 0.95rem;
+            outline: none;
+            transition: border-color 0.2s, background 0.2s;
+            margin-bottom: 12px;
+        }
+        .form-input:focus { border-color: var(--teal); background: rgba(0,180,216,0.05); }
+        .form-input::placeholder { color: rgba(255,255,255,0.25); }
+
+        .input-row { display: flex; gap: 10px; }
+        .input-row .form-input { flex: 1; }
+
+        .btn-submit {
+            width: 100%;
+            background: var(--teal);
+            color: var(--navy);
+            border: none;
+            border-radius: 8px;
+            padding: 14px;
+            font-family: 'Sora', sans-serif;
+            font-size: 0.95rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+            margin-top: 8px;
+        }
+        .btn-submit:hover { background: var(--seafoam); transform: translateY(-1px); }
+
+        .benefits {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 4px;
+        }
+        .benefit-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.85rem;
+            color: rgba(255,255,255,0.55);
+        }
+        .benefit-item i { color: var(--teal); font-size: 0.9rem; }
+
+        .alert-custom {
+            background: rgba(220,53,69,0.15);
+            border: 1px solid rgba(220,53,69,0.4);
+            border-radius: 8px;
+            padding: 12px 16px;
+            font-size: 0.85rem;
+            color: #ff8080;
+            margin-bottom: 16px;
+        }
+
+        footer {
+            position: relative; z-index: 1;
+            text-align: center;
+            padding: 24px;
+            font-size: 0.75rem;
+            color: rgba(255,255,255,0.2);
+            border-top: 1px solid rgba(255,255,255,0.04);
+        }
+        footer a { color: rgba(255,255,255,0.35); text-decoration: none; }
+        footer a:hover { color: var(--teal); }
+
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
         }
     </style>
 </head>
 <body>
-    <div class="register-card">
-        <div class="card shadow-lg">
-            <div class="card-body p-5">
-                <h2 class="text-center mb-4">Register Your Company</h2>
-                
-                {% if messages %}
-                    {% for message in messages %}
-                        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-                            {{ message }}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                        </div>
-                    {% endfor %}
-                {% endif %}
-                
-                <form method="post">
-                    {% csrf_token %}
-                    
-                    <h5 class="mb-3">Company Information</h5>
-                    <div class="mb-3">
-                        <label for="company_name" class="form-label">Company Name *</label>
-                        <input type="text" class="form-control" id="company_name" name="company_name" required>
-                    </div>
-                    <div class="mb-4">
-                        <label for="subdomain" class="form-label">Subdomain *</label>
-                        <input type="text" class="form-control" id="subdomain" name="subdomain" required pattern="[a-z0-9-]+" title="Lowercase letters, numbers, and hyphens only">
-                        <small class="text-muted">Used for identification (lowercase, no spaces)</small>
-                    </div>
-                    
-                    <h5 class="mb-3">Admin Account</h5>
-                    <div class="mb-3">
-                        <label for="username" class="form-label">Username *</label>
-                        <input type="text" class="form-control" id="username" name="username" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="email" class="form-label">Email</label>
-                        <input type="email" class="form-control" id="email" name="email">
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="first_name" class="form-label">First Name</label>
-                            <input type="text" class="form-control" id="first_name" name="first_name">
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="last_name" class="form-label">Last Name</label>
-                            <input type="text" class="form-control" id="last_name" name="last_name">
-                        </div>
-                    </div>
-                    <div class="mb-3">
-                        <label for="password" class="form-label">Password *</label>
-                        <input type="password" class="form-control" id="password" name="password" required>
-                    </div>
-                    <div class="mb-4">
-                        <label for="password_confirm" class="form-label">Confirm Password *</label>
-                        <input type="password" class="form-control" id="password_confirm" name="password_confirm" required>
-                    </div>
-                    
-                    <button type="submit" class="btn btn-primary w-100 mb-3">Create Account</button>
-                    <div class="text-center">
-                        <a href="{% url 'login' %}">Already have an account? Login</a>
-                    </div>
-                </form>
+
+<nav>
+    <a href="/" class="nav-logo">Fish<span>Teck</span></a>
+    <a href="{% url 'login' %}" class="nav-login"><i class="bi bi-box-arrow-in-right"></i> Login</a>
+</nav>
+
+<main>
+    <div class="page-wrapper">
+
+        <div class="page-header">
+            <div class="icon">🐟</div>
+            <h1>Start Your Free Trial</h1>
+            <p>30 days free · No credit card required</p>
+        </div>
+
+        <div class="card-dark">
+
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert-custom">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+
+            <form method="post">
+                {% csrf_token %}
+
+                <div class="section-label">Company</div>
+                <input type="text" class="form-input" name="company_name" placeholder="Company name *" required>
+
+                <div class="section-label" style="margin-top: 8px;">Admin Account</div>
+                <input type="text" class="form-input" name="username" placeholder="Username *" required>
+                <input type="email" class="form-input" name="email" placeholder="Email">
+                <div class="input-row">
+                    <input type="text" class="form-input" name="first_name" placeholder="First name">
+                    <input type="text" class="form-input" name="last_name" placeholder="Last name">
+                </div>
+                <input type="password" class="form-input" name="password" placeholder="Password *" required>
+                <input type="password" class="form-input" name="password_confirm" placeholder="Confirm password *" required>
+
+                <button type="submit" class="btn-submit">
+                    <i class="bi bi-rocket-takeoff me-2"></i>Create Account
+                </button>
+
+                <p style="text-align:center; margin-top: 16px; font-size: 0.82rem; color: rgba(255,255,255,0.35);">
+                    Already have an account? <a href="{% url 'login' %}" style="color: var(--teal);">Login</a>
+                </p>
+            </form>
+        </div>
+
+        <!-- Benefits -->
+        <div class="card-dark">
+            <div class="section-label">What's Included</div>
+            <div class="benefits">
+                <div class="benefit-item"><i class="bi bi-check-circle-fill"></i> HACCP compliance documentation</div>
+                <div class="benefit-item"><i class="bi bi-check-circle-fill"></i> Daily inspection management</div>
+                <div class="benefit-item"><i class="bi bi-check-circle-fill"></i> Customer order management</div>
+                <div class="benefit-item"><i class="bi bi-check-circle-fill"></i> Email & SMS order requests</div>
+                <div class="benefit-item"><i class="bi bi-check-circle-fill"></i> $10/month after trial · cancel anytime</div>
             </div>
         </div>
+
     </div>
-    
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</main>
+
+<footer>
+    <a href="{% url 'privacy_policy' %}">Privacy Policy</a> &nbsp;·&nbsp;
+    <a href="{% url 'terms_of_service' %}">Terms of Service</a>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
