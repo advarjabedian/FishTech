@@ -107,9 +107,11 @@
                 <input type="text" id="itemSearch" class="form-control form-control-sm" placeholder="Search items..." style="max-width:250px;">
                 <div class="d-flex align-items-center gap-2">
                     <span class="text-white small" id="itemCountLabel"></span>
-                    <button type="button" class="btn btn-outline-light btn-sm" data-bs-toggle="modal" data-bs-target="#addItemModal">
-                        <i class="bi bi-plus"></i> Add Item
+                    {% if request.user.is_authenticated %}
+                    <button type="button" class="btn btn-outline-light btn-sm" data-bs-toggle="modal" data-bs-target="#editProfileModal">
+                        <i class="bi bi-pencil-square"></i> Edit Profile
                     </button>
+                    {% endif %}
                 </div>
             </div>
             <div class="card-body p-0">
@@ -137,19 +139,6 @@
                                 <div class="total-price fw-bold"></div>
                             </div>
                             <div class="d-flex align-items-center gap-2">
-                                <button type="button" class="btn btn-outline-secondary btn-sm"
-                                    onclick="openEditItem(this)" 
-                                    data-id="{{ profile.id }}"
-                                    data-description="{{ profile.description }}"
-                                    data-unit-type="{{ profile.unit_type }}"
-                                    data-pack-size="{{ profile.pack_size }}"
-                                    data-sales-price="{{ profile.sales_price }}">
-                                    <i class="bi bi-pencil"></i>
-                                </button>
-                                <button type="button" class="btn btn-outline-danger btn-sm"
-                                    onclick="deleteItem({{ profile.id }}, this)">
-                                    <i class="bi bi-trash"></i>
-                                </button>
                                 <input type="number" class="form-control quantity-input"
                                     min="0" placeholder="Qty"
                                     name="quantity_{{ profile.id }}"
@@ -509,112 +498,104 @@ function getCookie(name) {
 }
 </script>
 
-<!-- Edit Profile Item Modal -->
-<div class="modal fade" id="editItemModal" tabindex="-1">
-    <div class="modal-dialog">
+<!-- Edit Profile Modal -->
+<div class="modal fade" id="editProfileModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Edit Profile Item</h5>
+                <h5 class="modal-title"><i class="bi bi-pencil-square me-2"></i>Edit Profile — {{ customer.name }}</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body">
-                <input type="hidden" id="editItemId">
-                <div id="editItemError" class="alert alert-danger" style="display:none;"></div>
-                <div class="mb-2">
-                    <label class="form-label">Description *</label>
-                    <input type="text" id="editItemDesc" class="form-control">
+            <div class="modal-body p-0">
+                <!-- Inline add form -->
+                <div class="p-3 border-bottom bg-light">
+                    <div id="addInlineError" class="alert alert-danger py-2" style="display:none;"></div>
+                    <div class="row g-2 align-items-end">
+                        <div class="col-md-4">
+                            <label class="form-label small mb-1">Description *</label>
+                            <input type="text" id="inlineDesc" class="form-control form-control-sm" placeholder="Item description">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small mb-1">Unit Type</label>
+                            <input type="text" id="inlineUnit" class="form-control form-control-sm" placeholder="LB">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small mb-1">Pack Size</label>
+                            <input type="number" id="inlinePack" class="form-control form-control-sm" placeholder="1" step="0.01">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small mb-1">Price</label>
+                            <input type="number" id="inlinePrice" class="form-control form-control-sm" placeholder="0.00" step="0.01">
+                        </div>
+                        <div class="col-md-2">
+                            <button class="btn btn-primary btn-sm w-100" onclick="saveInlineItem()">
+                                <i class="bi bi-plus"></i> Add Item
+                            </button>
+                        </div>
+                    </div>
                 </div>
-                <div class="row g-2">
-                    <div class="col-md-4">
-                        <label class="form-label">Unit Type</label>
-                        <input type="text" id="editItemUnit" class="form-control">
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label">Pack Size</label>
-                        <input type="number" id="editItemPack" class="form-control" step="0.01">
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label">Price</label>
-                        <input type="number" id="editItemPrice" class="form-control" step="0.01">
-                    </div>
-                </div>
+                <!-- Items list -->
+                <div id="profileItemsList"></div>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button class="btn btn-primary" onclick="saveEditItem()">Save Changes</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Add Profile Item Modal -->
-<div class="modal fade" id="addItemModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Add Profile Item</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <div id="addItemError" class="alert alert-danger" style="display:none;"></div>
-                <div class="mb-2">
-                    <label class="form-label">Description *</label>
-                    <input type="text" id="newItemDesc" class="form-control">
-                </div>
-                <div class="row g-2">
-                    <div class="col-md-4">
-                        <label class="form-label">Unit Type</label>
-                        <input type="text" id="newItemUnit" class="form-control" placeholder="LB">
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label">Pack Size</label>
-                        <input type="number" id="newItemPack" class="form-control" placeholder="1" step="0.01">
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label">Price</label>
-                        <input type="number" id="newItemPrice" class="form-control" placeholder="0.00" step="0.01">
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button class="btn btn-primary" onclick="saveNewItem()">Save Item</button>
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Done</button>
             </div>
         </div>
     </div>
 </div>
 
 <script>
-function openEditItem(btn) {
-    document.getElementById('editItemId').value = btn.dataset.id;
-    document.getElementById('editItemDesc').value = btn.dataset.description;
-    document.getElementById('editItemUnit').value = btn.dataset.unitType;
-    document.getElementById('editItemPack').value = btn.dataset.packSize;
-    document.getElementById('editItemPrice').value = btn.dataset.salesPrice;
-    document.getElementById('editItemError').style.display = 'none';
-    new bootstrap.Modal(document.getElementById('editItemModal')).show();
+// Build the profile items list inside the modal
+function renderProfileItems() {
+    const rows = document.querySelectorAll('.profile-row');
+    const container = document.getElementById('profileItemsList');
+    if (!rows.length) {
+        container.innerHTML = '<p class="text-muted text-center py-4">No items yet.</p>';
+        return;
+    }
+    let html = '<table class="table table-sm table-hover mb-0"><thead class="table-light"><tr><th>Description</th><th>Unit</th><th>Pack</th><th>Price</th><th></th></tr></thead><tbody>';
+    rows.forEach(row => {
+        const id = row.dataset.profileId;
+        html += `<tr id="profile-edit-row-${id}">
+            <td><input type="text" class="form-control form-control-sm" value="${escAttr(row.dataset.description)}" id="pe-desc-${id}"></td>
+            <td><input type="text" class="form-control form-control-sm" value="${escAttr(row.dataset.unitType)}" id="pe-unit-${id}" style="width:70px;"></td>
+            <td><input type="number" class="form-control form-control-sm" value="${row.dataset.packSize}" id="pe-pack-${id}" step="0.01" style="width:80px;"></td>
+            <td><input type="number" class="form-control form-control-sm" value="${row.dataset.price}" id="pe-price-${id}" step="0.01" style="width:90px;"></td>
+            <td class="text-end" style="white-space:nowrap;">
+                <button class="btn btn-sm btn-outline-primary me-1" onclick="saveProfileRow('${id}')"><i class="bi bi-check-lg"></i></button>
+                <button class="btn btn-sm btn-outline-danger" onclick="deleteProfileRow('${id}', this)"><i class="bi bi-trash"></i></button>
+            </td>
+        </tr>`;
+    });
+    html += '</tbody></table>';
+    container.innerHTML = html;
 }
 
-function saveEditItem() {
-    const id = document.getElementById('editItemId').value;
-    const description = document.getElementById('editItemDesc').value.trim();
-    if (!description) { document.getElementById('editItemError').textContent = 'Description is required.'; document.getElementById('editItemError').style.display = ''; return; }
+function escAttr(str) {
+    return String(str || '').replace(/"/g, '&quot;');
+}
+
+document.getElementById('editProfileModal').addEventListener('show.bs.modal', renderProfileItems);
+
+function saveProfileRow(id) {
+    const description = document.getElementById(`pe-desc-${id}`).value.trim();
+    if (!description) { alert('Description is required.'); return; }
 
     fetch(`/api/profile-item/${id}/update/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
         body: JSON.stringify({
             description,
-            unit_type: document.getElementById('editItemUnit').value,
-            pack_size: document.getElementById('editItemPack').value || 1,
-            sales_price: document.getElementById('editItemPrice').value || 0,
+            unit_type: document.getElementById(`pe-unit-${id}`).value,
+            pack_size: document.getElementById(`pe-pack-${id}`).value || 1,
+            sales_price: document.getElementById(`pe-price-${id}`).value || 0,
         })
     })
     .then(r => r.json())
     .then(data => {
-        if (data.error) { document.getElementById('editItemError').textContent = data.error; document.getElementById('editItemError').style.display = ''; return; }
-        // Update the row in the DOM
-        const row = document.querySelector(`[data-profile-id="${id}"]`)?.closest('.profile-row');
+        if (data.error) { alert('Error: ' + data.error); return; }
+        // Update the order form row
+        const row = document.querySelector(`.profile-row[data-profile-id="${id}"]`);
         if (row) {
             row.dataset.price = data.sales_price;
             row.dataset.packSize = data.pack_size;
@@ -626,52 +607,61 @@ function saveEditItem() {
                 (data.unit_type ? `<span><strong>Unit:</strong> ${data.unit_type}</span>` : '') +
                 (data.pack_size ? `<span><strong>Pack:</strong> ${data.pack_size}</span>` : '') +
                 (data.sales_price ? `<span><strong>Price:</strong> $${data.sales_price}</span>` : '');
-            // Update edit button data attrs
-            const editBtn = row.querySelector('[onclick^="openEditItem"]');
-            editBtn.dataset.description = data.description;
-            editBtn.dataset.unitType = data.unit_type;
-            editBtn.dataset.packSize = data.pack_size;
-            editBtn.dataset.salesPrice = data.sales_price;
         }
-        bootstrap.Modal.getInstance(document.getElementById('editItemModal')).hide();
+        // Flash the row green briefly
+        const editRow = document.getElementById(`profile-edit-row-${id}`);
+        if (editRow) { editRow.classList.add('table-success'); setTimeout(() => editRow.classList.remove('table-success'), 1200); }
         updateTotals();
     });
 }
 
-function deleteItem(id, btn) {
+function deleteProfileRow(id, btn) {
     if (!confirm('Delete this profile item?')) return;
+    btn.disabled = true;
     fetch(`/api/profile-item/${id}/delete/`, {
         method: 'POST',
         headers: { 'X-CSRFToken': getCookie('csrftoken') }
     })
     .then(r => r.json())
     .then(data => {
-        if (data.error) { alert('Error: ' + data.error); return; }
-        const row = btn.closest('.profile-row');
-        row.remove();
+        if (data.error) { alert('Error: ' + data.error); btn.disabled = false; return; }
+        // Remove from modal
+        document.getElementById(`profile-edit-row-${id}`)?.remove();
+        // Remove from order form
+        const row = document.querySelector(`.profile-row[data-profile-id="${id}"]`);
+        if (row) row.remove();
         updateTotals();
         updateItemCount();
     });
 }
 
-function saveNewItem() {
-    const description = document.getElementById('newItemDesc').value.trim();
-    if (!description) { document.getElementById('addItemError').textContent = 'Description is required.'; document.getElementById('addItemError').style.display = ''; return; }
+function saveInlineItem() {
+    const description = document.getElementById('inlineDesc').value.trim();
+    if (!description) {
+        document.getElementById('addInlineError').textContent = 'Description is required.';
+        document.getElementById('addInlineError').style.display = '';
+        return;
+    }
+    document.getElementById('addInlineError').style.display = 'none';
 
     fetch('/api/customers/{{ customer.id }}/add-profile-item/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
         body: JSON.stringify({
             description,
-            unit_type: document.getElementById('newItemUnit').value,
-            pack_size: document.getElementById('newItemPack').value || 1,
-            sales_price: document.getElementById('newItemPrice').value || 0,
+            unit_type: document.getElementById('inlineUnit').value,
+            pack_size: document.getElementById('inlinePack').value || 1,
+            sales_price: document.getElementById('inlinePrice').value || 0,
         })
     })
     .then(r => r.json())
     .then(data => {
-        if (data.error) { document.getElementById('addItemError').textContent = data.error; document.getElementById('addItemError').style.display = ''; return; }
-        // Add new item row to the list without reloading
+        if (data.error) {
+            document.getElementById('addInlineError').textContent = data.error;
+            document.getElementById('addInlineError').style.display = '';
+            return;
+        }
+        // Add to order form list
         const itemList = document.getElementById('itemList');
         const div = document.createElement('div');
         div.className = 'item-card profile-row';
@@ -693,7 +683,7 @@ function saveNewItem() {
                     </div>
                 </div>
                 <div class="item-totals"><div class="total-lbs text-muted"></div><div class="total-price fw-bold"></div></div>
-                <div class="item-quantity">
+                <div class="d-flex align-items-center gap-2">
                     <input type="number" class="form-control quantity-input" min="0" placeholder="Qty"
                         name="quantity_${data.id}" data-profile-id="${data.id}">
                 </div>
@@ -701,15 +691,19 @@ function saveNewItem() {
         const noMsg = document.getElementById('noItemsMsg');
         if (noMsg) noMsg.remove();
         itemList.appendChild(div);
-        // Wire up the quantity input
         div.querySelector('.quantity-input').addEventListener('input', updateTotals);
-        bootstrap.Modal.getInstance(document.getElementById('addItemModal')).hide();
-        document.getElementById('newItemDesc').value = '';
-        document.getElementById('newItemUnit').value = '';
-        document.getElementById('newItemPack').value = '';
-        document.getElementById('newItemPrice').value = '';
+
+        // Clear inputs
+        document.getElementById('inlineDesc').value = '';
+        document.getElementById('inlineUnit').value = '';
+        document.getElementById('inlinePack').value = '';
+        document.getElementById('inlinePrice').value = '';
+
+        // Re-render modal list to include new row
+        renderProfileItems();
         updateItemCount();
     });
 }
 </script>
+
 {% endblock %}

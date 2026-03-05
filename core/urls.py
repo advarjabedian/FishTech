@@ -215,6 +215,7 @@ urlpatterns = [
     path('api/profile-orders/<int:soid>/items/', get_profile_order_items_api, name='get_profile_order_items_api'),
 path('orders/customers/import/', import_customers_page, name='import_customers_page'),
 path('orders/customers/<int:customer_id>/', profile_order_form, name='profile_order_form'),
+path('order/<uuid:token>/', public_profile_order_form, name='public_profile_order_form'),
 path('api/profile-orders/submit/', submit_profile_order, name='submit_profile_order'),
 path('api/profile-orders/import/preview/', import_preview, name='import_preview'),
 path('api/profile-orders/import/confirm/', import_confirm, name='import_confirm'),

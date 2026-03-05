@@ -51,7 +51,11 @@
                         <td>{{ customer.state }}</td>
                         <td>{{ customer.phone }}</td>
                         <td>{{ customer.contact_name }}</td>
-                        <td class="text-end">
+                        <td class="text-end d-flex justify-content-end gap-2">
+                            <button class="btn btn-outline-secondary btn-sm"
+                                onclick="copyOrderLink('{{ request.scheme }}://{{ request.get_host }}{% url 'public_profile_order_form' customer.public_token %}', this)">
+                                <i class="bi bi-link-45deg"></i> Copy Link
+                            </button>
                             <a href="{% url 'profile_order_form' customer.id %}" class="btn btn-primary btn-sm">
                                 <i class="bi bi-file-earmark-check me-1"></i>Profile Order
                             </a>
@@ -163,5 +167,17 @@ document.getElementById('customer-search').addEventListener('input', function() 
     });
     countEl.textContent = visible + ' customers';
 });
+
+function copyOrderLink(url, btn) {
+    navigator.clipboard.writeText(url).then(() => {
+        const original = btn.innerHTML;
+        btn.innerHTML = '<i class="bi bi-check-lg"></i> Copied!';
+        btn.classList.replace('btn-outline-secondary', 'btn-outline-success');
+        setTimeout(() => {
+            btn.innerHTML = original;
+            btn.classList.replace('btn-outline-success', 'btn-outline-secondary');
+        }, 2000);
+    });
+}
 </script>
 {% endblock %}

@@ -15,7 +15,6 @@ def customer_list(request):
     return render(request, 'core/Orders/customer_list.html', {'customers': customers})
 
 
-@login_required
 def profile_order_form(request, customer_id):
     customer = get_object_or_404(Customer, id=customer_id)
     profiles = CustomerProfile.objects.filter(customer=customer, is_active=True).order_by('description')
@@ -314,14 +313,8 @@ def download_import_template(request):
     wb.save(response)
     return response
 
-
-@login_required
 @require_POST
 def submit_profile_order(request):
-    tenant = get_current_tenant()
-    if not tenant:
-        return JsonResponse({'error': 'No tenant context'}, status=400)
-
     try:
         data = json.loads(request.body)
         order_data = data.get('orderData', {})
@@ -331,6 +324,7 @@ def submit_profile_order(request):
             return JsonResponse({'error': 'No items in order'}, status=400)
 
         customer = get_object_or_404(Customer, id=order_data.get('customerId'))
+        tenant = customer.tenant
 
         last_so = SO.all_objects.filter(tenant=tenant).order_by('-soid').first()
         next_soid = (last_so.soid + 1) if last_so else 1
@@ -384,7 +378,6 @@ def submit_profile_order(request):
     except Exception as e:
         logger.error(f"Error submitting profile order: {e}")
         return JsonResponse({'error': str(e)}, status=500)
-
 
 # =============================================================================
 # IMPORT VIEWS
@@ -938,3 +931,11 @@ def uncomplete_profile_order_api(request, soid):
         return JsonResponse({'success': True})
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+    
+def public_profile_order_form(request, token):
+    customer = get_object_or_404(Customer, public_token=token)
+    profiles = CustomerProfile.objects.filter(customer=customer, is_active=True).order_by('description')
+    return render(request, 'core/Orders/profile_order_form.html', {
+        'customer': customer,
+        'profiles': profiles,
+    })

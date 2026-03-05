@@ -2,6 +2,7 @@ from django.db import models
 from django.contrib.auth.models import User as DjangoUser
 from threading import local
 from django.conf import settings
+import uuid
 
 _thread_locals = local()
 
@@ -355,6 +356,7 @@ class Customer(TenantModel):
     ship_state = models.CharField(max_length=50, blank=True)
     ship_zipcode = models.CharField(max_length=20, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    public_token = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     
     class Meta:
         db_table = 'documents_customer'
