@@ -1,0 +1,1191 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FishTeck – HACCP Compliance & Operations Platform for Seafood Processors</title>
+    <meta name="description" content="FishTeck helps seafood processing facilities manage HACCP compliance documentation, daily inspections, purchase orders, and sales orders in one platform. Built specifically for the seafood industry.">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🐟</text></svg>">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;600;700;800&family=Source+Serif+4:ital,wght@0,300;0,400;1,300&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --navy: #0a1628;
+            --deep: #0d1f3c;
+            --teal: #00b4d8;
+            --teal-light: #90e0ef;
+            --seafoam: #48cae4;
+            --gold: #f4a827;
+            --light: #f0f4f8;
+            --text-muted: #8899aa;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Sora', sans-serif;
+            background: var(--navy);
+            color: white;
+            overflow-x: hidden;
+        }
+
+        /* ── NAV ── */
+        nav {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            z-index: 100;
+            padding: 18px 0;
+            background: rgba(10, 22, 40, 0.92);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(0,180,216,0.15);
+        }
+        .nav-inner {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 32px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .nav-logo {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: white;
+            text-decoration: none;
+            letter-spacing: -0.5px;
+        }
+        .nav-logo span { color: var(--teal); }
+        .nav-links { display: flex; gap: 32px; align-items: center; }
+        .nav-links a {
+            color: rgba(255,255,255,0.75);
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 400;
+            transition: color 0.2s;
+        }
+        .nav-links a:hover { color: var(--teal); }
+        .btn-nav {
+            background: var(--teal);
+            color: var(--navy) !important;
+            padding: 9px 22px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.875rem !important;
+        }
+        .btn-nav:hover { background: var(--seafoam); }
+
+        /* ── HERO ── */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            position: relative;
+            overflow: hidden;
+            padding: 120px 0 80px;
+        }
+        .hero-bg {
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(ellipse 80% 60% at 60% 40%, rgba(0,180,216,0.12) 0%, transparent 70%),
+                        radial-gradient(ellipse 50% 40% at 20% 80%, rgba(0,180,216,0.06) 0%, transparent 60%);
+        }
+        .hero-grid {
+            position: absolute;
+            inset: 0;
+            background-image: linear-gradient(rgba(0,180,216,0.04) 1px, transparent 1px),
+                              linear-gradient(90deg, rgba(0,180,216,0.04) 1px, transparent 1px);
+            background-size: 60px 60px;
+        }
+        .hero-content {
+            position: relative;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 32px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 64px;
+            align-items: center;
+        }
+        .hero-eyebrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(0,180,216,0.12);
+            border: 1px solid rgba(0,180,216,0.3);
+            color: var(--teal);
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            margin-bottom: 24px;
+        }
+        .hero h1 {
+            font-size: clamp(2.5rem, 5vw, 3.8rem);
+            font-weight: 800;
+            line-height: 1.1;
+            letter-spacing: -1.5px;
+            margin-bottom: 24px;
+        }
+        .hero h1 .accent { color: var(--teal); }
+        .hero-sub {
+            font-family: 'Source Serif 4', serif;
+            font-size: 1.15rem;
+            font-weight: 300;
+            line-height: 1.7;
+            color: rgba(255,255,255,0.72);
+            margin-bottom: 40px;
+        }
+        .hero-cta {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        .btn-primary-hero {
+            background: var(--teal);
+            color: var(--navy);
+            padding: 14px 28px;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 1rem;
+            text-decoration: none;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn-primary-hero:hover { background: var(--seafoam); transform: translateY(-2px); color: var(--navy); }
+        .btn-secondary-hero {
+            background: transparent;
+            color: white;
+            padding: 14px 28px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 1rem;
+            text-decoration: none;
+            border: 1px solid rgba(255,255,255,0.25);
+            transition: all 0.2s;
+        }
+        .btn-secondary-hero:hover { border-color: var(--teal); color: var(--teal); }
+
+        .hero-visual {
+            position: relative;
+        }
+        .dashboard-mockup {
+            background: var(--deep);
+            border: 1px solid rgba(0,180,216,0.2);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 40px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(0,180,216,0.1);
+        }
+        .mockup-bar {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 16px;
+        }
+        .dot { width: 10px; height: 10px; border-radius: 50%; }
+        .dot-r { background: #ff5f57; }
+        .dot-y { background: #febc2e; }
+        .dot-g { background: #28c840; }
+        .mockup-nav {
+            background: rgba(0,180,216,0.08);
+            border-radius: 6px;
+            padding: 10px 14px;
+            font-size: 0.75rem;
+            color: var(--teal);
+            margin-bottom: 16px;
+            font-weight: 600;
+        }
+        .mockup-cards {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+        .mockup-card {
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 8px;
+            padding: 14px;
+        }
+        .mockup-card-label { font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+        .mockup-card-val { font-size: 1.4rem; font-weight: 700; color: white; margin: 4px 0 2px; }
+        .mockup-card-sub { font-size: 0.65rem; color: var(--teal); }
+        .mockup-row {
+            background: rgba(255,255,255,0.03);
+            border-radius: 6px;
+            padding: 10px 12px;
+            font-size: 0.72rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+        .badge-pass { background: rgba(40,200,100,0.15); color: #4ade80; padding: 2px 8px; border-radius: 10px; font-size: 0.65rem; font-weight: 600; }
+        .badge-pend { background: rgba(244,168,39,0.15); color: var(--gold); padding: 2px 8px; border-radius: 10px; font-size: 0.65rem; font-weight: 600; }
+
+        /* ── TRUST BAR ── */
+        .trust-bar {
+            border-top: 1px solid rgba(255,255,255,0.06);
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            padding: 28px 0;
+            background: rgba(255,255,255,0.02);
+        }
+        .trust-bar-inner {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 48px;
+            flex-wrap: wrap;
+        }
+        .trust-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: rgba(255,255,255,0.5);
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+        .trust-item i { color: var(--teal); font-size: 1.1rem; }
+
+        /* ── SECTIONS ── */
+        section { padding: 96px 0; }
+        .section-inner {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 32px;
+        }
+        .section-label {
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--teal);
+            margin-bottom: 12px;
+        }
+        .section-title {
+            font-size: clamp(2rem, 4vw, 2.8rem);
+            font-weight: 800;
+            letter-spacing: -1px;
+            line-height: 1.15;
+            margin-bottom: 20px;
+        }
+        .section-sub {
+            font-family: 'Source Serif 4', serif;
+            font-size: 1.1rem;
+            color: rgba(255,255,255,0.6);
+            font-weight: 300;
+            line-height: 1.7;
+            max-width: 600px;
+        }
+
+        /* ── FEATURES ── */
+        #features { background: rgba(255,255,255,0.02); }
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+            margin-top: 64px;
+        }
+        .feature-card {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.07);
+            border-radius: 12px;
+            padding: 32px;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+        .feature-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, var(--teal), transparent);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .feature-card:hover { border-color: rgba(0,180,216,0.3); transform: translateY(-4px); }
+        .feature-card:hover::before { opacity: 1; }
+        .feature-icon {
+            width: 48px; height: 48px;
+            background: rgba(0,180,216,0.1);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.4rem;
+            color: var(--teal);
+            margin-bottom: 20px;
+        }
+        .feature-card h3 {
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+        .feature-card p {
+            font-size: 0.875rem;
+            color: rgba(255,255,255,0.6);
+            line-height: 1.6;
+        }
+
+        /* ── HOW IT WORKS ── */
+        .steps {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 32px;
+            margin-top: 64px;
+            position: relative;
+        }
+        .steps::before {
+            content: '';
+            position: absolute;
+            top: 28px;
+            left: calc(12.5% + 16px);
+            right: calc(12.5% + 16px);
+            height: 1px;
+            background: linear-gradient(90deg, var(--teal), rgba(0,180,216,0.2));
+        }
+        .step {
+            text-align: center;
+            position: relative;
+        }
+        .step-num {
+            width: 56px; height: 56px;
+            background: var(--teal);
+            color: var(--navy);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 1.2rem;
+            margin: 0 auto 20px;
+            position: relative;
+            z-index: 1;
+        }
+        .step h4 { font-size: 1rem; font-weight: 700; margin-bottom: 10px; }
+        .step p { font-size: 0.85rem; color: rgba(255,255,255,0.55); line-height: 1.6; }
+
+        /* ── COMPLIANCE ── */
+        #compliance {
+            background: linear-gradient(135deg, rgba(0,180,216,0.06) 0%, transparent 60%);
+        }
+        .compliance-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 64px;
+            align-items: center;
+            margin-top: 0;
+        }
+        .compliance-list { list-style: none; margin-top: 32px; }
+        .compliance-list li {
+            display: flex;
+            gap: 14px;
+            align-items: flex-start;
+            margin-bottom: 24px;
+        }
+        .compliance-list li i {
+            color: var(--teal);
+            font-size: 1.1rem;
+            margin-top: 2px;
+            flex-shrink: 0;
+        }
+        .compliance-list li strong { display: block; font-size: 0.95rem; margin-bottom: 4px; }
+        .compliance-list li span { font-size: 0.85rem; color: rgba(255,255,255,0.55); line-height: 1.5; }
+        .compliance-visual {
+            background: var(--deep);
+            border: 1px solid rgba(0,180,216,0.15);
+            border-radius: 12px;
+            padding: 28px;
+        }
+        .cv-header {
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: var(--teal);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid rgba(255,255,255,0.07);
+        }
+        .cv-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            font-size: 0.82rem;
+        }
+        .cv-row:last-child { border-bottom: none; }
+        .cv-label { color: rgba(255,255,255,0.6); }
+        .cv-val { font-weight: 600; color: white; }
+        .status-dot {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .dot-green { width: 7px; height: 7px; background: #4ade80; border-radius: 50%; }
+        .dot-yellow { width: 7px; height: 7px; background: var(--gold); border-radius: 50%; }
+
+        /* ── PRICING ── */
+        #pricing { background: rgba(255,255,255,0.02); }
+        .pricing-card {
+            max-width: 440px;
+            margin: 64px auto 0;
+            background: linear-gradient(135deg, rgba(0,180,216,0.1), rgba(0,180,216,0.03));
+            border: 1px solid rgba(0,180,216,0.3);
+            border-radius: 16px;
+            padding: 48px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        .pricing-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--teal), var(--seafoam));
+        }
+        .pricing-badge {
+            background: var(--teal);
+            color: var(--navy);
+            font-size: 0.75rem;
+            font-weight: 700;
+            padding: 4px 14px;
+            border-radius: 20px;
+            display: inline-block;
+            margin-bottom: 24px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .pricing-price {
+            font-size: 4rem;
+            font-weight: 800;
+            letter-spacing: -2px;
+            line-height: 1;
+        }
+        .pricing-price sup { font-size: 1.5rem; vertical-align: top; margin-top: 12px; letter-spacing: 0; }
+        .pricing-price sub { font-size: 1rem; font-weight: 400; color: rgba(255,255,255,0.5); letter-spacing: 0; }
+        .pricing-per { font-size: 0.85rem; color: rgba(255,255,255,0.5); margin-top: 8px; margin-bottom: 36px; }
+        .pricing-features { list-style: none; text-align: left; margin-bottom: 40px; }
+        .pricing-features li {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 0;
+            font-size: 0.9rem;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+        .pricing-features li:last-child { border-bottom: none; }
+        .pricing-features li i { color: var(--teal); }
+        .btn-pricing {
+            background: var(--teal);
+            color: var(--navy);
+            padding: 16px 40px;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 1.05rem;
+            text-decoration: none;
+            display: block;
+            transition: all 0.2s;
+        }
+        .btn-pricing:hover { background: var(--seafoam); transform: translateY(-2px); color: var(--navy); }
+        .pricing-trial { font-size: 0.8rem; color: rgba(255,255,255,0.4); margin-top: 16px; }
+
+        /* ── ABOUT ── */
+        .about-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 80px;
+            align-items: center;
+        }
+        .about-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            margin-top: 40px;
+        }
+        .stat-box {
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.07);
+            border-radius: 10px;
+            padding: 24px;
+        }
+        .stat-val { font-size: 2.2rem; font-weight: 800; color: var(--teal); letter-spacing: -1px; }
+        .stat-label { font-size: 0.8rem; color: rgba(255,255,255,0.55); margin-top: 4px; }
+
+        /* ── CONTACT ── */
+        #contact { background: var(--deep); }
+        .contact-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 80px;
+            align-items: start;
+        }
+        .contact-item {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 32px;
+            align-items: flex-start;
+        }
+        .contact-icon {
+            width: 44px; height: 44px;
+            background: rgba(0,180,216,0.1);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--teal);
+            font-size: 1.1rem;
+            flex-shrink: 0;
+        }
+        .contact-label { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+        .contact-val { font-size: 0.95rem; font-weight: 500; }
+        .contact-val a { color: var(--teal); text-decoration: none; }
+        .contact-val a:hover { text-decoration: underline; }
+
+        .contact-form-card {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.07);
+            border-radius: 12px;
+            padding: 36px;
+        }
+        .form-group { margin-bottom: 20px; }
+        .form-label-custom { font-size: 0.8rem; font-weight: 600; color: rgba(255,255,255,0.7); margin-bottom: 8px; display: block; }
+        .form-input {
+            width: 100%;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 7px;
+            padding: 12px 16px;
+            color: white;
+            font-family: 'Sora', sans-serif;
+            font-size: 0.9rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .form-input:focus { border-color: var(--teal); }
+        .form-input::placeholder { color: rgba(255,255,255,0.3); }
+        textarea.form-input { resize: vertical; min-height: 100px; }
+        .btn-contact {
+            background: var(--teal);
+            color: var(--navy);
+            padding: 13px 28px;
+            border-radius: 7px;
+            font-weight: 700;
+            font-size: 0.95rem;
+            border: none;
+            cursor: pointer;
+            font-family: 'Sora', sans-serif;
+            width: 100%;
+            transition: all 0.2s;
+        }
+        .btn-contact:hover { background: var(--seafoam); }
+
+        /* ── SMS NOTICE ── */
+        .sms-section {
+            background: rgba(0,180,216,0.05);
+            border-top: 1px solid rgba(0,180,216,0.15);
+            padding: 64px 0;
+        }
+        .sms-box {
+            max-width: 800px;
+            margin: 0 auto;
+            text-align: center;
+        }
+
+        /* ── FOOTER ── */
+        footer {
+            background: #060e1a;
+            padding: 48px 0 32px;
+            border-top: 1px solid rgba(255,255,255,0.06);
+        }
+        .footer-inner {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 32px;
+        }
+        .footer-top {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr 1fr;
+            gap: 48px;
+            margin-bottom: 48px;
+        }
+        .footer-brand p { font-size: 0.85rem; color: rgba(255,255,255,0.45); line-height: 1.7; margin-top: 12px; }
+        .footer-col h5 { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: rgba(255,255,255,0.4); margin-bottom: 16px; }
+        .footer-col a {
+            display: block;
+            color: rgba(255,255,255,0.6);
+            text-decoration: none;
+            font-size: 0.875rem;
+            margin-bottom: 10px;
+            transition: color 0.2s;
+        }
+        .footer-col a:hover { color: var(--teal); }
+        .footer-bottom {
+            border-top: 1px solid rgba(255,255,255,0.06);
+            padding-top: 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.8rem;
+            color: rgba(255,255,255,0.35);
+        }
+
+        /* ── MOBILE ── */
+        @media (max-width: 900px) {
+            .hero-content, .features-grid, .compliance-grid, .about-grid, .contact-grid, .footer-top {
+                grid-template-columns: 1fr;
+            }
+            .steps { grid-template-columns: 1fr 1fr; }
+            .steps::before { display: none; }
+            .hero-visual { display: none; }
+            .footer-top { grid-template-columns: 1fr 1fr; }
+            .nav-links { display: none; }
+        }
+
+        /* ── ANIMATIONS ── */
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(24px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .fade-up { animation: fadeUp 0.7s ease both; }
+        .delay-1 { animation-delay: 0.1s; }
+        .delay-2 { animation-delay: 0.2s; }
+        .delay-3 { animation-delay: 0.3s; }
+        .delay-4 { animation-delay: 0.4s; }
+    </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+    <div class="nav-inner">
+        <a href="/" class="nav-logo">Fish<span>Teck</span></a>
+        <div class="nav-links">
+            <a href="#features">Features</a>
+            <a href="#compliance">Compliance</a>
+            <a href="#customers">Customers</a>
+            <a href="#about">About</a>
+            <a href="#pricing">Pricing</a>
+            <a href="#contact">Contact</a>
+            <a href="/login/" class="btn-nav">Sign In</a>
+        </div>
+    </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+    <div class="hero-bg"></div>
+    <div class="hero-grid"></div>
+    <div class="hero-content">
+        <div>
+            <div class="hero-eyebrow fade-up">
+                <i class="bi bi-shield-check"></i>
+                Built for the Seafood Industry
+            </div>
+            <h1 class="fade-up delay-1">
+                HACCP Compliance.<br>
+                <span class="accent">Simplified.</span>
+            </h1>
+            <p class="hero-sub fade-up delay-2">
+                FishTeck is an all-in-one operations platform for seafood processors and distributors. Manage HACCP documentation, daily inspections, purchase orders, and customer communications — all in one place.
+            </p>
+            <div class="hero-cta fade-up delay-3">
+                <a href="/login/" class="btn-primary-hero">
+                    Start Free Trial <i class="bi bi-arrow-right"></i>
+                </a>
+                <a href="#features" class="btn-secondary-hero">See Features</a>
+            </div>
+        </div>
+        <div class="hero-visual fade-up delay-4">
+            <div class="dashboard-mockup">
+                <div class="mockup-bar">
+                    <div class="dot dot-r"></div>
+                    <div class="dot dot-y"></div>
+                    <div class="dot dot-g"></div>
+                </div>
+                <div class="mockup-nav">🐟 FishTeck Dashboard — Golden State Seafood</div>
+                <div class="mockup-cards">
+                    <div class="mockup-card">
+                        <div class="mockup-card-label">Today's Inspections</div>
+                        <div class="mockup-card-val">3/3</div>
+                        <div class="mockup-card-sub">All shifts complete</div>
+                    </div>
+                    <div class="mockup-card">
+                        <div class="mockup-card-label">Open POs</div>
+                        <div class="mockup-card-val">12</div>
+                        <div class="mockup-card-sub">4 receiving today</div>
+                    </div>
+                    <div class="mockup-card">
+                        <div class="mockup-card-label">HACCP Docs</div>
+                        <div class="mockup-card-val">100%</div>
+                        <div class="mockup-card-sub">All current</div>
+                    </div>
+                    <div class="mockup-card">
+                        <div class="mockup-card-label">Orders Ready</div>
+                        <div class="mockup-card-val">8</div>
+                        <div class="mockup-card-sub">2 pending review</div>
+                    </div>
+                </div>
+                <div class="mockup-row">
+                    <span>Pre-Op Inspection – Line A</span>
+                    <span class="badge-pass">✓ PASS</span>
+                </div>
+                <div class="mockup-row">
+                    <span>PO-2847 – Pacific Shrimp</span>
+                    <span class="badge-pass">✓ Received</span>
+                </div>
+                <div class="mockup-row">
+                    <span>Hazard Analysis – Salmon</span>
+                    <span class="badge-pend">In Review</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- TRUST BAR -->
+<div class="trust-bar">
+    <div class="trust-bar-inner">
+        <div class="trust-item"><i class="bi bi-patch-check"></i> FDA HACCP Compliant</div>
+        <div class="trust-item"><i class="bi bi-lock"></i> Multi-Tenant Secure</div>
+        <div class="trust-item"><i class="bi bi-cloud-check"></i> Cloud-Based</div>
+        <div class="trust-item"><i class="bi bi-phone"></i> SMS Notifications</div>
+        <div class="trust-item"><i class="bi bi-envelope-check"></i> Email Integration</div>
+    </div>
+</div>
+
+<!-- FEATURES -->
+<section id="features">
+    <div class="section-inner">
+        <div class="section-label">What We Do</div>
+        <h2 class="section-title">Everything a seafood facility needs</h2>
+        <p class="section-sub">From the receiving dock to regulatory audits, FishTeck covers the full operational lifecycle of a modern seafood processing facility.</p>
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon"><i class="bi bi-shield-check"></i></div>
+                <h3>HACCP Documentation</h3>
+                <p>Full Hazard Analysis and Critical Control Point documentation. Manage hazard analyses, CCPs, flow charts, and certificates — organized by facility and product type.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon"><i class="bi bi-clipboard-check"></i></div>
+                <h3>Daily Inspections</h3>
+                <p>Pre-Op, Mid-Day, and Post-Op shift inspections with digital signatures, deviation tracking, and corrective action documentation. Replace paper logs entirely.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon"><i class="bi bi-file-earmark-text"></i></div>
+                <h3>Purchase Orders</h3>
+                <p>Receive and verify incoming product with temperature logging, lot tracking, and condition inspection. Attach vendor documents and invoices directly to each PO.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon"><i class="bi bi-bag-check"></i></div>
+                <h3>Sales Orders</h3>
+                <p>Manage customer orders with full line-item detail. Attach proof of delivery documents and share files with customers via email directly from the platform.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon"><i class="bi bi-chat-dots"></i></div>
+                <h3>Order Communications</h3>
+                <p>Receive customer orders via email or SMS. Assign order requests to team members, track status, and respond — all from a centralized communication hub.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon"><i class="bi bi-graph-up"></i></div>
+                <h3>Reports & Audit Trails</h3>
+                <p>Generate operational and deviation reports on demand. Every action is logged with timestamps and user signatures — ready for any regulatory audit.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section>
+    <div class="section-inner">
+        <div class="section-label">How It Works</div>
+        <h2 class="section-title">Up and running in minutes</h2>
+        <p class="section-sub">FishTeck is designed for fish factory operators — not IT departments. Setup is fast and support is included.</p>
+        <div class="steps">
+            <div class="step">
+                <div class="step-num">1</div>
+                <h4>Register Your Facility</h4>
+                <p>Create your account and set up your company profile with your facility details and logo.</p>
+            </div>
+            <div class="step">
+                <div class="step-num">2</div>
+                <h4>Configure Your SOPs</h4>
+                <p>Import or build your inspection SOPs, zones, and HACCP product types for your specific operation.</p>
+            </div>
+            <div class="step">
+                <div class="step-num">3</div>
+                <h4>Invite Your Team</h4>
+                <p>Add inspectors, managers, and admins. Each gets role-appropriate access to the platform.</p>
+            </div>
+            <div class="step">
+                <div class="step-num">4</div>
+                <h4>Go Paperless</h4>
+                <p>Replace paper logs, binders, and spreadsheets. Everything is searchable, printable, and audit-ready.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- COMPLIANCE -->
+<section id="compliance">
+    <div class="section-inner">
+        <div class="compliance-grid">
+            <div>
+                <div class="section-label">Regulatory Compliance</div>
+                <h2 class="section-title">Built around FDA food safety requirements</h2>
+                <p class="section-sub">FishTeck was built from the ground up to align with 21 CFR Part 123 — the FDA's seafood HACCP regulation.</p>
+                <ul class="compliance-list">
+                    <li>
+                        <i class="bi bi-check-circle-fill"></i>
+                        <div>
+                            <strong>Hazard Analysis & CCPs</strong>
+                            <span>Document every hazard, critical control point, critical limit, monitoring procedure, and corrective action for each product type.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <i class="bi bi-check-circle-fill"></i>
+                        <div>
+                            <strong>Signed Verification Records</strong>
+                            <span>Every inspection and HACCP document is signed with a digital signature, timestamped, and stored with full audit trail.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <i class="bi bi-check-circle-fill"></i>
+                        <div>
+                            <strong>Deviation & Corrective Action Log</strong>
+                            <span>All deviations are captured with mandatory corrective action documentation — exactly what auditors look for.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <i class="bi bi-check-circle-fill"></i>
+                        <div>
+                            <strong>HACCP Certificates & Letters of Guarantee</strong>
+                            <span>Generate and store HACCP certificates and letters of guarantee for customers on demand.</span>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+            <div>
+                <div class="compliance-visual">
+                    <div class="cv-header">HACCP Audit Summary — Salmon Fillet (2025)</div>
+                    <div class="cv-row">
+                        <span class="cv-label">Hazard Analysis</span>
+                        <span class="cv-val"><span class="status-dot"><span class="dot-green"></span> Complete</span></span>
+                    </div>
+                    <div class="cv-row">
+                        <span class="cv-label">CCP Summary</span>
+                        <span class="cv-val"><span class="status-dot"><span class="dot-green"></span> Complete</span></span>
+                    </div>
+                    <div class="cv-row">
+                        <span class="cv-label">Process Flow Chart</span>
+                        <span class="cv-val"><span class="status-dot"><span class="dot-green"></span> Complete</span></span>
+                    </div>
+                    <div class="cv-row">
+                        <span class="cv-label">Daily Inspections YTD</span>
+                        <span class="cv-val">247 / 247</span>
+                    </div>
+                    <div class="cv-row">
+                        <span class="cv-label">Deviations Documented</span>
+                        <span class="cv-val">14 (all resolved)</span>
+                    </div>
+                    <div class="cv-row">
+                        <span class="cv-label">HACCP Certificate</span>
+                        <span class="cv-val"><span class="status-dot"><span class="dot-green"></span> Issued 01/15/2025</span></span>
+                    </div>
+                    <div class="cv-row">
+                        <span class="cv-label">Last Audit Result</span>
+                        <span class="cv-val" style="color: #4ade80; font-weight: 700;">✓ PASSED</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ABOUT -->
+<section id="about">
+    <div class="section-inner">
+        <div class="about-grid">
+            <div>
+                <div class="section-label">About FishTeck</div>
+                <h2 class="section-title">Built by people who understand the seafood business</h2>
+                <p class="section-sub">FishTeck was developed working directly with seafood processing facilities to solve the real compliance and operations problems they face every day.</p>
+                <p style="margin-top: 20px; font-size: 0.9rem; color: rgba(255,255,255,0.55); line-height: 1.7;">
+                    We saw too many facilities running HACCP programs on paper binders and spreadsheets — wasting hours preparing for audits that should take minutes. FishTeck replaces all of that with a cloud platform that's actually designed for the way fish factories operate.
+                </p>
+                <div class="about-stats">
+                    <div class="stat-box">
+                        <div class="stat-val">100%</div>
+                        <div class="stat-label">Audit pass rate for active customers</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-val">3</div>
+                        <div class="stat-label">Shifts managed daily per facility</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-val">30</div>
+                        <div class="stat-label">Day free trial — no credit card required</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-val">$10</div>
+                        <div class="stat-label">Per facility per month — flat pricing</div>
+                    </div>
+                </div>
+            </div>
+            <div>
+                <div style="background: var(--deep); border: 1px solid rgba(0,180,216,0.15); border-radius: 12px; padding: 32px;">
+                    <div style="font-size: 0.75rem; font-weight: 700; color: var(--teal); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 20px;">Who FishTeck Is For</div>
+                    <div style="display: flex; flex-direction: column; gap: 16px;">
+                        <div style="display: flex; gap: 14px; align-items: flex-start;">
+                            <div style="width: 36px; height: 36px; background: rgba(0,180,216,0.1); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--teal); flex-shrink: 0;"><i class="bi bi-building"></i></div>
+                            <div>
+                                <div style="font-weight: 600; font-size: 0.9rem;">Seafood Processing Facilities</div>
+                                <div style="font-size: 0.8rem; color: rgba(255,255,255,0.5); margin-top: 3px;">Fish factories, processing plants, and cold storage operations that need to maintain FDA HACCP compliance.</div>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 14px; align-items: flex-start;">
+                            <div style="width: 36px; height: 36px; background: rgba(0,180,216,0.1); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--teal); flex-shrink: 0;"><i class="bi bi-truck"></i></div>
+                            <div>
+                                <div style="font-weight: 600; font-size: 0.9rem;">Seafood Distributors</div>
+                                <div style="font-size: 0.8rem; color: rgba(255,255,255,0.5); margin-top: 3px;">Distributors managing vendor relationships, receiving inspections, and customer order documentation.</div>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 14px; align-items: flex-start;">
+                            <div style="width: 36px; height: 36px; background: rgba(0,180,216,0.1); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--teal); flex-shrink: 0;"><i class="bi bi-clipboard2-data"></i></div>
+                            <div>
+                                <div style="font-weight: 600; font-size: 0.9rem;">Compliance Managers</div>
+                                <div style="font-size: 0.8rem; color: rgba(255,255,255,0.5); margin-top: 3px;">QA and compliance staff who need reliable audit documentation and inspection records at their fingertips.</div>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 14px; align-items: flex-start;">
+                            <div style="width: 36px; height: 36px; background: rgba(0,180,216,0.1); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--teal); flex-shrink: 0;"><i class="bi bi-shop"></i></div>
+                            <div>
+                                <div style="font-weight: 600; font-size: 0.9rem;">Multi-Location Operations</div>
+                                <div style="font-size: 0.8rem; color: rgba(255,255,255,0.5); margin-top: 3px;">Companies operating multiple facilities who need one platform that keeps each location's data properly separated.</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- CUSTOMERS -->
+<section id="customers">
+    <div class="section-inner" style="text-align: center;">
+        <div class="section-label">Trusted By</div>
+        <h2 class="section-title">Seafood businesses running on FishTeck</h2>
+        <p class="section-sub" style="margin: 0 auto;">Leading seafood processors and distributors in California rely on FishTeck for daily compliance and operations management.</p>
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 56px;">
+    <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 32px 24px; display: flex; align-items: center; justify-content: center; transition: all 0.3s;" onmouseover="this.style.borderColor='rgba(0,180,216,0.3)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.08)'">
+        <img src="{% static 'core/images/customers/golden_state_seafood_logo.png' %}" alt="Golden State Seafood" style="max-height: 70px; max-width: 100%; object-fit: contain; filter: brightness(0) invert(1); opacity: 0.85;">
+    </div>
+    <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 32px 24px; display: flex; align-items: center; justify-content: center; transition: all 0.3s;" onmouseover="this.style.borderColor='rgba(0,180,216,0.3)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.08)'">
+        <img src="{% static 'core/images/customers/pacific_fresh_fish_logo.png' %}" alt="Pacific Fresh Fish" style="max-height: 70px; max-width: 100%; object-fit: contain; filter: brightness(0) invert(1); opacity: 0.85;">
+    </div>
+    <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 32px 24px; display: flex; align-items: center; justify-content: center; transition: all 0.3s;" onmouseover="this.style.borderColor='rgba(0,180,216,0.3)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.08)'">
+        <img src="{% static 'core/images/customers/fog_river_logo.png' %}" alt="Fog River Seafood" style="max-height: 70px; max-width: 100%; object-fit: contain; filter: brightness(0) invert(1); opacity: 0.85;">
+    </div>
+    <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 32px 24px; display: flex; align-items: center; justify-content: center; transition: all 0.3s;" onmouseover="this.style.borderColor='rgba(0,180,216,0.3)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.08)'">
+        <img src="{% static 'core/images/customers/unified_logo.png' %}" alt="Unified Seafood Group" style="max-height: 70px; max-width: 100%; object-fit: contain; filter: brightness(0) invert(1); opacity: 0.85;">
+    </div>
+    <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 32px 24px; display: flex; align-items: center; justify-content: center; transition: all 0.3s;" onmouseover="this.style.borderColor='rgba(0,180,216,0.3)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.08)'">
+        <img src="{% static 'core/images/customers/coastal_provisions_logo.png' %}" alt="Coastal Provisions" style="max-height: 70px; max-width: 100%; object-fit: contain; filter: brightness(0) invert(1); opacity: 0.85;">
+    </div>
+    <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 32px 24px; display: flex; align-items: center; justify-content: center; transition: all 0.3s;" onmouseover="this.style.borderColor='rgba(0,180,216,0.3)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.08)'">
+        <img src="{% static 'core/images/customers/native_cure_logo.png' %}" alt="Native Cure" style="max-height: 70px; max-width: 100%; object-fit: contain; filter: brightness(0) invert(1); opacity: 0.85;">
+    </div>
+</div>
+    </div>
+</section>
+
+<!-- PRICING -->
+<section id="pricing">
+    <div class="section-inner" style="text-align: center;">
+        <div class="section-label">Pricing</div>
+        <h2 class="section-title">Simple, flat-rate pricing</h2>
+        <p class="section-sub" style="margin: 0 auto;">No per-user fees. No hidden charges. One price per facility — everything included.</p>
+        <div class="pricing-card">
+            <span class="pricing-badge">Per Facility</span>
+            <div class="pricing-price"><sup>$</sup>10<sub>/mo</sub></div>
+            <div class="pricing-per">per facility · unlimited users · everything included</div>
+            <ul class="pricing-features">
+                <li><i class="bi bi-check-circle-fill"></i> Full HACCP documentation suite</li>
+                <li><i class="bi bi-check-circle-fill"></i> Daily inspection management (3 shifts)</li>
+                <li><i class="bi bi-check-circle-fill"></i> Purchase orders & receiving</li>
+                <li><i class="bi bi-check-circle-fill"></i> Sales orders & customer documents</li>
+                <li><i class="bi bi-check-circle-fill"></i> Email & SMS order communications</li>
+                <li><i class="bi bi-check-circle-fill"></i> Deviation & corrective action reports</li>
+                <li><i class="bi bi-check-circle-fill"></i> Unlimited users per facility</li>
+                <li><i class="bi bi-check-circle-fill"></i> Document storage & file sharing</li>
+            </ul>
+            <a href="/login/" class="btn-pricing">Start 30-Day Free Trial</a>
+            <div class="pricing-trial">No credit card required · Cancel anytime</div>
+        </div>
+    </div>
+</section>
+
+<!-- SMS OPT-IN NOTICE -->
+<div class="sms-section">
+    <div class="section-inner">
+        <div class="sms-box">
+            <div class="section-label" style="text-align: center;">SMS Notifications</div>
+            <h2 class="section-title" style="text-align: center; font-size: 1.8rem;">Order notifications via text message</h2>
+            <p style="color: rgba(255,255,255,0.6); font-size: 0.9rem; line-height: 1.8; margin-top: 16px;">
+                FishTeck can send your team SMS notifications for new order requests and important alerts. Message and data rates may apply. Message frequency varies based on order activity. Reply STOP to unsubscribe at any time. Reply HELP for help.
+            </p>
+            <p style="margin-top: 16px;">
+                <a href="/sms-opt-in/" style="color: var(--teal); font-size: 0.875rem;">View SMS Terms & Opt-In Policy</a>
+                &nbsp;·&nbsp;
+                <a href="/privacy-policy/" style="color: var(--teal); font-size: 0.875rem;">Privacy Policy</a>
+                &nbsp;·&nbsp;
+                <a href="/terms-of-service/" style="color: var(--teal); font-size: 0.875rem;">Terms of Service</a>
+            </p>
+        </div>
+    </div>
+</div>
+
+<!-- CONTACT -->
+<section id="contact">
+    <div class="section-inner">
+        <div class="contact-grid">
+            <div>
+                <div class="section-label">Get In Touch</div>
+                <h2 class="section-title">Questions? We're here.</h2>
+                <p class="section-sub">Reach out to learn more about FishTeck or get help setting up your facility.</p>
+                <div style="margin-top: 40px;">
+                    <div class="contact-item">
+                        <div class="contact-icon"><i class="bi bi-envelope"></i></div>
+                        <div>
+                            <div class="contact-label">Email</div>
+                            <div class="contact-val"><a href="mailto:arev@goldenstateseafood.com">arev@goldenstateseafood.com</a></div>
+                        </div>
+                    </div>
+                    <div class="contact-item">
+                        <div class="contact-icon"><i class="bi bi-geo-alt"></i></div>
+                        <div>
+                            <div class="contact-label">Address</div>
+                            <div class="contact-val">700 E 6th St<br>Los Angeles, CA 90021</div>
+                        </div>
+                    </div>
+                    <div class="contact-item">
+                        <div class="contact-icon"><i class="bi bi-telephone"></i></div>
+                        <div>
+                            <div class="contact-label">Phone</div>
+                            <div class="contact-val"><a href="tel:+17036187120">+1 (703) 618-7120</a></div>
+                        </div>
+                    </div>
+                    <div class="contact-item">
+                        <div class="contact-icon"><i class="bi bi-clock"></i></div>
+                        <div>
+                            <div class="contact-label">Support Hours</div>
+                            <div class="contact-val">Monday – Friday, 8am – 5pm PST</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div>
+                <div class="contact-form-card">
+                    <h4 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 24px;">Send us a message</h4>
+                    <form id="contactForm" onsubmit="submitContact(event)">
+                        <div class="form-group">
+                            <label class="form-label-custom">Your Name</label>
+                            <input type="text" class="form-input" placeholder="Jane Smith" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label-custom">Company</label>
+                            <input type="text" class="form-input" placeholder="Golden State Seafood">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label-custom">Email</label>
+                            <input type="email" class="form-input" placeholder="jane@company.com" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label-custom">Message</label>
+                            <textarea class="form-input" placeholder="Tell us about your facility and what you're looking for..."></textarea>
+                        </div>
+                        <button type="submit" class="btn-contact">Send Message</button>
+                    </form>
+                    <div id="contactSuccess" style="display: none; text-align: center; padding: 20px; color: var(--teal);">
+                        <i class="bi bi-check-circle" style="font-size: 2rem;"></i>
+                        <p style="margin-top: 12px; font-weight: 600;">Message sent! We'll be in touch shortly.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+    <div class="footer-inner">
+        <div class="footer-top">
+            <div class="footer-brand">
+                <div style="font-size: 1.4rem; font-weight: 800;">Fish<span style="color: var(--teal);">Teck</span></div>
+                <p>HACCP compliance and operations management platform built specifically for seafood processing facilities.</p>
+            </div>
+            <div class="footer-col">
+                <h5>Product</h5>
+                <a href="#features">Features</a>
+                <a href="#compliance">Compliance</a>
+                <a href="#pricing">Pricing</a>
+                <a href="/login/">Sign In</a>
+            </div>
+            <div class="footer-col">
+                <h5>Company</h5>
+                <a href="#about">About</a>
+                <a href="#contact">Contact</a>
+                <a href="mailto:arev@goldenstateseafood.com">Support</a>
+            </div>
+            <div class="footer-col">
+                <h5>Legal</h5>
+                <a href="/privacy-policy/">Privacy Policy</a>
+                <a href="/terms-of-service/">Terms of Service</a>
+                <a href="/sms-opt-in/">SMS Opt-In Policy</a>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <div>© 2025 FishTeck. All rights reserved.</div>
+            <div>Built for the seafood industry 🐟</div>
+        </div>
+    </div>
+</footer>
+
+<script>
+function submitContact(e) {
+    e.preventDefault();
+    document.getElementById('contactForm').style.display = 'none';
+    document.getElementById('contactSuccess').style.display = 'block';
+}
+
+// Smooth scroll
+document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+    anchor.addEventListener('click', function(e) {
+        e.preventDefault();
+        const target = document.querySelector(this.getAttribute('href'));
+        if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+});
+
+// Nav scroll effect
+window.addEventListener('scroll', () => {
+    const nav = document.querySelector('nav');
+    nav.style.background = window.scrollY > 50 
+        ? 'rgba(10, 22, 40, 0.98)' 
+        : 'rgba(10, 22, 40, 0.92)';
+});
+</script>
+</body>
+</html>
