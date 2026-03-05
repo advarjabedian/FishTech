@@ -839,3 +839,68 @@ class CustomerProfile(TenantModel):
 
     def __str__(self):
         return f"{self.customer.name} - {self.description}"
+
+
+# =============================================================================
+# INVENTORY MODULE MODELS
+# =============================================================================
+
+class Product(TenantModel):
+    """Product catalog"""
+    product_id = models.CharField(max_length=100)
+    item_number = models.CharField(max_length=100, blank=True)
+    description = models.CharField(max_length=255, blank=True)
+    origin = models.CharField(max_length=100, blank=True)
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'inventory_product'
+        unique_together = [['tenant', 'product_id']]
+
+    def __str__(self):
+        return f"{self.item_number} - {self.description}"
+
+
+class Inventory(TenantModel):
+    """Inventory records"""
+    company = models.ForeignKey(Company, on_delete=models.SET_NULL, null=True, blank=True)
+    productid = models.CharField(max_length=100, null=True, blank=True)
+    desc = models.CharField(max_length=255, blank=True)
+    vendorid = models.CharField(max_length=100, blank=True)
+    receivedate = models.CharField(max_length=50, blank=True)
+    vendorlot = models.CharField(max_length=100, blank=True)
+    actualcost = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    unittype = models.CharField(max_length=50, blank=True)
+    unitsonhand = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    unitsavailable = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    unitsallocated = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    unitsin = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    unitsout = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    unitsstored = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    weightin = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    weightout = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    billedweight = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    availableweight = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    casesavailable = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    casesonhand = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    pendingunits = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    age = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    origin = models.CharField(max_length=100, blank=True)
+    shelflife = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    critical = models.CharField(max_length=100, blank=True)
+    packdate = models.CharField(max_length=50, blank=True)
+    poid = models.CharField(max_length=100, blank=True)
+    podid = models.CharField(max_length=100, blank=True)
+    category = models.IntegerField(null=True, blank=True)
+    storageid = models.IntegerField(null=True, blank=True)
+    flagged = models.IntegerField(default=0)
+    fixed = models.IntegerField(default=0)
+    hidden = models.IntegerField(default=0)
+    updatetime = models.CharField(max_length=50, blank=True)
+
+    class Meta:
+        db_table = 'inventory_inventory'
+
+    def __str__(self):
+        return f"{self.productid} - {self.desc}"

@@ -1,0 +1,355 @@
+<!-- Product Info Modal -->
+<div class="modal fade" id="productInfoModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-body p-0">
+
+                <!-- Header -->
+                <div class="text-center px-4 py-3 position-relative" style="background-color:#5085d6; color:white; border-radius: 4px 4px 0 0;">
+                    <button type="button" class="btn-close btn-close-white position-absolute" style="right:15px;top:15px;" data-bs-dismiss="modal"></button>
+                    <h5 class="fw-bold mb-1" id="pim-name"></h5>
+                    <div class="d-flex justify-content-center gap-3 small">
+                        <div><strong>Item ID:</strong> <span id="pim-product-id"></span></div>
+                        <div>Origin: <span id="pim-origin"></span></div>
+                        <div>Buyer: <span id="pim-buyer"></span></div>
+                    </div>
+                </div>
+
+                <div class="p-3">
+                    <!-- WOH -->
+                    <div class="text-end mb-2">
+                        <strong>WOH (Weight on Hand):</strong>
+                        <span id="pim-woh" class="fw-bold ms-1" style="color:#5085d6;"></span>
+                    </div>
+
+                    <!-- Cost strip -->
+                    <div class="inline-product-details mb-3">
+                        <div class="detail-item">
+                            <div class="detail-label">Raw Cost:</div>
+                            <div><input type="number" step="0.01" id="pim-raw-cost" class="form-control form-control-sm text-center pim-cost-input" style="width:75px;"></div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">Yield:</div>
+                            <div><input type="number" step="0.01" id="pim-yield" class="form-control form-control-sm text-center pim-cost-input" style="width:70px;" placeholder="0.97"></div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">Component Cost:</div>
+                            <div class="detail-value" id="pim-comp-cost">N/A</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">Labor/Pack:</div>
+                            <div><input type="number" step="0.01" id="pim-labor-cost" class="form-control form-control-sm text-center pim-cost-input" style="width:75px;"></div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">Finished Cost:</div>
+                            <div class="detail-value finished-cost" id="pim-finished-cost">N/A</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">60-Day Sales:</div>
+                            <div class="detail-value sales" id="pim-sixty-sales">
+                                <span class="spinner-border spinner-border-sm"></span>
+                            </div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">10-Day Sales:</div>
+                            <div class="detail-value sales" id="pim-ten-sales">
+                                <span class="spinner-border spinner-border-sm"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Notes / Pre-order -->
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <div class="card h-100">
+                                <div class="card-body">
+                                    <h6>Notes:</h6>
+                                    <textarea id="pim-notes" class="form-control form-control-sm" rows="3"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card h-100">
+                                <div class="card-body">
+                                    <h6>Pre-Order Hours:</h6>
+                                    <input type="number" step="0.5" id="pim-pre-order-hours" class="form-control form-control-sm" style="width:100px;">
+                                    <h6 class="mt-3">Buyer:</h6>
+                                    <input type="text" id="pim-buyer-input" class="form-control form-control-sm" placeholder="e.g. John">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Margin calculator -->
+                    <div class="card">
+                        <div class="card-body py-2">
+                            <div class="row align-items-center">
+                                <div class="col-md-7">
+                                    <div class="text-center mb-1 small fw-bold">Set Margin</div>
+                                    <div class="margin-grid">
+                                        <button class="btn btn-outline-primary info-set-margin-btn px-3 py-2" data-margin="0.23" style="font-size:0.9rem;border-color:#5085d6;color:#5085d6;">23%</button>
+                                        <button class="btn btn-outline-primary info-set-margin-btn px-3 py-2" data-margin="0.21" style="font-size:0.9rem;border-color:#5085d6;color:#5085d6;">21%</button>
+                                        <button class="btn btn-outline-primary info-set-margin-btn px-3 py-2" data-margin="0.18" style="font-size:0.9rem;border-color:#5085d6;color:#5085d6;">18%</button>
+                                        <button class="btn btn-outline-primary info-set-margin-btn px-3 py-2" data-margin="0.15" style="font-size:0.9rem;border-color:#5085d6;color:#5085d6;">15%</button>
+                                        <button class="btn btn-outline-primary info-set-margin-btn px-3 py-2" data-margin="0.12" style="font-size:0.9rem;border-color:#5085d6;color:#5085d6;">12%</button>
+                                        <button class="btn btn-outline-primary info-set-margin-btn px-3 py-2" data-margin="0.10" style="font-size:0.9rem;border-color:#5085d6;color:#5085d6;">10%</button>
+                                        <input type="number" id="pim-custom-margin" class="form-control" min="0" max="99" placeholder="Custom %"
+                                            style="font-size:0.9rem; min-width:120px;">
+                                    </div>
+                                </div>
+                                <div class="col-md-5">
+                                    <div class="d-flex justify-content-end align-items-end gap-2">
+                                        <div class="text-center">
+                                            <label class="form-label mb-1 small fw-bold">Price</label>
+                                            <div class="input-group input-group-sm" style="width:110px;">
+                                                <span class="input-group-text">$</span>
+                                                <input type="text" class="form-control" id="pim-price" step="0.01">
+                                            </div>
+                                        </div>
+                                        <div class="text-center">
+                                            <label class="form-label mb-1 small fw-bold">Margin %</label>
+                                            <div id="pim-margin-value" class="fw-bold px-2 py-1"
+                                                style="min-width:70px;background:#f8f9fa;border:1px solid #dee2e6;border-radius:4px;text-align:center;font-size:0.9rem;"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Order history (collapsible) -->
+                    <div class="mt-3">
+                        <button class="btn btn-outline-secondary btn-sm w-100 text-start" type="button"
+                            data-bs-toggle="collapse" data-bs-target="#pimHistoryCollapse">
+                            <i class="bi bi-clock-history me-1"></i> Order History
+                            <span id="pim-history-badge" class="badge bg-secondary ms-1" style="display:none;"></span>
+                        </button>
+                        <div class="collapse" id="pimHistoryCollapse">
+                            <div class="border border-top-0 rounded-bottom p-2">
+                                <div class="table-responsive" style="max-height:250px;overflow-y:auto;">
+                                    <table class="table table-sm table-striped mb-0">
+                                        <thead class="table-dark">
+                                            <tr>
+                                                <th>Customer</th>
+                                                <th>Date</th>
+                                                <th>Qty</th>
+                                                <th>Price</th>
+                                                <th>Unit</th>
+                                                <th></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="pim-history-table">
+                                            <tr><td colspan="6" class="text-center text-muted">Loading...</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <div id="pim-save-status" class="text-success small me-auto" style="display:none;">
+                    <i class="bi bi-check-circle me-1"></i>Saved
+                </div>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" onclick="savePimCosts()">
+                    <i class="bi bi-floppy me-1"></i>Save Costs
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.inline-product-details {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 15px;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #dee2e6;
+}
+.detail-item { display:flex; flex-direction:column; align-items:center; min-width:75px; text-align:center; flex:1; }
+.detail-label { font-size:0.82rem; font-weight:600; color:#6c757d; margin-bottom:3px; white-space:nowrap; }
+.detail-value { font-size:1rem; font-weight:bold; color:#212529; }
+.detail-value.finished-cost { color:#dc3545; font-size:1.1rem; }
+.detail-value.sales { color:#5085d6; }
+.info-set-margin-btn:hover { background-color:#5085d6 !important; border-color:#5085d6 !important; color:white !important; }
+.margin-grid {
+    display: grid;
+    grid-template-columns: repeat(6, auto) 130px;
+    gap: 8px;
+    align-items: center;
+}
+#pim-custom-margin::-webkit-outer-spin-button,
+#pim-custom-margin::-webkit-inner-spin-button { -webkit-appearance:none; margin:0; }
+@media (max-width: 767px) {
+    .margin-grid { grid-template-columns: repeat(3, 1fr); }
+    .margin-grid input { grid-column: 1 / -1; justify-self:center; width:160px !important; }
+    .inline-product-details { justify-content:space-around; gap:8px; }
+}
+</style>
+
+<script>
+let _pimProductId = null;
+
+window.showProductInfoModal = function(p) {
+    _pimProductId = p.id;
+
+    // Reset
+    document.getElementById('pim-sixty-sales').innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+    document.getElementById('pim-ten-sales').innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+    document.getElementById('pim-history-table').innerHTML = '<tr><td colspan="6" class="text-center text-muted">Loading...</td></tr>';
+    document.getElementById('pim-save-status').style.display = 'none';
+    document.getElementById('pimHistoryCollapse').classList.remove('show');
+
+    // Header
+    document.getElementById('pim-name').textContent = p.description || 'N/A';
+    document.getElementById('pim-product-id').textContent = p.product_id || 'N/A';
+    document.getElementById('pim-origin').textContent = p.origin || 'N/A';
+    document.getElementById('pim-buyer').textContent = p.buyer || 'N/A';
+
+    // Editable fields
+    document.getElementById('pim-buyer-input').value = p.buyer || '';
+    document.getElementById('pim-notes').value = p.notes || '';
+    document.getElementById('pim-raw-cost').value = p.raw_cost || '';
+    document.getElementById('pim-yield').value = p.yield_pct || '';
+    document.getElementById('pim-labor-cost').value = p.labor_pack_cost || '';
+    document.getElementById('pim-pre-order-hours').value = p.pre_order_hours || '';
+
+    // Calculated costs
+    _pimRecalcCosts();
+
+    // Show modal
+    new bootstrap.Modal(document.getElementById('productInfoModal')).show();
+
+    // Fetch detail (WOH)
+    fetch(`/api/products/${p.id}/detail/`)
+        .then(r => r.json())
+        .then(d => {
+            document.getElementById('pim-woh').textContent = d.woh ? d.woh.toFixed(1) : '0';
+        })
+        .catch(() => { document.getElementById('pim-woh').textContent = 'N/A'; });
+
+    // Fetch sales history
+    fetch(`/api/products/${p.id}/sales-history/`)
+        .then(r => r.json())
+        .then(d => {
+            document.getElementById('pim-sixty-sales').textContent = d.sixty_day_sales || '0';
+            document.getElementById('pim-ten-sales').textContent = d.ten_day_sales || '0';
+            _pimRenderHistory(d.history || []);
+        })
+        .catch(() => {
+            document.getElementById('pim-sixty-sales').textContent = 'N/A';
+            document.getElementById('pim-ten-sales').textContent = 'N/A';
+        });
+};
+
+function _pimRecalcCosts() {
+    const raw = parseFloat(document.getElementById('pim-raw-cost').value) || 0;
+    const yld = parseFloat(document.getElementById('pim-yield').value) || 1;
+    const labor = parseFloat(document.getElementById('pim-labor-cost').value) || 0;
+    const comp = raw * yld;
+    const finished = comp + labor;
+
+    document.getElementById('pim-comp-cost').textContent = '$' + comp.toFixed(2);
+    document.getElementById('pim-finished-cost').textContent = '$' + finished.toFixed(2);
+    document.getElementById('pim-price').setAttribute('data-finished-cost', finished);
+    _pimCalcMargin();
+}
+
+function _pimCalcMargin() {
+    const price = parseFloat(document.getElementById('pim-price').value) || 0;
+    const finished = parseFloat(document.getElementById('pim-price').getAttribute('data-finished-cost')) || 0;
+    const margin = price > 0 ? ((price - finished) / price) * 100 : 0;
+    const el = document.getElementById('pim-margin-value');
+    el.innerHTML = `<strong>${margin.toFixed(1)}%</strong>`;
+    el.className = 'fw-bold px-2 py-1 ' + (margin > 18 ? 'text-success' : margin > 15 ? 'text-warning' : 'text-danger');
+}
+
+function _pimSetMargin(m) {
+    const finished = parseFloat(document.getElementById('pim-price').getAttribute('data-finished-cost')) || 0;
+    document.getElementById('pim-price').value = (finished / (1 - m)).toFixed(2);
+    _pimCalcMargin();
+}
+
+function _pimRenderHistory(rows) {
+    const tbody = document.getElementById('pim-history-table');
+    const badge = document.getElementById('pim-history-badge');
+    if (!rows.length) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No history found</td></tr>';
+        return;
+    }
+    badge.textContent = rows.length;
+    badge.style.display = '';
+    tbody.innerHTML = rows.map(r => `
+        <tr>
+            <td>${r.customer || ''}</td>
+            <td>${r.days_ago != null ? (r.days_ago === 0 ? 'Today' : r.days_ago + 'd ago') : r.dispatch_date}</td>
+            <td>${r.quantity}</td>
+            <td><strong style="color:red;">$${parseFloat(r.sales_price).toFixed(2)}</strong></td>
+            <td>${r.unit_type || ''}</td>
+            <td><button class="btn btn-sm btn-outline-primary" onclick="document.getElementById('pim-price').value='${parseFloat(r.sales_price).toFixed(2)}';_pimCalcMargin();">Copy</button></td>
+        </tr>`).join('');
+}
+
+async function savePimCosts() {
+    if (!_pimProductId) return;
+    try {
+        const r = await fetch(`/api/products/${_pimProductId}/update-costs/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+            body: JSON.stringify({
+                raw_cost: document.getElementById('pim-raw-cost').value,
+                yield_pct: document.getElementById('pim-yield').value,
+                labor_pack_cost: document.getElementById('pim-labor-cost').value,
+                pre_order_hours: document.getElementById('pim-pre-order-hours').value,
+                buyer: document.getElementById('pim-buyer-input').value,
+                notes: document.getElementById('pim-notes').value,
+            }),
+        });
+        const data = await r.json();
+        if (data.error) throw new Error(data.error);
+        const status = document.getElementById('pim-save-status');
+        status.style.display = '';
+        setTimeout(() => status.style.display = 'none', 3000);
+        // Update header buyer display
+        document.getElementById('pim-buyer').textContent = document.getElementById('pim-buyer-input').value || 'N/A';
+    } catch(e) {
+        alert('Save failed: ' + e.message);
+    }
+}
+
+// Event listeners
+document.addEventListener('DOMContentLoaded', function() {
+    // Cost inputs recalc
+    ['pim-raw-cost', 'pim-yield', 'pim-labor-cost'].forEach(id => {
+        document.getElementById(id).addEventListener('input', _pimRecalcCosts);
+    });
+
+    // Price input
+    document.getElementById('pim-price').addEventListener('input', _pimCalcMargin);
+
+    // Margin buttons
+    document.querySelectorAll('.info-set-margin-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            _pimSetMargin(parseFloat(this.getAttribute('data-margin')));
+        });
+    });
+
+    // Custom margin
+    let _pimMarginTimer;
+    document.getElementById('pim-custom-margin').addEventListener('input', function() {
+        clearTimeout(_pimMarginTimer);
+        _pimMarginTimer = setTimeout(() => {
+            const m = parseFloat(this.value);
+            if (m > 0 && m < 100) _pimSetMargin(m / 100);
+        }, 150);
+    });
+});
+</script>

@@ -3,6 +3,8 @@ from .views.public_pages import *
 from .views.platform_admin import *
 from .views.profile_orders import *
 from .views import *
+from .views.inventory_views import *
+from .views.product_views import *
 from .views.operations_reports import *
 from .views.stripe_billing import *
 
@@ -200,6 +202,28 @@ path('login/', login_view, name='login'),
     
     # Expiration counts for navbar badges
     path('api/expiration-counts/', get_expiration_counts_api, name='get_expiration_counts_api'),
+    # Inventory
+    path('inventory/', inventory_list, name='inventory_list'),
+    path('api/inventory/', inventory_api, name='inventory_api'),
+    path('api/inventory-detail/<str:product_id>/', inventory_detail_api, name='inventory_detail_api'),
+    path('api/inventory/import/template/', inventory_import_template, name='inventory_import_template'),
+    path('api/inventory/import/preview/', inventory_import_preview, name='inventory_import_preview'),
+    path('api/inventory/import/confirm/', inventory_import_confirm, name='inventory_import_confirm'),
+    path('api/inventory/create/', inventory_record_create, name='inventory_record_create'),
+    path('api/inventory/<int:record_id>/update/', inventory_record_update, name='inventory_record_update'),
+    path('api/inventory/<int:record_id>/delete/', inventory_record_delete, name='inventory_record_delete'),
+    path('api/inventory/product/<str:product_id>/delete/', inventory_product_delete, name='inventory_product_delete'),
+
+    # Products
+    path('products/', product_list, name='product_list'),
+    path('api/products/', product_api, name='product_api'),
+    path('api/products/create/', product_create, name='product_create'),
+    path('api/products/<int:product_id>/update/', product_update, name='product_update'),
+    path('api/products/<int:product_id>/delete/', product_delete, name='product_delete'),
+    path('api/products/import/template/', product_import_template, name='product_import_template'),
+    path('api/products/import/preview/', product_import_preview, name='product_import_preview'),
+    path('api/products/import/confirm/', product_import_confirm, name='product_import_confirm'),
+
     # Platform Admin (superuser only)
     # Platform Admin (superuser only)
     path('platform-admin/', platform_admin, name='platform_admin'),
