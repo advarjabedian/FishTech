@@ -77,12 +77,35 @@ def add_user(request):
         data = json.loads(request.body)
         name = data.get('name', '').strip()
         email = data.get('email', '').strip()
+        password = data.get('password', '').strip()
         
         if not name:
             return JsonResponse({'success': False, 'error': 'Name is required'})
+        if not password:
+            return JsonResponse({'success': False, 'error': 'Password is required'})
+        if len(password) < 8:
+            return JsonResponse({'success': False, 'error': 'Password must be at least 8 characters'})
         
-        # Create user with tenant
-        user = User.objects.create(
+        # Check if Django username already exists
+        if DjangoUser.objects.filter(username=name).exists():
+            return JsonResponse({'success': False, 'error': f'A user with the name "{name}" already exists'})
+        
+        # Create Django auth user (enables login)
+        django_user = DjangoUser.objects.create_user(
+            username=name,
+            email=email,
+            password=password
+        )
+        
+        # Link to tenant
+        TenantUser.objects.create(
+            user=django_user,
+            tenant=request.tenant,
+            is_admin=False
+        )
+        
+        # Create core.User for business logic
+        User.objects.create(
             tenant=request.tenant,
             name=name,
             email=email
@@ -139,13 +162,21 @@ def edit_user(request, user_id):
     try:
         from core.models import User
         
-        # User.objects already filters by tenant through TenantManager
         user = get_object_or_404(User, id=user_id, tenant=request.tenant)
         data = json.loads(request.body)
         
         user.name = data.get('name', user.name)
         user.email = data.get('email', user.email)
         user.save()
+        
+        # Update Django auth user if it exists
+        django_user = DjangoUser.objects.filter(username=user.name).first()
+        if django_user:
+            django_user.email = user.email
+            password = data.get('password')
+            if password:
+                django_user.set_password(password)
+            django_user.save()
         
         return JsonResponse({'success': True})
         
