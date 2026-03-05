@@ -9,6 +9,9 @@
             <i class="bi bi-arrow-left"></i> Back
         </a>
         <h2 class="mb-0"><i class="bi bi-list-check me-2"></i>View Orders</h2>
+        <span id="emailSettingsBadge" class="text-muted small ms-2" style="display:none;">
+            <i class="bi bi-envelope me-1"></i><span id="emailSettingsAddress"></span>
+        </span>
     </div>
 
     <ul class="nav nav-tabs mb-3" id="orderTabs">
@@ -22,6 +25,11 @@
                 Completed <span class="badge bg-success ms-1" id="completedBadge">0</span>
             </a>
         </li>
+        <li class="nav-item">
+            <a class="nav-link" href="#" onclick="switchTab('messages'); return false;">
+                Email / SMS <span class="badge bg-danger ms-1" id="messagesBadge">...</span>
+            </a>
+        </li>
     </ul>
 
     <div id="loadingSpinner" class="text-center py-5">
@@ -32,7 +40,7 @@
     <div id="pendingSection">
         <div class="card">
             <div class="card-body p-0">
-                <table class="table table-hover mb-0" id="pendingTable">
+                <table class="table table-hover mb-0">
                     <thead class="table-dark">
                         <tr>
                             <th>SO#</th>
@@ -71,9 +79,36 @@
         </div>
     </div>
 
+    <!-- Email / SMS Messages -->
+    <div id="messagesSection" style="display:none;">
+        <div class="d-flex justify-content-end mb-2">
+            <button class="btn btn-primary btn-sm" onclick="checkEmails()">
+                <i class="bi bi-envelope-arrow-down me-1"></i>Check Emails
+            </button>
+        </div>
+        <div class="card">
+            <div class="card-body p-0">
+                <table class="table table-striped table-hover mb-0 table-sm">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Date</th>
+                            <th>Source</th>
+                            <th>From</th>
+                            <th>Subject / Message</th>
+                            <th>Customer</th>
+                            <th>Assigned To</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="messagesBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
 </div>
 
-<!-- Order Detail Modal -->
+<!-- SO Detail Modal -->
 <div class="modal fade" id="detailModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -89,6 +124,68 @@
     </div>
 </div>
 
+<!-- Message Detail Modal -->
+<div class="modal fade" id="messageModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header py-2">
+                <h5 class="modal-title" id="msgModalTitle">Message</h5>
+                <div class="d-flex align-items-center gap-2">
+                    <span id="msgModalStatus"></span>
+                    <button type="button" class="btn btn-warning btn-sm" id="btnUncomplete" onclick="msgUncomplete()" style="display:none;">
+                        <i class="bi bi-arrow-counterclockwise"></i> Uncomplete
+                    </button>
+                    <button type="button" class="btn btn-success btn-sm" id="btnComplete" onclick="msgComplete()">
+                        <i class="bi bi-check-circle"></i> Complete
+                    </button>
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+            <div class="modal-body">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <p class="mb-1"><strong>From:</strong> <span id="msgSender"></span></p>
+                        <p class="mb-1"><strong>Phone:</strong> <span id="msgPhone"></span></p>
+                    </div>
+                    <div class="col-md-6">
+                        <p class="mb-1"><strong>Date:</strong> <span id="msgDate"></span></p>
+                        <p class="mb-1"><strong>Source:</strong> <span id="msgSource"></span></p>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <label class="form-label mb-1">Assigned To</label>
+                        <div class="d-flex gap-2">
+                            <select id="msgAssignUser" class="form-select form-select-sm">
+                                <option value="">Unassigned</option>
+                            </select>
+                            <button class="btn btn-outline-dark btn-sm" onclick="msgAssignToMe()">
+                                <i class="bi bi-person-plus"></i> Me
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label mb-1">Customer</label>
+                        <input type="text" id="msgCustomer" class="form-control form-control-sm" placeholder="Customer...">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label mb-1">Notes</label>
+                        <input type="text" id="msgNotes" class="form-control form-control-sm" placeholder="Notes...">
+                    </div>
+                </div>
+                <div id="msgAudioSection" style="display:none;" class="mb-3">
+                    <label class="form-label mb-1">Audio</label>
+                    <audio id="msgAudio" controls class="w-100"></audio>
+                </div>
+                <div>
+                    <label class="form-label mb-1">Content</label>
+                    <pre id="msgBody" class="bg-light p-3 rounded mb-0" style="white-space:pre-wrap;min-height:150px;max-height:400px;overflow-y:auto;"></pre>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 const USERS = [
     {% for u in users %}
@@ -97,21 +194,40 @@ const USERS = [
 ];
 
 let currentTab = 'pending';
+let allMessages = [];
+let msgUsers = [];
+let currentMsgId = null;
+let currentUserId = null;
 
 function getCookie(name) {
     const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
     return match ? decodeURIComponent(match[2]) : '';
 }
 
+function escHtml(str) {
+    return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
 function switchTab(tab) {
     currentTab = tab;
     document.querySelectorAll('#orderTabs .nav-link').forEach((el, i) => {
-        el.classList.toggle('active', (i === 0 && tab === 'pending') || (i === 1 && tab === 'completed'));
+        el.classList.toggle('active', 
+            (i === 0 && tab === 'pending') || 
+            (i === 1 && tab === 'completed') || 
+            (i === 2 && tab === 'messages'));
     });
     document.getElementById('pendingSection').style.display = tab === 'pending' ? '' : 'none';
     document.getElementById('completedSection').style.display = tab === 'completed' ? '' : 'none';
-    loadOrders(tab);
+    document.getElementById('messagesSection').style.display = tab === 'messages' ? '' : 'none';
+
+    if (tab === 'messages') {
+        loadMessages();
+    } else {
+        loadOrders(tab);
+    }
 }
+
+// ── Profile Orders ────────────────────────────────────────────────────────────
 
 function loadOrders(tab) {
     const completed = tab === 'completed';
@@ -133,7 +249,7 @@ function loadOrders(tab) {
 function renderPending(orders) {
     const tbody = document.getElementById('pendingBody');
     if (!orders.length) {
-        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">No pending orders.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">No pending orders.</td></tr>';
         return;
     }
     tbody.innerHTML = orders.map(o => `
@@ -143,8 +259,7 @@ function renderPending(orders) {
             <td>${o.dispatch_date}</td>
             <td>$${o.total.toFixed(2)}</td>
             <td>
-                <select class="form-select form-select-sm" style="min-width:140px;"
-                    onchange="assignOrder(${o.soid}, this.value)">
+                <select class="form-select form-select-sm" style="min-width:140px;" onchange="assignOrder(${o.soid}, this.value)">
                     <option value="">— Unassigned —</option>
                     ${USERS.map(u => `<option value="${u.id}" ${o.assigned_to_id == u.id ? 'selected' : ''}>${escHtml(u.name)}</option>`).join('')}
                 </select>
@@ -161,7 +276,7 @@ function renderPending(orders) {
 function renderCompleted(orders) {
     const tbody = document.getElementById('completedBody');
     if (!orders.length) {
-        tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">No completed orders.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">No completed orders.</td></tr>';
         return;
     }
     tbody.innerHTML = orders.map(o => `
@@ -238,24 +353,204 @@ function viewDetail(soid, customerName) {
                         ${data.items.map(i => `
                         <tr>
                             <td>${escHtml(i.description)}${i.instructions ? `<br><small class="text-muted">${escHtml(i.instructions)}</small>` : ''}</td>
-                            <td>${i.qty}</td>
-                            <td>${i.pack}</td>
-                            <td>$${i.price.toFixed(2)}</td>
-                            <td>$${i.total.toFixed(2)}</td>
+                            <td>${i.qty}</td><td>${i.pack}</td>
+                            <td>$${i.price.toFixed(2)}</td><td>$${i.total.toFixed(2)}</td>
                         </tr>`).join('')}
                     </tbody>
-                    <tfoot>
-                        <tr><td colspan="4" class="text-end fw-bold">Grand Total</td><td class="fw-bold">$${grand.toFixed(2)}</td></tr>
-                    </tfoot>
+                    <tfoot><tr><td colspan="4" class="text-end fw-bold">Grand Total</td><td class="fw-bold">$${grand.toFixed(2)}</td></tr></tfoot>
                 </table>`;
         });
 }
 
-function escHtml(str) {
-    return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+// ── Email / SMS Messages ──────────────────────────────────────────────────────
+
+function loadMessages() {
+    document.getElementById('loadingSpinner').style.display = '';
+    Promise.all([
+        fetch('/api/order-requests/users/').then(r => r.json()),
+        fetch('/api/order-requests/').then(r => r.json()),
+        fetch('/api/order-requests/complete/').then(r => r.json()),
+    ]).then(([usersData, activeData, completeData]) => {
+        document.getElementById('loadingSpinner').style.display = 'none';
+        msgUsers = usersData.users || [];
+        currentUserId = usersData.current_user_id || null;
+        allMessages = [...(activeData.messages || []), ...(completeData.messages || [])];
+        const activeCount = (activeData.messages || []).filter(m => m.status !== 'Complete').length;
+        document.getElementById('messagesBadge').textContent = activeCount;
+        renderMessages(allMessages);
+    });
 }
+
+function getSourceBadge(source) {
+    const map = {
+        'email': '<span class="badge bg-primary">Email</span>',
+        'voicemail': '<span class="badge bg-info">Voicemail</span>',
+        'sms': '<span class="badge" style="background-color:#6f42c1;color:#fff;">SMS</span>'
+    };
+    return map[source] || '<span class="badge bg-secondary">Unknown</span>';
+}
+
+function getStatusBadge(status) {
+    const map = {
+        'Unassigned': '<span class="badge bg-secondary">Unassigned</span>',
+        'InProgress': '<span class="badge bg-warning text-dark">In Progress</span>',
+        'Complete': '<span class="badge bg-success">Complete</span>'
+    };
+    return map[status] || '<span class="badge bg-secondary">Unknown</span>';
+}
+
+function renderMessages(messages) {
+    const tbody = document.getElementById('messagesBody');
+    if (!messages.length) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-muted">No messages found</td></tr>';
+        return;
+    }
+    tbody.innerHTML = messages.map(m => {
+        const assignedUser = msgUsers.find(u => u.id === m.assigned_user_id);
+        const senderDisplay = m.sender_name || m.sender || '';
+        const subject = m.subject || m.body?.substring(0, 50) || '';
+        return `
+            <tr style="cursor:pointer;" onclick="openMsgModal(${m.id})">
+                <td>${m.date} ${m.time}</td>
+                <td>${getSourceBadge(m.source)}</td>
+                <td title="${escHtml(m.sender)}">${escHtml(senderDisplay.substring(0, 25))}${senderDisplay.length > 25 ? '...' : ''}</td>
+                <td title="${escHtml(subject)}">${escHtml(subject.substring(0, 40))}${subject.length > 40 ? '...' : ''}</td>
+                <td>${escHtml(m.customer || '')}</td>
+                <td>${escHtml(assignedUser ? assignedUser.name : '')}</td>
+                <td>${getStatusBadge(m.status)}</td>
+            </tr>`;
+    }).join('');
+}
+
+function openMsgModal(id) {
+    const m = allMessages.find(x => x.id === id);
+    if (!m) return;
+    currentMsgId = id;
+    const isComplete = m.status === 'Complete';
+
+    document.getElementById('msgModalTitle').textContent = m.subject || 'No Subject';
+    document.getElementById('msgSender').textContent = m.sender_name ? `${m.sender_name} <${m.sender}>` : m.sender;
+    document.getElementById('msgPhone').textContent = m.sender_phone || 'N/A';
+    document.getElementById('msgDate').textContent = `${m.date} ${m.time}`;
+    document.getElementById('msgSource').innerHTML = getSourceBadge(m.source);
+    document.getElementById('msgCustomer').value = m.customer || '';
+    document.getElementById('msgNotes').value = m.notes || '';
+    document.getElementById('msgBody').textContent = m.transcription || m.body || 'No content';
+    document.getElementById('msgModalStatus').innerHTML = getStatusBadge(m.status);
+
+    const audioSection = document.getElementById('msgAudioSection');
+    if (m.source === 'voicemail' && m.filename) {
+        audioSection.style.display = 'block';
+        document.getElementById('msgAudio').src = `/api/order-request/${id}/view/`;
+    } else {
+        audioSection.style.display = 'none';
+    }
+
+    const select = document.getElementById('msgAssignUser');
+    select.innerHTML = '<option value="">Unassigned</option>' +
+        msgUsers.map(u => `<option value="${u.id}" ${m.assigned_user_id === u.id ? 'selected' : ''}>${escHtml(u.name)}</option>`).join('');
+
+    document.getElementById('btnComplete').style.display = isComplete ? 'none' : '';
+    document.getElementById('btnUncomplete').style.display = isComplete ? '' : 'none';
+    document.getElementById('msgAssignUser').disabled = isComplete;
+    document.getElementById('msgCustomer').disabled = isComplete;
+    document.getElementById('msgNotes').disabled = isComplete;
+
+    new bootstrap.Modal(document.getElementById('messageModal')).show();
+}
+
+document.getElementById('msgAssignUser').addEventListener('change', function() {
+    if (!currentMsgId) return;
+    fetch(`/api/order-request/${currentMsgId}/assign-user/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+        body: JSON.stringify({ user_id: this.value || null })
+    }).then(() => loadMessages());
+});
+
+document.getElementById('msgCustomer').addEventListener('blur', function() {
+    if (!currentMsgId) return;
+    fetch(`/api/order-request/${currentMsgId}/update-customer/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+        body: JSON.stringify({ customer: this.value })
+    });
+});
+
+document.getElementById('msgNotes').addEventListener('blur', function() {
+    if (!currentMsgId) return;
+    fetch(`/api/order-request/${currentMsgId}/update-notes/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+        body: JSON.stringify({ notes: this.value })
+    });
+});
+
+function msgAssignToMe() {
+    if (!currentUserId) { alert('Could not determine current user'); return; }
+    document.getElementById('msgAssignUser').value = currentUserId;
+    document.getElementById('msgAssignUser').dispatchEvent(new Event('change'));
+}
+
+function msgComplete() {
+    if (!currentMsgId) return;
+    fetch(`/api/order-request/${currentMsgId}/complete/`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCookie('csrftoken') }
+    }).then(() => {
+        bootstrap.Modal.getInstance(document.getElementById('messageModal')).hide();
+        loadMessages();
+    });
+}
+
+function msgUncomplete() {
+    if (!currentMsgId) return;
+    fetch(`/api/order-request/${currentMsgId}/uncomplete/`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCookie('csrftoken') }
+    }).then(() => {
+        bootstrap.Modal.getInstance(document.getElementById('messageModal')).hide();
+        loadMessages();
+    });
+}
+
+function checkEmails() {
+    const btn = event.target.closest('button');
+    const orig = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Checking...';
+    fetch('/api/check-order-emails/', {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCookie('csrftoken') }
+    })
+    .then(r => r.json())
+    .then(data => {
+        alert(data.message || `Saved ${data.messages_saved} new messages`);
+        loadMessages();
+    })
+    .catch(err => alert('Error: ' + err.message))
+    .finally(() => { btn.disabled = false; btn.innerHTML = orig; });
+}
+
+// Load email settings display
+fetch('/api/email-settings/')
+    .then(r => r.json())
+    .then(data => {
+        if (data.email_address) {
+            document.getElementById('emailSettingsAddress').textContent = data.email_address;
+            document.getElementById('emailSettingsBadge').style.display = '';
+        }
+    });
 
 // Initial load
 loadOrders('pending');
+
+// Pre-load message count for badge
+fetch('/api/order-requests/')
+    .then(r => r.json())
+    .then(data => {
+        const count = (data.messages || []).filter(m => m.status !== 'Complete').length;
+        document.getElementById('messagesBadge').textContent = count;
+    });
 </script>
 {% endblock %}

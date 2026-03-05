@@ -862,6 +862,10 @@ def get_profile_order_items_api(request, soid):
 
     so = get_object_or_404(SO, soid=soid)
     items = SOD.objects.filter(so=so).order_by('sodid')
+    if not items.exists():
+        # Fallback for records where FK wasn't set (legacy/migrated data)
+        from django.db.models import Q
+        items = SOD.all_objects.filter(tenant=so.tenant, soid=so.soid).order_by('sodid')
     data = [{
         'description': i.descriptionmemo or '',
         'qty': float(i.orderedunits or 0),
