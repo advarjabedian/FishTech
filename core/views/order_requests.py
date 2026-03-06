@@ -399,6 +399,48 @@ def check_order_emails_api(request):
             if phone_match:
                 sender_phone = phone_match.group(1)
             
+            # Transcribe with Gemini
+            transcription = None
+            try:
+                import google.generativeai as genai
+                genai.configure(api_key=settings.GEMINI_API_KEY)
+                model = genai.GenerativeModel('gemini-2.0-flash')
+
+                prompt = f"""You are processing order emails for a seafood distribution company.
+
+Extract the order information from this email.
+
+Subject: {subject}
+From: {sender_name} <{sender_email}>
+Body: {body[:3000]}
+
+CRITICAL: Only extract what you ACTUALLY SEE in the email.
+
+CALL TYPE: Order
+CUSTOMER/VENDOR: [name if mentioned]
+DELIVERY DATE: [if specified]
+
+ITEMS:
+- [Quantity] [Product] [specifications]
+
+SPECIAL INSTRUCTIONS: [any notes]
+CONTACT: [phone/email]
+
+Rules:
+- Only extract information actually in the email
+- Be specific about quantities, species, cuts (loin/fillet/steak), fresh/frozen
+- Common fish: Salmon, Tuna, Halibut, Cod, Tilapia, Swai/Basa, Mahi, Swordfish, Seabass, Branzino, Snapper, Trout
+- Shellfish: Shrimp, Lobster, Crab, Scallops, Clams, Mussels, Oysters, Calamari/Squid, Octopus
+- Never use placeholder text"""
+
+                response = model.generate_content(prompt)
+                transcription = response.text
+                import time
+                time.sleep(2)
+            except Exception as gemini_err:
+                logger.warning(f"Gemini processing failed for email '{subject}': {gemini_err}")
+                logger.exception(gemini_err)
+
             # Create inbound message
             InboundMessage.objects.create(
                 tenant=tenant,
@@ -409,6 +451,7 @@ def check_order_emails_api(request):
                 sender_name=sender_name,
                 sender_phone=sender_phone,
                 body=body,
+                transcription=transcription or '',
                 status='Unassigned',
             )
             messages_saved += 1
@@ -463,6 +506,32 @@ def twilio_sms_webhook(request):
         except Tenant.DoesNotExist:
             return HttpResponse('<Response></Response>', content_type='text/xml')
     
+    # Transcribe with Gemini
+    transcription = None
+    try:
+        from google import genai
+        client = genai.Client(api_key=settings.GEMINI_API_KEY)
+        prompt = (
+            "You are processing order text messages for a seafood distribution company.\n\n"
+            "Extract the order information from this SMS.\n\n"
+            f"From: {from_number}\n"
+            f"Message: {body}\n\n"
+            "Format as:\n"
+            "CUSTOMER: [name if mentioned]\n"
+            "DELIVERY DATE: [date if mentioned]\n"
+            "ITEMS:\n"
+            "- [Quantity] [Product] [size/specs]\n\n"
+            "SPECIAL INSTRUCTIONS: [any notes]\n\n"
+            "Only include information actually in the message. If no clear order items, summarize what they want."
+        )
+        response = client.models.generate_content(
+            model='gemini-2.0-flash',
+            contents=prompt,
+        )
+        transcription = response.text
+    except Exception as e:
+        logger.warning(f"Gemini SMS processing failed: {e}")
+
     # Create InboundMessage
     InboundMessage.all_objects.create(
         tenant=tenant,
@@ -472,6 +541,7 @@ def twilio_sms_webhook(request):
         sender=from_number,
         sender_phone=from_number,
         body=body,
+        transcription=transcription or '',
         status='Unassigned'
     )
 
