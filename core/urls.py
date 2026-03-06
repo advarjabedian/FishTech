@@ -264,6 +264,8 @@ path('api/profile-orders/import/template/', download_import_template, name='down
     path('api/email-settings/save/', save_email_settings_api, name='save_email_settings_api'),
     path('api/email-settings/test/', test_email_connection_api, name='test_email_connection_api'),
     path('api/twilio-sms-webhook/', twilio_sms_webhook, name='twilio_sms_webhook'),
+path('api/twilio-voice-webhook/', twilio_voice_webhook, name='twilio_voice_webhook'),
+path('api/twilio-recording-webhook/', twilio_recording_webhook, name='twilio_recording_webhook'),
     path('api/twilio-settings/', get_twilio_settings_api, name='get_twilio_settings_api'),
     path('api/twilio-settings/save/', save_twilio_settings_api, name='save_twilio_settings_api'),
     path('api/twilio-settings/test/', test_twilio_connection_api, name='test_twilio_connection_api'),
@@ -271,4 +273,6 @@ path('api/profile-orders/import/template/', download_import_template, name='down
     path('sms-opt-in/', sms_opt_in, name='sms_opt_in'),
     path('privacy-policy/', privacy_policy, name='privacy_policy'),
     path('terms-of-service/', terms_of_service, name='terms_of_service'),
+    path('api/twilio-voice-webhook/', twilio_voice_webhook, name='twilio_voice_webhook'),
+path('api/twilio-recording-webhook/', twilio_recording_webhook, name='twilio_recording_webhook'),
 ]

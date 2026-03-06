@@ -185,7 +185,18 @@ def view_order_request_api(request, order_request_id):
     """View order request file (for voicemails/attachments)"""
     try:
         msg = InboundMessage.objects.get(id=order_request_id)
-        
+
+        # Twilio recording — file_path is a URL, proxy it
+        if msg.file_path and msg.file_path.startswith('http'):
+            import requests as req
+            tenant = msg.tenant
+            r = req.get(
+                msg.file_path + '.mp3',
+                auth=(tenant.twilio_account_sid, tenant.twilio_auth_token)
+            )
+            return HttpResponse(r.content, content_type='audio/mpeg')
+
+        # Local file
         if not msg.file_path or not os.path.exists(msg.file_path):
             return JsonResponse({'error': 'File not found'}, status=404)
         
@@ -464,7 +475,19 @@ def twilio_sms_webhook(request):
         status='Unassigned'
     )
     
-    # Return empty TwiML response (no auto-reply)
+    # Auto-reply via REST API (required when using Messaging Service)
+    try:
+        from twilio.rest import Client
+        if tenant.twilio_account_sid and tenant.twilio_auth_token:
+            client = Client(tenant.twilio_account_sid, tenant.twilio_auth_token)
+            client.messages.create(
+                body="Thanks! Your order has been received and will be processed shortly.",
+                from_=to_number,
+                to=from_number
+            )
+    except Exception as e:
+        logger.error(f"Failed to send auto-reply: {e}")
+
     return HttpResponse('<Response></Response>', content_type='text/xml')
 
 
@@ -556,3 +579,52 @@ def get_order_request_users_api(request):
         'users': list(users),
         'current_user_id': current_user_id,
     })
+
+@csrf_exempt
+def twilio_voice_webhook(request):
+    """Answers incoming call and records voicemail"""
+    twiml = '''<?xml version="1.0"?>
+<Response>
+    <Say>You have reached the order line. Please leave your order after the beep and we will process it shortly.</Say>
+    <Record maxLength="120" playBeep="true"
+            action="https://www.fishteck.com/api/twilio-recording-webhook/"
+            method="POST" />
+</Response>'''
+    return HttpResponse(twiml, content_type='text/xml')
+
+
+@csrf_exempt
+def twilio_recording_webhook(request):
+    """Fires when Twilio finishes a recording"""
+    if request.method != 'POST':
+        return HttpResponse(status=405)
+
+    from django.utils import timezone
+
+    recording_url = request.POST.get('RecordingUrl', '')
+    from_number   = request.POST.get('From', '')
+    to_number     = request.POST.get('To', '')
+    duration      = request.POST.get('RecordingDuration', 0)
+
+    try:
+        tenant = Tenant.objects.get(twilio_phone_number=to_number)
+    except Tenant.DoesNotExist:
+        clean_number = to_number.replace('+', '')
+        try:
+            tenant = Tenant.objects.get(twilio_phone_number__icontains=clean_number[-10:])
+        except Tenant.DoesNotExist:
+            return HttpResponse(status=200)
+
+    InboundMessage.all_objects.create(
+        tenant=tenant,
+        source='voicemail',
+        received_at=timezone.now(),
+        subject=f"Voicemail from {from_number}",
+        sender=from_number,
+        sender_phone=from_number,
+        file_path=recording_url,
+        duration=int(duration),
+        status='Unassigned',
+    )
+
+    return HttpResponse(status=200)
