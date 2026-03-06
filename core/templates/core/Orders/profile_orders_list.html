@@ -30,6 +30,12 @@
                 <span class="badge bg-danger ms-1" id="smsBadge">...</span>
             </a>
         </li>
+        <li class="nav-item">
+            <a class="nav-link" href="#" onclick="switchTab('voicemail'); return false;">
+                <i class="bi bi-voicemail me-1"></i>Voicemail
+                <span class="badge bg-danger ms-1" id="voicemailBadge">...</span>
+            </a>
+        </li>
     </ul>
 
     <div id="loadingSpinner" class="text-center py-5" style="display:none;">
@@ -131,6 +137,27 @@
                         </tr>
                     </thead>
                     <tbody id="smsBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Voicemail Tab -->
+    <div id="voicemailSection" style="display:none;">
+        <div class="card">
+            <div class="card-body p-0">
+                <table class="table table-striped table-hover mb-0 table-sm">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Date</th>
+                            <th>From</th>
+                            <th>Duration</th>
+                            <th>Customer</th>
+                            <th>Assigned To</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="voicemailBody"></tbody>
                 </table>
             </div>
         </div>
@@ -247,15 +274,17 @@ function switchTab(tab) {
         el.classList.toggle('active',
             (i === 0 && tab === 'orders') ||
             (i === 1 && tab === 'email') ||
-            (i === 2 && tab === 'sms'));
+            (i === 2 && tab === 'sms') ||
+            (i === 3 && tab === 'voicemail'));
     });
-    document.getElementById('ordersSection').style.display = tab === 'orders' ? '' : 'none';
-    document.getElementById('emailSection').style.display  = tab === 'email'  ? '' : 'none';
-    document.getElementById('smsSection').style.display    = tab === 'sms'    ? '' : 'none';
+    document.getElementById('ordersSection').style.display    = tab === 'orders'    ? '' : 'none';
+    document.getElementById('emailSection').style.display     = tab === 'email'     ? '' : 'none';
+    document.getElementById('smsSection').style.display       = tab === 'sms'       ? '' : 'none';
+    document.getElementById('voicemailSection').style.display = tab === 'voicemail' ? '' : 'none';
 
     if (tab === 'orders') {
         loadOrders(currentOrdersView);
-    } else if (tab === 'email' || tab === 'sms') {
+    } else {
         loadMessages();
     }
 }
@@ -441,7 +470,7 @@ function getStatusBadge(status) {
 }
 
 function renderMessages(messages) {
-    const emailMessages = messages.filter(m => m.source === 'email' || m.source === 'voicemail');
+    const emailMessages = messages.filter(m => m.source === 'email');
     const smsMessages   = messages.filter(m => m.source === 'sms');
 
     // Email table
@@ -484,10 +513,34 @@ function renderMessages(messages) {
     }
 
     // Update tab badges
-    const emailUnread = emailMessages.filter(m => m.status !== 'Complete').length;
+    const voicemailMessages = messages.filter(m => m.source === 'voicemail');
+
+    const voicemailBody = document.getElementById('voicemailBody');
+    if (!voicemailMessages.length) {
+        voicemailBody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-muted">No voicemails</td></tr>';
+    } else {
+        voicemailBody.innerHTML = voicemailMessages.map(m => {
+            const assignedUser = msgUsers.find(u => u.id === m.assigned_user_id);
+            const duration = m.duration ? `${Math.floor(m.duration / 60)}:${String(m.duration % 60).padStart(2,'0')}` : '—';
+            return `<tr style="cursor:pointer;" onclick="openMsgModal(${m.id})">
+                <td>${m.date} ${m.time}</td>
+                <td>${escHtml(m.sender_phone || m.sender || '')}</td>
+                <td>${duration}</td>
+                <td>${escHtml(m.customer || '')}</td>
+                <td>${escHtml(assignedUser ? assignedUser.name : '')}</td>
+                <td>${getStatusBadge(m.status)}</td>
+            </tr>`;
+        }).join('');
+    }
+
+    // Also filter voicemail out of email tab
+    const emailOnlyMessages = messages.filter(m => m.source === 'email');
+    const emailUnread = emailOnlyMessages.filter(m => m.status !== 'Complete').length;
     const smsUnread   = smsMessages.filter(m => m.status !== 'Complete').length;
-    document.getElementById('emailBadge').textContent = emailUnread;
-    document.getElementById('smsBadge').textContent   = smsUnread;
+    const vmUnread    = voicemailMessages.filter(m => m.status !== 'Complete').length;
+    document.getElementById('emailBadge').textContent     = emailUnread;
+    document.getElementById('smsBadge').textContent       = smsUnread;
+    document.getElementById('voicemailBadge').textContent = vmUnread;
 }
 
 function openMsgModal(id) {
