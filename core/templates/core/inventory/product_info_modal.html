@@ -117,35 +117,7 @@
                         </div>
                     </div>
 
-                    <!-- Order history (collapsible) -->
-                    <div class="mt-3">
-                        <button class="btn btn-outline-secondary btn-sm w-100 text-start" type="button"
-                            data-bs-toggle="collapse" data-bs-target="#pimHistoryCollapse">
-                            <i class="bi bi-clock-history me-1"></i> Order History
-                            <span id="pim-history-badge" class="badge bg-secondary ms-1" style="display:none;"></span>
-                        </button>
-                        <div class="collapse" id="pimHistoryCollapse">
-                            <div class="border border-top-0 rounded-bottom p-2">
-                                <div class="table-responsive" style="max-height:250px;overflow-y:auto;">
-                                    <table class="table table-sm table-striped mb-0">
-                                        <thead class="table-dark">
-                                            <tr>
-                                                <th>Customer</th>
-                                                <th>Date</th>
-                                                <th>Qty</th>
-                                                <th>Price</th>
-                                                <th>Unit</th>
-                                                <th></th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="pim-history-table">
-                                            <tr><td colspan="6" class="text-center text-muted">Loading...</td></tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    
                 </div>
             </div>
 
@@ -204,9 +176,7 @@ window.showProductInfoModal = function(p) {
     // Reset
     document.getElementById('pim-sixty-sales').innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
     document.getElementById('pim-ten-sales').innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
-    document.getElementById('pim-history-table').innerHTML = '<tr><td colspan="6" class="text-center text-muted">Loading...</td></tr>';
     document.getElementById('pim-save-status').style.display = 'none';
-    document.getElementById('pimHistoryCollapse').classList.remove('show');
 
     // Header
     document.getElementById('pim-name').textContent = p.description || 'N/A';
@@ -242,7 +212,6 @@ window.showProductInfoModal = function(p) {
         .then(d => {
             document.getElementById('pim-sixty-sales').textContent = d.sixty_day_sales || '0';
             document.getElementById('pim-ten-sales').textContent = d.ten_day_sales || '0';
-            _pimRenderHistory(d.history || []);
         })
         .catch(() => {
             document.getElementById('pim-sixty-sales').textContent = 'N/A';
@@ -278,25 +247,7 @@ function _pimSetMargin(m) {
     _pimCalcMargin();
 }
 
-function _pimRenderHistory(rows) {
-    const tbody = document.getElementById('pim-history-table');
-    const badge = document.getElementById('pim-history-badge');
-    if (!rows.length) {
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No history found</td></tr>';
-        return;
-    }
-    badge.textContent = rows.length;
-    badge.style.display = '';
-    tbody.innerHTML = rows.map(r => `
-        <tr>
-            <td>${r.customer || ''}</td>
-            <td>${r.days_ago != null ? (r.days_ago === 0 ? 'Today' : r.days_ago + 'd ago') : r.dispatch_date}</td>
-            <td>${r.quantity}</td>
-            <td><strong style="color:red;">$${parseFloat(r.sales_price).toFixed(2)}</strong></td>
-            <td>${r.unit_type || ''}</td>
-            <td><button class="btn btn-sm btn-outline-primary" onclick="document.getElementById('pim-price').value='${parseFloat(r.sales_price).toFixed(2)}';_pimCalcMargin();">Copy</button></td>
-        </tr>`).join('');
-}
+
 
 async function savePimCosts() {
     if (!_pimProductId) return;

@@ -5,6 +5,7 @@ from django.views.decorators.http import require_POST
 from ..models import Customer, CustomerProfile, SO, SOD, get_current_tenant
 import json
 import logging
+from ..models import Tenant, InboundMessage
 
 logger = logging.getLogger(__name__)
 
@@ -943,3 +944,34 @@ def public_profile_order_form(request, token):
         'customer': customer,
         'profiles': profiles,
     })
+
+from django.views.decorators.csrf import csrf_exempt
+from django.utils import timezone
+
+@csrf_exempt
+def twilio_sms_webhook(request):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST only'}, status=405)
+
+    from_number = request.POST.get('From', '')
+    body = request.POST.get('Body', '').strip()
+    to_number = request.POST.get('To', '')
+
+    # Find tenant by Twilio phone number
+    try:
+        tenant = Tenant.objects.get(twilio_phone_number=to_number)
+    except Tenant.DoesNotExist:
+        return HttpResponse('<?xml version="1.0"?><Response></Response>', content_type='text/xml')
+
+    InboundMessage.objects.create(
+        tenant=tenant,
+        source='sms',
+        received_at=timezone.now(),
+        sender=from_number,
+        sender_phone=from_number,
+        body=body,
+        status='Unassigned',
+    )
+
+    # Return empty TwiML response (no auto-reply)
+    return HttpResponse('<?xml version="1.0"?><Response></Response>', content_type='text/xml')

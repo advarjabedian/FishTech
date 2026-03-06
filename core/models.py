@@ -852,6 +852,11 @@ class Product(TenantModel):
     description = models.CharField(max_length=255, blank=True)
     origin = models.CharField(max_length=100, blank=True)
     notes = models.TextField(blank=True)
+    buyer = models.CharField(max_length=100, blank=True)
+    raw_cost = models.DecimalField(max_digits=10, decimal_places=4, null=True, blank=True)
+    yield_pct = models.DecimalField(max_digits=6, decimal_places=4, null=True, blank=True)
+    labor_pack_cost = models.DecimalField(max_digits=10, decimal_places=4, null=True, blank=True)
+    pre_order_hours = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -860,6 +865,7 @@ class Product(TenantModel):
 
     def __str__(self):
         return f"{self.item_number} - {self.description}"
+
 
 
 class Inventory(TenantModel):

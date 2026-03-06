@@ -150,7 +150,7 @@ def inventory_detail_api(request, product_id):
         data = []
         for item in records_qs:
             status = 'hidden' if item.hidden == 1 else ('flagged' if item.flagged == 1 else ('fixed' if item.fixed == 1 else 'active'))
-            vendor_id_str = str(int(float(item.vendorid))) if item.vendorid else None
+            vendor_id_str = str(item.vendorid).strip() if item.vendorid else None
             data.append({
                 'id': item.id,
                 'productid': item.productid or '',
