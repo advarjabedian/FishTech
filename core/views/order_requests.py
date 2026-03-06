@@ -509,12 +509,14 @@ def twilio_sms_webhook(request):
     try:
         from google import genai as google_genai
         client = google_genai.Client(api_key=settings.GEMINI_API_KEY)
+        logger.info(f"Gemini SMS: hitting API for {from_number}, body length: {len(body)}")
+        clean_body = body.replace('{', '{{').replace('}', '}}')
         prompt = f"""You are processing order text messages for a seafood distribution company.
 
 Extract the order information from this SMS.
 
 From: {from_number}
-Message: {body}
+Message: {clean_body}
 
 CRITICAL: Only extract what you ACTUALLY SEE in the message.
 
@@ -539,7 +541,7 @@ Rules:
         )
         transcription = response.text
     except Exception as e:
-        logger.warning(f"Gemini SMS processing failed: {e}")
+        logger.error(f"Gemini SMS processing failed for {from_number}: {type(e).__name__}: {e}")
         logger.exception(e)
 
     # Create InboundMessage
