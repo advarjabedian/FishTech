@@ -26,3 +26,4 @@ mutagen>=1.47.0
 reportlab
 PyPDF2
 twilio
+google-generativeai
