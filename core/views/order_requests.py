@@ -475,12 +475,20 @@ def twilio_sms_webhook(request):
         status='Unassigned'
     )
     
-    # Auto-reply confirming receipt
-    twiml = '''<?xml version="1.0"?>
-<Response>
-    <Message>Thanks! Your order has been received and will be processed shortly.</Message>
-</Response>'''
-    return HttpResponse(twiml, content_type='text/xml')
+    # Auto-reply via REST API (required when using Messaging Service)
+    try:
+        from twilio.rest import Client
+        if tenant.twilio_account_sid and tenant.twilio_auth_token:
+            client = Client(tenant.twilio_account_sid, tenant.twilio_auth_token)
+            client.messages.create(
+                body="Thanks! Your order has been received and will be processed shortly.",
+                from_=to_number,
+                to=from_number
+            )
+    except Exception as e:
+        logger.error(f"Failed to send auto-reply: {e}")
+
+    return HttpResponse('<Response></Response>', content_type='text/xml')
 
 
 from django.contrib.auth.decorators import login_required
