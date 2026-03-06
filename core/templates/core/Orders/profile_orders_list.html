@@ -9,78 +9,88 @@
             <i class="bi bi-arrow-left"></i> Back
         </a>
         <h2 class="mb-0"><i class="bi bi-list-check me-2"></i>View Orders</h2>
-        <span id="emailSettingsBadge" class="text-muted small ms-2" style="display:none;">
-            <i class="bi bi-envelope me-1"></i><span id="emailSettingsAddress"></span>
-        </span>
     </div>
 
     <ul class="nav nav-tabs mb-3" id="orderTabs">
         <li class="nav-item">
-            <a class="nav-link active" href="#" onclick="switchTab('pending'); return false;">
-                Pending <span class="badge bg-primary ms-1" id="pendingBadge">0</span>
+            <a class="nav-link active" href="#" onclick="switchTab('orders'); return false;">
+                <i class="bi bi-list-check me-1"></i>Profile Orders
+                <span class="badge bg-primary ms-1" id="pendingBadge">0</span>
             </a>
         </li>
         <li class="nav-item">
-            <a class="nav-link" href="#" onclick="switchTab('completed'); return false;">
-                Completed <span class="badge bg-success ms-1" id="completedBadge">0</span>
+            <a class="nav-link" href="#" onclick="switchTab('email'); return false;">
+                <i class="bi bi-envelope me-1"></i>Email
+                <span class="badge bg-danger ms-1" id="emailBadge">...</span>
             </a>
         </li>
         <li class="nav-item">
-            <a class="nav-link" href="#" onclick="switchTab('messages'); return false;">
-                Email / SMS <span class="badge bg-danger ms-1" id="messagesBadge">...</span>
+            <a class="nav-link" href="#" onclick="switchTab('sms'); return false;">
+                <i class="bi bi-chat-dots me-1"></i>Text / SMS
+                <span class="badge bg-danger ms-1" id="smsBadge">...</span>
             </a>
         </li>
     </ul>
 
-    <div id="loadingSpinner" class="text-center py-5">
+    <div id="loadingSpinner" class="text-center py-5" style="display:none;">
         <div class="spinner-border text-primary"></div>
     </div>
 
-    <!-- Pending -->
-    <div id="pendingSection">
-        <div class="card">
-            <div class="card-body p-0">
-                <table class="table table-hover mb-0">
-                    <thead class="table-dark">
-                        <tr>
-                            <th>SO#</th>
-                            <th>Customer</th>
-                            <th>Dispatch Date</th>
-                            <th>Total</th>
-                            <th>Assigned To</th>
-                            <th></th>
-                        </tr>
-                    </thead>
-                    <tbody id="pendingBody"></tbody>
-                </table>
+    <!-- Profile Orders Tab (Pending / Completed toggle) -->
+    <div id="ordersSection">
+        <div class="btn-group mb-3">
+            <button class="btn btn-sm btn-primary" id="btnPending" onclick="switchOrdersView('pending')">
+                Pending <span class="badge bg-white text-primary ms-1" id="pendingCount">0</span>
+            </button>
+            <button class="btn btn-sm btn-outline-primary" id="btnCompleted" onclick="switchOrdersView('completed')">
+                Completed <span class="badge bg-primary ms-1" id="completedBadge">0</span>
+            </button>
+        </div>
+
+        <div id="pendingSection">
+            <div class="card">
+                <div class="card-body p-0">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>SO#</th>
+                                <th>Customer</th>
+                                <th>Dispatch Date</th>
+                                <th>Total</th>
+                                <th>Assigned To</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="pendingBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div id="completedSection" style="display:none;">
+            <div class="card">
+                <div class="card-body p-0">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>SO#</th>
+                                <th>Customer</th>
+                                <th>Dispatch Date</th>
+                                <th>Total</th>
+                                <th>Completed By</th>
+                                <th>Completed At</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="completedBody"></tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- Completed -->
-    <div id="completedSection" style="display:none;">
-        <div class="card">
-            <div class="card-body p-0">
-                <table class="table table-hover mb-0">
-                    <thead class="table-dark">
-                        <tr>
-                            <th>SO#</th>
-                            <th>Customer</th>
-                            <th>Dispatch Date</th>
-                            <th>Total</th>
-                            <th>Completed By</th>
-                            <th>Completed At</th>
-                            <th></th>
-                        </tr>
-                    </thead>
-                    <tbody id="completedBody"></tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-
-    <!-- Email / SMS Messages -->
-    <div id="messagesSection" style="display:none;">
+    <!-- Email Tab -->
+    <div id="emailSection" style="display:none;">
         <div class="d-flex justify-content-end mb-2">
             <button class="btn btn-primary btn-sm" onclick="checkEmails()">
                 <i class="bi bi-envelope-arrow-down me-1"></i>Check Emails
@@ -92,15 +102,35 @@
                     <thead class="table-dark">
                         <tr>
                             <th>Date</th>
-                            <th>Source</th>
                             <th>From</th>
-                            <th>Subject / Message</th>
+                            <th>Subject</th>
                             <th>Customer</th>
                             <th>Assigned To</th>
                             <th>Status</th>
                         </tr>
                     </thead>
-                    <tbody id="messagesBody"></tbody>
+                    <tbody id="emailBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- SMS Tab -->
+    <div id="smsSection" style="display:none;">
+        <div class="card">
+            <div class="card-body p-0">
+                <table class="table table-striped table-hover mb-0 table-sm">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Date</th>
+                            <th>From</th>
+                            <th>Message</th>
+                            <th>Customer</th>
+                            <th>Assigned To</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="smsBody"></tbody>
                 </table>
             </div>
         </div>
@@ -193,7 +223,8 @@ const USERS = [
     {% endfor %}
 ];
 
-let currentTab = 'pending';
+let currentTab = 'orders';
+let currentOrdersView = 'pending';
 let allMessages = [];
 let msgUsers = [];
 let currentMsgId = null;
@@ -208,23 +239,34 @@ function escHtml(str) {
     return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+// ── Tab Switching ─────────────────────────────────────────────────────────────
+
 function switchTab(tab) {
     currentTab = tab;
     document.querySelectorAll('#orderTabs .nav-link').forEach((el, i) => {
-        el.classList.toggle('active', 
-            (i === 0 && tab === 'pending') || 
-            (i === 1 && tab === 'completed') || 
-            (i === 2 && tab === 'messages'));
+        el.classList.toggle('active',
+            (i === 0 && tab === 'orders') ||
+            (i === 1 && tab === 'email') ||
+            (i === 2 && tab === 'sms'));
     });
-    document.getElementById('pendingSection').style.display = tab === 'pending' ? '' : 'none';
-    document.getElementById('completedSection').style.display = tab === 'completed' ? '' : 'none';
-    document.getElementById('messagesSection').style.display = tab === 'messages' ? '' : 'none';
+    document.getElementById('ordersSection').style.display = tab === 'orders' ? '' : 'none';
+    document.getElementById('emailSection').style.display  = tab === 'email'  ? '' : 'none';
+    document.getElementById('smsSection').style.display    = tab === 'sms'    ? '' : 'none';
 
-    if (tab === 'messages') {
+    if (tab === 'orders') {
+        loadOrders(currentOrdersView);
+    } else if (tab === 'email' || tab === 'sms') {
         loadMessages();
-    } else {
-        loadOrders(tab);
     }
+}
+
+function switchOrdersView(view) {
+    currentOrdersView = view;
+    document.getElementById('pendingSection').style.display   = view === 'pending'   ? '' : 'none';
+    document.getElementById('completedSection').style.display = view === 'completed' ? '' : 'none';
+    document.getElementById('btnPending').className   = 'btn btn-sm ' + (view === 'pending'   ? 'btn-primary'         : 'btn-outline-primary');
+    document.getElementById('btnCompleted').className = 'btn btn-sm ' + (view === 'completed' ? 'btn-primary'         : 'btn-outline-primary');
+    loadOrders(view);
 }
 
 // ── Profile Orders ────────────────────────────────────────────────────────────
@@ -242,6 +284,7 @@ function loadOrders(tab) {
             } else {
                 renderPending(data.orders);
                 document.getElementById('pendingBadge').textContent = data.orders.length;
+                document.getElementById('pendingCount').textContent = data.orders.length;
             }
         });
 }
@@ -375,8 +418,6 @@ function loadMessages() {
         msgUsers = usersData.users || [];
         currentUserId = usersData.current_user_id || null;
         allMessages = [...(activeData.messages || []), ...(completeData.messages || [])];
-        const activeCount = (activeData.messages || []).filter(m => m.status !== 'Complete').length;
-        document.getElementById('messagesBadge').textContent = activeCount;
         renderMessages(allMessages);
     });
 }
@@ -400,26 +441,53 @@ function getStatusBadge(status) {
 }
 
 function renderMessages(messages) {
-    const tbody = document.getElementById('messagesBody');
-    if (!messages.length) {
-        tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-muted">No messages found</td></tr>';
-        return;
-    }
-    tbody.innerHTML = messages.map(m => {
-        const assignedUser = msgUsers.find(u => u.id === m.assigned_user_id);
-        const senderDisplay = m.sender_name || m.sender || '';
-        const subject = m.subject || m.body?.substring(0, 50) || '';
-        return `
-            <tr style="cursor:pointer;" onclick="openMsgModal(${m.id})">
+    const emailMessages = messages.filter(m => m.source === 'email' || m.source === 'voicemail');
+    const smsMessages   = messages.filter(m => m.source === 'sms');
+
+    // Email table
+    const emailBody = document.getElementById('emailBody');
+    if (!emailMessages.length) {
+        emailBody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-muted">No email messages</td></tr>';
+    } else {
+        emailBody.innerHTML = emailMessages.map(m => {
+            const assignedUser = msgUsers.find(u => u.id === m.assigned_user_id);
+            const subject = m.subject || m.body?.substring(0, 50) || '';
+            const sender = m.sender_name || m.sender || '';
+            return `<tr style="cursor:pointer;" onclick="openMsgModal(${m.id})">
                 <td>${m.date} ${m.time}</td>
-                <td>${getSourceBadge(m.source)}</td>
-                <td title="${escHtml(m.sender)}">${escHtml(senderDisplay.substring(0, 25))}${senderDisplay.length > 25 ? '...' : ''}</td>
+                <td title="${escHtml(m.sender)}">${escHtml(sender.substring(0, 25))}${sender.length > 25 ? '...' : ''}</td>
                 <td title="${escHtml(subject)}">${escHtml(subject.substring(0, 40))}${subject.length > 40 ? '...' : ''}</td>
                 <td>${escHtml(m.customer || '')}</td>
                 <td>${escHtml(assignedUser ? assignedUser.name : '')}</td>
                 <td>${getStatusBadge(m.status)}</td>
             </tr>`;
-    }).join('');
+        }).join('');
+    }
+
+    // SMS table
+    const smsBody = document.getElementById('smsBody');
+    if (!smsMessages.length) {
+        smsBody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-muted">No SMS messages</td></tr>';
+    } else {
+        smsBody.innerHTML = smsMessages.map(m => {
+            const assignedUser = msgUsers.find(u => u.id === m.assigned_user_id);
+            const preview = m.body?.substring(0, 60) || '';
+            return `<tr style="cursor:pointer;" onclick="openMsgModal(${m.id})">
+                <td>${m.date} ${m.time}</td>
+                <td>${escHtml(m.sender_phone || m.sender || '')}</td>
+                <td>${escHtml(preview)}${preview.length >= 60 ? '...' : ''}</td>
+                <td>${escHtml(m.customer || '')}</td>
+                <td>${escHtml(assignedUser ? assignedUser.name : '')}</td>
+                <td>${getStatusBadge(m.status)}</td>
+            </tr>`;
+        }).join('');
+    }
+
+    // Update tab badges
+    const emailUnread = emailMessages.filter(m => m.status !== 'Complete').length;
+    const smsUnread   = smsMessages.filter(m => m.status !== 'Complete').length;
+    document.getElementById('emailBadge').textContent = emailUnread;
+    document.getElementById('smsBadge').textContent   = smsUnread;
 }
 
 function openMsgModal(id) {
@@ -428,7 +496,7 @@ function openMsgModal(id) {
     currentMsgId = id;
     const isComplete = m.status === 'Complete';
 
-    document.getElementById('msgModalTitle').textContent = m.subject || 'No Subject';
+    document.getElementById('msgModalTitle').textContent = m.subject || (m.source === 'sms' ? 'SMS Message' : 'No Subject');
     document.getElementById('msgSender').textContent = m.sender_name ? `${m.sender_name} <${m.sender}>` : m.sender;
     document.getElementById('msgPhone').textContent = m.sender_phone || 'N/A';
     document.getElementById('msgDate').textContent = `${m.date} ${m.time}`;
@@ -532,25 +600,16 @@ function checkEmails() {
     .finally(() => { btn.disabled = false; btn.innerHTML = orig; });
 }
 
-// Load email settings display
-fetch('/api/email-settings/')
-    .then(r => r.json())
-    .then(data => {
-        if (data.email_address) {
-            document.getElementById('emailSettingsAddress').textContent = data.email_address;
-            document.getElementById('emailSettingsBadge').style.display = '';
-        }
-    });
-
 // Initial load
 loadOrders('pending');
 
-// Pre-load message count for badge
+// Pre-load message badges
 fetch('/api/order-requests/')
     .then(r => r.json())
     .then(data => {
-        const count = (data.messages || []).filter(m => m.status !== 'Complete').length;
-        document.getElementById('messagesBadge').textContent = count;
+        const msgs = data.messages || [];
+        document.getElementById('emailBadge').textContent = msgs.filter(m => (m.source === 'email' || m.source === 'voicemail') && m.status !== 'Complete').length;
+        document.getElementById('smsBadge').textContent   = msgs.filter(m => m.source === 'sms' && m.status !== 'Complete').length;
     });
 </script>
 {% endblock %}

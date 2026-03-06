@@ -56,6 +56,11 @@ def product_api(request):
             'description': p.description,
             'origin': p.origin,
             'notes': p.notes,
+            'buyer': p.buyer or '',
+            'raw_cost': float(p.raw_cost) if p.raw_cost is not None else '',
+            'yield_pct': float(p.yield_pct) if p.yield_pct is not None else '',
+            'labor_pack_cost': float(p.labor_pack_cost) if p.labor_pack_cost is not None else '',
+            'pre_order_hours': float(p.pre_order_hours) if p.pre_order_hours is not None else '',
         } for p in products]
 
         return JsonResponse({
@@ -140,8 +145,8 @@ def product_import_template(request):
     response = HttpResponse(content_type='text/csv')
     response['Content-Disposition'] = 'attachment; filename="product_import_template.csv"'
     writer = csv.writer(response)
-    writer.writerow(['ProductID', 'ItemNumber', 'Description', 'Origin', 'Notes'])
-    writer.writerow(['SALMON01', 'ATL-SAL-10', 'Atlantic Salmon 10lb', 'Canada', ''])
+    writer.writerow(['ProductID', 'ItemNumber', 'Description', 'Origin', 'Notes', 'RawCost', 'Yield', 'LaborPackCost', 'PreOrderHours', 'Buyer'])
+    writer.writerow(['SALMON01', 'ATL-SAL-10', 'Atlantic Salmon 10lb', 'Canada', '', '18.35', '0.97', '0.57', '24', 'John'])
     return response
 
 
@@ -173,6 +178,11 @@ def product_import_preview(request):
             'description': 'description', 'desc': 'description',
             'origin': 'origin',
             'notes': 'notes',
+            'rawcost': 'raw_cost', 'raw_cost': 'raw_cost',
+            'yield': 'yield_pct', 'yieldpct': 'yield_pct', 'yield_pct': 'yield_pct',
+            'laborpackcost': 'labor_pack_cost', 'labor_pack_cost': 'labor_pack_cost', 'laborpack': 'labor_pack_cost',
+            'preorderhours': 'pre_order_hours', 'pre_order_hours': 'pre_order_hours',
+            'buyer': 'buyer',
         }
 
         preview = []
@@ -213,6 +223,12 @@ def product_import_confirm(request):
 
         created = updated = 0
         for row in rows:
+            def to_dec(v):
+                try:
+                    return float(v) if v not in (None, '') else None
+                except (ValueError, TypeError):
+                    return None
+
             _, was_created = Product.all_objects.update_or_create(
                 tenant=tenant,
                 product_id=row['product_id'],
@@ -221,6 +237,11 @@ def product_import_confirm(request):
                     'description': row.get('description', ''),
                     'origin': row.get('origin', ''),
                     'notes': row.get('notes', ''),
+                    'raw_cost': to_dec(row.get('raw_cost')),
+                    'yield_pct': to_dec(row.get('yield_pct')),
+                    'labor_pack_cost': to_dec(row.get('labor_pack_cost')),
+                    'pre_order_hours': to_dec(row.get('pre_order_hours')),
+                    'buyer': row.get('buyer', ''),
                 }
             )
             if was_created:

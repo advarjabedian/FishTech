@@ -17,6 +17,21 @@
     cursor: pointer;
     border-width: 2px !important;
 }
+.card-dashboard .card-body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 1.5rem;
+}
+.card-dashboard .card-body p {
+    flex-grow: 1;
+    margin-bottom: 1rem;
+    text-align: center;
+}
+.card-dashboard .card-body .btn {
+    margin-top: auto;
+}
 
 .card-dashboard:hover {
     transform: translateY(-5px);
@@ -85,7 +100,7 @@
         <!-- HACCP Card -->
         <div class="col-md-4 mb-3">
             <div class="card card-dashboard bg-warning bg-opacity-10" style="border-color: #fd7e14 !important;" onclick="window.location.href='{% url 'haccp' %}'">
-                <div class="card-body text-center py-5">
+                <div class="card-body text-center">
                     <i class="bi bi-shield-check card-icon" style="color: #fd7e14;"></i>
                     <h3>HACCP</h3>
                     <p class="text-muted">Food safety documentation and compliance</p>
@@ -97,7 +112,7 @@
         <!-- Daily Inspections Card -->
         <div class="col-md-4 mb-3">
             <div class="card card-dashboard bg-info bg-opacity-10" style="border-color: #0dcaf0 !important;" onclick="window.location.href='{% url 'operations_dashboard' %}'">
-                <div class="card-body text-center py-5">
+                <div class="card-body text-center">
                     <i class="bi bi-clipboard-check card-icon text-info"></i>
                     <h3>Daily Inspections</h3>
                     <p class="text-muted">Manage daily operational inspections</p>
@@ -109,7 +124,7 @@
         <!-- Documents Card -->
         <div class="col-md-4 mb-3">
             <div class="card card-dashboard bg-primary bg-opacity-10" style="border-color: #0d6efd !important;" onclick="window.location.href='{% url 'documents_home' %}'">
-                <div class="card-body text-center py-5">
+                <div class="card-body text-center">
                     <i class="bi bi-file-earmark-text card-icon text-primary"></i>
                     <h3>Documents</h3>
                     <p class="text-muted">Sales orders, purchase orders, and files</p>
@@ -122,7 +137,7 @@
         <!-- Orders Card -->
         <div class="col-md-4 mb-3">
             <div class="card card-dashboard bg-danger bg-opacity-10" style="border-color: #dc3545 !important;" onclick="window.location.href='{% url 'orders_hub' %}'">
-                <div class="card-body text-center py-5">
+                <div class="card-body text-center">
                     <i class="bi bi-bag card-icon text-danger"></i>
                     <h3>Orders</h3>
                     <p class="text-muted">Profile orders and order requests</p>
@@ -133,24 +148,24 @@
 
           <!-- Inventory Card -->
         <div class="col-md-4 mb-3">
-            <div class="card card-dashboard bg-primary bg-opacity-10 border-primary" onclick="window.location.href='{% url 'inventory_list' %}'">
+            <div class="card card-dashboard bg-success bg-opacity-10 border-success" onclick="window.location.href='{% url 'inventory_list' %}'">
                 <div class="card-body text-center">
-                    <i class="bi bi-boxes card-icon text-primary"></i>
+                    <i class="bi bi-boxes card-icon text-success"></i>
                     <h3>Inventory</h3>
                     <p>View current stock levels and availability</p>
-                    <a href="{% url 'inventory_list' %}" class="btn btn-primary">View Inventory</a>
+                    <a href="{% url 'inventory_list' %}" class="btn btn-success">View Inventory</a>
                 </div>
             </div>
         </div>
 
         <!-- Products Card -->
         <div class="col-md-4 mb-3">
-            <div class="card card-dashboard bg-secondary bg-opacity-10 border-secondary" onclick="window.location.href='{% url 'product_list' %}'">
+            <div class="card card-dashboard bg-warning bg-opacity-10 border-warning" onclick="window.location.href='{% url 'product_list' %}'">
                 <div class="card-body text-center">
-                    <i class="bi bi-box-seam card-icon text-secondary"></i>
+                    <i class="bi bi-box-seam card-icon text-warning"></i>
                     <h3>Products</h3>
                     <p>Product catalog and item management</p>
-                    <a href="{% url 'product_list' %}" class="btn btn-secondary">View Products</a>
+                    <a href="{% url 'product_list' %}" class="btn btn-warning">View Products</a>
                 </div>
             </div>
         </div>
@@ -158,12 +173,12 @@
         <!-- Manage Users & Companies Card (Admin Only) -->
         {% if is_admin %}
         <div class="col-md-4 mb-3">
-            <div class="card card-dashboard bg-success bg-opacity-10" style="border-color: #198754 !important;" onclick="window.location.href='{% url 'manage_users' %}'">
-                <div class="card-body text-center py-5">
-                    <i class="bi bi-people card-icon text-success"></i>
+            <div class="card card-dashboard bg-secondary bg-opacity-10 border-secondary" onclick="window.location.href='{% url 'manage_users' %}'">
+                <div class="card-body text-center">
+                    <i class="bi bi-people card-icon text-secondary"></i>
                     <h3>Administration</h3>
                     <p class="text-muted">Manage users and companies</p>
-                    <a href="{% url 'manage_users' %}" class="btn btn-success mt-2">Manage</a>
+                    <a href="{% url 'manage_users' %}" class="btn btn-secondary mt-2">Manage</a>
                 </div>
             </div>
         </div>
