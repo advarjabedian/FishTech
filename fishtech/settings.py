@@ -148,6 +148,9 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 X_FRAME_OPTIONS = 'SAMEORIGIN'
 
 
+# Gemini
+GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
+
 # Stripe API Keys
 STRIPE_PUBLIC_KEY = os.environ.get('STRIPE_PUBLIC_KEY')
 STRIPE_SECRET_KEY = os.environ.get('STRIPE_SECRET_KEY')
