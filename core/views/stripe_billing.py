@@ -34,7 +34,7 @@ def get_billing_status(request):
     tenant = request.tenant
     
     # If we have a Stripe customer, check their subscription status directly
-    if tenant.stripe_customer_id:
+    if tenant.stripe_customer_id and settings.STRIPE_SECRET_KEY:
         try:
             subscriptions = stripe.Subscription.list(
                 customer=tenant.stripe_customer_id,
@@ -47,12 +47,13 @@ def get_billing_status(request):
                 # Update local record
                 tenant.stripe_subscription_id = sub.id
                 tenant.subscription_status = sub.status
-                if sub.current_period_end:
+                period_end = sub.get('current_period_end')
+                if period_end:
                     tenant.subscription_ends_at = timezone.datetime.fromtimestamp(
-                        sub.current_period_end, tz=timezone.utc
+                        period_end, tz=timezone.utc
                     )
                 tenant.save()
-        except stripe.error.StripeError as e:
+        except Exception as e:
             logger.error(f"Error checking Stripe subscription: {e}")
     
     return JsonResponse({
@@ -277,9 +278,10 @@ def handle_subscription_created(subscription):
     tenant.stripe_subscription_id = subscription['id']
     tenant.subscription_status = subscription['status']
     
-    if subscription.get('current_period_end'):
+    period_end = subscription.get('current_period_end')
+    if period_end:
         tenant.subscription_ends_at = timezone.datetime.fromtimestamp(
-            subscription['current_period_end'], tz=timezone.utc
+            period_end, tz=timezone.utc
         )
     
     tenant.save()
@@ -298,9 +300,10 @@ def handle_subscription_updated(subscription):
     
     tenant.subscription_status = subscription['status']
     
-    if subscription.get('current_period_end'):
+    period_end = subscription.get('current_period_end')
+    if period_end:
         tenant.subscription_ends_at = timezone.datetime.fromtimestamp(
-            subscription['current_period_end'], tz=timezone.utc
+            period_end, tz=timezone.utc
         )
     
     # Update active status based on subscription
