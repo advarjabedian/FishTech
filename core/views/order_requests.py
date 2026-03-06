@@ -475,8 +475,12 @@ def twilio_sms_webhook(request):
         status='Unassigned'
     )
     
-    # Return empty TwiML response (no auto-reply)
-    return HttpResponse('<Response></Response>', content_type='text/xml')
+    # Auto-reply confirming receipt
+    twiml = '''<?xml version="1.0"?>
+<Response>
+    <Message>Thanks! Your order has been received and will be processed shortly.</Message>
+</Response>'''
+    return HttpResponse(twiml, content_type='text/xml')
 
 
 from django.contrib.auth.decorators import login_required
