@@ -1,0 +1,852 @@
+{% extends 'core/base.html' %}
+{% block title %}Fish Market - {{ tenant.name }}{% endblock %}
+
+{% block extra_css %}
+<script src="https://js.stripe.com/v3/"></script>
+<style>
+.market-hero {
+    background: linear-gradient(135deg, #0a1628 0%, #0d1f3c 50%, #0a2840 100%);
+    border-bottom: 3px solid #00b4d8;
+    padding: 2rem 0 1.5rem;
+    margin-bottom: 2rem;
+}
+.market-hero h1 { color: #fff; font-weight: 700; }
+.market-hero p { color: #48cae4; }
+
+/* Menu cards */
+.menu-item-card {
+    border: 2px solid #dee2e6;
+    border-radius: 12px;
+    overflow: hidden;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    height: 100%;
+}
+.menu-item-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+}
+.menu-item-img {
+    width: 100%;
+    height: 260px;
+    object-fit: cover;
+    background: #f0f4f8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.menu-item-img img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.menu-item-img .placeholder-icon {
+    font-size: 4rem;
+    color: #adb5bd;
+}
+.menu-item-body { padding: 1rem; }
+.item-price { color: #0d6efd; font-weight: 700; font-size: 1.1rem; }
+.item-category { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; color: #6c757d; }
+.qty-control { display: flex; align-items: center; gap: 6px; }
+.qty-input { width: 60px; text-align: center; }
+.unavailable-badge { position: absolute; top: 8px; right: 8px; }
+
+/* Cart sidebar */
+#cart-panel {
+    position: sticky;
+    top: 80px;
+}
+.cart-item-row { border-bottom: 1px solid #dee2e6; padding: 8px 0; }
+.cart-total { font-size: 1.2rem; font-weight: 700; color: #0d6efd; }
+
+/* Order form */
+.section-header {
+    background: #f8f9fa;
+    border-left: 4px solid #00b4d8;
+    padding: 0.5rem 1rem;
+    margin-bottom: 1rem;
+    border-radius: 0 6px 6px 0;
+    font-weight: 600;
+    color: #0a1628;
+}
+
+/* Manager controls */
+.manager-bar {
+    background: #0a1628;
+    border-bottom: 2px solid #f4a827;
+    color: #f4a827;
+    padding: 0.5rem 1rem;
+    font-size: 0.85rem;
+}
+.edit-overlay {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    display: flex;
+    gap: 4px;
+}
+
+/* Success screen */
+#order-success { display: none; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+{% if is_manager %}
+<div class="manager-bar d-flex align-items-center gap-3">
+    <i class="bi bi-shield-check"></i>
+    <strong>Manager Mode</strong> — You can add, edit, and remove menu items.
+    <button class="btn btn-sm btn-warning ms-auto" onclick="openAddItemModal()">
+        <i class="bi bi-plus-circle me-1"></i>Add Item
+    </button>
+    <a href="javascript:void(0)" onclick="showOrdersPanel()" class="btn btn-sm btn-outline-warning">
+        <i class="bi bi-list-ul me-1"></i>View Orders
+    </a>
+</div>
+{% endif %}
+
+<!-- Hero -->
+<div class="market-hero">
+    <div class="container-fluid px-4">
+        <div class="d-flex align-items-center gap-3">
+            <i class="bi bi-basket2-fill text-info" style="font-size:2.5rem;"></i>
+            <div>
+                <h1 class="mb-0">Fish Market</h1>
+                <p class="mb-0">{{ tenant.name }} — Fresh seafood, order online</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid px-4 pb-5">
+
+    <!-- Order Success Screen -->
+    <div id="order-success" class="text-center py-5">
+        <i class="bi bi-check-circle-fill text-success" style="font-size:4rem;"></i>
+        <h2 class="mt-3">Order Placed!</h2>
+        <p class="text-muted fs-5">Thank you, <strong id="success-name"></strong>. Your order has been received and will be processed shortly.</p>
+        <p class="text-muted">Order #<strong id="success-order-id"></strong> — Total: <strong id="success-total"></strong></p>
+        <button class="btn btn-primary mt-3" onclick="resetPage()">Place Another Order</button>
+    </div>
+
+    <!-- Main content -->
+    <div id="main-content">
+        <div class="row g-4">
+
+            <!-- Menu Grid -->
+            <div class="col-lg-8">
+                <h4 class="mb-3"><i class="bi bi-grid me-2 text-info"></i>Our Menu</h4>
+
+                {% if not menu_items %}
+                <div class="text-center text-muted py-5">
+                    <i class="bi bi-basket" style="font-size:3rem;"></i>
+                    <p class="mt-2">No items on the menu yet.{% if is_manager %} Click <strong>Add Item</strong> to get started.{% endif %}</p>
+                </div>
+                {% endif %}
+
+                <div class="row row-cols-1 row-cols-sm-2 row-cols-xl-3 g-3" id="menu-grid">
+                    {% for item in menu_items %}
+                    <div class="col" id="item-col-{{ item.id }}">
+                        <div class="menu-item-card card position-relative" data-item-id="{{ item.id }}" data-price="{{ item.price }}" data-name="{{ item.name }}">
+
+                            {% if is_manager %}
+                            <div class="edit-overlay">
+                                <button class="btn btn-sm btn-light border shadow-sm" title="Edit" onclick="openEditItemModal({{ item.id }}, '{{ item.name|escapejs }}', '{{ item.description|escapejs }}', {{ item.price }}, '{{ item.category|escapejs }}', {{ item.sort_order }}, {{ item.is_available|yesno:'true,false' }})">
+                                    <i class="bi bi-pencil text-primary"></i>
+                                </button>
+                                <button class="btn btn-sm btn-light border shadow-sm" title="Upload photo" onclick="openImageModal({{ item.id }})">
+                                    <i class="bi bi-camera text-success"></i>
+                                </button>
+                                <button class="btn btn-sm btn-light border shadow-sm" title="Delete" onclick="deleteItem({{ item.id }})">
+                                    <i class="bi bi-trash text-danger"></i>
+                                </button>
+                            </div>
+                            {% endif %}
+
+                            {% if not item.is_available %}
+                            <span class="badge bg-secondary unavailable-badge">Unavailable</span>
+                            {% endif %}
+
+                            <div class="menu-item-img">
+                                {% if item.image %}
+                                <img src="{{ item.image }}" alt="{{ item.name }}" id="item-img-{{ item.id }}">
+                                {% else %}
+                                <div class="placeholder-icon d-flex align-items-center justify-content-center w-100 h-100">
+                                    <i class="bi bi-fish" id="item-img-placeholder-{{ item.id }}"></i>
+                                </div>
+                                {% endif %}
+                            </div>
+
+                            <div class="menu-item-body">
+                                {% if item.category %}
+                                <div class="item-category">{{ item.category }}</div>
+                                {% endif %}
+                                <h6 class="mb-1 fw-bold">{{ item.name }}</h6>
+                                {% if item.description %}
+                                <p class="text-muted small mb-2">{{ item.description }}</p>
+                                {% endif %}
+                                <div class="d-flex align-items-center justify-content-between mt-2">
+                                    <span class="item-price">${{ item.price }}</span>
+                                    {% if item.is_available %}
+                                    <div class="qty-control">
+                                        <button class="btn btn-sm btn-outline-secondary" onclick="changeQty({{ item.id }}, -1)">−</button>
+                                        <input type="number" class="form-control form-control-sm qty-input" id="qty-{{ item.id }}" value="0" min="0" max="99" onchange="updateCart({{ item.id }})">
+                                        <button class="btn btn-sm btn-outline-primary" onclick="changeQty({{ item.id }}, 1)">+</button>
+                                    </div>
+                                    {% else %}
+                                    <span class="text-muted small">Not available</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Cart + Order Form -->
+            <div class="col-lg-4">
+                <div id="cart-panel">
+
+                    <!-- Cart -->
+                    <div class="card mb-3 shadow-sm">
+                        <div class="card-header d-flex align-items-center justify-content-between">
+                            <span><i class="bi bi-cart3 me-2 text-primary"></i><strong>Your Cart</strong></span>
+                            <span class="badge bg-primary" id="cart-count">0</span>
+                        </div>
+                        <div class="card-body p-2">
+                            <div id="cart-items">
+                                <p class="text-muted text-center small py-2" id="empty-cart-msg">Your cart is empty.</p>
+                            </div>
+                            <hr class="my-2">
+                            <div class="d-flex justify-content-between align-items-center px-1">
+                                <span class="fw-bold">Total</span>
+                                <span class="cart-total" id="cart-total">$0.00</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Order Form -->
+                    <div class="card shadow-sm" id="order-form-card">
+                        <div class="card-header"><i class="bi bi-person-lines-fill me-2 text-success"></i><strong>Your Information</strong></div>
+                        <div class="card-body">
+                            <form id="order-form" onsubmit="submitOrder(event)">
+
+                                <div class="section-header">Contact</div>
+                                <div class="mb-3">
+                                    <label class="form-label small fw-semibold">Full Name <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="f-name" placeholder="Jane Smith" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label small fw-semibold">Phone <span class="text-danger">*</span></label>
+                                    <input type="tel" class="form-control" id="f-phone" placeholder="(555) 000-0000" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label small fw-semibold">Email</label>
+                                    <input type="email" class="form-control" id="f-email" placeholder="jane@example.com">
+                                </div>
+
+                                <div class="section-header">Delivery Address</div>
+                                <div class="mb-3">
+                                    <label class="form-label small fw-semibold">Address <span class="text-danger">*</span></label>
+                                    <textarea class="form-control" id="f-address" rows="2" placeholder="123 Main St, City, State, ZIP" required></textarea>
+                                </div>
+
+                                <div class="section-header">Payment</div>
+                                <div class="mb-3">
+                                    <label class="form-label small fw-semibold">Payment Method</label>
+                                    <select class="form-select" id="f-payment-type" onchange="toggleCardFields()">
+                                        <option value="card">Credit / Debit Card</option>
+                                        <option value="cash">Cash on Delivery</option>
+                                        <option value="check">Check</option>
+                                    </select>
+                                </div>
+
+                                <div id="card-fields">
+                                    <div class="mb-3">
+                                        <label class="form-label small fw-semibold">Cardholder Name</label>
+                                        <input type="text" class="form-control" id="f-card-name" placeholder="Name on card" autocomplete="cc-name">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label small fw-semibold">Card Details</label>
+                                        <div id="stripe-card-element" class="form-control" style="height:42px; padding-top:10px;"></div>
+                                        <div id="stripe-card-errors" class="text-danger small mt-1"></div>
+                                        <div class="form-text text-muted"><i class="bi bi-lock-fill me-1"></i>Secured by Stripe — your card details are never stored on our servers.</div>
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label small fw-semibold">Order Notes</label>
+                                    <textarea class="form-control" id="f-notes" rows="2" placeholder="Any special requests..."></textarea>
+                                </div>
+
+                                <div id="form-error" class="alert alert-danger d-none small"></div>
+
+                                <button type="submit" class="btn btn-primary w-100" id="submit-btn" disabled>
+                                    <i class="bi bi-bag-check me-2"></i>Place Order
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Manager: Orders Panel (hidden by default) -->
+    {% if is_manager %}
+    <div id="orders-panel" style="display:none;" class="mt-4">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+            <h4><i class="bi bi-list-check me-2 text-primary"></i>Submitted Orders</h4>
+            <button class="btn btn-sm btn-outline-secondary" onclick="hideOrdersPanel()">
+                <i class="bi bi-x me-1"></i>Back to Menu
+            </button>
+        </div>
+        <div id="orders-table-container">
+            <div class="text-center text-muted py-4"><i class="bi bi-hourglass-split me-2"></i>Loading orders...</div>
+        </div>
+    </div>
+    {% endif %}
+
+</div><!-- /container -->
+
+
+<!-- ── Modals (manager only) ───────────────────────────────────────────── -->
+{% if is_manager %}
+
+<!-- Add / Edit Item Modal -->
+<div class="modal fade" id="itemModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="itemModalTitle">Add Menu Item</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="edit-item-id">
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Name <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="edit-name" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Description</label>
+                    <textarea class="form-control" id="edit-description" rows="2"></textarea>
+                </div>
+                <div class="row g-2 mb-3">
+                    <div class="col-6">
+                        <label class="form-label fw-semibold">Price ($) <span class="text-danger">*</span></label>
+                        <input type="number" class="form-control" id="edit-price" step="0.01" min="0">
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label fw-semibold">Category</label>
+                        <input type="text" class="form-control" id="edit-category" placeholder="e.g. Salmon">
+                    </div>
+                </div>
+                <div class="row g-2 mb-3">
+                    <div class="col-6">
+                        <label class="form-label fw-semibold">Sort Order</label>
+                        <input type="number" class="form-control" id="edit-sort-order" value="0">
+                    </div>
+                    <div class="col-6 d-flex align-items-end pb-1">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="edit-available" checked>
+                            <label class="form-check-label" for="edit-available">Available</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="saveItemBtn" onclick="saveItem()">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Image Upload Modal -->
+<div class="modal fade" id="imageModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Update Item Photo</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="image-item-id">
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Choose Photo</label>
+                    <input type="file" class="form-control" id="image-file-input" accept="image/*">
+                </div>
+                <div id="image-preview" class="text-center" style="display:none;">
+                    <img id="preview-img" src="" alt="Preview" style="max-height:200px; max-width:100%; border-radius:8px;">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success" onclick="uploadImage()">
+                    <i class="bi bi-upload me-1"></i>Upload
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endif %}
+<!-- ── End Modals ─────────────────────────────────────────────────────── -->
+
+{% endblock %}
+
+
+{% block extra_js %}
+<script>
+const SLUG = "{{ slug }}";
+const IS_MANAGER = {{ is_manager|yesno:'true,false' }};
+const STRIPE_PUBLIC_KEY = "{{ stripe_public_key }}";
+
+// ── Cart State ────────────────────────────────────────────────────────────────
+const cart = {};  // { itemId: { name, price, qty } }
+
+function changeQty(itemId, delta) {
+    const input = document.getElementById(`qty-${itemId}`);
+    let val = parseInt(input.value || 0) + delta;
+    val = Math.max(0, Math.min(99, val));
+    input.value = val;
+    updateCart(itemId);
+}
+
+function updateCart(itemId) {
+    const input = document.getElementById(`qty-${itemId}`);
+    const qty = Math.max(0, parseInt(input.value || 0));
+    input.value = qty;
+
+    const card = document.querySelector(`[data-item-id="${itemId}"]`);
+    const price = parseFloat(card.dataset.price);
+    const name = card.dataset.name;
+
+    if (qty === 0) {
+        delete cart[itemId];
+    } else {
+        cart[itemId] = { name, price, qty };
+    }
+    renderCart();
+}
+
+function renderCart() {
+    const container = document.getElementById('cart-items');
+    const emptyMsg = document.getElementById('empty-cart-msg');
+    const countBadge = document.getElementById('cart-count');
+    const totalEl = document.getElementById('cart-total');
+    const submitBtn = document.getElementById('submit-btn');
+
+    const keys = Object.keys(cart);
+    let total = 0;
+    let count = 0;
+
+    if (keys.length === 0) {
+        emptyMsg.style.display = '';
+        container.innerHTML = '';
+        container.appendChild(emptyMsg);
+        countBadge.textContent = '0';
+        totalEl.textContent = '$0.00';
+        submitBtn.disabled = true;
+        return;
+    }
+
+    emptyMsg.style.display = 'none';
+    let html = '';
+    for (const id of keys) {
+        const { name, price, qty } = cart[id];
+        const sub = price * qty;
+        total += sub;
+        count += qty;
+        html += `<div class="cart-item-row d-flex justify-content-between align-items-center">
+            <div class="small"><strong>${name}</strong><br><span class="text-muted">× ${qty} @ $${price.toFixed(2)}</span></div>
+            <div class="small fw-bold">$${sub.toFixed(2)}</div>
+        </div>`;
+    }
+
+    container.innerHTML = html;
+    countBadge.textContent = count;
+    totalEl.textContent = `$${total.toFixed(2)}`;
+    submitBtn.disabled = false;
+}
+
+// ── Stripe Setup ──────────────────────────────────────────────────────────────
+let stripeInstance = null;
+let cardElement = null;
+
+function initStripe() {
+    if (!STRIPE_PUBLIC_KEY) return;
+    stripeInstance = Stripe(STRIPE_PUBLIC_KEY);
+    const elements = stripeInstance.elements();
+    cardElement = elements.create('card', {
+        style: {
+            base: {
+                fontSize: '15px',
+                color: '#212529',
+                fontFamily: 'system-ui, sans-serif',
+                '::placeholder': { color: '#adb5bd' },
+            },
+            invalid: { color: '#dc3545' },
+        },
+        hidePostalCode: false,
+    });
+    cardElement.mount('#stripe-card-element');
+    cardElement.on('change', e => {
+        const errEl = document.getElementById('stripe-card-errors');
+        errEl.textContent = e.error ? e.error.message : '';
+    });
+}
+
+// ── Order Submission ──────────────────────────────────────────────────────────
+async function submitOrder(e) {
+    e.preventDefault();
+
+    const errorEl = document.getElementById('form-error');
+    errorEl.classList.add('d-none');
+
+    const paymentType = document.getElementById('f-payment-type').value;
+    const items = Object.entries(cart).map(([id, { name, price, qty }]) => ({
+        id: parseInt(id), name, price, quantity: qty
+    }));
+
+    const btn = document.getElementById('submit-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Processing...';
+
+    let paymentIntentId = '';
+    let cardLastFour = '';
+    let cardBrand = '';
+
+    // ── Card payment via Stripe ───────────────────────────────────────────────
+    if (paymentType === 'card' && stripeInstance && cardElement) {
+        try {
+            // Step 1: Create PaymentIntent server-side
+            const piRes = await fetch(`/api/fish-market/${SLUG}/create-payment-intent/`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+                body: JSON.stringify({ items }),
+            });
+            const piData = await piRes.json();
+            if (!piData.client_secret) {
+                throw new Error(piData.error || 'Could not initiate payment.');
+            }
+
+            // Step 2: Confirm payment with Stripe.js
+            const { paymentIntent, error } = await stripeInstance.confirmCardPayment(
+                piData.client_secret,
+                {
+                    payment_method: {
+                        card: cardElement,
+                        billing_details: {
+                            name: document.getElementById('f-card-name').value.trim(),
+                            email: document.getElementById('f-email').value.trim() || undefined,
+                        },
+                    },
+                }
+            );
+
+            if (error) {
+                document.getElementById('stripe-card-errors').textContent = error.message;
+                errorEl.textContent = error.message;
+                errorEl.classList.remove('d-none');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-bag-check me-2"></i>Place Order';
+                return;
+            }
+
+            paymentIntentId = paymentIntent.id;
+            // Extract card details from PaymentIntent result
+            const pm = paymentIntent.payment_method_details?.card || {};
+            cardLastFour = pm.last4 || '';
+            cardBrand = pm.brand || '';
+
+        } catch (err) {
+            errorEl.textContent = err.message || 'Payment failed. Please try again.';
+            errorEl.classList.remove('d-none');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-bag-check me-2"></i>Place Order';
+            return;
+        }
+    }
+
+    // ── Save order to database ────────────────────────────────────────────────
+    const payload = {
+        customer_name: document.getElementById('f-name').value.trim(),
+        customer_phone: document.getElementById('f-phone').value.trim(),
+        customer_email: document.getElementById('f-email').value.trim(),
+        customer_address: document.getElementById('f-address').value.trim(),
+        payment_type: paymentType,
+        card_holder_name: document.getElementById('f-card-name').value.trim(),
+        card_last_four: cardLastFour,
+        card_brand: cardBrand,
+        card_expiry: '',
+        payment_intent_id: paymentIntentId,
+        notes: document.getElementById('f-notes').value.trim(),
+        items,
+    };
+
+    fetch(`/api/fish-market/${SLUG}/order/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+        body: JSON.stringify(payload),
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            document.getElementById('main-content').style.display = 'none';
+            document.getElementById('order-success').style.display = 'block';
+            document.getElementById('success-name').textContent = payload.customer_name;
+            document.getElementById('success-order-id').textContent = data.order_id;
+            document.getElementById('success-total').textContent = `$${data.subtotal.toFixed(2)}`;
+        } else {
+            errorEl.textContent = data.error || 'Could not save order. Please try again.';
+            errorEl.classList.remove('d-none');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-bag-check me-2"></i>Place Order';
+        }
+    })
+    .catch(() => {
+        errorEl.textContent = 'Network error. Please try again.';
+        errorEl.classList.remove('d-none');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-bag-check me-2"></i>Place Order';
+    });
+}
+
+function resetPage() {
+    document.getElementById('order-success').style.display = 'none';
+    document.getElementById('main-content').style.display = 'block';
+    document.getElementById('order-form').reset();
+    Object.keys(cart).forEach(k => delete cart[k]);
+    document.querySelectorAll('.qty-input').forEach(el => el.value = 0);
+    renderCart();
+    toggleCardFields();
+}
+
+// ── Card helpers ──────────────────────────────────────────────────────────────
+function toggleCardFields() {
+    const show = document.getElementById('f-payment-type').value === 'card';
+    document.getElementById('card-fields').style.display = show ? '' : 'none';
+}
+
+// ── CSRF ──────────────────────────────────────────────────────────────────────
+function getCookie(name) {
+    let v = null;
+    document.cookie.split(';').forEach(c => {
+        const [k, val] = c.trim().split('=');
+        if (k === name) v = decodeURIComponent(val);
+    });
+    return v;
+}
+
+// ── Manager: Menu Item CRUD ───────────────────────────────────────────────────
+{% if is_manager %}
+let itemModal, imageModal;
+document.addEventListener('DOMContentLoaded', () => {
+    itemModal = new bootstrap.Modal(document.getElementById('itemModal'));
+    imageModal = new bootstrap.Modal(document.getElementById('imageModal'));
+
+    document.getElementById('image-file-input').addEventListener('change', function() {
+        const file = this.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = e => {
+            document.getElementById('preview-img').src = e.target.result;
+            document.getElementById('image-preview').style.display = '';
+        };
+        reader.readAsDataURL(file);
+    });
+});
+
+function openAddItemModal() {
+    document.getElementById('edit-item-id').value = '';
+    document.getElementById('itemModalTitle').textContent = 'Add Menu Item';
+    document.getElementById('edit-name').value = '';
+    document.getElementById('edit-description').value = '';
+    document.getElementById('edit-price').value = '';
+    document.getElementById('edit-category').value = '';
+    document.getElementById('edit-sort-order').value = 0;
+    document.getElementById('edit-available').checked = true;
+    itemModal.show();
+}
+
+function openEditItemModal(id, name, desc, price, cat, sortOrder, available) {
+    document.getElementById('edit-item-id').value = id;
+    document.getElementById('itemModalTitle').textContent = 'Edit Menu Item';
+    document.getElementById('edit-name').value = name;
+    document.getElementById('edit-description').value = desc;
+    document.getElementById('edit-price').value = price;
+    document.getElementById('edit-category').value = cat;
+    document.getElementById('edit-sort-order').value = sortOrder;
+    document.getElementById('edit-available').checked = available;
+    itemModal.show();
+}
+
+function saveItem() {
+    const id = document.getElementById('edit-item-id').value;
+    const payload = {
+        name: document.getElementById('edit-name').value.trim(),
+        description: document.getElementById('edit-description').value.trim(),
+        price: parseFloat(document.getElementById('edit-price').value) || 0,
+        category: document.getElementById('edit-category').value.trim(),
+        sort_order: parseInt(document.getElementById('edit-sort-order').value) || 0,
+        is_available: document.getElementById('edit-available').checked,
+    };
+    if (!payload.name) { alert('Name is required.'); return; }
+
+    const url = id
+        ? `/api/fish-market/${SLUG}/item/${id}/update/`
+        : `/api/fish-market/${SLUG}/item/add/`;
+
+    fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+        body: JSON.stringify(payload),
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            itemModal.hide();
+            location.reload();
+        } else {
+            alert(data.error || 'Could not save item.');
+        }
+    });
+}
+
+function deleteItem(id) {
+    if (!confirm('Delete this item from the menu?')) return;
+    fetch(`/api/fish-market/${SLUG}/item/${id}/delete/`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCookie('csrftoken') },
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            document.getElementById(`item-col-${id}`).remove();
+        } else {
+            alert(data.error || 'Could not delete item.');
+        }
+    });
+}
+
+function openImageModal(id) {
+    document.getElementById('image-item-id').value = id;
+    document.getElementById('image-file-input').value = '';
+    document.getElementById('image-preview').style.display = 'none';
+    imageModal.show();
+}
+
+function uploadImage() {
+    const id = document.getElementById('image-item-id').value;
+    const file = document.getElementById('image-file-input').files[0];
+    if (!file) { alert('Please select an image.'); return; }
+
+    const formData = new FormData();
+    formData.append('image', file);
+
+    fetch(`/api/fish-market/${SLUG}/item/${id}/image/`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCookie('csrftoken') },
+        body: formData,
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            imageModal.hide();
+            // Update image on the card without full reload
+            const placeholder = document.getElementById(`item-img-placeholder-${id}`);
+            if (placeholder) {
+                const wrapper = placeholder.closest('.menu-item-img');
+                wrapper.innerHTML = `<img src="${data.image}" alt="" id="item-img-${id}" style="width:100%;height:100%;object-fit:cover;">`;
+            } else {
+                const img = document.getElementById(`item-img-${id}`);
+                if (img) img.src = data.image;
+            }
+        } else {
+            alert(data.error || 'Could not upload image.');
+        }
+    });
+}
+
+// ── Manager: Orders View ──────────────────────────────────────────────────────
+function showOrdersPanel() {
+    document.getElementById('main-content').style.display = 'none';
+    document.getElementById('orders-panel').style.display = '';
+    loadOrders();
+}
+
+function hideOrdersPanel() {
+    document.getElementById('orders-panel').style.display = 'none';
+    document.getElementById('main-content').style.display = '';
+}
+
+function loadOrders() {
+    const container = document.getElementById('orders-table-container');
+    fetch(`/api/fish-market/${SLUG}/orders/`)
+    .then(r => r.json())
+    .then(data => {
+        if (!data.orders || data.orders.length === 0) {
+            container.innerHTML = '<div class="text-center text-muted py-4">No orders yet.</div>';
+            return;
+        }
+        let html = `<div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead class="table-dark">
+                <tr>
+                    <th>#</th><th>Date</th><th>Customer</th><th>Phone</th><th>Address</th>
+                    <th>Items</th><th>Total</th><th>Payment</th><th>Status</th>
+                </tr>
+            </thead><tbody>`;
+        for (const o of data.orders) {
+            const itemsSummary = o.items.map(i => `${i.quantity}× ${i.name}`).join(', ');
+            const payInfo = o.payment_type === 'card' && o.card_last_four
+                ? `${o.card_brand} ···${o.card_last_four}`
+                : o.payment_type;
+            html += `<tr>
+                <td><strong>#${o.id}</strong></td>
+                <td class="small">${o.created_at}</td>
+                <td>${o.customer_name}${o.customer_email ? `<br><small class="text-muted">${o.customer_email}</small>` : ''}</td>
+                <td class="small">${o.customer_phone}</td>
+                <td class="small">${o.customer_address}</td>
+                <td class="small">${itemsSummary}${o.notes ? `<br><em class="text-muted">${o.notes}</em>` : ''}</td>
+                <td><strong>$${o.subtotal.toFixed(2)}</strong></td>
+                <td class="small">${payInfo}</td>
+                <td>
+                    <select class="form-select form-select-sm" onchange="updateOrderStatus(${o.id}, this.value)" style="min-width:110px;">
+                        ${['Pending','Confirmed','Ready','Delivered','Cancelled'].map(s =>
+                            `<option value="${s}" ${s === o.status ? 'selected' : ''}>${s}</option>`
+                        ).join('')}
+                    </select>
+                </td>
+            </tr>`;
+        }
+        html += '</tbody></table></div>';
+        container.innerHTML = html;
+    });
+}
+
+function updateOrderStatus(orderId, status) {
+    fetch(`/api/fish-market/${SLUG}/order/${orderId}/status/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+        body: JSON.stringify({ status }),
+    });
+}
+{% endif %}
+
+// Init
+document.addEventListener('DOMContentLoaded', () => {
+    toggleCardFields();
+    if (document.getElementById('f-payment-type').value === 'card') initStripe();
+});
+
+document.getElementById('f-payment-type')?.addEventListener('change', () => {
+    toggleCardFields();
+    if (document.getElementById('f-payment-type').value === 'card' && !cardElement) initStripe();
+});
+</script>
+{% endblock %}

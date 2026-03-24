@@ -170,6 +170,18 @@
             </div>
         </div>
 
+        <!-- Fish Market Card -->
+        <div class="col-md-4 mb-3">
+            <div class="card card-dashboard bg-info bg-opacity-10" style="border-color: #0dcaf0 !important;" onclick="window.location.href='{% url 'fish_market_redirect' %}'">
+                <div class="card-body text-center">
+                    <i class="bi bi-basket2-fill card-icon text-info"></i>
+                    <h3>Fish Market</h3>
+                    <p class="text-muted">Online fish ordering for your customers</p>
+                    <a href="{% url 'fish_market_redirect' %}" class="btn btn-info mt-2">View Fish Market</a>
+                </div>
+            </div>
+        </div>
+
         <!-- Manage Users & Companies Card (Admin Only) -->
         {% if is_admin %}
         <div class="col-md-4 mb-3">
