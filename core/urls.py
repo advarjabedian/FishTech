@@ -7,6 +7,13 @@ from .views.inventory_views import *
 from .views.product_views import *
 from .views.operations_reports import *
 from .views.stripe_billing import *
+from .views.fish_market import (
+    fish_market_redirect, fish_market_page,
+    fish_market_add_item, fish_market_update_item, fish_market_delete_item,
+    fish_market_update_image, fish_market_create_payment_intent,
+    fish_market_submit_order, fish_market_orders_list,
+    fish_market_update_order_status,
+)
 
 urlpatterns = [
     # Auth routes
@@ -273,4 +280,16 @@ path('api/profile-orders/import/template/', download_import_template, name='down
     path('sms-opt-in/', sms_opt_in, name='sms_opt_in'),
     path('privacy-policy/', privacy_policy, name='privacy_policy'),
     path('terms-of-service/', terms_of_service, name='terms_of_service'),
+
+    # Fish Market — public ordering page
+    path('fish-market/', fish_market_redirect, name='fish_market_redirect'),
+    path('fish-market/<str:slug>/', fish_market_page, name='fish_market_page'),
+    path('api/fish-market/<str:slug>/item/add/', fish_market_add_item, name='fish_market_add_item'),
+    path('api/fish-market/<str:slug>/item/<int:item_id>/update/', fish_market_update_item, name='fish_market_update_item'),
+    path('api/fish-market/<str:slug>/item/<int:item_id>/delete/', fish_market_delete_item, name='fish_market_delete_item'),
+    path('api/fish-market/<str:slug>/item/<int:item_id>/image/', fish_market_update_image, name='fish_market_update_image'),
+    path('api/fish-market/<str:slug>/create-payment-intent/', fish_market_create_payment_intent, name='fish_market_create_payment_intent'),
+    path('api/fish-market/<str:slug>/order/', fish_market_submit_order, name='fish_market_submit_order'),
+    path('api/fish-market/<str:slug>/orders/', fish_market_orders_list, name='fish_market_orders_list'),
+    path('api/fish-market/<str:slug>/order/<int:order_id>/status/', fish_market_update_order_status, name='fish_market_update_order_status'),
 ]

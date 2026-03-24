@@ -910,3 +910,66 @@ class Inventory(TenantModel):
 
     def __str__(self):
         return f"{self.productid} - {self.desc}"
+
+
+# =============================================================================
+# FISH MARKET MODULE MODELS
+# =============================================================================
+
+class FishMenuItem(TenantModel):
+    """Menu items available for public ordering"""
+    name = models.CharField(max_length=255)
+    description = models.TextField(blank=True)
+    price = models.DecimalField(max_digits=10, decimal_places=2)
+    category = models.CharField(max_length=100, blank=True)
+    image = models.TextField(blank=True)  # Base64 encoded image
+    is_available = models.BooleanField(default=True)
+    sort_order = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['sort_order', 'name']
+
+    def __str__(self):
+        return self.name
+
+
+class FishOrder(TenantModel):
+    """Customer order submitted through the public fish market page"""
+    STATUS_CHOICES = [
+        ('Pending', 'Pending'),
+        ('Confirmed', 'Confirmed'),
+        ('Ready', 'Ready'),
+        ('Delivered', 'Delivered'),
+        ('Cancelled', 'Cancelled'),
+    ]
+
+    # Customer info
+    customer_name = models.CharField(max_length=255)
+    customer_email = models.EmailField(blank=True)
+    customer_phone = models.CharField(max_length=50)
+    customer_address = models.TextField()
+
+    # Payment info (no raw card numbers stored — only safe metadata)
+    payment_type = models.CharField(max_length=50, default='card')  # card, cash, check
+    card_holder_name = models.CharField(max_length=255, blank=True)
+    card_last_four = models.CharField(max_length=4, blank=True)
+    card_brand = models.CharField(max_length=50, blank=True)
+    card_expiry = models.CharField(max_length=7, blank=True)  # MM/YYYY
+    stripe_payment_intent_id = models.CharField(max_length=255, blank=True)
+
+    # Order items as JSON: [{id, name, price, quantity, subtotal}]
+    items_json = models.JSONField(default=list)
+    subtotal = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    notes = models.TextField(blank=True)
+
+    status = models.CharField(max_length=50, choices=STATUS_CHOICES, default='Pending')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Order #{self.id} - {self.customer_name}"
