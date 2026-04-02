@@ -1,0 +1,182 @@
+{% extends 'core/base.html' %}
+{% block title %}Ledger - FishTeck{% endblock %}
+
+{% block extra_css %}
+<style>
+.ledger-summary-card {
+    border-radius: 12px;
+    padding: 1.25rem 1.5rem;
+    border: none;
+}
+.net-positive { background: linear-gradient(135deg, #d1fae5, #a7f3d0); color: #065f46; }
+.net-negative { background: linear-gradient(135deg, #fee2e2, #fecaca); color: #7f1d1d; }
+.income-row td { background: #f0fdf4; }
+.expense-row td { background: #fff7f7; }
+.tab-btn { border: none; background: none; padding: 8px 20px; border-bottom: 3px solid transparent; font-weight: 600; color: #6c757d; cursor: pointer; }
+.tab-btn.active { border-bottom-color: #0d6efd; color: #0d6efd; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 mt-4 pb-5">
+
+    <!-- Header -->
+    <div class="d-flex align-items-center gap-2 mb-4">
+        <a href="{% url 'operations_hub' %}" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Home
+        </a>
+        <h4 class="mb-0 ms-2"><i class="bi bi-journal-text me-2 text-primary"></i>Ledger</h4>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card ledger-summary-card bg-success bg-opacity-10 border-success">
+                <div class="text-muted small mb-1">Total Income</div>
+                <div class="fs-3 fw-bold text-success" id="l-income">—</div>
+                <div class="text-muted small">From Fish Market orders</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card ledger-summary-card bg-danger bg-opacity-10 border-danger">
+                <div class="text-muted small mb-1">Paid Expenses (AP)</div>
+                <div class="fs-3 fw-bold text-danger" id="l-expenses">—</div>
+                <div class="text-muted small" id="l-unpaid-note">— unpaid / overdue</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card ledger-summary-card border" id="net-card">
+                <div class="text-muted small mb-1">Net (Income − Paid Expenses)</div>
+                <div class="fs-3 fw-bold" id="l-net">—</div>
+                <div class="small" id="l-net-label">—</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card ledger-summary-card bg-secondary bg-opacity-10 border-secondary">
+                <div class="text-muted small mb-1">Total Transactions</div>
+                <div class="fs-3 fw-bold" id="l-count">—</div>
+                <div class="text-muted small">Income + Expense entries</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="border-bottom mb-3">
+        <button class="tab-btn active" id="tab-all" onclick="showTab('all')">All</button>
+        <button class="tab-btn" id="tab-income" onclick="showTab('income')">Income</button>
+        <button class="tab-btn" id="tab-expenses" onclick="showTab('expenses')">Expenses</button>
+    </div>
+
+    <!-- Table -->
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Date</th>
+                            <th>Description</th>
+                            <th>Category</th>
+                            <th>Type</th>
+                            <th class="text-end">Amount</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ledger-tbody">
+                        <tr><td colspan="6" class="text-center text-muted py-4">Loading…</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let ledgerData = null;
+let activeTab = 'all';
+
+document.addEventListener('DOMContentLoaded', loadLedger);
+
+function loadLedger() {
+    fetch('/api/ledger/')
+    .then(r => r.json())
+    .then(data => {
+        ledgerData = data;
+        updateSummary(data.summary);
+        renderLedger();
+    });
+}
+
+function updateSummary(s) {
+    document.getElementById('l-income').textContent = '$' + s.total_income.toFixed(2);
+    document.getElementById('l-expenses').textContent = '$' + s.total_paid_expenses.toFixed(2);
+    document.getElementById('l-unpaid-note').textContent = '$' + s.total_unpaid_expenses.toFixed(2) + ' unpaid / overdue';
+    document.getElementById('l-net').textContent = (s.net >= 0 ? '+' : '') + '$' + s.net.toFixed(2);
+    document.getElementById('l-count').textContent = (ledgerData.income.length + ledgerData.expenses.length);
+
+    const netCard = document.getElementById('net-card');
+    const netLabel = document.getElementById('l-net-label');
+    if (s.net >= 0) {
+        netCard.className = 'card ledger-summary-card net-positive';
+        document.getElementById('l-net').style.color = '#065f46';
+        netLabel.textContent = 'Profitable';
+    } else {
+        netCard.className = 'card ledger-summary-card net-negative';
+        document.getElementById('l-net').style.color = '#7f1d1d';
+        netLabel.textContent = 'In the red';
+    }
+}
+
+function showTab(tab) {
+    activeTab = tab;
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('tab-' + tab).classList.add('active');
+    renderLedger();
+}
+
+function renderLedger() {
+    if (!ledgerData) return;
+
+    let rows = [];
+    if (activeTab === 'all' || activeTab === 'income') {
+        rows = rows.concat(ledgerData.income.map(r => ({ ...r, _type: 'income' })));
+    }
+    if (activeTab === 'all' || activeTab === 'expenses') {
+        rows = rows.concat(ledgerData.expenses.map(r => ({ ...r, _type: 'expense' })));
+    }
+
+    // Sort by date desc (using raw date string, good enough for display)
+    rows.sort((a, b) => b.date.localeCompare(a.date));
+
+    const tbody = document.getElementById('ledger-tbody');
+    if (!rows.length) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">No entries found.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = rows.map(r => {
+        const isIncome = r._type === 'income';
+        const rowClass = isIncome ? 'income-row' : 'expense-row';
+        const amountClass = isIncome ? 'text-success fw-bold' : 'text-danger fw-bold';
+        const sign = isIncome ? '+' : '−';
+        const typeLabel = isIncome
+            ? '<span class="badge bg-success">Income</span>'
+            : '<span class="badge bg-danger">Expense</span>';
+        const statusBadge = r.status
+            ? `<span class="badge ${r.status === 'Paid' || r.status === 'Confirmed' || r.status === 'Delivered' ? 'bg-success' : r.status === 'Overdue' ? 'bg-danger' : 'bg-warning text-dark'}">${r.status}</span>`
+            : '';
+        return `<tr class="${rowClass}">
+            <td class="small">${r.date}</td>
+            <td>${r.description}</td>
+            <td class="small text-muted">${r.category || (isIncome ? 'Fish Market' : '—')}</td>
+            <td>${typeLabel}</td>
+            <td class="text-end ${amountClass}">${sign}$${r.amount.toFixed(2)}</td>
+            <td>${statusBadge}</td>
+        </tr>`;
+    }).join('');
+}
+</script>
+{% endblock %}

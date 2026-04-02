@@ -973,3 +973,33 @@ class FishOrder(TenantModel):
 
     def __str__(self):
         return f"Order #{self.id} - {self.customer_name}"
+
+
+# =============================================================================
+# ACCOUNTS PAYABLE MODULE
+# =============================================================================
+
+class APExpense(TenantModel):
+    """Accounts Payable — logged expenses for the ledger"""
+    STATUS_CHOICES = [
+        ('Unpaid', 'Unpaid'),
+        ('Paid', 'Paid'),
+        ('Overdue', 'Overdue'),
+    ]
+
+    vendor = models.CharField(max_length=255)
+    description = models.CharField(max_length=500)
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    category = models.CharField(max_length=100, blank=True)
+    due_date = models.DateField(null=True, blank=True)
+    paid_date = models.DateField(null=True, blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Unpaid')
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.vendor} — ${self.amount}"

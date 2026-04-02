@@ -281,6 +281,16 @@ path('api/profile-orders/import/template/', download_import_template, name='down
     path('privacy-policy/', privacy_policy, name='privacy_policy'),
     path('terms-of-service/', terms_of_service, name='terms_of_service'),
 
+    # Finance — AP & Ledger
+    path('more-tools/', unused_tiles, name='unused_tiles'),
+    path('accounts-payable/', ap_expenses, name='ap_expenses'),
+    path('ledger/', ledger, name='ledger'),
+    path('api/ap/', ap_list, name='ap_list'),
+    path('api/ap/create/', ap_create, name='ap_create'),
+    path('api/ap/<int:expense_id>/update/', ap_update, name='ap_update'),
+    path('api/ap/<int:expense_id>/delete/', ap_delete, name='ap_delete'),
+    path('api/ledger/', ledger_data, name='ledger_data'),
+
     # Fish Market — public ordering page
     path('fish-market/', fish_market_redirect, name='fish_market_redirect'),
     path('fish-market/<str:slug>/', fish_market_page, name='fish_market_page'),
