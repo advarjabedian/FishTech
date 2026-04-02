@@ -135,6 +135,15 @@ def register_view(request):
                 companyname=company_name,
                 logo=get_default_company_logo(1),
             )
+
+            # Auto-create default Retail customer
+            from core.models import Customer
+            Customer.all_objects.create(
+                tenant=tenant,
+                customer_id=0,
+                name='Retail',
+                is_retail=True,
+            )
             
             # Log them in
             login(request, user)

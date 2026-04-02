@@ -92,9 +92,65 @@ class TenantUser(models.Model):
     user = models.OneToOneField(DjangoUser, on_delete=models.CASCADE)
     tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE)
     is_admin = models.BooleanField(default=False)
-    
+
     def __str__(self):
         return f"{self.user.username} - {self.tenant.name}"
+
+
+class Lead(models.Model):
+    """Sales lead tracking for platform admin"""
+    STAGE_CHOICES = [
+        ('prospect', 'Prospect'),
+        ('contacted', 'Contacted'),
+        ('demo', 'Demo Scheduled'),
+        ('proposal', 'Proposal Sent'),
+        ('negotiation', 'Negotiation'),
+        ('won', 'Won'),
+        ('lost', 'Lost'),
+    ]
+
+    company_name = models.CharField(max_length=255)
+    contact_name = models.CharField(max_length=255, blank=True)
+    contact_email = models.EmailField(blank=True)
+    contact_phone = models.CharField(max_length=50, blank=True)
+    stage = models.CharField(max_length=20, choices=STAGE_CHOICES, default='prospect')
+    contract_value = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    notes = models.TextField(blank=True)
+    last_contacted = models.DateField(null=True, blank=True)
+    next_followup = models.DateField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['next_followup', '-updated_at']
+
+    def __str__(self):
+        return f"{self.company_name} - {self.get_stage_display()}"
+
+class TenantDocument(models.Model):
+    """Signable documents associated with a tenant"""
+    DOCUMENT_TYPES = [
+        ('subscription_agreement', 'Subscription Agreement'),
+        ('privacy_policy', 'Privacy Policy'),
+        ('sla', 'Service Level Agreement'),
+    ]
+
+    tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name='documents')
+    document_type = models.CharField(max_length=50, choices=DOCUMENT_TYPES)
+    signing_token = models.UUIDField(default=uuid.uuid4, unique=True)
+    is_signed = models.BooleanField(default=False)
+    signer_name = models.CharField(max_length=255, blank=True)
+    signer_title = models.CharField(max_length=255, blank=True)
+    signature = models.TextField(blank=True)
+    signed_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = [['tenant', 'document_type']]
+
+    def __str__(self):
+        return f"{self.tenant.name} - {self.get_document_type_display()}"
+
 
 class Company(TenantModel):
     """Company/facility within a tenant"""
@@ -355,13 +411,14 @@ class Customer(TenantModel):
     ship_city = models.CharField(max_length=100, blank=True)
     ship_state = models.CharField(max_length=50, blank=True)
     ship_zipcode = models.CharField(max_length=20, blank=True)
+    is_retail = models.BooleanField(default=False, help_text="Retail customer - items appear on the Fish Market page")
     created_at = models.DateTimeField(auto_now_add=True)
     public_token = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
-    
+
     class Meta:
         db_table = 'documents_customer'
         unique_together = [['tenant', 'customer_id']]
-    
+
     def __str__(self):
         return self.name
 
@@ -829,16 +886,43 @@ class CustomerProfile(TenantModel):
     
     # Flags
     is_active = models.BooleanField(default=True)
-    
+
+    # Retail display fields (used when customer.is_retail=True)
+    category = models.CharField(max_length=100, blank=True)
+    image = models.TextField(blank=True)  # Base64 encoded image
+    sort_order = models.IntegerField(default=0)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         db_table = 'profile_customerprofile'
-        ordering = ['description']
+        ordering = ['sort_order', 'description']
 
     def __str__(self):
         return f"{self.customer.name} - {self.description}"
+
+
+def product_image_path(instance, filename):
+    """Upload to: products/{profile_id}/{filename}"""
+    import os
+    ext = os.path.splitext(filename)[1]
+    return f"products/{instance.profile_id}/{instance.slot}{ext}"
+
+
+class ProductImage(models.Model):
+    """Up to 3 images per CustomerProfile item, stored in R2"""
+    profile = models.ForeignKey(CustomerProfile, on_delete=models.CASCADE, related_name='images')
+    slot = models.IntegerField(help_text="1, 2, or 3")
+    image = models.ImageField(upload_to=product_image_path)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = [['profile', 'slot']]
+        ordering = ['slot']
+
+    def __str__(self):
+        return f"{self.profile.description} - Image {self.slot}"
 
 
 # =============================================================================
@@ -973,3 +1057,65 @@ class FishOrder(TenantModel):
 
     def __str__(self):
         return f"Order #{self.id} - {self.customer_name}"
+
+
+# =============================================================================
+# ACCOUNTS PAYABLE MODULE
+# =============================================================================
+
+class APExpense(TenantModel):
+    """Accounts Payable — logged expenses for the ledger"""
+    STATUS_CHOICES = [
+        ('Unpaid', 'Unpaid'),
+        ('Paid', 'Paid'),
+        ('Overdue', 'Overdue'),
+    ]
+
+    vendor = models.CharField(max_length=255)
+    description = models.CharField(max_length=500)
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    category = models.CharField(max_length=100, blank=True)
+    due_date = models.DateField(null=True, blank=True)
+    paid_date = models.DateField(null=True, blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Unpaid')
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.vendor} — ${self.amount}"
+
+
+# =============================================================================
+# ACCOUNTS RECEIVABLE MODULE
+# =============================================================================
+
+class ARInvoice(TenantModel):
+    """Accounts Receivable — invoices owed to the business"""
+    STATUS_CHOICES = [
+        ('Unpaid', 'Unpaid'),
+        ('Paid', 'Paid'),
+        ('Overdue', 'Overdue'),
+    ]
+
+    customer = models.CharField(max_length=255)
+    description = models.CharField(max_length=500)
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    invoice_date = models.DateField()
+    due_date = models.DateField(null=True, blank=True)
+    paid_date = models.DateField(null=True, blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Unpaid')
+    payment_type = models.CharField(max_length=100, blank=True)
+    payment_notes = models.TextField(blank=True)
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-invoice_date', '-created_at']
+
+    def __str__(self):
+        return f"{self.customer} — ${self.amount}"

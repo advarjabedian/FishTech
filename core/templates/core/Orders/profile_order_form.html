@@ -131,7 +131,7 @@
                                 <div class="item-details">
                                     {% if profile.unit_type %}<span><strong>Unit:</strong> {{ profile.unit_type }}</span>{% endif %}
                                     {% if profile.pack_size %}<span><strong>Pack:</strong> {{ profile.pack_size }}</span>{% endif %}
-                                    {% if profile.sales_price %}<span><strong>Price:</strong> ${{ profile.sales_price }}</span>{% endif %}
+                                    {% if profile.sales_price %}<span><strong>Price:</strong> ${{ profile.sales_price|floatformat:2 }}</span>{% endif %}
                                 </div>
                             </div>
                             <div class="item-totals">
@@ -517,7 +517,14 @@ function getCookie(name) {
                         </div>
                         <div class="col-md-2">
                             <label class="form-label small mb-1">Unit Type</label>
-                            <input type="text" id="inlineUnit" class="form-control form-control-sm" placeholder="LB">
+                            <select id="inlineUnit" class="form-select form-select-sm">
+                                <option value="">--</option>
+                                <option value="Cs">Cs</option>
+                                <option value="Pcs">Pcs</option>
+                                <option value="Pck">Pck</option>
+                                <option value="Lbs">Lbs</option>
+                                <option value="Side">Side</option>
+                            </select>
                         </div>
                         <div class="col-md-2">
                             <label class="form-label small mb-1">Pack Size</label>
@@ -558,7 +565,14 @@ function renderProfileItems() {
         const id = row.dataset.profileId;
         html += `<tr id="profile-edit-row-${id}">
             <td><input type="text" class="form-control form-control-sm" value="${escAttr(row.dataset.description)}" id="pe-desc-${id}"></td>
-            <td><input type="text" class="form-control form-control-sm" value="${escAttr(row.dataset.unitType)}" id="pe-unit-${id}" style="width:70px;"></td>
+            <td><select class="form-select form-select-sm" id="pe-unit-${id}" style="width:90px;">
+                <option value="">--</option>
+                <option value="Cs" ${row.dataset.unitType==='Cs'?'selected':''}>Cs</option>
+                <option value="Pcs" ${row.dataset.unitType==='Pcs'?'selected':''}>Pcs</option>
+                <option value="Pck" ${row.dataset.unitType==='Pck'?'selected':''}>Pck</option>
+                <option value="Lbs" ${row.dataset.unitType==='Lbs'?'selected':''}>Lbs</option>
+                <option value="Side" ${row.dataset.unitType==='Side'?'selected':''}>Side</option>
+            </select></td>
             <td><input type="number" class="form-control form-control-sm" value="${row.dataset.packSize}" id="pe-pack-${id}" step="0.01" style="width:80px;"></td>
             <td><input type="number" class="form-control form-control-sm" value="${row.dataset.price}" id="pe-price-${id}" step="0.01" style="width:90px;"></td>
             <td class="text-end" style="white-space:nowrap;">
@@ -606,7 +620,7 @@ function saveProfileRow(id) {
             row.querySelector('.item-details').innerHTML =
                 (data.unit_type ? `<span><strong>Unit:</strong> ${data.unit_type}</span>` : '') +
                 (data.pack_size ? `<span><strong>Pack:</strong> ${data.pack_size}</span>` : '') +
-                (data.sales_price ? `<span><strong>Price:</strong> $${data.sales_price}</span>` : '');
+                (data.sales_price ? `<span><strong>Price:</strong> $${parseFloat(data.sales_price).toFixed(2)}</span>` : '');
         }
         // Flash the row green briefly
         const editRow = document.getElementById(`profile-edit-row-${id}`);
@@ -679,7 +693,7 @@ function saveInlineItem() {
                     <div class="item-details">
                         ${data.unit_type ? `<span><strong>Unit:</strong> ${data.unit_type}</span>` : ''}
                         ${data.pack_size ? `<span><strong>Pack:</strong> ${data.pack_size}</span>` : ''}
-                        ${data.sales_price ? `<span><strong>Price:</strong> $${data.sales_price}</span>` : ''}
+                        ${data.sales_price ? `<span><strong>Price:</strong> $${parseFloat(data.sales_price).toFixed(2)}</span>` : ''}
                     </div>
                 </div>
                 <div class="item-totals"><div class="total-lbs text-muted"></div><div class="total-price fw-bold"></div></div>

@@ -1,0 +1,415 @@
+"id","SopDId","Description","HSOPD_Zone","Pre","Mid","Post","Input","ZoneID","Zones_Zone","Company","created_at","ImageRequired"
+1570,1,Freezer 1 Temperature is at or below 8 degrees.,7,1,1,1,1,7,Freezer 1,1,,0
+1571,2,Freezer 2 Temperature is at or below 8 degrees.,69,1,1,1,1,69,Freezer 2,1,,0
+1572,3,Cooler Temperature at or Below 38 Degrees F.,22,1,1,1,1,22,Temperatures,2,,0
+1573,4,Cooler Unit and Equipment Is In Good Repair and In Acceptable Working Condition.,21,1,1,1,0,21,Cooler,2,,0
+1574,5,"Condition and Cleanliness of Food Contact Surfaces Observed Clean, Sanitized, and In Good Repair.",21,1,1,1,0,21,Cooler,2,,0
+1575,6,"Condition and Cleanliness of Non-Food Contact Surfaces Observed Clean, Sanitized, and In Good Repair.",21,1,0,1,0,21,Cooler,2,,0
+1576,7,Freezer Temperature at or Below 15 Degrees F.,22,1,1,1,1,22,Temperatures,2,,0
+1577,8,Smoking Equipment Is In Good Repair and In Acceptable Working Condition.,67,1,1,1,0,67,Smoke Room,2,,0
+1578,9,"Condition and Cleanliness of Food Contact Surfaces Observed Clean, Sanitized, and In Good Repair.",67,1,1,1,0,67,Smoke Room,2,,0
+1579,10,"Condition and Cleanliness of Non-Food Contact Surfaces Observed Clean, Sanitized, and In Good Repair.",67,1,0,1,0,67,Smoke Room,2,,0
+1580,11,All Drains free and clear of debris.,67,1,1,1,0,67,Smoke Room,2,,0
+1581,12,Freezer 1 Unit and Equipment Is In Good Repair and In Acceptable Working Condition.,23,1,1,1,0,23,Freezer,2,,0
+1582,13,"Condition and Cleanliness of Food Contact Surfaces Observed Clean, Sanitized, and In Good Repair.",23,1,1,1,0,23,Freezer,2,,0
+1583,14,"Condition and Cleanliness of Non-Food Contact Surfaces Observed Clean, Sanitized, and In Good Repair.",23,1,0,1,0,23,Freezer,2,,0
+1584,15,"Condition and Cleanliness of Food Contact Surfaces Observed Clean, Sanitized, and In Good Repair.  (i.e.  Knives, Gloves, Aprons, Tables, Cutting Boards, Food Process Equipment)",19,1,1,1,0,19,Pack Room 1,2,,0
+1585,16,"Condition and Cleanliness of Non-Food Contact Surfaces Observed Clean, Sanitized, and In Good Repair. (i.e.  Floors, Walls, Shelves, Sinks)",19,1,1,1,0,19,Pack Room 1,2,,0
+1586,17,"Food Process and Handling Equipment Clean, Sanitized, and In Good Repair.",19,1,1,1,0,19,Pack Room 1,2,,0
+1587,19,"Condition and Cleanliness of Food Contact Surfaces Observed Clean, Sanitized, and In Good Repair.  (i.e.  Knives, Gloves, Aprons, Tables, Cutting Boards, Food Process Equipment)",20,1,1,1,0,20,Pack Room 2,2,,0
+1588,20,"Condition and Cleanliness of Non-Food Contact Surfaces Observed Clean, Sanitized, and In Good Repair. (i.e.  Floors, Walls, Shelves, Sinks)",20,1,1,1,0,20,Pack Room 2,2,,0
+1589,21,"Food Process and Handling Equipment Clean, Sanitized, and In Good Repair.",20,1,1,1,0,20,Pack Room 2,2,,0
+1590,22,"Smoked Salmon Fillet Slicing Machine(s) Clean, Sanitized, and In Good Repair.",20,1,1,1,0,20,Pack Room 2,2,,0
+1591,23,All Hand-Washing Stations Cleaned and Properly Supplied.,27,1,1,1,0,27,Restrooms,2,,0
+1592,24,"All Toilets clean, properly functioning and adequately Supplied.",27,1,1,1,0,27,Restrooms,2,,0
+1593,25,"Floors, Walls, and Other Surfaces observed Clean and Free From Debris.",27,1,1,1,0,27,Restrooms,2,,0
+1594,26,Trash area Observed Neat and Properly Maintained.,26,1,1,1,0,26,Exterior,2,,0
+1595,27,Entrance To Raw and Pack Rooms Observed Clean and Free of Debris.,26,1,1,1,0,26,Exterior,2,,0
+1596,28,"Insects, Rodents, and other Pests controlled and Excluded From Processing Areas.  Proper Functioning Doors, Screens, and Barriers (i.e. Air Curtains).",28,1,1,1,0,28,General,2,,0
+1597,29,Refuse / Trash Containers Emptied and Cleaned as Necessary.,28,1,1,1,0,28,General,2,,0
+1598,30,"Poisonous / Toxic Materials and Chemicals Properly Used, Stored, Seperated, and Labeled.",28,1,1,1,0,28,General,2,,0
+1599,31,"Adequate Equipment for Cleaning and Sanitizing (Sinks, Brushes, Detergents, Sanitizers, Etc.)",28,1,1,1,0,28,General,2,,0
+1600,32,Only Chemicals Necessary for Plant Operations Maintained on premisis.,28,1,1,1,0,28,General,2,,0
+1601,33,Lights Protected and Ceilings Observed Clean.,28,1,1,1,0,28,General,2,,0
+1602,34,All Drains are Clean and Free of Debris,28,1,1,1,0,28,General,2,,0
+1603,35,Product Protected From Contamination.,28,1,1,1,0,28,General,2,,0
+1604,36,"Condensate Not Contaminating Food Contact Surfaces, Product, Packaging Material.",28,1,1,1,0,28,General,2,,0
+1605,37,"Processing Operations Separated by Partitions, Space, or Time.",28,1,1,1,0,28,General,2,,0
+1606,38,Employees Do Not Show Signs of Medical Problems.,28,1,1,0,0,28,General,2,,0
+1607,39,"Employees Observed with Clean and Appropriate Attire.  (i.e. Hairnets, Aprons, Gloves, Boots, Etc.)",28,1,1,0,0,28,General,2,,0
+1608,40,Employees Observed Following Saftey Procedures When Using Food Contact and Non-Food Contact Equipment and Utensils.,28,1,1,0,0,28,General,2,,0
+1609,41,"Hands, Gloves, Equipment, and Utensils Washed / Sanitized after contact with unsanitary objects.",28,1,1,0,0,28,General,2,,0
+1610,42,"Quaternary Sanitizer Used To Sanitize Equipment, Tables and all other Food Contact and Non-Food Contact Equiptment.",29,1,0,0,0,29,Sanitation,2,,0
+1611,43,Thermometor Used To Take Product Internal Temperatures and IR (Laser) Thermometor Are Accurate as Verified By Using The Ice Bath Method.,22,1,0,0,1,22,Temperatures,2,,0
+1612,44,Sanitizer Being Used is a Quaternary Ammonium Verified via Test Strip at 400 PPM For All Non-Food Contact Surfaces. (MG 4-Quat MSDS provided in records),29,1,0,0,1,29,Sanitation,2,,0
+1613,45,Visual Inspection Of Production Areas To Ensure Safe For Production.,29,1,0,0,0,29,Sanitation,2,,0
+1615,47,No Food Processing Utensils Observed In Unauthorized Areas. (i.e. Knifes In Receiving Areas.),30,1,1,1,0,30,General,1,,0
+1616,48,"Freezer 1 Floors, Walls, and Ceilings Observed Clean and Free From Debris.",7,1,1,1,0,7,Freezer 1,1,,0
+1617,49,Employees observed following safety procedures when using food contact and non-food contact equipment and utensils.,30,1,1,1,0,30,General,1,,0
+1618,50,"Hands, gloves, equipment, and utensils washed/sanitized after contact with unsanitary objects.",30,1,1,1,0,30,General,1,,0
+1619,51,Freezer 1 unit and equipment is in good repair and in acceptable working condition.,7,1,1,1,0,7,Freezer 1,1,,0
+1620,52,"Freezer 1 Condition and cleanliness of food contact surfaces observed clean, sanitized, and in good repair.",7,1,1,1,0,7,Freezer 1,1,,0
+1621,53,"Freezer 1 Condition and cleanliness of non-food contact surfaces observed clean, sanitized, and in good repair.",7,1,1,1,0,7,Freezer 1,1,,0
+1622,54,Certified Thermometer Temperature Readout (32F),58,0,1,0,1,58,Thermometers,1,,0
+1625,57,Employees do not show signs of medical problems,30,1,1,0,0,30,General,1,,0
+1626,58,"Condensate not contaminating food contact surfaces, products, or packaging materials.",30,1,1,1,0,30,General,1,,0
+1627,59,Drains are clean and free of debris,30,1,1,1,0,30,General,1,,0
+1628,60,Lights protected and ceilings oberved clean.,30,1,1,1,0,30,General,1,,0
+1629,61,"Only chemicals necessary for plant operations maintained on premises, They are properly secured in the chemical cage and verified the lock is secured and only authorized personnel has key to unlock.",30,1,1,1,0,30,General,1,,0
+1630,62,"adequate equipment for cleaning and sanitizing (sinks, brushes, detergents, sanitizers, etc.)",30,1,1,1,0,30,General,1,,0
+1631,63,"Poisonous/toxic materials and chemicals properly used, segregated, labeled, and properly secured in the chemical cage.",30,1,1,1,0,30,General,1,,0
+1632,64,"Insects, rodents, and other pests controlled and excluded from processing areas. Proper functioning doors, screens, and barriers (i.e. air curtains)",30,1,1,1,0,30,General,1,,0
+1633,65,"Processing operations separated by partitions, space, or time",30,1,1,1,0,30,General,1,,0
+1635,67,"Condition and cleanliness of food contact surfaces observed clean, sanitized, and in good repair. (i.e. knives, gloves, aprons, tables, cutting boards, food process equipment)",2,1,1,1,0,2,Process Room 2,1,,0
+1636,68,"Whizard 3 is functioning adequately, clean, sanitized, and in good repair.",2,1,1,1,0,2,Process Room 2,1,,0
+1638,70,"Condition and cleanliness of non-food contact surfaces observed clean, sanitized, and in good repair (i.e. floors, walls, shelves, sinks, etc.)",2,1,1,1,0,2,Process Room 2,1,,0
+1639,71,"Refrigeration Unit is functioning adequately, clean, sanitized, and in good repair.",2,1,1,1,0,2,Process Room 2,1,,0
+1640,72,"Food process and handling equipment clean, sanitized, and in good repair.",1,1,1,1,0,1,Process Room 1,1,,0
+1641,73,"Food process and handling equipment clean, sanitized, and in good repair.",2,1,1,1,0,2,Process Room 2,1,,0
+1642,74,"Protection from adulterants: light fixtures shielded, product protected during processing. Lights in the processing room functioning.",1,1,1,1,0,1,Process Room 1,1,,0
+1643,75,"Steen Tabletop Skinner is functioning adequately, clean, sanitized, and in good repair.",1,0,0,0,0,1,Process Room 1,1,,0
+1644,76,"Portion Machine I-Cut 130 is functioning adequately, clean, sanitized, and in good repair.",2,0,0,0,0,2,Process Room 2,1,,0
+1645,77,"Box Strapper Machine is functioning adequately, clean, sanitized, and in good repair.",2,1,1,1,0,2,Process Room 2,1,,0
+1646,79,Cooler 1 Temperature is at or below 40 degrees.,4,1,1,1,1,4,Cooler 1,1,,0
+1647,80,"Condition and cleanliness of food contact surfaces observed clean, sanitized, and in good repair.",69,1,1,1,0,69,Freezer 2,1,,0
+1648,81,"Lunch room is kept clean after each employee break. (i.e. all food and drink removed from the tables, employees are cleaning after themselves)",10,1,1,1,0,10,Lunch Room,1,,0
+1649,82,"Facilities have soap, hot and cold or tempered water, sanitary towels (disposable papertowels), waste receptacles and posted hand washing signs. Properly maintained",14,1,1,1,0,14,Bathrooms,1,,0
+1650,83,"Product containers are covered, when necessary, to protect the product from contamination. Drainage from product containers is directed to floor drains.",30,1,1,1,0,30,General,1,,0
+1651,84,"Condensate from fixtures, ducts, and pipes does not contaminate seafood, food contact surfaces or packing material.",30,1,1,1,0,30,General,1,,0
+1652,85,Unpackaged coded products separated from raw products,30,1,1,1,0,30,General,1,,0
+1653,86,Locker room area is kept clean,30,1,1,1,0,30,General,1,,0
+1654,87,Cooler 1 unit and equipment in good repair and acceptable working condition,4,1,1,1,0,4,Cooler 1,1,,0
+1655,88,"Condition and cleanliness of food contact surfaces observed clean, sanitized, and in good repiar.",4,1,1,1,0,4,Cooler 1,1,,0
+1656,89,"Condition and cleanliness of non-food contact areas observed clean, sanitized, free of water built up and in good repair.",4,1,1,1,0,4,Cooler 1,1,,0
+1657,90,Cooler 2  temperature is at or below 40 degrees.,5,0,0,0,0,5,Cooler 2,1,,0
+1658,91,"Cooler 2 unit is in good repair and acceptable working condition. Cleanliness of food contact and non food contact surfaces observed as clean, sanitized, and in proper care.",5,0,0,0,0,5,Cooler 2,1,,0
+1659,92,All stairwells of the building are kept clean and free of debris and are in proper condition.,30,1,1,1,0,30,General,1,,0
+1660,93,Sanitizer Being Used is a Quaternary Amonium Verified via Test Strip at 200 PPM For All Food Contact Surfaces. (MG 4-Quat MSDS provided in records),29,1,0,0,1,29,Sanitation,2,,0
+1637,69,"Condition and cleanliness of non-food contact surfaces observed clean, sanitized, and in good repair (i.e. floors, walls, shelves, sinks, etc.)",1,1,1,1,0,1,Process Room 1,1,,0
+1634,66,"Condition and cleanliness of food contact surfaces observed clean, sanitized, and in good repair. (i.e. knives, gloves, aprons, tables, cutting boards, food process equipment.)",1,1,1,1,0,1,Process Room 1,1,,0
+1661,94,Mop all non-food contact surfaces with foaming FCC-7 with Caustic and rinse away.,29,1,0,0,0,29,Sanitation,2,,0
+1662,96,Sanitizer Being Used is a FCC-7 with Caustic Verified via Test Strip at 400 PPM For All Non-Food Contact Surfaces. (MG FCC-7 MSDS provided in records),29,1,0,0,1,29,Sanitation,2,,0
+1663,97,All receiving check-lists have been logged and filed in accordance with the HACCP Plan,28,0,0,1,0,28,General,2,,0
+1664,98,All production logs have been completed and filed in accordance to HACCP Plan,28,0,0,1,0,28,General,2,,0
+1665,99,Receiving area clear and free from debris,30,1,1,1,0,30,General,1,,0
+1666,100,"No evident spillage of debri such as wood from pallets, cardboard, plastic and plystyrene packaging materials, chemicals, oil and fluids as a control measure to ensure Storm Water Pollution Prevention Plan.",30,1,1,1,0,30,General,1,,0
+1667,101,"No evident spillage of debri such as wood from pallets, cardboard, plastic and plystyrene packaging materials, chemicals, oil and fluids as a control measure to ensure Storm Water Pollution Prevention Plan.",28,1,1,1,0,28,General,2,,0
+1668,102,Suffienct Hot Water Measuring At or Above 120 Degrees F. Available At All Sinks.,28,1,1,1,1,28,General,2,,0
+1669,103,Chlorine Litmus Test Strip will be taken Post-Operationally during sanitizing hours with a Food-Safe acceptable concentration ranging between 50-100 ppm.,29,1,0,0,1,29,Sanitation,2,,0
+1670,104,Foot Bath uses Eco Lab Clear V Sanitizer which is tested within appropriate levels via Test Strip to record the accepted ranges anywhere between 200-400 PPM.,29,1,0,0,1,29,Sanitation,2,,0
+1671,105,Cooler 1 Temperature at or Below 38 Degrees F.,31,1,1,1,1,31,Cooler,3,,0
+1672,106,"Condition and Cleanliness of Food Contact Surfaces Observed Clean, Sanitized, and In Good Repair.",31,1,0,1,0,31,Cooler,3,,0
+1673,107,Cooler 1 Unit and Equipment Is In Good Repair and In Acceptable Working Condition.,31,0,0,1,0,31,Cooler,3,,0
+1674,109,"Floors, Walls, and Other Surfaces observed Clean and Free From Debris.",35,1,1,1,0,35,Bathrooms,3,,0
+1675,110,"All Hand-Washing Stations Cleaned & Properly Supplied.  (Soap, Paper Towels, Etc.)",35,1,1,1,0,35,Bathrooms,3,,0
+1676,111,Thermometer PROBE #1: Accurate as Verified By Using The Ice Bath Method,37,1,0,0,1,37,Tools,3,,0
+1677,112,Safety Of Water And Ice:   Water Faucets and Fixtures Have Anti-Siphoning Devices.,36,1,0,1,0,36,General,3,,0
+1678,113,Thermometer PROBE #2: Accurate as Verified By Using The Ice Bath Method,37,1,0,0,1,37,Tools,3,,0
+1679,114,Thermometer LASER #1: Accurate as Verified By Using The Ice Bath Method,37,1,0,0,1,37,Tools,3,,0
+1680,115,Thermometer LASER #2: Accurate as Verified By Using The Ice Bath Method,37,1,0,0,1,37,Tools,3,,0
+1681,117,"Condition & Cleanliness of Food Contact Surfaces (Including Utensils, Gloves & Outer Garments) Are Adequately Clean and Sanitary.",36,1,0,1,0,36,General,3,,0
+1682,118,"Condition and Cleanliness of Food Contact Surfaces Observed Clean, Sanitized, and In Good Repair.",32,1,0,1,0,32,Freezer,3,,0
+1683,119,Freezer 1 Temperature at or Below 15 Degrees F.,32,1,0,1,1,32,Freezer,3,,0
+1684,121,Prevention of Cross-Contamination: Employee Practices Do Not Result In Food Contamination.,36,1,0,1,0,36,General,3,,0
+1685,122,Prevention of Cross-Contamination: Plant Grounds Are In Good Condition,36,1,0,1,0,36,General,3,,0
+1686,123,Prevention of Cross-Contamination: Floors Have Adequate Drainage.,36,1,0,1,0,36,General,3,,0
+1687,124,Prevention of Cross-Contamination: Plant Building Is In Good Repair.,36,1,0,1,0,36,General,3,,0
+1688,125,Prevention of Cross-Contamination: Different Products Processing Separated By Space Or Time.,36,1,0,1,0,36,General,3,,0
+1689,126,Prevention of Cross-Contamination:  Waste Is Removed From Processing Areas.,36,1,0,1,0,36,General,3,,0
+1690,127,Prevention of Cross-Contamination: Safety-Type Lighting Used.,36,1,0,1,0,36,General,3,,0
+1691,128,Prevention of Cross-Contamination:  No Drip Over Food Or Packaging Materials,36,1,0,1,0,36,General,3,,0
+1692,130,Prevention of Cross-Contamination:  Different Products Physically Separated In Cooler,31,1,0,0,0,31,Cooler,3,,0
+1693,131,Prevention of Cross-Contamination:  Different Products Physically Separated In Freezer,32,1,0,1,0,32,Freezer,3,,0
+1694,132,Prevention of Cross-Contamination:  Packaging Materials Protected From Contaminants,36,1,0,1,0,36,General,3,,0
+1695,133,"All Toilet Facilities are Clean, Sanitary and In Good Repair.",35,1,0,1,0,35,Bathrooms,3,,0
+1696,135,"Food, Food-Packaging Materials, and Food Contact Surfaces are Protected From Adulteration.",36,1,1,1,0,36,General,3,,0
+1697,136,Equipment Used Are All In Good Repair.,36,1,0,1,0,36,General,3,,0
+1698,137,Toxic Compounds Identified and Stored Properly.,36,1,0,1,0,36,General,3,,0
+1699,138,Proper Containers and Procedures Are Used to Separate Toxic Compounds.,36,1,0,1,0,36,General,3,,0
+1700,139,Employee Health Conditions Are Acceptable.,38,1,0,1,0,38,Personnel,3,,0
+1701,140,Employees do Not Have Infected Lesions.,38,1,0,1,0,38,Personnel,3,,0
+1702,141,Exclusion Of Pests:  No Pests In Plant.,36,1,0,1,0,36,General,3,,0
+1703,143,Hino 1 is clean and presentable.,40,1,0,0,0,40,Fleet,1,,0
+1704,144,Hino 1 refrigeration unit in proper working condition and holding temp.,40,1,0,0,0,40,Fleet,1,,0
+1705,145,Hino 1 in good working condition,40,1,0,0,0,40,Fleet,1,,0
+1706,146,Hino 2 in good working condition,40,1,0,0,0,40,Fleet,1,,0
+1707,147,Hino 2 is clean and presentable.,40,1,0,0,0,40,Fleet,1,,0
+1708,148,Hino 2 refrigeration unit in proper working condition and holding temp.,40,1,0,0,0,40,Fleet,1,,0
+1709,149,Freightliner in good working condition,40,1,0,0,0,40,Fleet,1,,0
+1710,150,Freightliner is clean and presentable.,40,1,0,0,0,40,Fleet,1,,0
+1713,153,Isuzu in good working condition,40,1,0,0,0,40,Fleet,1,,0
+1714,154,Isuzu refrigeration unit in proper working condition and holding temp.,40,1,0,0,0,40,Fleet,1,,0
+1715,155,All vans in good working condition,40,1,0,0,0,40,Fleet,1,,0
+1716,156,All Vans clean and presentable.,40,1,0,0,0,40,Fleet,1,,0
+1717,157,All Vans refrigeration unit in proper working condition and holding temp.,40,1,0,0,0,40,Fleet,1,,0
+1718,158,Labels observed on finished product and found to be correct and accurate including allergen information.,30,0,1,0,0,30,General,1,,0
+1719,160,"Perform a complete Visual and Functional test on all operational Electric Jacks (8), Forklifts (5), and Reachlifts (2). Report any issues.",41,1,0,0,0,41,P.I.E,1,,0
+1720,161,Ensure all P.I.E. with a battery charge of 25% or below is plugged into the chargers for at least 8hrs before processing arrives in the morning.,41,0,0,1,0,41,P.I.E,1,,0
+1721,162,Ensure all other P.I.E are powered off.,41,0,0,1,0,41,P.I.E,1,,0
+1722,163,Inspect all first aid kits and eye wash stations to ensure they are adequately supplied and uncontaminated.,42,1,0,0,0,42,First Aid Station,1,,0
+1723,164,"Sanitizer(Quat) strength, 200 ppm, verified through test strip.",39,0,0,0,0,39,Sanitation,3,,0
+1724,165,Coolers 1 & 2 Temperatures is at or Below 38F,72,1,1,1,1,72,Temperatures,14,,0
+1725,166,Freezer 3 temperature is at or below 8F,72,1,1,1,1,72,Temperatures,14,,0
+1726,167,Cooler 1 & 2 Units & Equipment are in good repair and proper working condition,43,1,1,1,0,43,Coolers,14,,0
+1727,168,Freezer unit and equipment are in good repair and proper working condition,54,1,1,1,0,54,Freezers,14,,0
+1728,169,"Cooler 1 & 2 floors, walls and ceilings observed clean and free of debris.",43,1,1,1,0,43,Coolers,14,,0
+1729,170,"Freezer 1 floors, walls and ceilings observed clean and free of debris.",54,1,1,1,0,54,Freezers,14,,0
+1730,171,Presence of Ice all products observed with new clean ice.,53,1,1,1,0,53,General,14,,0
+1731,172,Sanitizer buckets filled- Solution Tested and within the appropriate PPM.,44,1,1,1,0,44,Sanitation,14,,0
+1733,174,"All machinery in processing room must be clean, sanitized and in good repair.",46,1,1,1,0,46,Production,14,,0
+1734,175,"Condition and cleanliness of food contact surfaces are observed clean, sanitized, free of debris and in proper working condition.",46,1,1,1,0,46,Production,14,,0
+1735,176,"Condition and cleanliness of Non-food contact surfaces are observed clean, sanitized, free of debris and in proper working condition.",46,1,1,1,0,46,Production,14,,0
+1736,177,Safety of Water: check for blackflow devices,47,1,1,1,0,47,Water Safety,14,,0
+1737,178,Condition and Cleanliness of all Food Contact Surfaces: Prevention of Cross Contamination,53,1,1,1,0,53,General,14,,0
+1738,179,Product is protected from splash and condensate drip,46,1,1,1,0,46,Production,14,,0
+1739,180,Product is not directly in contact with floor,46,1,1,1,0,46,Production,14,,0
+1740,181,Product is seperated by lot as to ensure prevention of cross contamination of allergens.,46,1,1,1,0,46,Production,14,,0
+1741,182,Personal items not stored in processing area. Employees must store personal belongings in designated area.,53,1,1,1,0,53,General,14,,0
+1742,183,No eating or use of tobacco in processing area.,53,1,1,1,0,53,General,14,,0
+1743,184,Employees hands must be washed after any breaks.,53,1,1,1,0,53,General,14,,0
+1744,185,Toilet and Handwashing facilities are clean and properly supplied,49,1,1,1,0,49,Janitorial,14,,0
+1745,186,"Bathroom facilities have soap, sanitary towels (disposable paper towels), waste receptacles and posted hand washing signs. Properly maintained.",49,1,1,1,0,49,Janitorial,14,,0
+1746,187,Hand washing facilities have cold and hot water,49,1,1,1,0,49,Janitorial,14,,0
+1747,188,"Protection from adulterants: light fixtures shielded, product protected during processing.",48,1,1,1,0,48,Maintenance,14,,0
+1748,189,Drains are clean and free of debris,48,1,1,1,0,48,Maintenance,14,,0
+1749,190,Protection from Adulterants: Ceilings observed clean and in good condition,48,1,1,1,0,48,Maintenance,14,,0
+1750,191,"Proper labeling, storage and use of toxic compounds: cleaning supplies are stored in designated areas away from product",50,1,1,1,0,50,Labeling,14,,0
+1751,192,All supplies labeled and toxic compounds are stored properly.,50,1,1,1,0,50,Labeling,14,,0
+1752,193,Employees do not show any signs of medical issues.,53,1,1,1,0,53,General,14,,0
+1753,194,"End of Day walk around: doors locked, machines plugged in, freezer & cooler in proper working condition, ice machine on, lights out.",53,1,1,1,0,53,General,14,,0
+1754,195,Employees observed following safety procedures when using food contact & non-food contact equipment and utensils.,53,1,1,1,0,53,General,14,,0
+1755,196,"Insects, rodents and other pests controlled and excluded from processing areas, Proper functioning doors, screens, and barriers.",53,1,1,1,0,53,General,14,,0
+1756,197,"No evident spillage of debri such as wood from pallets, cardboard, plastic and plystyrene packaging materials, chemicals, oil and fluids as a control measure to ensure Storm Water",47,1,1,1,0,47,Water Safety,14,,0
+1757,198,Ensure that there is no ice built up on the condensor unit,32,1,0,0,0,32,Freezer,3,,0
+1758,199,"Remove ice build from the entrance of the freezer, if any.",32,1,0,0,0,32,Freezer,3,,0
+1759,200,Scale # 2 checked for proper calibration with designated 10lb weight by placing weight in center of scale then on each corner.,2,1,1,0,0,2,Process Room 2,1,,0
+1760,201,Labels observed on finished product and found to be correct and accurate,1,0,1,0,0,1,Process Room 1,1,,0
+1712,152,Thermometer #4 (Probe) calibration verified through ice bath method with certified thermometer for reference,58,0,1,0,1,58,Thermometers,1,,0
+1761,202,Labels observed on finished product and found to be correct and accurate.,2,0,1,0,0,2,Process Room 2,1,,0
+1762,203,Freezer 1 Temperature Observed At or Below 8 Degrees F.,72,1,1,1,1,72,Temperatures,14,,0
+1763,204,"Fillet Wash Conveyor is functioning adequately, clean, sanitized, and in good repair.",1,0,1,0,0,1,Process Room 1,1,,0
+1764,205,"MS2612.40 Pin Bone Machine is functioning adequately, clean, sanitized, and in good repair.",1,1,1,1,0,1,Process Room 1,1,,0
+1765,206,"Ice Flaker Machine 1 functioning adequately, clean, sanitized, and in good repair.",1,0,0,0,0,1,Process Room 1,1,,0
+1766,207,"Box Strapper Machine is functioning adequately, clean, sanitized, and in good repair.",1,1,1,1,0,1,Process Room 1,1,,0
+1767,208,"White Conveyor is functioning adequately, clean, sanitized, and in good repair.",1,0,0,0,0,1,Process Room 1,1,,0
+1768,209,"Lazy Susan Table is functioning adequately, clean, sanitized, and in good repair.",1,0,0,0,0,1,Process Room 1,1,,0
+1769,210,"Pin Bone Conveyor is functioning adequately, clean, sanitized, and in good repair.",1,1,1,1,0,1,Process Room 1,1,,0
+1770,211,"MS2730 Fillet Machine is functioning adequately, clean, sanitized, and in good repair.",1,1,1,1,0,1,Process Room 1,1,,0
+1771,212,"Blue Conveyor is functioning adequately, clean, sanitized, and in good repair.",1,1,1,1,0,1,Process Room 1,1,,0
+1772,213,"Whizard 1 & 2 are functioning adequately, clean, sanitized, and in good repair.",1,1,1,1,0,1,Process Room 1,1,,0
+1773,214,"Refrigeration Unit is functioning adequately, clean, sanitized, and in good repair.",1,1,1,1,0,1,Process Room 1,1,,0
+1774,215,"Steen Tabletop Skinner is functioning adequately, clean, sanitized, and in good repair.",2,1,1,1,0,2,Process Room 2,1,,0
+1775,216,"Nock Deep Skinner is functioning adequately, clean, sanitized, and in good repair.",3,1,1,1,0,3,Process Room 3,1,,0
+1776,217,"Protection from adulterants: light fixtures shielded, product protected during processing. Lights in the processing room functioning.",2,1,1,1,0,2,Process Room 2,1,,0
+1777,218,Scale #1checked for proper calibration with designated 10lb weight by placing weight in center of scale then on each corner.,1,1,1,0,0,1,Process Room 1,1,,0
+1778,219,"Freezer 2 Floors, Walls, and Ceilings Observed Clean and Free From Debris.",69,1,1,1,0,69,Freezer 2,1,,0
+1779,220,"Cooler 1 Floors, Walls, and Ceilings Observed Clean and Free From Debris.",4,1,1,1,0,4,Cooler 1,1,,0
+1780,221,Thermometer #2 (Probe) calibration verified through ice bath method with certified thermometer for reference,58,0,0,0,0,58,Thermometers,1,,0
+1782,223,Cooler Temperature is at or below 40 degrees.,59,1,1,1,0,59,Cooler 1,13,,0
+1783,224,"Cooler Floors, Walls, and Ceilings Obseverved Clean and Free From Debris.",59,1,1,1,0,59,Cooler 1,13,,0
+1784,225,Cooler unit and equipment is in good repair and in acceptable working condition.,59,1,1,1,0,59,Cooler 1,13,,0
+1785,226,"Condition and cleanliness of non-food contact surfaces observed clean, sanitized, and in good repair.",59,1,1,1,0,59,Cooler 1,13,,0
+1786,227,Cooler Temperature is at or below 40 degrees.,60,1,1,1,0,60,Cooler 2,13,,0
+1787,228,"Cooler Floors, Walls, and Ceilings Obseverved Clean and Free From Debris.",60,1,1,1,0,60,Cooler 2,13,,0
+1788,229,Cooler unit and equipment is in good repair and in acceptable working condition.,60,1,1,1,0,60,Cooler 2,13,,0
+1789,230,"Condition and cleanliness of non-food contact surfaces observed clean, sanitized, and in good repair.",60,1,1,1,0,60,Cooler 2,13,,0
+1790,231,Cooler Temperature is at or below 40 degrees.,61,1,1,1,0,61,Cooler 3,13,,0
+1791,232,"Cooler Floors, Walls, and Ceilings Obseverved Clean and Free From Debris.",61,1,1,1,0,61,Cooler 3,13,,0
+1792,233,Cooler unit and equipment is in good repair and in acceptable working condition.,61,1,1,1,0,61,Cooler 3,13,,0
+1793,234,"Condition and cleanliness of non-food contact surfaces observed clean, sanitized, and in good repair.",61,1,1,1,0,61,Cooler 3,13,,0
+1794,235,"Product containers are covered, when necessary, to protect the product from contamination. Drainage from product containers is directed to floor drains.",62,1,1,1,0,62,General,13,,0
+1795,236,"No evident spillage of debri such as wood from pallets, cardboard, plastic and plystyrene packaging materials, chemicals, oil and fluids as a control measure to ensure Storm Water Pollution Prevention Plan.",62,1,1,1,0,62,General,13,,0
+1796,237,"Lights protected and ceilings oberved clean. Drains are clean and free of debris, Receiving area clear and free from debris.",62,1,1,1,0,62,General,13,,0
+1797,238,All hand-washing stations cleaned and properly supplied,64,1,1,1,0,64,Restrooms,13,,0
+1798,239,"All Floors, walls, and other surfaces observed clean and free from debris. toilets clean, properly functioning and adequately supplied.",64,1,1,1,0,64,Restrooms,13,,0
+1799,240,"Facilities have soap, hot and cold or tempered water, sanitary towels (disposable papertowels), waste receptacles and posted hand washing signs. Properly maintained",64,1,1,1,0,64,Restrooms,13,,0
+1800,241,Freezer 2 unit and equipment in good repair and acceptable working condition,69,1,1,1,0,69,Freezer 2,1,,0
+1801,242,"All Equipment / Machine(s) Clean, Sanitized, and In Good Repair.",19,1,1,1,0,19,Pack Room 1,2,,0
+1802,243,Non Eco Lab Foot Bath Sufficiently Supplied with 200-400 PPM Sanitizer Which Is Tested.,29,1,1,1,0,29,Sanitation,2,,0
+1803,244,Break Room Is Clean,66,1,1,1,0,66,Break Room,2,,0
+1804,245,Finished Product Accurately Labeled To Identify Any Allergens and Food Additives.,18,0,1,0,0,18,Labeling,2,,0
+1805,246,"Product Labels Checked For Accuracy In Weight, Description, Ingridients.",18,0,1,0,0,18,Labeling,2,,0
+1806,247,"Product Labels Meet Critical Limit Criteria For ""Perishable Keep Refrigerated"".",18,0,1,0,0,18,Labeling,2,,0
+1950,393,Cooler 1 Temperature is at or below 40 degrees.,,1,1,1,1,65,Cooler 1,17,2026-01-30,0
+1807,248,"All Mechanical Equipment Used For Skinning, Cutting, and Slicing Have Been Inspeced And Show No Signs Of Missing Metal Parts or Broken Pieces.",28,1,1,1,0,28,General,2,,0
+1808,249,No Signs Of Any Hard Metals On Or Around the Finished Product.,28,0,1,0,0,28,General,2,,0
+1809,250,"Employees observed following company policies. Examples no acrylic nails, makeup, fake eyelashes, hairnest and beardnets worn, smocks worn, only employees with proper boots can enter processing areas",30,1,1,0,0,30,General,1,,0
+1810,251,Scale # 3 checked for proper calibration with designated 10lb weight by placing weight in center of scale then on each corner.,30,1,1,0,0,30,General,1,,0
+1811,252,Back Up scale checked for proper calibration with designated 10lb weight by placing weight in center of scale then on each corner.,30,0,0,0,0,30,General,1,,0
+1812,253,"Sanitizer(Chlorine) strength, 100 ppm, verified through test strip.",39,0,0,1,1,39,Sanitation,3,,0
+1813,255,"Cooler 4 Temperature is at or below 40 degrees, Condition and cleanliness of non-food contact areas observed clean, sanitized, and in good repair, unit and equipment is in good repair and in acceptable working condition.",68,0,0,0,0,68,Sealand,1,,0
+1814,256,"Condition and cleanliness of hallway area of coolers and freezer observed clean, free of debris, sanitized, and in good repair.",68,0,0,0,0,68,Sealand,1,,0
+1815,257,"Freezer 3 Temperature is at or below 8 degrees, unit is in good repair and acceptable working condition. Cleanliness of all areas are observed as clean, sanitized, and in proper care.",68,0,0,0,0,68,Sealand,1,,0
+1816,258,"Insects, rodents, and other pests controlled and all devices in good condition, Proper functioning doors, screens, and barriers.",68,0,0,0,0,68,Sealand,1,,0
+1817,259,"Restrooms Floors, walls, and other surfaces observed clean and free from debris. toilets clean, properly functioning and adequately supplied.",68,0,0,0,0,68,Sealand,1,,0
+1818,260,"Restrooms Facilities have soap, hot and cold or tempered water, sanitary towels (disposable papertowels), waste receptacles and posted hand washing signs. Properly maintained.",68,0,0,0,0,68,Sealand,1,,0
+1819,261,"Warehouse shows no evidence spillage of debri such as wood from pallets, cardboard, plastic and plystyrene packaging materials, chemicals, oil and fluids as a control measure to ensure Storm Water Pollution Prevention Plan.",68,0,0,0,0,68,Sealand,1,,0
+1820,262,"Containers in warehouse are covered, when necessary, to protect the product from contamination. Drainage from product containers is directed to floor drains.",68,0,0,0,0,68,Sealand,1,,0
+1821,263,Freezer 2 temperature is at or below 8F,72,1,1,1,1,72,Temperatures,14,,0
+1822,264,Freezer 2 unit and equipment are in good repair and proper working condition,54,1,1,1,0,54,Freezers,14,,0
+1823,265,"Freezer 2 floors, walls and ceilings observed clean and free of debris.",54,1,1,1,0,54,Freezers,14,,0
+1824,266,"Freezer 3 floors, walls and ceilings observed clean and free of debris.",54,1,1,1,0,54,Freezers,14,,0
+1825,267,Freezer 3 unit and equipment are in good repair and proper working condition,54,1,1,1,0,54,Freezers,14,,0
+1826,268,Certified Thermometer Temperature Readout (F) calibration verified through ice bath method,72,1,0,0,0,72,Temperatures,14,,0
+1827,269,Thermometer #1 (IR) calibration verified through ice bath method with certified thermometer for reference,72,1,0,0,0,72,Temperatures,14,,0
+1828,270,Thermometer #2 (Probe) calibration verified through ice bath method with certified thermometer for reference,72,1,0,0,0,72,Temperatures,14,,0
+1829,271,"Sanitizer strength, 200 ppm, verified through test strip.",30,0,0,1,1,30,General,1,,0
+1830,272,Floors Are Observed Clean And In Good Condition.,31,0,0,1,0,31,Cooler,3,,0
+1831,273,Sanitation Tools In Good Working Order.,44,0,0,1,0,44,Sanitation,14,,0
+1832,274,Product In Coolers 1 & 2 Covered With Ice / Lids.,43,0,0,1,0,43,Coolers,14,,0
+1833,275,All vans in good working condition,56,1,0,0,0,56,Vehicles,14,,0
+1834,276,Freightliner: Vehicle passes visual inspection for cleanliness,56,1,0,0,0,56,Vehicles,14,,0
+1835,277,Freightliner: Vehicles lights show no clouding or damage,56,1,0,0,0,56,Vehicles,14,,0
+1836,278,Cooler temp Check for calibration,4,1,1,1,1,4,Cooler 1,1,,0
+1837,279,Freezer temp check for calibration,7,1,1,1,1,7,Freezer 1,1,,0
+1838,280,Freezer temp check for calibration,69,1,1,1,1,69,Freezer 2,1,,0
+1839,281,Cooler Temp Calibration,31,1,1,1,1,31,Cooler,3,,0
+1840,282,Freezer Temp Calibration,32,1,0,1,1,32,Freezer,3,,0
+1841,284,"Maintenance tools, i.e. ladders, repair tools and general tools clean and in good, presentable condition.",30,1,1,1,0,30,General,1,,0
+1842,285,"All shellstock properly labeled, no missing labels.",31,0,0,1,0,31,Cooler,3,,0
+1843,286,Blue lot tags on all shellstock boxes,31,0,0,1,0,31,Cooler,3,,0
+1844,287,"All shellstock properly labeled, no missing labels.",32,0,0,1,0,32,Freezer,3,,0
+1845,288,Labels observed on finished product and found to be correct and accurate including allergen information.,53,1,1,1,0,53,General,14,,0
+1846,289,Pallets on the racks do not show any signs of leakage or broken boxes.,4,1,1,1,0,4,Cooler 1,1,,0
+1847,290,No signs of water dripping onto boxes,4,1,1,1,0,4,Cooler 1,1,,0
+1848,291,Freightliner Headlights in good working condition,40,1,0,0,0,40,Fleet,1,,0
+1849,292,"Freightliner drive tires not showing signs of bubbling, bulging or balding",40,1,0,0,0,40,Fleet,1,,0
+1850,293,Freightliner Oil and coolant levels topped off,40,1,0,0,0,40,Fleet,1,,0
+1851,294,Freightliner dashboard not showing fault codes or engine lights,40,1,0,0,0,40,Fleet,1,,0
+1852,296,Protein Swab(Ultra Snap ATP Test) performed on QC Conveyor Belt.,1,0,0,1,0,1,Process Room 1,1,,0
+1853,297,Protein Swab(Ultra Snap ATP Test) performed on Knife Box,2,0,0,1,0,2,Process Room 2,1,,0
+1854,298,Protein Swab(Ultra Snap ATP Test) performed on Portion Machine Conveyor Belt,3,0,0,1,0,3,Process Room 3,1,,0
+1855,299,"Condition and cleanliness of food contact surfaces observed clean, sanitized, and in good repair. (i.e. knives, gloves, aprons, tables, cutting boards, food process equipment.)",3,1,1,1,0,3,Process Room 3,1,,0
+1856,300,"Condition and cleanliness of non-food contact surfaces observed clean, sanitized, and in good repair (i.e. floors, walls, shelves, sinks, etc.)",3,1,1,1,0,3,Process Room 3,1,,0
+1857,301,"Food process and handling equipment clean, sanitized, and in good repair.",3,1,1,1,0,3,Process Room 3,1,,0
+1858,302,"Protection from adulterants: light fixtures shielded, product protected during processing. Lights in the processing room functioning.",3,1,1,1,0,3,Process Room 3,1,,0
+1859,303,"Refrigeration Unit is functioning adequately, clean, sanitized, and in good repair.",3,1,1,1,0,3,Process Room 3,1,,0
+1860,304,"Box Strapper Machine is functioning adequately, clean, sanitized, and in good repair.",3,1,1,1,0,3,Process Room 3,1,,0
+1861,305,"Condition and cleanliness of food contact surfaces observed clean, sanitized, and in good repair. (i.e. knives, gloves, aprons, tables, cutting boards, food process equipment.)",73,1,1,1,0,73,Salmon Packing Room,1,,0
+1862,306,"Condition and cleanliness of non-food contact surfaces observed clean, sanitized, and in good repair (i.e. floors, walls, shelves, sinks, etc.)",73,1,1,1,0,73,Salmon Packing Room,1,,0
+1863,307,"Protection from adulterants: light fixtures shielded, product protected during processing. Lights in the processing room functioning.",73,1,1,1,0,73,Salmon Packing Room,1,,0
+1864,308,"Food process and handling equipment clean, sanitized, and in good repair.",73,1,1,1,0,73,Salmon Packing Room,1,,0
+1865,309,Labels observed on finished product and found to be correct and accurate,73,1,1,1,0,73,Salmon Packing Room,1,,0
+1866,310,"Refrigeration Unit is functioning adequately, clean, sanitized, and in good repair.",73,1,1,1,0,73,Salmon Packing Room,1,,0
+1867,311,Protein Swab(Ultra Snap ATP Test) performed on Knife holder above tables,73,0,0,1,0,73,Salmon Packing Room,1,,0
+1868,312,Salmon DeScaling Machine working adequately,2,1,1,1,0,2,Process Room 2,1,,0
+1869,313,Salmon DeScaling Machine Conveyor clean and working,2,1,1,1,0,2,Process Room 2,1,,0
+1870,314,Evaporators(3) show no signs of condensate built up.,1,1,1,1,0,1,Process Room 1,1,,0
+1871,315,Evaporator units(2) Show no signs of condensate built up.,2,1,1,1,0,2,Process Room 2,1,,0
+1872,316,Evaporator units(2) show no signs of condensate built up.,3,1,1,1,0,3,Process Room 3,1,,0
+1873,317,Evaporators(3) show no signs of condensate built up.,73,1,1,1,0,73,Salmon Packing Room,1,,0
+1874,319,Thermometer 1 Probe Accurate +- 2 Degrees Checked Using Ice Bath Method,81,1,0,0,1,81,CPI Tools,16,,0
+1876,321,"All Toilet Facilities are Clean, Sanitary and In Good Repair.",74,1,0,1,0,74,CPI Janitorial,16,,0
+1877,322,"All Hand-Washing Stations Cleaned & Properly Supplied.  (Soap, Paper Towels, Etc.)",74,1,0,1,0,74,CPI Janitorial,16,,0
+1878,323,Thermometer 2 Laser Accurate +- 2 Degrees Checked Using Ice Bath Method,81,1,0,0,1,81,CPI Tools,16,,0
+1879,324,Cooler 1 Temperature at or Below 38 Degrees F.,76,1,1,1,1,76,CPI Cooler 1,16,,0
+1882,327,"Condition and Cleanliness of Food Contact Surfaces Observed Clean, Sanitized, and In Good Repair.",76,1,1,1,0,76,CPI Cooler 1,16,,0
+1883,328,Floors Are Observed Clean And In Good Condition.,76,1,0,1,0,76,CPI Cooler 1,16,,0
+1884,330,"All shellstock properly labeled, no missing labels.",76,1,0,1,0,76,CPI Cooler 1,16,,0
+1885,331,Cooler 1 Temperature at or Below 38 Degrees F.,77,1,1,1,1,77,CPI Cooler 2,16,,0
+1886,332,Prevention of Cross-Contamination:  Different Products Physically Separated In Cooler,77,1,1,1,0,77,CPI Cooler 2,16,,0
+1887,333,Cooler 1 Unit and Equipment Is In Good Repair and In Acceptable Working Condition.,77,0,0,1,0,77,CPI Cooler 2,16,,0
+1888,334,"Condition and Cleanliness of Food Contact Surfaces Observed Clean, Sanitized, and In Good Repair.",77,1,1,1,0,77,CPI Cooler 2,16,,0
+1889,335,Floors Are Observed Clean And In Good Condition.,77,1,0,1,0,77,CPI Cooler 2,16,,0
+1890,337,"Remove ice build from the entrance of the freezer, if any.",78,0,0,1,0,78,CPI Freezer 1,16,,0
+1891,338,Prevention of Cross-Contamination:  Different Products Physically Separated In Freezer,78,1,1,1,0,78,CPI Freezer 1,16,,0
+1892,340,"Condition and Cleanliness of Food Contact Surfaces Observed Clean, Sanitized, and In Good Repair.",78,1,1,1,0,78,CPI Freezer 1,16,,0
+1893,341,Freezer 1 Temperature at or Below 15 Degrees F.,78,1,1,1,1,78,CPI Freezer 1,16,,0
+1894,342,"All shellstock properly labeled, no missing labels.",78,1,0,1,0,78,CPI Freezer 1,16,,0
+1895,343,Ensure that there is no ice built up on the condensor unit,78,0,0,1,0,78,CPI Freezer 1,16,,0
+1896,344,Prevention of Cross-Contamination: Floors Have Adequate Drainage.,75,1,1,1,0,75,CPI Processing Room,16,,0
+1897,345,Prevention of Cross-Contamination: Plant Grounds Are In Good Condition,79,0,0,1,0,79,CPI Exterior,16,,0
+1898,346,Prevention of Cross-Contamination: Employee Practices Do Not Result In Food Contamination.,82,1,1,1,0,82,CPI Personnel,16,,0
+1899,347,Prevention of Cross-Contamination: Plant Building Is In Good Repair.,79,0,0,1,0,79,CPI Exterior,16,,0
+1900,348,Safety Of Water And Ice:   Water Faucets and Fixtures Have Anti-Siphoning Devices.,83,0,0,1,0,83,CPI General,16,,0
+1901,349,"Condition & Cleanliness of Food Contact Surfaces (Including Utensils, Gloves & Outer Garments) Are Adequately Clean and Sanitary.",82,1,1,1,0,82,CPI Personnel,16,,0
+1902,350,Prevention of Cross-Contamination:  Waste Is Removed From Processing Areas.,75,0,0,1,0,75,CPI Processing Room,16,,0
+1875,320,"Floors, Walls, and Other Surfaces observed Clean and Free From Debris.",74,1,0,1,0,74,CPI Janitorial,16,,0
+1903,351,Prevention of Cross-Contamination:  No Drip Over Food Or Packaging Materials,83,1,1,1,0,83,CPI General,16,,0
+1904,352,Prevention of Cross-Contamination:  Packaging Materials Protected From Contaminants,83,1,1,1,0,83,CPI General,16,,0
+1905,353,"Food, Food-Packaging Materials, and Food Contact Surfaces are Protected From Adulteration.",83,1,1,1,0,83,CPI General,16,,0
+1906,354,Equipment Used Are All In Good Repair.,83,0,0,1,0,83,CPI General,16,,0
+1907,355,Toxic Compounds Identified and Stored Properly.,74,0,0,1,0,74,CPI Janitorial,16,,0
+1908,356,Proper Containers and Procedures Are Used to Separate Toxic Compounds.,74,0,0,1,0,74,CPI Janitorial,16,,0
+1909,357,Prevention of Cross-Contamination: Different Products Processing Separated By Space Or Time.,75,1,1,1,0,75,CPI Processing Room,16,,0
+1910,359,Exclusion Of Pests:  No Pests In Plant.,74,1,1,1,0,74,CPI Janitorial,16,,0
+1911,360,Employee Health Conditions Are Acceptable.,82,1,0,0,0,82,CPI Personnel,16,,0
+1912,361,Employees do Not Have Infected Lesions.,82,1,0,0,0,82,CPI Personnel,16,,0
+1913,362,Processing Room Temperature at or Below 45 Degrees F.,75,1,1,1,1,75,CPI Processing Room,16,,0
+1914,363,Processing Room Cooler Unit and Equipment Is In Good Repair and In Acceptable Working Condition.,75,0,0,1,0,75,CPI Processing Room,16,,0
+1915,364,"Sanitizer(Chlorine) strength, 100 ppm, verified through test strip.",81,1,0,0,1,81,CPI Tools,16,,0
+1916,365,"Sanitizer(Quat) strength, 200 ppm, verified through test strip.",81,1,0,0,1,81,CPI Tools,16,,0
+1917,366,Delivery Vehicles Observed Clean and Operational,83,0,0,1,0,83,CPI General,16,,0
+1918,367,Delivery Vehicles Refer Observed Working In Good Order,83,0,0,1,0,83,CPI General,16,,0
+1919,368,All shellfish are properly labeled,8,1,1,1,0,8,Shellfish Room 1,1,,0
+1920,369,Temperature of room <45 fahrenheit.,8,1,1,1,1,8,Shellfish Room 1,1,,0
+1921,370,Temperature verification,8,1,1,1,1,8,Shellfish Room 1,1,,0
+1922,371,Cooling units working properly,8,1,1,1,0,8,Shellfish Room 1,1,,0
+1923,372,Food Contact Surfaces Clean and Free of Debris,8,1,1,1,0,8,Shellfish Room 1,1,,0
+1623,55,"Cooler 3 Temperature is at or below 40 degrees, Condition and cleanliness of non-food contact areas observed clean, sanitized, and in good repair, unit and equipment is in good repair and in acceptable working condition.",68,0,0,0,0,68,Sealand,1,,0
+1624,56,"All Floors, walls, and other surfaces observed clean and free from debris. toilets clean, properly functioning and adequately supplied.",14,1,1,1,0,14,Bathrooms,1,,0
+1732,173,"Pin Bone Machine inspected. Properly cleaned, greased and in proper working condition.",46,1,1,1,0,46,Production,14,,0
+1929,368,Cooler 1 Unit and Equipment Is In Good Repair and In Acceptable Working Condition.,,0,0,1,0,,CPI Cooler 1,16,2026-01-05,0
+1941,384,Labels observed on finished product and found to be correct and accurate including allergen information.,,1,1,1,0,63,Warehouse,17,2026-01-29,0
+1781,222,Thermometer #3 (IR) calibration verified through ice bath method with certified thermometer for reference,58,0,1,0,1,58,Thermometers,1,,0
+1880,325,Prevention of Cross-Contamination:  Different Products Physically Separated In Cooler,76,1,1,1,0,76,CPI Cooler 1,16,,0
+1936,379,Receiving area clear and free from debris,,1,1,1,0,63,Warehouse,17,2026-01-29,0
+1937,380,"No evident spillage of debri such as wood from pallets, cardboard, plastic and plystyrene packaging materials, chemicals, oil and fluids as a control measure to ensure Storm Water Pollution Prevention",,1,1,1,0,63,Warehouse,17,2026-01-29,0
+1942,385,Employees observed following safety procedures when using food contact and non-food contact equipment and utensils.,,1,1,1,0,63,Warehouse,17,2026-01-29,0
+1943,386,"Condition and cleanliness of food contact surfaces observed clean, sanitized, and in good repair. (i.e. knives, gloves, aprons, tables, cutting boards, food process equipment.)",,1,1,1,0,64,Process Room,17,2026-01-29,0
+1944,387,"Food process and handling equipment clean, sanitized, and in good repair.",,1,1,1,0,64,Process Room,17,2026-01-29,0
+1945,388,"Condition and cleanliness of non-food contact surfaces observed clean, sanitized, and in good repair (i.e. floors, walls, shelves, sinks, etc.)",,1,1,1,0,64,Process Room,17,2026-01-29,0
+1946,389,Evaporators(3) show no signs of condensate built up.,,1,1,1,0,64,Process Room,17,2026-01-29,0
+1947,390,"Refrigeration Unit is functioning adequately, clean, sanitized, and in good repair.",,1,1,1,0,64,Process Room,17,2026-01-29,0
+1949,392,"Protection from adulterants: light fixtures shielded, product protected during processing. Lights in the processing room functioning.",,1,1,1,0,64,Process Room,17,2026-01-29,0
+1948,391,Scale #1checked for proper calibration with designated 10lb weight by placing weight in center of scale then on each corner.,,1,1,1,0,64,Process Room,17,2026-01-29,0
+1940,383,"Processing operations separated by partitions, space, or time",,1,1,1,0,63,Warehouse,17,2026-01-29,0
+1930,373,No Food Processing Utensils Observed In Unauthorized Areas. (i.e. Knifes In Receiving Areas.),,1,1,1,0,63,Warehouse,17,2026-01-05,0
+1931,374,Employees do not show signs of medical problems,,1,1,1,0,63,Warehouse,17,2026-01-05,0
+1932,375,Drains are clean and free of debris,,1,1,1,0,63,Warehouse,17,2026-01-05,0
+1933,376,Lights protected and ceilings observed clean.,,1,1,1,0,63,Warehouse,17,2026-01-05,0
+1934,377,"Poisonous/toxic materials and chemicals properly used, segregated, labeled, and properly secured in the chemical cage.",,1,1,1,0,63,Warehouse,17,2026-01-05,0
+1935,378,"Product containers are covered, when necessary, to protect the product from contamination. Drainage from product containers is directed to floor drains.",,1,1,1,0,63,Warehouse,17,2026-01-05,0
+1951,394,Cooler 1 unit and equipment in good repair and acceptable working condition,,1,1,1,0,65,Cooler 1,17,2026-01-30,0
+1952,395,"Cooler 1 Floors, Walls, and Ceilings Observed Clean and Free From Debris.",,1,1,1,0,65,Cooler 1,17,2026-01-30,0
+1955,398,"Cooler 2 unit is in good repair and acceptable working condition. Cleanliness of food contact and non food contact surfaces observed as clean, sanitized, and in proper care.",,1,1,1,0,66,Cooler 2,17,2026-01-30,0
+1953,396,No signs of water dripping onto boxes,,1,1,1,0,65,Cooler 1,17,2026-01-30,0
+1956,399,No signs of water dripping onto boxes,,1,1,1,0,66,Cooler 2,17,2026-01-30,0
+1954,397,Cooler 2  temperature is at or below 40 degrees.,,1,1,1,1,66,Cooler 2,17,2026-01-30,0
+1938,381,Warehouse floor scale checked with 10lb weight for calibration.,,1,0,0,0,63,Warehouse,17,2026-01-29,0
+1939,382,Warehouse scale checked with 10lb weight for calibration.,,1,0,0,0,63,Warehouse,17,2026-01-29,0
+1957,400,Hand wash station adequately supplied with hand soap and hot water.,,1,1,1,0,64,Process Room,17,2026-01-30,0
+1958,401,Freezer 1 Temperature is at or below 8 degrees.,,1,0,1,1,67,Freezer 1,17,2026-01-30,0
+1959,402,"Freezer 1 Floors, Walls, and Ceilings Observed Clean and Free From Debris.",,1,1,1,0,67,Freezer 1,17,2026-01-30,0
+1960,403,Freezer 1 unit and equipment is in good repair and in acceptable working condition.,,1,1,1,0,67,Freezer 1,17,2026-01-30,0
+1961,404,"Freezer 1 Condition and cleanliness of non-food contact surfaces observed clean, sanitized, and in good repair.",,1,1,1,0,67,Freezer 1,17,2026-01-30,0
+1963,406,Freezer 2 Temperature is at or below 8 degrees.,,1,1,1,1,68,Freezer 2,17,2026-01-30,0
+1965,408,Freezer 2 unit and equipment in good repair and acceptable working condition,,1,1,1,0,68,Freezer 2,17,2026-01-30,0
+1966,409,"Freezer 2 Floors, Walls, and Ceilings Observed Clean and Free From Debris.",,1,1,1,0,68,Freezer 2,17,2026-01-30,0
+1967,410,"Condition and cleanliness of food contact surfaces observed clean, sanitized, and in good repair.",,1,1,1,0,68,Freezer 2,17,2026-01-30,0
+1968,411,"Condition and cleanliness of food contact surfaces observed clean, sanitized, and in good repair. (i.e. knives, gloves, aprons, tables, cutting boards, food process equipment.)",,1,1,1,0,69,Tune QC Room,17,2026-01-30,0
+1969,412,"Condition and cleanliness of non-food contact surfaces observed clean, sanitized, and in good repair (i.e. floors, walls, shelves, sinks, etc.)",,1,0,1,0,69,Tune QC Room,17,2026-01-30,0
+1970,413,"Protection from adulterants: light fixtures shielded, product protected during processing. Lights in the processing room functioning.",,1,1,1,0,69,Tune QC Room,17,2026-01-30,0
+1971,414,Labels observed on finished product and found to be correct and accurate,,1,1,1,0,69,Tune QC Room,17,2026-01-30,0
+1972,415,"Food process and handling equipment clean, sanitized, and in good repair.",,1,1,1,0,69,Tune QC Room,17,2026-01-30,0
+1981,424,Water temp is at or Less than 45 degrees,,1,1,1,1,74,Lobster Tank 4,17,2026-01-30,0
+1982,425,No Food Processing Utensils Observed In Unauthorized Areas. (i.e. Knifes In Receiving Areas.),,1,1,1,0,75,General,17,2026-01-30,0
+1973,416,Water temp is at or Less than 45 degrees,,1,1,1,1,70,Lobster Tank 1,17,2026-01-30,0
+1983,426,Employees observed following safety procedures when using food contact and non-food contact equipment and utensils.,,1,1,1,0,75,General,17,2026-01-30,0
+1974,417,Scale checked for proper calibration with designated 10lb weight by placing weight in center of scale then on each corner.,,1,0,0,0,70,Lobster Tank 1,17,2026-01-30,0
+1984,427,Employees do not show signs of medical problems,,1,1,1,0,75,General,17,2026-01-30,0
+1975,418,Lobster tank filtration system and water pumps working accurately.,,1,1,1,0,70,Lobster Tank 1,17,2026-01-30,0
+1977,420,Lobster tank filtration system and water pumps working accurately.,,1,1,1,0,71,Lobster Tank 2,17,2026-01-30,0
+1978,421,Water temp is at or Less than 45 degrees,,1,1,1,1,72,Lobster Tank 3,17,2026-01-30,0
+1979,422,Lobster tank filtration system and water pumps working accurately.,,1,1,1,0,72,Lobster Tank 3,17,2026-01-30,0
+1980,423,Lobster tank filtration system and water pumps working accurately.,,1,1,1,0,74,Lobster Tank 4,17,2026-01-30,0
+1976,419,Water temp is at or Less than 45 degrees,,1,1,1,1,71,Lobster Tank 2,17,2026-01-30,0
+1985,428,Drains are clean and free of debris,,1,1,1,0,75,General,17,2026-01-30,0
+1986,429,Lights protected and ceilings oberved clean.,,1,1,1,0,75,General,17,2026-01-30,0
+1987,430,"Insects, rodents, and other pests controlled and excluded from processing areas. Proper functioning doors, screens, and barriers (i.e. air curtains)",,1,1,1,0,75,General,17,2026-01-30,0
+1988,431,Locker room area is kept clean,,1,1,1,0,75,General,17,2026-01-30,0
+1989,432,"Sanitizer strength, 200 ppm, verified through test strip.",,0,0,1,1,75,General,17,2026-01-30,0
+1990,433,Receiving area clear and free from debris,,1,1,1,0,75,General,17,2026-01-30,0
+1614,46,"Ryco Salmon Scaling Machine is functioning adequately, clean, sanitized, and in good repair.",1,1,1,1,0,1,Process Room 1,1,,0
+1962,405,Freezer temp check for calibration,,1,0,0,1,67,Freezer 1,17,2026-01-30,0
+1964,407,Freezer temp check for calibration,,1,0,0,1,68,Freezer 2,17,2026-01-30,0

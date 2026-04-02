@@ -4,291 +4,94 @@
 {% block title %}Administration - FishTech{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-    
-    <!-- Billing Section -->
-    <div class="card mb-4" id="billingSection">
-        <div class="card-header bg-primary text-white">
-            <h5 class="mb-0"><i class="bi bi-credit-card me-2"></i>Subscription & Billing</h5>
-        </div>
-        <div class="card-body">
-            <div id="billingLoading" class="text-center py-3">
-                <div class="spinner-border spinner-border-sm" role="status"></div>
-                Loading billing status...
-            </div>
-            <div id="billingContent" style="display: none;">
-                <div class="row align-items-center">
-                    <div class="col-md-6">
-                        <div class="d-flex align-items-center mb-2">
-                            <strong class="me-2">Status:</strong>
-                            <span id="subscriptionBadge" class="badge"></span>
-                        </div>
-                        <div id="trialInfo" style="display: none;">
-                            <span class="text-muted">Trial ends in <strong id="daysRemaining"></strong> days</span>
-                        </div>
-                        <div id="subscriptionInfo" style="display: none;">
-                            <span class="text-muted">Next billing: <span id="nextBilling"></span></span>
-                        </div>
-                    </div>
-                    <div class="col-md-6 text-md-end mt-3 mt-md-0">
-                        <button id="subscribeBtn" class="btn btn-success" style="display: none;" onclick="startCheckout()">
-                            <i class="bi bi-credit-card me-1"></i>Subscribe - $10/month
-                        </button>
-                        <button id="manageBtn" class="btn btn-outline-primary" style="display: none;" onclick="openPortal()">
-                            <i class="bi bi-gear me-1"></i>Manage Subscription
-                        </button>
-                    </div>
-                </div>
-                <div id="pastDueAlert" class="alert alert-warning mt-3" style="display: none;">
-                    <i class="bi bi-exclamation-triangle me-2"></i>
-                    <strong>Payment Failed:</strong> Please update your payment method to continue using FishTech.
-                </div>
-                <div id="expiredAlert" class="alert alert-danger mt-3" style="display: none;">
-                    <i class="bi bi-x-circle me-2"></i>
-                    <strong>Trial Expired:</strong> Subscribe now to continue using FishTech.
-                </div>
-            </div>
-        </div>
+<div class="container mt-4 pb-5">
+
+    <div class="d-flex align-items-center gap-2 mb-4">
+        <a href="{% url 'operations_hub' %}" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Home
+        </a>
+        <h2 class="mb-0">Administration</h2>
     </div>
 
-    <!-- Address Book Section -->
+    <!-- Facility Info -->
+    {% if companies %}
+    {% with company=companies.0 %}
     <div class="card mb-4">
-        <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
-            <h5 class="mb-0"><i class="bi bi-person-lines-fill me-2"></i>Company Address Book</h5>
-            <button class="btn btn-light btn-sm" data-bs-toggle="modal" data-bs-target="#addTenantEmailModal">
-                <i class="bi bi-plus"></i> Add Email
-            </button>
-        </div>
         <div class="card-body">
-            <p class="text-muted small mb-3">These emails are shared across all users in your organization for quick access when emailing documents.</p>
-            <div id="tenantEmailsList">
-                <div class="text-center py-3">
-                    <div class="spinner-border spinner-border-sm" role="status"></div> Loading...
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Email Settings Section -->
-    <div class="card mb-4">
-        <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
-            <h5 class="mb-0"><i class="bi bi-envelope-at me-2"></i>Inbound Email Settings</h5>
-            <button class="btn btn-dark btn-sm" onclick="testEmailConnection()">
-                <i class="bi bi-plug me-1"></i>Test Connection
-            </button>
-        </div>
-        <div class="card-body">
-            <p class="text-muted small mb-3">Configure the email account to check for customer orders. Use an app password, not your regular password.</p>
-            <div class="row g-3">
-                <div class="col-md-4">
-                    <label class="form-label">Email Address</label>
-                    <input type="email" id="inboundEmailAddress" class="form-control" placeholder="orders@yourcompany.com">
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label">App Password</label>
-                    <div class="input-group">
-                        <input type="password" id="inboundEmailPassword" class="form-control" placeholder="••••••••••••">
-                        <button class="btn btn-outline-secondary" type="button" onclick="togglePasswordVisibility()">
-                            <i class="bi bi-eye" id="passwordToggleIcon"></i>
-                        </button>
-                    </div>
-                    <small class="text-muted">Leave blank to keep existing</small>
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label">IMAP Server</label>
-                    <select id="inboundImapServer" class="form-select">
-                        <option value="imap.gmail.com">Gmail (imap.gmail.com)</option>
-                        <option value="outlook.office365.com">Outlook/Office 365</option>
-                        <option value="imap.mail.yahoo.com">Yahoo Mail</option>
-                        <option value="custom">Custom...</option>
-                    </select>
-                    <input type="text" id="inboundImapServerCustom" class="form-control mt-2" placeholder="imap.yourserver.com" style="display: none;">
-                </div>
-            </div>
-            <div class="mt-3">
-                <button class="btn btn-primary" onclick="saveEmailSettings()">
-                    <i class="bi bi-save me-1"></i>Save Email Settings
-                </button>
-                <span id="emailSettingsStatus" class="ms-3"></span>
-            </div>
-        </div>
-    </div>
-
-    <!-- Twilio SMS Settings -->
-<div class="card mb-4 border-success">
-    <div class="card-header bg-success text-white">
-        <i class="bi bi-chat-dots"></i> SMS Settings (Twilio)
-    </div>
-    <div class="card-body">
-        <p class="text-muted small">Configure Twilio to receive customer orders via text message. Each tenant has their own phone number.</p>
-        
-        <div class="row g-3">
-            <div class="col-md-4">
-                <label class="form-label">Account SID</label>
-                <input type="text" id="twilioAccountSid" class="form-control" placeholder="ACxxxxx...">
-            </div>
-            <div class="col-md-4">
-                <label class="form-label">Auth Token</label>
-                <div class="input-group">
-                    <input type="password" id="twilioAuthToken" class="form-control" placeholder="Leave blank to keep existing">
-                    <button class="btn btn-outline-secondary" type="button" onclick="toggleTwilioToken()">
-                        <i class="bi bi-eye" id="twilioTokenIcon"></i>
+            <h5 class="mb-3">Facility</h5>
+            <div class="row align-items-center">
+                <div class="col-md-2 text-center">
+                    {% if company.logo %}
+                    <img id="logo_preview_{{ company.companyid }}" src="{{ company.logo }}" alt="Logo" class="img-fluid" style="max-height: 80px;">
+                    {% else %}
+                    <img id="logo_preview_{{ company.companyid }}" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80'%3E%3Crect width='80' height='80' fill='%23e9ecef'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-size='12' fill='%236c757d'%3ENo Logo%3C/text%3E%3C/svg%3E" alt="No Logo" class="img-fluid" style="max-height: 80px;">
+                    {% endif %}
+                    <input type="file" id="logo_input_{{ company.companyid }}" accept="image/*" style="display: none;" onchange="updateCompanyLogo({{ company.companyid }})">
+                    <button class="btn btn-sm btn-outline-primary mt-2" onclick="document.getElementById('logo_input_{{ company.companyid }}').click()">
+                        <i class="bi bi-upload"></i> Logo
                     </button>
                 </div>
-                <small class="text-muted">Leave blank to keep existing</small>
+                <div class="col-md-10">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h5 class="mb-1">{{ company.companyname }}</h5>
+                            {% if company.address %}<p class="mb-0 text-muted small">{{ company.address }}</p>{% endif %}
+                            {% if company.city or company.state or company.zipcode %}
+                            <p class="mb-0 text-muted small">{{ company.city }}{% if company.city and company.state %}, {% endif %}{{ company.state }} {{ company.zipcode }}</p>
+                            {% endif %}
+                        </div>
+                        <button class="btn btn-sm btn-outline-warning" onclick="editCompany({{ company.companyid }}, '{{ company.companyname|escapejs }}', '{{ company.address|escapejs }}', '{{ company.city|escapejs }}', '{{ company.state|escapejs }}', '{{ company.zipcode|escapejs }}')">
+                            <i class="bi bi-pencil"></i> Edit
+                        </button>
+                    </div>
+                </div>
             </div>
-            <div class="col-md-4">
-                <label class="form-label">Phone Number</label>
-                <input type="text" id="twilioPhoneNumber" class="form-control" placeholder="+18555551234">
-                <small class="text-muted">Include country code (+1)</small>
-            </div>
-        </div>
-        
-        <div class="mt-3 d-flex gap-2">
-            <button class="btn btn-success" onclick="saveTwilioSettings()">
-                <i class="bi bi-check-lg"></i> Save SMS Settings
-            </button>
-            <button class="btn btn-outline-success" onclick="testTwilioConnection()">
-                <i class="bi bi-plug"></i> Test Connection
-            </button>
-        </div>
-        <div id="twilioStatus" class="mt-2"></div>
-    </div>
-</div>
-
-    <!-- Payment Success/Cancel Messages -->
-    <div id="paymentSuccessAlert" class="alert alert-success alert-dismissible fade show" style="display: none;">
-        <i class="bi bi-check-circle me-2"></i>
-        <strong>Payment Successful!</strong> Your subscription is now active.
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
-    <div id="paymentCancelledAlert" class="alert alert-info alert-dismissible fade show" style="display: none;">
-        <i class="bi bi-info-circle me-2"></i>
-        Payment was cancelled. You can subscribe anytime.
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
-
-    <!-- Companies Filter -->
-    <div class="mb-4">
-        <h5>Filter by Company</h5>
-        <div class="btn-group flex-wrap" role="group">
-            <button class="btn btn-outline-primary active" onclick="filterByCompany(null)">All Users</button>
-            {% for company in companies %}
-            <button class="btn btn-outline-primary" onclick="filterByCompany({{ company.companyid }})">{{ company.companyname }}</button>
-            {% endfor %}
         </div>
     </div>
+    {% endwith %}
+    {% endif %}
 
     <!-- Users Section -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2>Manage Users</h2>
-        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addUserModal">
-            Add User
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="mb-0">Users</h5>
+        <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addUserModal">
+            <i class="bi bi-plus me-1"></i>Add User
         </button>
     </div>
-    
-    <div class="card mb-5">
-        <div class="card-body">
-            <table class="table table-hover">
-                <thead>
+
+    <div class="card">
+        <div class="card-body p-0">
+            <table class="table table-hover mb-0">
+                <thead class="table-dark">
                     <tr>
                         <th>Name</th>
                         <th>Email</th>
-                        <th>Admin</th>
-                        <th>Companies</th>
-                        <th>Actions</th>
+                        <th>Role</th>
+                        <th></th>
                     </tr>
                 </thead>
-                <tbody id="userTable">
+                <tbody>
                     {% for user in users %}
-                    <tr data-user-id="{{ user.id }}" data-companies="{% if user.id in user_companies %}{% for cid in user_companies|lookup:user.id %}{{ cid }},{% endfor %}{% endif %}">
-                        <td>{{ user.name }}</td>
+                    <tr>
+                        <td class="fw-semibold">{{ user.name }}</td>
                         <td>{{ user.email }}</td>
                         <td>
-                            <button class="btn btn-sm {% if user.id in user_admins and user_admins|lookup:user.id %}btn-primary{% else %}btn-outline-secondary{% endif %}" 
-                                    onclick="toggleUserAdmin({{ user.id }}, this)">
-                                {% if user.id in user_admins and user_admins|lookup:user.id %}Admin{% else %}User{% endif %}
-                            </button>
+                            {% if user.id in user_admins and user_admins|lookup:user.id %}
+                            <span class="badge bg-primary">Admin</span>
+                            {% else %}
+                            <span class="badge bg-secondary">User</span>
+                            {% endif %}
                         </td>
-                        <td>
-                            {% for company in companies %}
-                            <button class="btn btn-sm {% if user.id in user_companies and company.companyid in user_companies|lookup:user.id %}btn-success{% else %}btn-outline-secondary{% endif %}" 
-                                    onclick="toggleUserCompany({{ user.id }}, {{ company.companyid }}, this)">
-                                {{ company.companyname }}
-                            </button>
-                            {% endfor %}
-                        </td>
-                        <td>
-                            <button class="btn btn-sm btn-warning" onclick="editUser({{ user.id }}, '{{ user.name }}', '{{ user.email }}')">Edit</button>
-                            <button class="btn btn-sm btn-danger" onclick="deleteUser({{ user.id }}, '{{ user.name }}')">Delete</button>
+                        <td class="text-end">
+                            <button class="btn btn-sm btn-outline-warning" onclick="editUser({{ user.id }}, '{{ user.name|escapejs }}', '{{ user.email|escapejs }}')"><i class="bi bi-pencil"></i></button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteUser({{ user.id }}, '{{ user.name|escapejs }}')"><i class="bi bi-trash"></i></button>
                         </td>
                     </tr>
                     {% empty %}
-                    <tr>
-                        <td colspan="5" class="text-center">No users found</td>
-                    </tr>
+                    <tr><td colspan="4" class="text-center text-muted py-4">No users found</td></tr>
                     {% endfor %}
                 </tbody>
             </table>
-        </div>
-    </div>
-
-    <!-- Companies Section -->
-    <div class="d-flex justify-content-between align-items-center mb-4 mt-5">
-        <h2>Manage Companies</h2>
-        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addCompanyModal">
-            Add Company
-        </button>
-    </div>
-    
-    <div class="card">
-        <div class="card-body">
-            <div class="row">
-                {% for company in companies %}
-                <div class="col-md-6 mb-4">
-                    <div class="card">
-                        <div class="card-body">
-                            <div class="row">
-                                <div class="col-md-4 text-center">
-                                    {% if company.logo %}
-                                    <img id="logo_preview_{{ company.companyid }}" src="{{ company.logo }}" alt="Logo" class="img-fluid" style="max-height: 100px;">
-                                    {% else %}
-                                    <img id="logo_preview_{{ company.companyid }}" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Crect width='100' height='100' fill='%23e9ecef'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-size='14' fill='%236c757d'%3ENo Logo%3C/text%3E%3C/svg%3E" alt="No Logo" class="img-fluid" style="max-height: 100px;">
-                                    {% endif %}
-                                    <input type="file" id="logo_input_{{ company.companyid }}" accept="image/*" style="display: none;" onchange="updateCompanyLogo({{ company.companyid }})">
-                                    <button class="btn btn-sm btn-outline-primary mt-2" onclick="document.getElementById('logo_input_{{ company.companyid }}').click()">
-                                        <i class="bi bi-upload"></i> Upload Logo
-                                    </button>
-                                </div>
-                                <div class="col-md-8">
-                                    <div class="d-flex justify-content-between align-items-start">
-                                        <h5>{{ company.companyname }}</h5>
-                                        <div class="btn-group btn-group-sm">
-                                            <button class="btn btn-outline-warning" onclick="editCompany({{ company.companyid }}, '{{ company.companyname|escapejs }}', '{{ company.address|escapejs }}', '{{ company.city|escapejs }}', '{{ company.state|escapejs }}', '{{ company.zipcode|escapejs }}')">
-                                                <i class="bi bi-pencil"></i>
-                                            </button>
-                                            <button class="btn btn-outline-danger" onclick="deleteCompany({{ company.companyid }}, '{{ company.companyname|escapejs }}')">
-                                                <i class="bi bi-trash"></i>
-                                            </button>
-                                        </div>
-                                    </div>
-                                    {% if company.address %}
-                                    <p class="mb-1"><small class="text-muted">{{ company.address }}</small></p>
-                                    {% endif %}
-                                    {% if company.city or company.state or company.zipcode %}
-                                    <p class="mb-1"><small class="text-muted">{{ company.city }}{% if company.city and company.state %}, {% endif %}{{ company.state }} {{ company.zipcode }}</small></p>
-                                    {% endif %}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                {% empty %}
-                <div class="col-12">
-                    <p class="text-center text-muted">No companies found</p>
-                </div>
-                {% endfor %}
-            </div>
         </div>
     </div>
 </div>
@@ -302,113 +105,26 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <form id="addUserForm">
-                    <div class="mb-3">
-                        <label class="form-label">Name *</label>
-                        <input type="text" class="form-control" id="add_name" required>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Email</label>
-                        <input type="email" class="form-control" id="add_email">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Password *</label>
-                        <input type="password" class="form-control" id="add_password" required>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Confirm Password *</label>
-                        <input type="password" class="form-control" id="add_password2" required>
-                    </div>
-                </form>
+                <div class="mb-3">
+                    <label class="form-label">Name *</label>
+                    <input type="text" class="form-control" id="add_name" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Email</label>
+                    <input type="email" class="form-control" id="add_email">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Password *</label>
+                    <input type="password" class="form-control" id="add_password" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Confirm Password *</label>
+                    <input type="password" class="form-control" id="add_password2" required>
+                </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" onclick="submitAddUser()">Add User</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Add Company Modal -->
-<div class="modal fade" id="addCompanyModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Add New Company</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <form id="addCompanyForm">
-                    <div class="mb-3">
-                        <label class="form-label">Company Name *</label>
-                        <input type="text" class="form-control" id="add_companyname" required>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Address</label>
-                        <input type="text" class="form-control" id="add_address">
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">City</label>
-                            <input type="text" class="form-control" id="add_city">
-                        </div>
-                        <div class="col-md-3 mb-3">
-                            <label class="form-label">State</label>
-                            <input type="text" class="form-control" id="add_state" maxlength="2">
-                        </div>
-                        <div class="col-md-3 mb-3">
-                            <label class="form-label">Zip Code</label>
-                            <input type="text" class="form-control" id="add_zipcode">
-                        </div>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" onclick="submitAddCompany()">Add Company</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Edit Company Modal -->
-<div class="modal fade" id="editCompanyModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Edit Company</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <form id="editCompanyForm">
-                    <input type="hidden" id="edit_company_id">
-                    <div class="mb-3">
-                        <label class="form-label">Company Name *</label>
-                        <input type="text" class="form-control" id="edit_companyname" required>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Address</label>
-                        <input type="text" class="form-control" id="edit_address">
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">City</label>
-                            <input type="text" class="form-control" id="edit_city">
-                        </div>
-                        <div class="col-md-3 mb-3">
-                            <label class="form-label">State</label>
-                            <input type="text" class="form-control" id="edit_state" maxlength="2">
-                        </div>
-                        <div class="col-md-3 mb-3">
-                            <label class="form-label">Zip Code</label>
-                            <input type="text" class="form-control" id="edit_zipcode">
-                        </div>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" onclick="submitEditCompany()">Save Changes</button>
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button class="btn btn-primary" onclick="submitAddUser()">Add User</button>
             </div>
         </div>
     </div>
@@ -423,399 +139,121 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <form id="editUserForm">
-                    <input type="hidden" id="edit_user_id">
-                    <div class="mb-3">
-                        <label class="form-label">Name</label>
-                        <input type="text" class="form-control" id="edit_name">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Email</label>
-                        <input type="email" class="form-control" id="edit_email">
-                    </div>
-                    <hr>
-                    <p class="text-muted small mb-2">Leave password fields blank to keep existing password.</p>
-                    <div class="mb-3">
-                        <label class="form-label">New Password</label>
-                        <input type="password" class="form-control" id="edit_password" placeholder="Leave blank to keep existing">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Confirm New Password</label>
-                        <input type="password" class="form-control" id="edit_password2">
-                    </div>
-                </form>
+                <input type="hidden" id="edit_user_id">
+                <div class="mb-3">
+                    <label class="form-label">Name</label>
+                    <input type="text" class="form-control" id="edit_name">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Email</label>
+                    <input type="email" class="form-control" id="edit_email">
+                </div>
+                <hr>
+                <p class="text-muted small mb-2">Leave blank to keep existing password.</p>
+                <div class="mb-3">
+                    <label class="form-label">New Password</label>
+                    <input type="password" class="form-control" id="edit_password">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Confirm New Password</label>
+                    <input type="password" class="form-control" id="edit_password2">
+                </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" onclick="submitEditUser()">Save Changes</button>
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button class="btn btn-primary" onclick="submitEditUser()">Save Changes</button>
             </div>
         </div>
     </div>
 </div>
 
-
-<!-- Add Tenant Email Modal -->
-<div class="modal fade" id="addTenantEmailModal" tabindex="-1">
+<!-- Edit Company Modal -->
+<div class="modal fade" id="editCompanyModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Add Email to Address Book</h5>
+                <h5 class="modal-title">Edit Facility</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
+                <input type="hidden" id="edit_company_id">
                 <div class="mb-3">
-                    <label class="form-label">Email Address <span class="text-danger">*</span></label>
-                    <input type="email" class="form-control" id="tenantEmailAddress" placeholder="email@example.com" required>
+                    <label class="form-label">Facility Name *</label>
+                    <input type="text" class="form-control" id="edit_companyname" required>
                 </div>
                 <div class="mb-3">
-                    <label class="form-label">Label (optional)</label>
-                    <input type="text" class="form-control" id="tenantEmailLabel" placeholder="e.g., Accounts Payable, John Smith">
+                    <label class="form-label">Address</label>
+                    <input type="text" class="form-control" id="edit_address">
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">City</label>
+                        <input type="text" class="form-control" id="edit_city">
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label">State</label>
+                        <input type="text" class="form-control" id="edit_state" maxlength="2">
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label">Zip Code</label>
+                        <input type="text" class="form-control" id="edit_zipcode">
+                    </div>
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" onclick="addTenantEmail()">
-                    <i class="bi bi-plus"></i> Add Email
-                </button>
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button class="btn btn-primary" onclick="submitEditCompany()">Save Changes</button>
             </div>
         </div>
     </div>
 </div>
 
 <script>
-// Helper to get CSRF token from cookie
 function getCookie(name) {
-    let cookieValue = null;
-    if (document.cookie && document.cookie !== '') {
-        const cookies = document.cookie.split(';');
-        for (let i = 0; i < cookies.length; i++) {
-            const cookie = cookies[i].trim();
-            if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                break;
-            }
-        }
-    }
-    return cookieValue;
-}
-
-// Twilio Settings
-function loadTwilioSettings() {
-    fetch('/api/twilio-settings/')
-        .then(r => r.json())
-        .then(data => {
-            document.getElementById('twilioAccountSid').value = data.twilio_account_sid || '';
-            document.getElementById('twilioPhoneNumber').value = data.twilio_phone_number || '';
-            document.getElementById('twilioAuthToken').placeholder = data.has_token ? 'Leave blank to keep existing' : 'Enter auth token';
-        });
-}
-
-function saveTwilioSettings() {
-    const data = {
-        twilio_account_sid: document.getElementById('twilioAccountSid').value,
-        twilio_auth_token: document.getElementById('twilioAuthToken').value,
-        twilio_phone_number: document.getElementById('twilioPhoneNumber').value,
-    };
-    
-    fetch('/api/twilio-settings/save/', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': getCookie('csrftoken')
-        },
-        body: JSON.stringify(data)
-    })
-    .then(r => r.json())
-    .then(data => {
-        if (data.success) {
-            document.getElementById('twilioStatus').innerHTML = '<div class="alert alert-success py-1"><i class="bi bi-check-circle"></i> Settings saved!</div>';
-            document.getElementById('twilioAuthToken').value = '';
-            loadTwilioSettings();
-        } else {
-            document.getElementById('twilioStatus').innerHTML = `<div class="alert alert-danger py-1"><i class="bi bi-x-circle"></i> ${data.error}</div>`;
-        }
+    let v = null;
+    document.cookie.split(';').forEach(c => {
+        const [k, val] = c.trim().split('=');
+        if (k === name) v = decodeURIComponent(val);
     });
-}
-
-function testTwilioConnection() {
-    document.getElementById('twilioStatus').innerHTML = '<div class="alert alert-info py-1"><i class="bi bi-hourglass-split"></i> Testing...</div>';
-    
-    fetch('/api/twilio-settings/test/', {
-        method: 'POST',
-        headers: {
-            'X-CSRFToken': getCookie('csrftoken')
-        }
-    })
-    .then(r => r.json())
-    .then(data => {
-        if (data.success) {
-            document.getElementById('twilioStatus').innerHTML = `<div class="alert alert-success py-1"><i class="bi bi-check-circle"></i> ${data.message}</div>`;
-        } else {
-            document.getElementById('twilioStatus').innerHTML = `<div class="alert alert-danger py-1"><i class="bi bi-x-circle"></i> ${data.error}</div>`;
-        }
-    });
-}
-
-function toggleTwilioToken() {
-    const input = document.getElementById('twilioAuthToken');
-    const icon = document.getElementById('twilioTokenIcon');
-    if (input.type === 'password') {
-        input.type = 'text';
-        icon.classList.replace('bi-eye', 'bi-eye-slash');
-    } else {
-        input.type = 'password';
-        icon.classList.replace('bi-eye-slash', 'bi-eye');
-    }
-}
-
-function filterByCompany(companyId) {
-    // Update button states
-    document.querySelectorAll('.btn-group button').forEach(btn => {
-        btn.classList.remove('active');
-    });
-    event.target.classList.add('active');
-    
-    // Filter table rows
-    const rows = document.querySelectorAll('#userTable tr');
-    rows.forEach(row => {
-        // Skip rows without data-companies attribute
-        if (!row.dataset.companies) {
-            row.style.display = companyId ? 'none' : '';
-            return;
-        }
-        
-        if (!companyId) {
-            row.style.display = '';
-        } else {
-            const companies = row.dataset.companies.split(',').filter(c => c).map(c => parseInt(c));
-            row.style.display = companies.includes(companyId) ? '' : 'none';
-        }
-    });
-}
-
-function toggleUserCompany(userId, companyId, button) {
-    fetch('{% url "toggle_user_company" %}', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': getCookie('csrftoken')
-        },
-        body: JSON.stringify({ user_id: userId, company_id: companyId })
-    })
-    .then(response => response.json())
-    .then(result => {
-        if (result.success) {
-            if (result.associated) {
-                button.classList.remove('btn-outline-secondary');
-                button.classList.add('btn-success');
-            } else {
-                button.classList.remove('btn-success');
-                button.classList.add('btn-outline-secondary');
-            }
-            // Update data attribute
-            const row = button.closest('tr');
-            const companies = row.dataset.companies.split(',').filter(c => c).map(c => parseInt(c));
-            if (result.associated && !companies.includes(companyId)) {
-                companies.push(companyId);
-            } else if (!result.associated) {
-                const idx = companies.indexOf(companyId);
-                if (idx > -1) companies.splice(idx, 1);
-            }
-            row.dataset.companies = companies.join(',') + ',';
-        } else {
-            alert('Error: ' + result.error);
-        }
-    });
-}
-
-function toggleUserAdmin(userId, button) {
-    fetch('{% url "toggle_user_admin" %}', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': getCookie('csrftoken')
-        },
-        body: JSON.stringify({ user_id: userId })
-    })
-    .then(response => response.json())
-    .then(result => {
-        if (result.success) {
-            if (result.is_admin) {
-                button.classList.remove('btn-outline-secondary');
-                button.classList.add('btn-primary');
-                button.textContent = 'Admin';
-            } else {
-                button.classList.remove('btn-primary');
-                button.classList.add('btn-outline-secondary');
-                button.textContent = 'User';
-            }
-        } else {
-            alert('Error: ' + result.error);
-        }
-    });
-}
-
-function submitAddCompany() {
-    const data = {
-        companyname: document.getElementById('add_companyname').value,
-        address: document.getElementById('add_address').value,
-        city: document.getElementById('add_city').value,
-        state: document.getElementById('add_state').value,
-        zipcode: document.getElementById('add_zipcode').value
-    };
-    
-    fetch('{% url "add_company" %}', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': getCookie('csrftoken')
-        },
-        body: JSON.stringify(data)
-    })
-    .then(response => response.json())
-    .then(result => {
-        if (result.success) {
-            location.reload();
-        } else {
-            alert('Error: ' + result.error);
-        }
-    });
+    return v;
 }
 
 function submitAddUser() {
-    const password = document.getElementById('add_password').value;
-    const password2 = document.getElementById('add_password2').value;
-    
-    if (password !== password2) {
-        alert('Passwords do not match');
-        return;
-    }
-    if (password.length < 8) {
-        alert('Password must be at least 8 characters');
-        return;
-    }
-    
-    const data = {
-        name: document.getElementById('add_name').value,
-        email: document.getElementById('add_email').value,
-        password: password
-    };
-    
+    const pw = document.getElementById('add_password').value;
+    if (pw !== document.getElementById('add_password2').value) { alert('Passwords do not match'); return; }
+    if (pw.length < 8) { alert('Password must be at least 8 characters'); return; }
     fetch('{% url "add_user" %}', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': getCookie('csrftoken')
-        },
-        body: JSON.stringify(data)
-    })
-    .then(response => response.json())
-    .then(result => {
-        if (result.success) {
-            location.reload();
-        } else {
-            alert('Error: ' + result.error);
-        }
-    });
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+        body: JSON.stringify({ name: document.getElementById('add_name').value, email: document.getElementById('add_email').value, password: pw })
+    }).then(r => r.json()).then(r => r.success ? location.reload() : alert('Error: ' + r.error));
 }
 
 function editUser(id, name, email) {
     document.getElementById('edit_user_id').value = id;
     document.getElementById('edit_name').value = name;
     document.getElementById('edit_email').value = email;
-    
+    document.getElementById('edit_password').value = '';
+    document.getElementById('edit_password2').value = '';
     new bootstrap.Modal(document.getElementById('editUserModal')).show();
 }
 
 function submitEditUser() {
-    const userId = document.getElementById('edit_user_id').value;
-    const password = document.getElementById('edit_password').value;
-    const password2 = document.getElementById('edit_password2').value;
-
-    if (password || password2) {
-        if (password !== password2) {
-            alert('Passwords do not match');
-            return;
-        }
-        if (password.length < 8) {
-            alert('Password must be at least 8 characters');
-            return;
-        }
-    }
-
-    const data = {
-        name: document.getElementById('edit_name').value,
-        email: document.getElementById('edit_email').value,
-        password: password || null
-    };
-    
-    fetch(`/api/edit-user/${userId}/`, {
+    const pw = document.getElementById('edit_password').value;
+    const pw2 = document.getElementById('edit_password2').value;
+    if (pw || pw2) { if (pw !== pw2) { alert('Passwords do not match'); return; } if (pw.length < 8) { alert('Password must be at least 8 characters'); return; } }
+    fetch(`/api/edit-user/${document.getElementById('edit_user_id').value}/`, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': getCookie('csrftoken')
-        },
-        body: JSON.stringify(data)
-    })
-    .then(response => response.json())
-    .then(result => {
-        if (result.success) {
-            location.reload();
-        } else {
-            alert('Error: ' + result.error);
-        }
-    });
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+        body: JSON.stringify({ name: document.getElementById('edit_name').value, email: document.getElementById('edit_email').value, password: pw || null })
+    }).then(r => r.json()).then(r => r.success ? location.reload() : alert('Error: ' + r.error));
 }
 
 function deleteUser(id, name) {
-    if (confirm(`Are you sure you want to delete user "${name}"?`)) {
-        fetch(`/api/delete-user/${id}/`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': getCookie('csrftoken')
-            }
-        })
-        .then(response => response.json())
-        .then(result => {
-            if (result.success) {
-                location.reload();
-            } else {
-                alert('Error: ' + result.error);
-            }
-        });
+    if (confirm(`Delete user "${name}"?`)) {
+        fetch(`/api/delete-user/${id}/`, { method: 'POST', headers: { 'X-CSRFToken': getCookie('csrftoken') } })
+        .then(r => r.json()).then(r => r.success ? location.reload() : alert('Error: ' + r.error));
     }
-}
-
-function updateCompanyLogo(companyId) {
-    const input = document.getElementById(`logo_input_${companyId}`);
-    const file = input.files[0];
-    
-    if (!file) return;
-    
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        const logo = e.target.result;
-        
-        fetch(`/api/update-company-logo/${companyId}/`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': getCookie('csrftoken')
-            },
-            body: JSON.stringify({ logo: logo })
-        })
-        .then(response => response.json())
-        .then(result => {
-            if (result.success) {
-                document.getElementById(`logo_preview_${companyId}`).src = logo;
-                alert('Logo updated successfully');
-            } else {
-                alert('Error: ' + result.error);
-            }
-        });
-    };
-    reader.readAsDataURL(file);
 }
 
 function editCompany(id, name, address, city, state, zipcode) {
@@ -825,428 +263,38 @@ function editCompany(id, name, address, city, state, zipcode) {
     document.getElementById('edit_city').value = city || '';
     document.getElementById('edit_state').value = state || '';
     document.getElementById('edit_zipcode').value = zipcode || '';
-    
     new bootstrap.Modal(document.getElementById('editCompanyModal')).show();
 }
 
 function submitEditCompany() {
-    const companyId = document.getElementById('edit_company_id').value;
-    const data = {
-        companyname: document.getElementById('edit_companyname').value,
-        address: document.getElementById('edit_address').value,
-        city: document.getElementById('edit_city').value,
-        state: document.getElementById('edit_state').value,
-        zipcode: document.getElementById('edit_zipcode').value
-    };
-    
-    fetch(`/api/edit-company/${companyId}/`, {
+    fetch(`/api/edit-company/${document.getElementById('edit_company_id').value}/`, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': getCookie('csrftoken')
-        },
-        body: JSON.stringify(data)
-    })
-    .then(response => response.json())
-    .then(result => {
-        if (result.success) {
-            location.reload();
-        } else {
-            alert('Error: ' + result.error);
-        }
-    });
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+        body: JSON.stringify({
+            companyname: document.getElementById('edit_companyname').value,
+            address: document.getElementById('edit_address').value,
+            city: document.getElementById('edit_city').value,
+            state: document.getElementById('edit_state').value,
+            zipcode: document.getElementById('edit_zipcode').value
+        })
+    }).then(r => r.json()).then(r => r.success ? location.reload() : alert('Error: ' + r.error));
 }
 
-function deleteCompany(id, name) {
-    if (confirm(`Are you sure you want to delete company "${name}"? This will delete all associated inspection data, SOPs, and company settings. Master HACCP documents will NOT be affected.`)) {
-        fetch(`/api/delete-company/${id}/`, {
+function updateCompanyLogo(companyId) {
+    const file = document.getElementById(`logo_input_${companyId}`).files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        fetch(`/api/update-company-logo/${companyId}/`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': getCookie('csrftoken')
-            }
-        })
-        .then(response => response.json())
-        .then(result => {
-            if (result.success) {
-                location.reload();
-            } else {
-                alert('Error: ' + result.error);
-            }
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+            body: JSON.stringify({ logo: e.target.result })
+        }).then(r => r.json()).then(r => {
+            if (r.success) document.getElementById(`logo_preview_${companyId}`).src = e.target.result;
+            else alert('Error: ' + r.error);
         });
-    }
-}
-// Billing Functions
-function loadBillingStatus() {
-    fetch('{% url "billing_status" %}')
-        .then(response => response.json())
-        .then(data => {
-            document.getElementById('billingLoading').style.display = 'none';
-            document.getElementById('billingContent').style.display = 'block';
-            
-            if (!data.success) {
-                console.error('Failed to load billing status');
-                return;
-            }
-            
-            const badge = document.getElementById('subscriptionBadge');
-            const subscribeBtn = document.getElementById('subscribeBtn');
-            const manageBtn = document.getElementById('manageBtn');
-            const trialInfo = document.getElementById('trialInfo');
-            const subscriptionInfo = document.getElementById('subscriptionInfo');
-            const pastDueAlert = document.getElementById('pastDueAlert');
-            const expiredAlert = document.getElementById('expiredAlert');
-            
-            // Reset all
-            subscribeBtn.style.display = 'none';
-            manageBtn.style.display = 'none';
-            trialInfo.style.display = 'none';
-            subscriptionInfo.style.display = 'none';
-            pastDueAlert.style.display = 'none';
-            expiredAlert.style.display = 'none';
-            
-            switch(data.subscription_status) {
-                case 'trialing':
-                    badge.className = 'badge bg-info';
-                    badge.textContent = 'Trial';
-                    trialInfo.style.display = 'block';
-                    document.getElementById('daysRemaining').textContent = data.days_remaining;
-                    subscribeBtn.style.display = 'inline-block';
-                    if (!data.is_valid) {
-                        expiredAlert.style.display = 'block';
-                    }
-                    break;
-                case 'active':
-                    badge.className = 'badge bg-success';
-                    badge.textContent = 'Active';
-                    manageBtn.style.display = 'inline-block';
-                    if (data.subscription_ends_at) {
-                        subscriptionInfo.style.display = 'block';
-                        document.getElementById('nextBilling').textContent = new Date(data.subscription_ends_at).toLocaleDateString();
-                    }
-                    break;
-                case 'past_due':
-                    badge.className = 'badge bg-warning';
-                    badge.textContent = 'Past Due';
-                    pastDueAlert.style.display = 'block';
-                    manageBtn.style.display = 'inline-block';
-                    break;
-                case 'canceled':
-                    badge.className = 'badge bg-secondary';
-                    badge.textContent = 'Canceled';
-                    subscribeBtn.style.display = 'inline-block';
-                    break;
-                case 'unpaid':
-                    badge.className = 'badge bg-danger';
-                    badge.textContent = 'Unpaid';
-                    pastDueAlert.style.display = 'block';
-                    manageBtn.style.display = 'inline-block';
-                    break;
-                default:
-                    badge.className = 'badge bg-secondary';
-                    badge.textContent = data.subscription_status || 'Unknown';
-                    subscribeBtn.style.display = 'inline-block';
-            }
-        })
-        .catch(error => {
-            console.error('Error loading billing status:', error);
-            document.getElementById('billingLoading').innerHTML = '<span class="text-danger">Failed to load billing status</span>';
-        });
-}
-
-function startCheckout() {
-    const btn = document.getElementById('subscribeBtn');
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Loading...';
-    
-    fetch('{% url "create_checkout" %}', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': getCookie('csrftoken')
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success && data.checkout_url) {
-            window.location.href = data.checkout_url;
-        } else {
-            alert('Error: ' + (data.error || 'Could not start checkout'));
-            btn.disabled = false;
-            btn.innerHTML = '<i class="bi bi-credit-card me-1"></i>Subscribe - $10/month';
-        }
-    })
-    .catch(error => {
-        alert('Error starting checkout: ' + error);
-        btn.disabled = false;
-        btn.innerHTML = '<i class="bi bi-credit-card me-1"></i>Subscribe - $10/month';
-    });
-}
-
-function openPortal() {
-    const btn = document.getElementById('manageBtn');
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Loading...';
-    
-    fetch('{% url "create_portal" %}', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': getCookie('csrftoken')
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success && data.portal_url) {
-            window.location.href = data.portal_url;
-        } else {
-            alert('Error: ' + (data.error || 'Could not open billing portal'));
-            btn.disabled = false;
-            btn.innerHTML = '<i class="bi bi-gear me-1"></i>Manage Subscription';
-        }
-    })
-    .catch(error => {
-        alert('Error opening portal: ' + error);
-        btn.disabled = false;
-        btn.innerHTML = '<i class="bi bi-gear me-1"></i>Manage Subscription';
-    });
-}
-
-// ============================================================================
-// EMAIL SETTINGS
-// ============================================================================
-
-function loadEmailSettings() {
-    fetch('/api/email-settings/')
-        .then(r => r.json())
-        .then(data => {
-            if (data.success) {
-                document.getElementById('inboundEmailAddress').value = data.email_address || '';
-                // Don't populate password for security
-                
-                const server = data.imap_server || 'imap.gmail.com';
-                const select = document.getElementById('inboundImapServer');
-                const customInput = document.getElementById('inboundImapServerCustom');
-                
-                // Check if server is in dropdown
-                const option = Array.from(select.options).find(o => o.value === server);
-                if (option) {
-                    select.value = server;
-                    customInput.style.display = 'none';
-                } else {
-                    select.value = 'custom';
-                    customInput.style.display = 'block';
-                    customInput.value = server;
-                }
-            }
-        })
-        .catch(err => console.error('Error loading email settings:', err));
-}
-
-function saveEmailSettings() {
-    const select = document.getElementById('inboundImapServer');
-    let imapServer = select.value;
-    if (imapServer === 'custom') {
-        imapServer = document.getElementById('inboundImapServerCustom').value.trim();
-    }
-    
-    const data = {
-        email_address: document.getElementById('inboundEmailAddress').value.trim(),
-        email_password: document.getElementById('inboundEmailPassword').value,
-        imap_server: imapServer
     };
-    
-    const statusEl = document.getElementById('emailSettingsStatus');
-    statusEl.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Saving...';
-    
-    fetch('/api/email-settings/save/', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': getCookie('csrftoken')
-        },
-        body: JSON.stringify(data)
-    })
-    .then(r => r.json())
-    .then(data => {
-        if (data.success) {
-            statusEl.innerHTML = '<span class="text-success"><i class="bi bi-check-circle"></i> Saved!</span>';
-            document.getElementById('inboundEmailPassword').value = '';
-            setTimeout(() => statusEl.innerHTML = '', 3000);
-        } else {
-            statusEl.innerHTML = '<span class="text-danger"><i class="bi bi-x-circle"></i> ' + (data.error || 'Error') + '</span>';
-        }
-    })
-    .catch(err => {
-        statusEl.innerHTML = '<span class="text-danger"><i class="bi bi-x-circle"></i> Error saving</span>';
-    });
+    reader.readAsDataURL(file);
 }
-
-function testEmailConnection() {
-    const statusEl = document.getElementById('emailSettingsStatus');
-    statusEl.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Testing connection...';
-    
-    fetch('/api/email-settings/test/', {
-        method: 'POST',
-        headers: { 'X-CSRFToken': getCookie('csrftoken') }
-    })
-    .then(r => r.json())
-    .then(data => {
-        if (data.success) {
-            statusEl.innerHTML = '<span class="text-success"><i class="bi bi-check-circle"></i> Connection successful! Found ' + data.unread_count + ' unread emails.</span>';
-        } else {
-            statusEl.innerHTML = '<span class="text-danger"><i class="bi bi-x-circle"></i> ' + (data.error || 'Connection failed') + '</span>';
-        }
-    })
-    .catch(err => {
-        statusEl.innerHTML = '<span class="text-danger"><i class="bi bi-x-circle"></i> Error testing connection</span>';
-    });
-}
-
-function togglePasswordVisibility() {
-    const input = document.getElementById('inboundEmailPassword');
-    const icon = document.getElementById('passwordToggleIcon');
-    if (input.type === 'password') {
-        input.type = 'text';
-        icon.classList.remove('bi-eye');
-        icon.classList.add('bi-eye-slash');
-    } else {
-        input.type = 'password';
-        icon.classList.remove('bi-eye-slash');
-        icon.classList.add('bi-eye');
-    }
-}
-
-// Handle IMAP server dropdown
-document.getElementById('inboundImapServer').addEventListener('change', function() {
-    const customInput = document.getElementById('inboundImapServerCustom');
-    customInput.style.display = this.value === 'custom' ? 'block' : 'none';
-});
-
-// Check URL params for payment status
-document.addEventListener('DOMContentLoaded', function() {
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('payment') === 'success') {
-        document.getElementById('paymentSuccessAlert').style.display = 'block';
-        // Clean URL
-        window.history.replaceState({}, document.title, window.location.pathname);
-    } else if (urlParams.get('payment') === 'cancelled') {
-        document.getElementById('paymentCancelledAlert').style.display = 'block';
-        window.history.replaceState({}, document.title, window.location.pathname);
-    }
-    
-    // Load billing status
-    loadBillingStatus();
-    
-    // Load address book
-    loadTenantEmails();
-    
-    // Load email settings
-    loadEmailSettings();
-});
-
-// ============================================================================
-// TENANT ADDRESS BOOK
-// ============================================================================
-
-function loadTenantEmails() {
-    fetch('/api/documents/tenant-emails/')
-        .then(response => response.json())
-        .then(emails => {
-            renderTenantEmails(emails);
-        })
-        .catch(error => {
-            console.error('Error loading tenant emails:', error);
-            document.getElementById('tenantEmailsList').innerHTML = 
-                '<p class="text-danger">Error loading address book</p>';
-        });
-}
-
-function renderTenantEmails(emails) {
-    const container = document.getElementById('tenantEmailsList');
-    
-    if (emails.length === 0) {
-        container.innerHTML = '<p class="text-muted text-center mb-0">No emails in address book yet. Click "Add Email" to get started.</p>';
-        return;
-    }
-    
-    container.innerHTML = `
-        <table class="table table-sm table-hover mb-0">
-            <thead>
-                <tr>
-                    <th>Email</th>
-                    <th>Label</th>
-                    <th style="width: 100px;">Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${emails.map(email => `
-                    <tr>
-                        <td>${email.email}</td>
-                        <td>${email.label || '<span class="text-muted">-</span>'}</td>
-                        <td>
-                            <button class="btn btn-sm btn-outline-danger" onclick="deleteTenantEmail(${email.id})" title="Delete">
-                                <i class="bi bi-trash"></i>
-                            </button>
-                        </td>
-                    </tr>
-                `).join('')}
-            </tbody>
-        </table>
-    `;
-}
-
-function addTenantEmail() {
-    const email = document.getElementById('tenantEmailAddress').value.trim();
-    const label = document.getElementById('tenantEmailLabel').value.trim();
-    
-    if (!email) {
-        alert('Please enter an email address');
-        return;
-    }
-    
-    fetch('/api/documents/add-tenant-email/', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': getCookie('csrftoken')
-        },
-        body: JSON.stringify({ email, label })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            document.getElementById('tenantEmailAddress').value = '';
-            document.getElementById('tenantEmailLabel').value = '';
-            bootstrap.Modal.getInstance(document.getElementById('addTenantEmailModal')).hide();
-            loadTenantEmails();
-        } else {
-            alert('Error: ' + (data.error || 'Failed to add email'));
-        }
-    })
-    .catch(error => alert('Error: ' + error));
-}
-
-function deleteTenantEmail(emailId) {
-    if (!confirm('Delete this email from the address book?')) return;
-    
-    fetch(`/api/documents/delete-tenant-email/${emailId}/`, {
-        method: 'DELETE',
-        headers: { 'X-CSRFToken': getCookie('csrftoken') }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            loadTenantEmails();
-        } else {
-            alert('Error deleting email');
-        }
-    })
-    .catch(error => alert('Error: ' + error));
-}
-
-
-
-
 </script>
 {% endblock %}

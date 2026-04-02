@@ -5,13 +5,13 @@
 <script src="https://js.stripe.com/v3/"></script>
 <style>
 .market-hero {
-    background: linear-gradient(135deg, #0a1628 0%, #0d1f3c 50%, #0a2840 100%);
-    border-bottom: 3px solid #00b4d8;
-    padding: 2rem 0 1.5rem;
+    background: #f8f9fa;
+    border-bottom: 2px solid #dee2e6;
+    padding: 1.5rem 0;
     margin-bottom: 2rem;
 }
-.market-hero h1 { color: #fff; font-weight: 700; }
-.market-hero p { color: #48cae4; }
+.market-hero h1 { color: #212529; font-weight: 700; }
+.market-hero p { color: #6c757d; }
 
 /* Menu cards */
 .menu-item-card {
@@ -38,6 +38,7 @@
     width: 100%;
     height: 100%;
     object-fit: cover;
+    transition: opacity 0.3s ease;
 }
 .menu-item-img .placeholder-icon {
     font-size: 4rem;
@@ -61,19 +62,19 @@
 /* Order form */
 .section-header {
     background: #f8f9fa;
-    border-left: 4px solid #00b4d8;
+    border-left: 4px solid #0d6efd;
     padding: 0.5rem 1rem;
     margin-bottom: 1rem;
     border-radius: 0 6px 6px 0;
     font-weight: 600;
-    color: #0a1628;
+    color: #212529;
 }
 
 /* Manager controls */
 .manager-bar {
-    background: #0a1628;
-    border-bottom: 2px solid #f4a827;
-    color: #f4a827;
+    background: #fff3cd;
+    border-bottom: 2px solid #ffc107;
+    color: #664d03;
     padding: 0.5rem 1rem;
     font-size: 0.85rem;
 }
@@ -96,10 +97,10 @@
 <div class="manager-bar d-flex align-items-center gap-3">
     <i class="bi bi-shield-check"></i>
     <strong>Manager Mode</strong> — You can add, edit, and remove menu items.
-    <button class="btn btn-sm btn-warning ms-auto" onclick="openAddItemModal()">
+    <button class="btn btn-sm btn-success ms-auto" onclick="openAddItemModal()">
         <i class="bi bi-plus-circle me-1"></i>Add Item
     </button>
-    <a href="javascript:void(0)" onclick="showOrdersPanel()" class="btn btn-sm btn-outline-warning">
+    <a href="javascript:void(0)" onclick="showOrdersPanel()" class="btn btn-sm btn-outline-dark">
         <i class="bi bi-list-ul me-1"></i>View Orders
     </a>
 </div>
@@ -109,10 +110,10 @@
 <div class="market-hero">
     <div class="container-fluid px-4">
         <div class="d-flex align-items-center gap-3">
-            <i class="bi bi-basket2-fill text-info" style="font-size:2.5rem;"></i>
+            <i class="bi bi-basket2-fill text-primary" style="font-size:2.5rem;"></i>
             <div>
-                <h1 class="mb-0">Fish Market</h1>
-                <p class="mb-0">{{ tenant.name }} — Fresh seafood, order online</p>
+                <h1 class="mb-0">{{ tenant.name }}</h1>
+                <p class="mb-0">Fresh seafood, order online</p>
             </div>
         </div>
     </div>
@@ -135,7 +136,7 @@
 
             <!-- Menu Grid -->
             <div class="col-lg-8">
-                <h4 class="mb-3"><i class="bi bi-grid me-2 text-info"></i>Our Menu</h4>
+                <h4 class="mb-3"><i class="bi bi-grid me-2 text-primary"></i>Our Menu</h4>
 
                 {% if not menu_items %}
                 <div class="text-center text-muted py-5">
@@ -147,11 +148,11 @@
                 <div class="row row-cols-1 row-cols-sm-2 row-cols-xl-3 g-3" id="menu-grid">
                     {% for item in menu_items %}
                     <div class="col" id="item-col-{{ item.id }}">
-                        <div class="menu-item-card card position-relative" data-item-id="{{ item.id }}" data-price="{{ item.price }}" data-name="{{ item.name }}">
+                        <div class="menu-item-card card position-relative" data-item-id="{{ item.id }}" data-price="{{ item.sales_price|default:'0' }}" data-name="{{ item.description }}">
 
                             {% if is_manager %}
                             <div class="edit-overlay">
-                                <button class="btn btn-sm btn-light border shadow-sm" title="Edit" onclick="openEditItemModal({{ item.id }}, '{{ item.name|escapejs }}', '{{ item.description|escapejs }}', {{ item.price }}, '{{ item.category|escapejs }}', {{ item.sort_order }}, {{ item.is_available|yesno:'true,false' }})">
+                                <button class="btn btn-sm btn-light border shadow-sm" title="Edit" onclick="openEditItemModal({{ item.id }}, '{{ item.description|escapejs }}', '{{ item.instruction|escapejs }}', {{ item.sales_price|default:'0' }}, '{{ item.category|escapejs }}', {{ item.sort_order }}, {{ item.is_active|yesno:'true,false' }})">
                                     <i class="bi bi-pencil text-primary"></i>
                                 </button>
                                 <button class="btn btn-sm btn-light border shadow-sm" title="Upload photo" onclick="openImageModal({{ item.id }})">
@@ -163,31 +164,39 @@
                             </div>
                             {% endif %}
 
-                            {% if not item.is_available %}
+                            {% if not item.is_active %}
                             <span class="badge bg-secondary unavailable-badge">Unavailable</span>
                             {% endif %}
 
-                            <div class="menu-item-img">
-                                {% if item.image %}
-                                <img src="{{ item.image }}" alt="{{ item.name }}" id="item-img-{{ item.id }}">
+                            <div class="menu-item-img"
+                                 {% with imgs=item.images.all %}
+                                 {% for img in imgs %}
+                                 data-img{{ img.slot }}="{{ img.image.url }}"
+                                 {% endfor %}
+                                 {% endwith %}
+                                 onmouseenter="swapImg(this, true)" onmouseleave="swapImg(this, false)">
+                                {% with first_img=item.images.all.0 %}
+                                {% if first_img %}
+                                <img src="{{ first_img.image.url }}" alt="{{ item.description }}" id="item-img-{{ item.id }}">
                                 {% else %}
                                 <div class="placeholder-icon d-flex align-items-center justify-content-center w-100 h-100">
                                     <i class="bi bi-fish" id="item-img-placeholder-{{ item.id }}"></i>
                                 </div>
                                 {% endif %}
+                                {% endwith %}
                             </div>
 
                             <div class="menu-item-body">
                                 {% if item.category %}
                                 <div class="item-category">{{ item.category }}</div>
                                 {% endif %}
-                                <h6 class="mb-1 fw-bold">{{ item.name }}</h6>
-                                {% if item.description %}
-                                <p class="text-muted small mb-2">{{ item.description }}</p>
+                                <h6 class="mb-1 fw-bold">{{ item.description }}</h6>
+                                {% if item.instruction %}
+                                <p class="text-muted small mb-2">{{ item.instruction }}</p>
                                 {% endif %}
                                 <div class="d-flex align-items-center justify-content-between mt-2">
-                                    <span class="item-price">${{ item.price }}</span>
-                                    {% if item.is_available %}
+                                    <span class="item-price">${{ item.sales_price|floatformat:2|default:"0.00" }}</span>
+                                    {% if item.is_active %}
                                     <div class="qty-control">
                                         <button class="btn btn-sm btn-outline-secondary" onclick="changeQty({{ item.id }}, -1)">−</button>
                                         <input type="number" class="form-control form-control-sm qty-input" id="qty-{{ item.id }}" value="0" min="0" max="99" onchange="updateCart({{ item.id }})">
@@ -404,6 +413,22 @@
 const SLUG = "{{ slug }}";
 const IS_MANAGER = {{ is_manager|yesno:'true,false' }};
 const STRIPE_PUBLIC_KEY = "{{ stripe_public_key }}";
+
+// ── Image Hover Swap ─────────────────────────────────────────────────────────
+function swapImg(container, hovering) {
+    const img = container.querySelector('img');
+    if (!img) return;
+    const img1 = container.dataset.img1;
+    const img2 = container.dataset.img2;
+    if (!img2) return; // no second image, nothing to swap
+    if (hovering) {
+        img.style.opacity = '0';
+        setTimeout(() => { img.src = img2; img.style.opacity = '1'; }, 150);
+    } else {
+        img.style.opacity = '0';
+        setTimeout(() => { img.src = img1; img.style.opacity = '1'; }, 150);
+    }
+}
 
 // ── Cart State ────────────────────────────────────────────────────────────────
 const cart = {};  // { itemId: { name, price, qty } }

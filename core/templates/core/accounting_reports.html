@@ -1,0 +1,246 @@
+{% extends 'core/base.html' %}
+{% block title %}Reports - FishTeck{% endblock %}
+
+{% block extra_css %}
+<style>
+.kpi-card { border-left: 4px solid; border-radius: 8px; }
+.kpi-card.green  { border-color: #198754; }
+.kpi-card.red    { border-color: #dc3545; }
+.kpi-card.blue   { border-color: #0a58ca; }
+.kpi-card.yellow { border-color: #ffc107; }
+.section-title { font-weight: 700; font-size: 1.1rem; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 2px solid #e9ecef; }
+.bar-fill { height: 22px; border-radius: 4px; min-width: 2px; transition: width 0.4s; }
+.bar-label { font-size: 0.85rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 mt-4 pb-5">
+
+    <div class="d-flex align-items-center gap-2 mb-4">
+        <a href="{% url 'accounting_hub' %}" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Accounting
+        </a>
+        <h4 class="mb-0 ms-2"><i class="bi bi-graph-up-arrow me-2 text-primary"></i>Reports</h4>
+    </div>
+
+    <!-- KPI Summary -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card kpi-card green p-3">
+                <div class="text-muted small">Total Income</div>
+                <div class="fs-4 fw-bold text-success" id="kpi-income">--</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card kpi-card red p-3">
+                <div class="text-muted small">Total Expenses</div>
+                <div class="fs-4 fw-bold text-danger" id="kpi-expenses">--</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card kpi-card blue p-3">
+                <div class="text-muted small">Net Profit / Loss</div>
+                <div class="fs-4 fw-bold" id="kpi-net">--</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card kpi-card yellow p-3">
+                <div class="text-muted small">Outstanding AR</div>
+                <div class="fs-4 fw-bold text-warning" id="kpi-outstanding">--</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Income Breakdown -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="card p-3">
+                <div class="text-muted small">AR Collected</div>
+                <div class="fs-5 fw-bold text-success" id="kpi-ar">--</div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card p-3">
+                <div class="text-muted small">Retail Orders Income</div>
+                <div class="fs-5 fw-bold text-success" id="kpi-fm">--</div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card p-3">
+                <div class="text-muted small">Unpaid Expenses</div>
+                <div class="fs-5 fw-bold text-danger" id="kpi-ap-unpaid">--</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Monthly P&L -->
+        <div class="col-md-8">
+            <div class="card shadow-sm p-3">
+                <div class="section-title text-primary">Monthly Profit & Loss</div>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Month</th>
+                                <th class="text-end">Income</th>
+                                <th class="text-end">Expenses</th>
+                                <th class="text-end">Net</th>
+                            </tr>
+                        </thead>
+                        <tbody id="monthly-tbody">
+                            <tr><td colspan="4" class="text-center text-muted py-3">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Expense Categories -->
+        <div class="col-md-4">
+            <div class="card shadow-sm p-3">
+                <div class="section-title text-danger">Expense Categories</div>
+                <div id="categories-list"><p class="text-muted">Loading...</p></div>
+            </div>
+        </div>
+
+        <!-- Top Customers -->
+        <div class="col-md-6">
+            <div class="card shadow-sm p-3">
+                <div class="section-title text-success">Top Customers</div>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Customer</th>
+                                <th class="text-end">Billed</th>
+                                <th class="text-end">Paid</th>
+                                <th class="text-end">Outstanding</th>
+                            </tr>
+                        </thead>
+                        <tbody id="customers-tbody">
+                            <tr><td colspan="4" class="text-center text-muted py-3">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Top Vendors -->
+        <div class="col-md-6">
+            <div class="card shadow-sm p-3">
+                <div class="section-title text-danger">Top Vendors</div>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Vendor</th>
+                                <th class="text-end">Total</th>
+                                <th class="text-end">Paid</th>
+                                <th class="text-end">Unpaid</th>
+                            </tr>
+                        </thead>
+                        <tbody id="vendors-tbody">
+                            <tr><td colspan="4" class="text-center text-muted py-3">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function fmt(n) { return '$' + parseFloat(n).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}); }
+
+function fmtMonth(m) {
+    const [y, mo] = m.split('-');
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    return months[parseInt(mo) - 1] + ' ' + y;
+}
+
+async function load() {
+    const res = await fetch('/api/accounting/reports/');
+    const data = await res.json();
+    if (data.error) return;
+
+    const s = data.summary;
+    document.getElementById('kpi-income').textContent = fmt(s.total_income);
+    document.getElementById('kpi-expenses').textContent = fmt(s.expenses_paid);
+    const netEl = document.getElementById('kpi-net');
+    netEl.textContent = fmt(s.net);
+    netEl.style.color = s.net >= 0 ? '#198754' : '#dc3545';
+    document.getElementById('kpi-outstanding').textContent = fmt(s.ar_outstanding);
+    document.getElementById('kpi-ar').textContent = fmt(s.ar_collected);
+    document.getElementById('kpi-fm').textContent = fmt(s.fm_income);
+    document.getElementById('kpi-ap-unpaid').textContent = fmt(s.expenses_unpaid);
+
+    // Monthly
+    const monthly = data.monthly || [];
+    if (monthly.length) {
+        document.getElementById('monthly-tbody').innerHTML = monthly.reverse().map(m => `
+            <tr>
+                <td class="fw-semibold">${fmtMonth(m.month)}</td>
+                <td class="text-end text-success">${fmt(m.income)}</td>
+                <td class="text-end text-danger">${fmt(m.expenses)}</td>
+                <td class="text-end fw-bold" style="color:${m.net >= 0 ? '#198754' : '#dc3545'}">${fmt(m.net)}</td>
+            </tr>
+        `).join('');
+    } else {
+        document.getElementById('monthly-tbody').innerHTML = '<tr><td colspan="4" class="text-center text-muted py-3">No data yet</td></tr>';
+    }
+
+    // Categories
+    const cats = data.categories || [];
+    const catMax = cats.length ? Math.max(...cats.map(c => c.total)) : 1;
+    if (cats.length) {
+        document.getElementById('categories-list').innerHTML = cats.map(c => `
+            <div class="mb-2">
+                <div class="d-flex justify-content-between bar-label">
+                    <span>${c.category}</span>
+                    <span class="fw-bold">${fmt(c.total)}</span>
+                </div>
+                <div style="background:#f1f1f1; border-radius:4px; overflow:hidden;">
+                    <div class="bar-fill" style="width:${(c.total / catMax * 100).toFixed(0)}%; background:#dc3545;"></div>
+                </div>
+            </div>
+        `).join('');
+    } else {
+        document.getElementById('categories-list').innerHTML = '<p class="text-muted">No categorized expenses</p>';
+    }
+
+    // Top Customers
+    const custs = data.top_customers || [];
+    if (custs.length) {
+        document.getElementById('customers-tbody').innerHTML = custs.map(c => `
+            <tr>
+                <td class="fw-semibold">${c.customer}</td>
+                <td class="text-end">${fmt(c.total_billed)}</td>
+                <td class="text-end text-success">${fmt(c.total_paid)}</td>
+                <td class="text-end" style="color:${c.outstanding > 0 ? '#dc3545' : '#198754'}">${fmt(c.outstanding)}</td>
+            </tr>
+        `).join('');
+    } else {
+        document.getElementById('customers-tbody').innerHTML = '<tr><td colspan="4" class="text-center text-muted py-3">No data yet</td></tr>';
+    }
+
+    // Top Vendors
+    const vends = data.top_vendors || [];
+    if (vends.length) {
+        document.getElementById('vendors-tbody').innerHTML = vends.map(v => `
+            <tr>
+                <td class="fw-semibold">${v.vendor}</td>
+                <td class="text-end">${fmt(v.total)}</td>
+                <td class="text-end text-success">${fmt(v.paid)}</td>
+                <td class="text-end text-danger">${fmt(v.unpaid)}</td>
+            </tr>
+        `).join('');
+    } else {
+        document.getElementById('vendors-tbody').innerHTML = '<tr><td colspan="4" class="text-center text-muted py-3">No data yet</td></tr>';
+    }
+}
+
+load();
+</script>
+{% endblock %}

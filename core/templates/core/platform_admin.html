@@ -1,11 +1,49 @@
 {% extends 'core/base.html' %}
+{% load dict_filters %}
 
 {% block title %}Platform Admin - FishTech{% endblock %}
+
+{% block extra_css %}
+<style>
+.tenant-config {
+    background: #f8f9fa;
+    border-top: 1px solid #dee2e6;
+}
+.config-section {
+    border-left: 3px solid;
+    padding-left: 12px;
+    margin-bottom: 1rem;
+}
+.config-section.email { border-color: #ffc107; }
+.config-section.twilio { border-color: #198754; }
+.config-section.subscription { border-color: #0d6efd; }
+.config-value {
+    font-family: monospace;
+    font-size: 0.85rem;
+    color: #495057;
+}
+.config-value.empty {
+    color: #adb5bd;
+    font-style: italic;
+}
+.tenant-row { cursor: pointer; }
+.tenant-row:hover { background-color: #f0f4ff; }
+.chevron-icon { transition: transform 0.2s; }
+.chevron-icon.open { transform: rotate(90deg); }
+.stage-prospect { background: #6c757d; color: #fff; }
+.stage-contacted { background: #0dcaf0; color: #000; }
+.stage-demo { background: #6f42c1; color: #fff; }
+.stage-proposal { background: #fd7e14; color: #fff; }
+.stage-negotiation { background: #ffc107; color: #000; }
+.stage-won { background: #198754; color: #fff; }
+.stage-lost { background: #dc3545; color: #fff; }
+</style>
+{% endblock %}
 
 {% block content %}
 <div class="container mt-4">
     <h2 class="mb-4"><i class="bi bi-speedometer2 me-2"></i>Platform Admin Dashboard</h2>
-    
+
     <!-- Metrics Cards -->
     <div class="row mb-4">
         <div class="col-md-3">
@@ -41,7 +79,7 @@
             </div>
         </div>
     </div>
-    
+
     <!-- Status Breakdown -->
     <div class="row mb-4">
         <div class="col-md-12">
@@ -56,16 +94,161 @@
             </div>
         </div>
     </div>
-    
-    <!-- Tenants Table -->
+
+    <!-- Lead Tracking -->
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center" style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#leadsCollapse">
+            <h5 class="mb-0"><i class="bi bi-funnel me-2"></i>Lead Tracking</h5>
+            <div class="d-flex align-items-center gap-3">
+                <div>
+                    {% for key, info in leads_by_stage.items %}
+                    {% if info.count > 0 %}
+                    <span class="badge stage-{{ key }} me-1">{{ info.label }}: {{ info.count }}</span>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+                <i class="bi bi-chevron-down"></i>
+            </div>
+        </div>
+        <div id="leadsCollapse" class="collapse show">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div class="d-flex gap-2">
+                        <select class="form-select form-select-sm" id="leadFilterStage" onchange="filterLeads()" style="width: auto;">
+                            <option value="">All Stages</option>
+                            {% for key, label in stage_choices %}
+                            <option value="{{ key }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <button class="btn btn-sm btn-success" onclick="openLeadModal()">
+                        <i class="bi bi-plus-circle me-1"></i>Add Lead
+                    </button>
+                </div>
+                <table class="table table-hover mb-0" id="leadsTable">
+                    <thead>
+                        <tr>
+                            <th>Company</th>
+                            <th>Contact</th>
+                            <th>Stage</th>
+                            <th>Contract Value</th>
+                            <th>Last Contacted</th>
+                            <th>Next Follow-up</th>
+                            <th>Notes</th>
+                            <th style="width: 80px;"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for lead in leads %}
+                        <tr class="lead-row" data-stage="{{ lead.stage }}">
+                            <td><strong>{{ lead.company_name }}</strong></td>
+                            <td>
+                                <div>{{ lead.contact_name|default:"-" }}</div>
+                                {% if lead.contact_email %}<small class="text-muted">{{ lead.contact_email }}</small>{% endif %}
+                                {% if lead.contact_phone %}<br><small class="text-muted">{{ lead.contact_phone }}</small>{% endif %}
+                            </td>
+                            <td><span class="badge stage-{{ lead.stage }}">{{ lead.get_stage_display }}</span></td>
+                            <td>{% if lead.contract_value %}${{ lead.contract_value|floatformat:2 }}{% else %}-{% endif %}</td>
+                            <td class="{% if lead.last_contacted %}{% else %}text-danger fw-bold{% endif %}">
+                                {{ lead.last_contacted|date:"M d, Y"|default:"Never" }}
+                            </td>
+                            <td class="{% if lead.next_followup and lead.next_followup <= today %}text-danger fw-bold{% endif %}">
+                                {{ lead.next_followup|date:"M d, Y"|default:"-" }}
+                            </td>
+                            <td><small>{{ lead.notes|truncatewords:12|default:"-" }}</small></td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-primary me-1" onclick="editLead({{ lead.id }}, {{ lead|lead_json }})" title="Edit">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-danger" onclick="deleteLead({{ lead.id }}, '{{ lead.company_name }}')" title="Delete">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="8" class="text-center text-muted">No leads yet. Click "Add Lead" to get started.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lead Modal -->
+    <div class="modal fade" id="leadModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="leadModalTitle">Add Lead</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="leadId">
+                    <div class="mb-3">
+                        <label class="form-label">Company Name *</label>
+                        <input type="text" class="form-control" id="leadCompany" required>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Contact Name</label>
+                            <input type="text" class="form-control" id="leadContactName">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Stage</label>
+                            <select class="form-select" id="leadStage">
+                                {% for key, label in stage_choices %}
+                                <option value="{{ key }}">{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Email</label>
+                            <input type="email" class="form-control" id="leadEmail">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Phone</label>
+                            <input type="text" class="form-control" id="leadPhone">
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Contract Value ($)</label>
+                            <input type="number" class="form-control" id="leadContractValue" step="1">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Last Contacted</label>
+                            <input type="date" class="form-control" id="leadLastContacted">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Next Follow-up</label>
+                            <input type="date" class="form-control" id="leadNextFollowup">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Notes</label>
+                        <textarea class="form-control" id="leadNotes" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="saveLead()">Save Lead</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tenants Table with Expandable Config -->
     <div class="card">
         <div class="card-header">
             <h5 class="mb-0">All Tenants</h5>
         </div>
-        <div class="card-body">
-            <table class="table table-hover">
+        <div class="card-body p-0">
+            <table class="table table-hover mb-0">
                 <thead>
                     <tr>
+                        <th style="width: 30px;"></th>
                         <th>ID</th>
                         <th>Name</th>
                         <th>Subdomain</th>
@@ -79,9 +262,10 @@
                 </thead>
                 <tbody>
                     {% for tenant in tenants %}
-                    <tr>
+                    <tr class="tenant-row" onclick="toggleTenantConfig({{ tenant.id }})">
+                        <td><i class="bi bi-chevron-right chevron-icon" id="chevron-{{ tenant.id }}"></i></td>
                         <td>{{ tenant.id }}</td>
-                        <td>{{ tenant.name }}</td>
+                        <td><strong>{{ tenant.name }}</strong></td>
                         <td><code>{{ tenant.subdomain }}</code></td>
                         <td>
                             {% if tenant.subscription_status == 'active' %}
@@ -100,7 +284,7 @@
                         <td>{{ tenant.trial_ends_at|date:"M d, Y"|default:"-" }}</td>
                         <td>
                             {% if tenant.stripe_customer_id %}
-                            <a href="https://dashboard.stripe.com/customers/{{ tenant.stripe_customer_id }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                            <a href="https://dashboard.stripe.com/customers/{{ tenant.stripe_customer_id }}" target="_blank" class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation();">
                                 <i class="bi bi-box-arrow-up-right"></i> View
                             </a>
                             {% else %}
@@ -109,14 +293,192 @@
                         </td>
                         <td>{{ tenant.created_at|date:"M d, Y"|default:"-" }}</td>
                         <td>
-                            <button class="btn btn-sm btn-outline-danger" onclick="deleteTenant({{ tenant.id }}, '{{ tenant.name }}')">
+                            <button class="btn btn-sm btn-outline-danger" onclick="event.stopPropagation(); deleteTenant({{ tenant.id }}, '{{ tenant.name }}')">
                                 <i class="bi bi-trash"></i>
                             </button>
                         </td>
                     </tr>
+                    <!-- Expandable Config Row -->
+                    <tr id="config-row-{{ tenant.id }}" style="display: none;">
+                        <td colspan="10" class="p-0">
+                            <div class="tenant-config p-4">
+                                <div class="row">
+                                    <!-- Email Settings -->
+                                    <div class="col-md-4">
+                                        <div class="config-section email">
+                                            <h6><i class="bi bi-envelope-at me-1 text-warning"></i>Email Settings</h6>
+                                            <div class="mb-2">
+                                                <label class="form-label small mb-0">Inbound Email</label>
+                                                <input type="email" class="form-control form-control-sm" id="email-address-{{ tenant.id }}" value="{{ tenant.inbound_email_address|default:'' }}">
+                                            </div>
+                                            <div class="mb-2">
+                                                <label class="form-label small mb-0">App Password</label>
+                                                <input type="password" class="form-control form-control-sm" id="email-password-{{ tenant.id }}" placeholder="{% if tenant.inbound_email_password %}(saved - leave blank to keep){% else %}Not set{% endif %}">
+                                            </div>
+                                            <div class="mb-2">
+                                                <label class="form-label small mb-0">IMAP Server</label>
+                                                <input type="text" class="form-control form-control-sm" id="email-imap-{{ tenant.id }}" value="{{ tenant.inbound_email_imap_server|default:'imap.gmail.com' }}">
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Twilio Settings -->
+                                    <div class="col-md-4">
+                                        <div class="config-section twilio">
+                                            <h6><i class="bi bi-chat-dots me-1 text-success"></i>Twilio SMS Settings</h6>
+                                            <div class="mb-2">
+                                                <label class="form-label small mb-0">Account SID</label>
+                                                <input type="text" class="form-control form-control-sm" id="twilio-sid-{{ tenant.id }}" value="{{ tenant.twilio_account_sid|default:'' }}">
+                                            </div>
+                                            <div class="mb-2">
+                                                <label class="form-label small mb-0">Auth Token</label>
+                                                <input type="password" class="form-control form-control-sm" id="twilio-token-{{ tenant.id }}" placeholder="{% if tenant.twilio_auth_token %}(saved - leave blank to keep){% else %}Not set{% endif %}">
+                                            </div>
+                                            <div class="mb-2">
+                                                <label class="form-label small mb-0">Phone Number</label>
+                                                <input type="text" class="form-control form-control-sm" id="twilio-phone-{{ tenant.id }}" value="{{ tenant.twilio_phone_number|default:'' }}">
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Subscription Settings -->
+                                    <div class="col-md-4">
+                                        <div class="config-section subscription">
+                                            <h6><i class="bi bi-credit-card me-1 text-primary"></i>Subscription</h6>
+                                            <div class="mb-2">
+                                                <label class="form-label small mb-0">Status</label>
+                                                <select class="form-select form-select-sm" id="sub-status-{{ tenant.id }}">
+                                                    <option value="trialing" {% if tenant.subscription_status == 'trialing' %}selected{% endif %}>Trialing</option>
+                                                    <option value="active" {% if tenant.subscription_status == 'active' %}selected{% endif %}>Active</option>
+                                                    <option value="past_due" {% if tenant.subscription_status == 'past_due' %}selected{% endif %}>Past Due</option>
+                                                    <option value="canceled" {% if tenant.subscription_status == 'canceled' %}selected{% endif %}>Canceled</option>
+                                                    <option value="unpaid" {% if tenant.subscription_status == 'unpaid' %}selected{% endif %}>Unpaid</option>
+                                                </select>
+                                            </div>
+                                            <div class="mb-2">
+                                                <label class="form-label small mb-0">Stripe Customer</label>
+                                                <div class="config-value {% if not tenant.stripe_customer_id %}empty{% endif %}">
+                                                    {{ tenant.stripe_customer_id|default:"Not linked" }}
+                                                </div>
+                                            </div>
+                                            <div class="mb-2">
+                                                <label class="form-label small mb-0">Stripe Subscription</label>
+                                                <div class="config-value {% if not tenant.stripe_subscription_id %}empty{% endif %}">
+                                                    {{ tenant.stripe_subscription_id|default:"None" }}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Documents Section -->
+                                <hr class="my-3">
+                                <h6 class="mb-3"><i class="bi bi-file-earmark-text me-1"></i>Documents</h6>
+                                <div class="row g-2 mb-3">
+                                    {% for doc_type, doc_label in stage_choices %}{% endfor %}
+                                    {% with sub_doc=tenant.docs.subscription_agreement pp_doc=tenant.docs.privacy_policy sla_doc=tenant.docs.sla %}
+                                    <div class="col-md-4">
+                                        <div class="border rounded p-3 h-100 {% if sub_doc.is_signed %}border-success{% endif %}">
+                                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                                <strong class="small">Subscription Agreement</strong>
+                                                {% if sub_doc.is_signed %}
+                                                <span class="badge bg-success">Signed</span>
+                                                {% else %}
+                                                <span class="badge bg-warning text-dark">Unsigned</span>
+                                                {% endif %}
+                                            </div>
+                                            {% if sub_doc.is_signed %}
+                                            <small class="text-muted d-block">By: {{ sub_doc.signer_name }}{% if sub_doc.signer_title %} ({{ sub_doc.signer_title }}){% endif %}</small>
+                                            <small class="text-muted d-block mb-2">{{ sub_doc.signed_at|date:"M d, Y g:i A" }}</small>
+                                            <div class="d-flex gap-1">
+                                                <a href="/sign/{{ sub_doc.signing_token }}/" target="_blank" class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation();">View</a>
+                                                <button class="btn btn-sm btn-outline-danger" onclick="event.stopPropagation(); resetDoc({{ sub_doc.id }})">Reset</button>
+                                            </div>
+                                            {% else %}
+                                            <div class="d-flex gap-1">
+                                                <a href="/sign/{{ sub_doc.signing_token }}/" target="_blank" class="btn btn-sm btn-success flex-fill" onclick="event.stopPropagation();">
+                                                    <i class="bi bi-pen me-1"></i>Sign Now
+                                                </a>
+                                                <button class="btn btn-sm btn-outline-primary flex-fill" onclick="event.stopPropagation(); copySignLink('{{ sub_doc.signing_token }}', 'Subscription Agreement')">
+                                                    <i class="bi bi-link-45deg me-1"></i>Copy Link
+                                                </button>
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="border rounded p-3 h-100 {% if pp_doc.is_signed %}border-success{% endif %}">
+                                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                                <strong class="small">Privacy Policy</strong>
+                                                {% if pp_doc.is_signed %}
+                                                <span class="badge bg-success">Signed</span>
+                                                {% else %}
+                                                <span class="badge bg-warning text-dark">Unsigned</span>
+                                                {% endif %}
+                                            </div>
+                                            {% if pp_doc.is_signed %}
+                                            <small class="text-muted d-block">By: {{ pp_doc.signer_name }}{% if pp_doc.signer_title %} ({{ pp_doc.signer_title }}){% endif %}</small>
+                                            <small class="text-muted d-block mb-2">{{ pp_doc.signed_at|date:"M d, Y g:i A" }}</small>
+                                            <div class="d-flex gap-1">
+                                                <a href="/sign/{{ pp_doc.signing_token }}/" target="_blank" class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation();">View</a>
+                                                <button class="btn btn-sm btn-outline-danger" onclick="event.stopPropagation(); resetDoc({{ pp_doc.id }})">Reset</button>
+                                            </div>
+                                            {% else %}
+                                            <div class="d-flex gap-1">
+                                                <a href="/sign/{{ pp_doc.signing_token }}/" target="_blank" class="btn btn-sm btn-success flex-fill" onclick="event.stopPropagation();">
+                                                    <i class="bi bi-pen me-1"></i>Sign Now
+                                                </a>
+                                                <button class="btn btn-sm btn-outline-primary flex-fill" onclick="event.stopPropagation(); copySignLink('{{ pp_doc.signing_token }}', 'Privacy Policy')">
+                                                    <i class="bi bi-link-45deg me-1"></i>Copy Link
+                                                </button>
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="border rounded p-3 h-100 {% if sla_doc.is_signed %}border-success{% endif %}">
+                                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                                <strong class="small">Service Level Agreement</strong>
+                                                {% if sla_doc.is_signed %}
+                                                <span class="badge bg-success">Signed</span>
+                                                {% else %}
+                                                <span class="badge bg-warning text-dark">Unsigned</span>
+                                                {% endif %}
+                                            </div>
+                                            {% if sla_doc.is_signed %}
+                                            <small class="text-muted d-block">By: {{ sla_doc.signer_name }}{% if sla_doc.signer_title %} ({{ sla_doc.signer_title }}){% endif %}</small>
+                                            <small class="text-muted d-block mb-2">{{ sla_doc.signed_at|date:"M d, Y g:i A" }}</small>
+                                            <div class="d-flex gap-1">
+                                                <a href="/sign/{{ sla_doc.signing_token }}/" target="_blank" class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation();">View</a>
+                                                <button class="btn btn-sm btn-outline-danger" onclick="event.stopPropagation(); resetDoc({{ sla_doc.id }})">Reset</button>
+                                            </div>
+                                            {% else %}
+                                            <div class="d-flex gap-1">
+                                                <a href="/sign/{{ sla_doc.signing_token }}/" target="_blank" class="btn btn-sm btn-success flex-fill" onclick="event.stopPropagation();">
+                                                    <i class="bi bi-pen me-1"></i>Sign Now
+                                                </a>
+                                                <button class="btn btn-sm btn-outline-primary flex-fill" onclick="event.stopPropagation(); copySignLink('{{ sla_doc.signing_token }}', 'Service Level Agreement')">
+                                                    <i class="bi bi-link-45deg me-1"></i>Copy Link
+                                                </button>
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    {% endwith %}
+                                </div>
+
+                                <div class="mt-3 d-flex gap-2">
+                                    <button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); saveTenantConfig({{ tenant.id }})">
+                                        <i class="bi bi-save me-1"></i>Save Configuration
+                                    </button>
+                                    <span id="config-status-{{ tenant.id }}" class="align-self-center"></span>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="9" class="text-center text-muted">No tenants yet</td>
+                        <td colspan="10" class="text-center text-muted">No tenants yet</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -130,6 +492,60 @@ function getCookie(name) {
     const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
     return match ? decodeURIComponent(match[2]) : '';
 }
+
+function toggleTenantConfig(tenantId) {
+    const row = document.getElementById(`config-row-${tenantId}`);
+    const chevron = document.getElementById(`chevron-${tenantId}`);
+    if (row.style.display === 'none') {
+        row.style.display = '';
+        chevron.classList.add('open');
+    } else {
+        row.style.display = 'none';
+        chevron.classList.remove('open');
+    }
+}
+
+function saveTenantConfig(tenantId) {
+    const data = {
+        inbound_email_address: document.getElementById(`email-address-${tenantId}`).value,
+        inbound_email_password: document.getElementById(`email-password-${tenantId}`).value,
+        inbound_email_imap_server: document.getElementById(`email-imap-${tenantId}`).value,
+        twilio_account_sid: document.getElementById(`twilio-sid-${tenantId}`).value,
+        twilio_auth_token: document.getElementById(`twilio-token-${tenantId}`).value,
+        twilio_phone_number: document.getElementById(`twilio-phone-${tenantId}`).value,
+        subscription_status: document.getElementById(`sub-status-${tenantId}`).value,
+    };
+
+    const statusEl = document.getElementById(`config-status-${tenantId}`);
+    statusEl.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Saving...';
+
+    fetch(`/platform-admin/tenant/${tenantId}/config/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify(data)
+    })
+    .then(r => r.json())
+    .then(result => {
+        if (result.success) {
+            statusEl.innerHTML = '<span class="text-success"><i class="bi bi-check-circle"></i> Saved!</span>';
+            // Clear password fields after save
+            document.getElementById(`email-password-${tenantId}`).value = '';
+            document.getElementById(`twilio-token-${tenantId}`).value = '';
+            document.getElementById(`email-password-${tenantId}`).placeholder = '(saved - leave blank to keep)';
+            document.getElementById(`twilio-token-${tenantId}`).placeholder = '(saved - leave blank to keep)';
+            setTimeout(() => statusEl.innerHTML = '', 3000);
+        } else {
+            statusEl.innerHTML = `<span class="text-danger"><i class="bi bi-x-circle"></i> ${result.error}</span>`;
+        }
+    })
+    .catch(err => {
+        statusEl.innerHTML = '<span class="text-danger"><i class="bi bi-x-circle"></i> Error saving</span>';
+    });
+}
+
 function deleteTenant(id, name) {
     if (!confirm(`DELETE tenant "${name}"?\n\nThis will permanently delete all their data. This cannot be undone.`)) return;
     fetch(`/platform-admin/tenant/${id}/delete/`, {
@@ -140,6 +556,115 @@ function deleteTenant(id, name) {
     .then(data => {
         if (data.success) location.reload();
         else alert('Error: ' + data.error);
+    });
+}
+
+// Documents
+function copySignLink(token, docName) {
+    const url = window.location.origin + '/sign/' + token + '/';
+    navigator.clipboard.writeText(url).then(() => {
+        alert('Signing link for "' + docName + '" copied to clipboard!\n\nSend this to your customer to sign.');
+    }).catch(() => {
+        prompt('Copy this signing link:', url);
+    });
+}
+
+function resetDoc(docId) {
+    if (!confirm('Reset this document? The customer will need to sign again with a new link.')) return;
+    fetch(`/platform-admin/document/${docId}/reset/`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCookie('csrftoken') }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) location.reload();
+        else alert('Error: ' + data.error);
+    });
+}
+
+// Lead Tracking
+let leadModal;
+document.addEventListener('DOMContentLoaded', () => {
+    leadModal = new bootstrap.Modal(document.getElementById('leadModal'));
+});
+
+function openLeadModal() {
+    document.getElementById('leadModalTitle').textContent = 'Add Lead';
+    document.getElementById('leadId').value = '';
+    document.getElementById('leadCompany').value = '';
+    document.getElementById('leadContactName').value = '';
+    document.getElementById('leadEmail').value = '';
+    document.getElementById('leadPhone').value = '';
+    document.getElementById('leadStage').value = 'prospect';
+    document.getElementById('leadContractValue').value = '';
+    document.getElementById('leadLastContacted').value = '';
+    document.getElementById('leadNextFollowup').value = '';
+    document.getElementById('leadNotes').value = '';
+    leadModal.show();
+}
+
+function editLead(id, data) {
+    document.getElementById('leadModalTitle').textContent = 'Edit Lead';
+    document.getElementById('leadId').value = id;
+    document.getElementById('leadCompany').value = data.company_name || '';
+    document.getElementById('leadContactName').value = data.contact_name || '';
+    document.getElementById('leadEmail').value = data.contact_email || '';
+    document.getElementById('leadPhone').value = data.contact_phone || '';
+    document.getElementById('leadStage').value = data.stage || 'prospect';
+    document.getElementById('leadContractValue').value = data.contract_value || '';
+    document.getElementById('leadLastContacted').value = data.last_contacted || '';
+    document.getElementById('leadNextFollowup').value = data.next_followup || '';
+    document.getElementById('leadNotes').value = data.notes || '';
+    leadModal.show();
+}
+
+function saveLead() {
+    const company = document.getElementById('leadCompany').value.trim();
+    if (!company) { alert('Company name is required'); return; }
+
+    const data = {
+        id: document.getElementById('leadId').value || null,
+        company_name: company,
+        contact_name: document.getElementById('leadContactName').value,
+        contact_email: document.getElementById('leadEmail').value,
+        contact_phone: document.getElementById('leadPhone').value,
+        stage: document.getElementById('leadStage').value,
+        contract_value: document.getElementById('leadContractValue').value || null,
+        last_contacted: document.getElementById('leadLastContacted').value || null,
+        next_followup: document.getElementById('leadNextFollowup').value || null,
+        notes: document.getElementById('leadNotes').value,
+    };
+
+    fetch('/platform-admin/leads/save/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+        body: JSON.stringify(data)
+    })
+    .then(r => r.json())
+    .then(result => {
+        if (result.success) { leadModal.hide(); location.reload(); }
+        else alert('Error: ' + result.error);
+    })
+    .catch(() => alert('Error saving lead'));
+}
+
+function deleteLead(id, name) {
+    if (!confirm(`Delete lead "${name}"?`)) return;
+    fetch(`/platform-admin/leads/${id}/delete/`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCookie('csrftoken') }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) location.reload();
+        else alert('Error: ' + data.error);
+    });
+}
+
+function filterLeads() {
+    const stage = document.getElementById('leadFilterStage').value;
+    document.querySelectorAll('.lead-row').forEach(row => {
+        row.style.display = (!stage || row.dataset.stage === stage) ? '' : 'none';
     });
 }
 </script>

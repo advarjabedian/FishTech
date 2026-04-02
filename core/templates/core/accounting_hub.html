@@ -1,0 +1,133 @@
+{% extends 'core/base.html' %}
+{% block title %}Accounting - FishTeck{% endblock %}
+
+{% block extra_css %}
+<style>
+.hub-tile {
+    border: 3px solid;
+    border-radius: 20px;
+    padding: 40px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s;
+    min-height: 220px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+}
+.hub-tile:hover { transform: translateY(-8px); box-shadow: 0 12px 24px rgba(0,0,0,0.15); background: white !important; }
+.hub-tile i { font-size: 4rem; margin-bottom: 20px; color: white; }
+.hub-tile h3 { font-size: 1.4rem; font-weight: 700; color: white; margin-bottom: 6px; }
+.hub-tile .sub { font-size: 0.95rem; color: rgba(255,255,255,0.9); margin: 0; }
+.hub-tile .stat { font-size: 1.1rem; font-weight: 700; color: white; margin-top: 8px; }
+.hub-tile .stat2 { font-size: 0.85rem; color: rgba(255,255,255,0.85); margin-top: 2px; }
+.hub-tile:hover i, .hub-tile:hover h3, .hub-tile:hover .sub, .hub-tile:hover .stat, .hub-tile:hover .stat2 { color: inherit !important; }
+.tile-green { background: #198754; border-color: #198754; }
+.tile-green:hover { border-color: #157347; }
+.tile-green:hover i, .tile-green:hover h3, .tile-green:hover .sub, .tile-green:hover .stat, .tile-green:hover .stat2 { color: #198754 !important; }
+.tile-red { background: #dc3545; border-color: #dc3545; }
+.tile-red:hover { border-color: #b02a37; }
+.tile-red:hover i, .tile-red:hover h3, .tile-red:hover .sub, .tile-red:hover .stat, .tile-red:hover .stat2 { color: #dc3545 !important; }
+.tile-blue { background: #0a58ca; border-color: #0a58ca; }
+.tile-blue:hover { border-color: #084298; }
+.tile-blue:hover i, .tile-blue:hover h3, .tile-blue:hover .sub, .tile-blue:hover .stat, .tile-blue:hover .stat2 { color: #0a58ca !important; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex align-items-center gap-2 mb-4">
+        <a href="{% url 'operations_hub' %}" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Home
+        </a>
+        <h4 class="mb-0 ms-2">Accounting</h4>
+    </div>
+    <div class="d-flex justify-content-center">
+        <div class="row g-4" style="max-width:900px;width:100%;">
+            <div class="col-md-4">
+                <a href="{% url 'ar_invoices' %}" class="hub-tile tile-green">
+                    <i class="bi bi-cash-stack"></i>
+                    <h3>Accounts Receivable</h3>
+                    <div class="sub">Invoices, payments & balances</div>
+                    <div class="stat" id="ar-total">--</div>
+                    <div class="stat2" id="ar-unpaid">--</div>
+                </a>
+            </div>
+            <div class="col-md-4">
+                <a href="{% url 'ap_expenses' %}" class="hub-tile tile-red">
+                    <i class="bi bi-receipt-cutoff"></i>
+                    <h3>Accounts Payable</h3>
+                    <div class="sub">Vendors, bills & expenses</div>
+                    <div class="stat" id="ap-total">--</div>
+                    <div class="stat2" id="ap-unpaid">--</div>
+                </a>
+            </div>
+            <div class="col-md-4">
+                <a href="{% url 'ledger' %}" class="hub-tile tile-blue">
+                    <i class="bi bi-journal-text"></i>
+                    <h3>Ledger</h3>
+                    <div class="sub">Full transaction history</div>
+                    <div class="stat" id="ledger-net">--</div>
+                    <div class="stat2">net balance</div>
+                </a>
+            </div>
+            <div class="col-md-4">
+                <a href="{% url 'customer_list' %}" class="hub-tile tile-green">
+                    <i class="bi bi-people-fill"></i>
+                    <h3>Customers</h3>
+                    <div class="sub">Manage customer records</div>
+                </a>
+            </div>
+            <div class="col-md-4">
+                <a href="{% url 'vendor_list_page' %}" class="hub-tile tile-red">
+                    <i class="bi bi-truck"></i>
+                    <h3>Vendors</h3>
+                    <div class="sub">Manage vendor records</div>
+                </a>
+            </div>
+            <div class="col-md-4">
+                <a href="{% url 'accounting_reports' %}" class="hub-tile tile-blue">
+                    <i class="bi bi-graph-up-arrow"></i>
+                    <h3>Reports</h3>
+                    <div class="sub">Sales, expenses & analytics</div>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+function fmt(n) { return '$' + parseFloat(n).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}); }
+
+async function load() {
+    try {
+        const [arRes, apRes, ledgerRes] = await Promise.all([
+            fetch('/api/ar/').then(r => r.json()),
+            fetch('/api/ap/').then(r => r.json()),
+            fetch('/api/ledger/').then(r => r.json()),
+        ]);
+
+        // AR
+        const invoices = arRes.invoices || [];
+        const unpaidInv = invoices.filter(i => i.status !== 'Paid');
+        const arTotal = unpaidInv.reduce((s, i) => s + i.amount, 0);
+        document.getElementById('ar-total').textContent = fmt(arTotal) + ' outstanding';
+        document.getElementById('ar-unpaid').textContent = unpaidInv.length + ' unpaid invoice' + (unpaidInv.length !== 1 ? 's' : '');
+
+        // AP
+        const expenses = apRes.expenses || [];
+        const unpaidExp = expenses.filter(e => e.status !== 'Paid');
+        const apTotal = unpaidExp.reduce((s, e) => s + e.amount, 0);
+        document.getElementById('ap-total').textContent = fmt(apTotal) + ' due';
+        document.getElementById('ap-unpaid').textContent = unpaidExp.length + ' unpaid bill' + (unpaidExp.length !== 1 ? 's' : '');
+
+        // Ledger
+        const summary = ledgerRes.summary || {};
+        document.getElementById('ledger-net').textContent = fmt(summary.net || 0);
+    } catch(e) {}
+}
+
+load();
+</script>
+{% endblock %}

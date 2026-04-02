@@ -30,9 +30,36 @@
     .no-print {
         display: none !important;
     }
+    .navbar, nav, header {
+        display: none !important;
+    }
     .certificate-content {
         border: none;
         padding: 0;
+        margin-top: 0 !important;
+    }
+    #signature_canvas {
+        border: none !important;
+    }
+    .container {
+        margin-top: 0 !important;
+        padding-top: 0 !important;
+    }
+    .certificate-header {
+        margin-bottom: 15px !important;
+    }
+    .certificate-body p {
+        margin-bottom: 10px !important;
+    }
+    .certificate-body {
+        margin-bottom: 15px !important;
+        line-height: 1.5 !important;
+    }
+    .signature-section {
+        margin-top: 20px !important;
+    }
+    @page {
+        margin: 0.5in;
     }
 }
 </style>
@@ -114,7 +141,7 @@
                 {% if certificate.certificate_type == 'haccp_certificate' %}Thank you,{% else %}Sincerely,{% endif %}
             </p>
             <div style="margin: 20px 0;">
-                <canvas id="signature_canvas" width="300" height="100" style="border: 2px solid #000; cursor: pointer;"></canvas>
+                <canvas id="signature_canvas" width="300" height="100" style="border: 1px solid #ddd; cursor: pointer;" title="Click to sign"></canvas>
             </div>
             <p style="margin-top: 5px;">
                 <strong><span id="display_signed_by">{{ certificate.signed_by|default:"" }}</span></strong><br>
@@ -150,42 +177,84 @@
     </div>
 </div>
 
+<!-- Signature Modal -->
+<div class="modal fade" id="signatureModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Draw Signature</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center">
+                <canvas id="modal_canvas" width="600" height="200" style="border: 2px solid #000; cursor: crosshair; touch-action: none;"></canvas>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="clearModalCanvas()">Clear</button>
+                <button type="button" class="btn btn-primary" onclick="applyModalSignature()">Apply</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
-let canvas = document.getElementById('signature_canvas');
-let ctx = canvas.getContext('2d');
+const canvas = document.getElementById('signature_canvas');
+const ctx = canvas.getContext('2d');
+const modalCanvas = document.getElementById('modal_canvas');
+const modalCtx = modalCanvas.getContext('2d');
 let isDrawing = false;
+let sigModal;
 
-{% if certificate.signature %}
-const img = new Image();
-img.onload = function() {
-    ctx.drawImage(img, 0, 0);
-};
-img.src = '{{ certificate.signature }}';
-{% endif %}
+document.addEventListener('DOMContentLoaded', function() {
+    sigModal = new bootstrap.Modal(document.getElementById('signatureModal'));
 
-canvas.addEventListener('mousedown', startDrawing);
-canvas.addEventListener('mousemove', draw);
-canvas.addEventListener('mouseup', stopDrawing);
-canvas.addEventListener('mouseout', stopDrawing);
+    {% if certificate.signature %}
+    const img = new Image();
+    img.onload = () => ctx.drawImage(img, 0, 0);
+    img.src = '{{ certificate.signature }}';
+    {% endif %}
 
-function startDrawing(e) {
-    isDrawing = true;
-    const rect = canvas.getBoundingClientRect();
-    ctx.beginPath();
-    ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
+    canvas.addEventListener('click', () => {
+        modalCtx.clearRect(0, 0, modalCanvas.width, modalCanvas.height);
+        if (canvas.toDataURL() !== document.createElement('canvas').toDataURL()) {
+            const img = new Image();
+            img.onload = () => modalCtx.drawImage(img, 0, 0, modalCanvas.width, modalCanvas.height);
+            img.src = canvas.toDataURL();
+        }
+        sigModal.show();
+    });
+
+    modalCanvas.addEventListener('mousedown', e => { isDrawing = true; startDraw(e, modalCtx, modalCanvas); });
+    modalCanvas.addEventListener('mousemove', e => { if (isDrawing) doDraw(e, modalCtx, modalCanvas); });
+    modalCanvas.addEventListener('mouseup', () => isDrawing = false);
+    modalCanvas.addEventListener('mouseout', () => isDrawing = false);
+
+    modalCanvas.addEventListener('touchstart', e => { e.preventDefault(); isDrawing = true; startDraw(e.touches[0], modalCtx, modalCanvas); }, { passive: false });
+    modalCanvas.addEventListener('touchmove', e => { e.preventDefault(); if (isDrawing) doDraw(e.touches[0], modalCtx, modalCanvas); }, { passive: false });
+    modalCanvas.addEventListener('touchend', () => isDrawing = false);
+});
+
+function startDraw(e, c, el) {
+    const r = el.getBoundingClientRect();
+    c.beginPath();
+    c.moveTo(e.clientX - r.left, e.clientY - r.top);
 }
 
-function draw(e) {
-    if (!isDrawing) return;
-    const rect = canvas.getBoundingClientRect();
-    ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
-    ctx.strokeStyle = '#000';
-    ctx.lineWidth = 2;
-    ctx.stroke();
+function doDraw(e, c, el) {
+    const r = el.getBoundingClientRect();
+    c.lineTo(e.clientX - r.left, e.clientY - r.top);
+    c.strokeStyle = '#000';
+    c.lineWidth = 2;
+    c.stroke();
 }
 
-function stopDrawing() {
-    isDrawing = false;
+function clearModalCanvas() {
+    modalCtx.clearRect(0, 0, modalCanvas.width, modalCanvas.height);
+}
+
+function applyModalSignature() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(modalCanvas, 0, 0, canvas.width, canvas.height);
+    sigModal.hide();
 }
 
 function clearSignature() {
@@ -195,28 +264,19 @@ function clearSignature() {
 function updateDisplayDate() {
     const dateInput = document.getElementById('date_issued');
     const displayDate = document.getElementById('display_date');
-    
     if (dateInput.value) {
         const date = new Date(dateInput.value + 'T00:00:00');
-        const options = { year: 'numeric', month: 'long', day: 'numeric' };
-        const formattedDate = date.toLocaleDateString('en-US', options);
         const dayNum = date.getDate();
-        const suffix = dayNum === 1 || dayNum === 21 || dayNum === 31 ? 'st' : 
+        const suffix = dayNum === 1 || dayNum === 21 || dayNum === 31 ? 'st' :
                        dayNum === 2 || dayNum === 22 ? 'nd' :
                        dayNum === 3 || dayNum === 23 ? 'rd' : 'th';
-        
-        {% if certificate.certificate_type == 'haccp_certificate' %}
-        displayDate.textContent = `Date: ${formattedDate.replace(/\d+/, dayNum + suffix)}`;
-        {% else %}
-        displayDate.textContent = formattedDate.replace(/\d+/, dayNum + suffix);
-        {% endif %}
+        const formatted = date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+        displayDate.textContent = formatted.replace(/\d+,/, dayNum + suffix + ',');
     }
 }
 
 function updateDisplaySignedBy() {
-    const signedByInput = document.getElementById('signed_by');
-    const displaySignedBy = document.getElementById('display_signed_by');
-    displaySignedBy.textContent = signedByInput.value;
+    document.getElementById('display_signed_by').textContent = document.getElementById('signed_by').value;
 }
 
 function saveCertificate(markComplete) {
@@ -227,7 +287,6 @@ function saveCertificate(markComplete) {
         signature: canvas.toDataURL(),
         is_completed: markComplete
     };
-    
     fetch('/api/company-certificates/{{ company.companyid }}/save/', {
         method: 'POST',
         headers: {

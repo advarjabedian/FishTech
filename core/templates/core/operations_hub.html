@@ -4,12 +4,6 @@
 
 {% block extra_css %}
 <style>
-.main-title {
-    font-weight: bold;
-    color: #2c3e50;
-    margin-bottom: 30px;
-}
-
 .card-dashboard {
     transition: transform 0.3s ease, box-shadow 0.3s ease;
     margin-bottom: 20px;
@@ -29,20 +23,12 @@
     margin-bottom: 1rem;
     text-align: center;
 }
-.card-dashboard .card-body .btn {
-    margin-top: auto;
-}
-
+.card-dashboard .card-body .btn { margin-top: auto; }
 .card-dashboard:hover {
     transform: translateY(-5px);
     box-shadow: 0 10px 20px rgba(0,0,0,0.1);
 }
-
-.card-icon {
-    font-size: 3rem;
-    margin-bottom: 15px;
-}
-
+.card-icon { font-size: 3rem; margin-bottom: 15px; }
 .company-box:hover {
     transform: translateY(-3px);
     box-shadow: 0 6px 12px rgba(0,0,0,0.1) !important;
@@ -54,138 +40,58 @@
 {% block content %}
 <div class="container mt-4">
     <div class="row justify-content-center">
-        <!-- Company Card (only shown if multiple companies) -->
-        {% if request.companies|length > 1 %}
+
+        <!-- Accounting -->
         <div class="col-md-4 mb-3">
-            <div class="card card-dashboard bg-secondary bg-opacity-10" style="border-color: #6c757d !important;">
-                <div class="card-body text-center py-4">
-                    <i class="bi bi-building card-icon text-secondary"></i>
-                    <h3>Select Company</h3>
-
-                    <!-- No company selected: show grid -->
-                    <div id="company-grid" {% if request.selected_company %}style="display: none;"{% endif %}>
-                        <div class="row row-cols-2 g-2 justify-content-center mt-1">
-                            {% for company in request.companies %}
-                            <div class="col">
-                                <div class="company-box shadow-sm" onclick="selectCompany({{ company.companyid }})"
-                                    style="cursor: pointer; height: 70px; border: 2px solid #dee2e6; border-radius: 8px; display: flex; align-items: center; justify-content: center; transition: all 0.2s ease; background: white;">
-                                    {% if company.logo %}
-                                    <img src="{{ company.logo }}" alt="{{ company.companyname }}" style="max-height: 55px; max-width: 100%; object-fit: contain;">
-                                    {% else %}
-                                    <span class="text-muted small">{{ company.companyname }}</span>
-                                    {% endif %}
-                                </div>
-                            </div>
-                            {% endfor %}
-                        </div>
-                    </div>
-
-                    <!-- Company selected: show logo/name -->
-                    <div id="selected-company-display" {% if not request.selected_company %}style="display: none;"{% endif %}>
-                        <div class="mx-auto mt-2" onclick="resetCompanySelection()"
-                            style="cursor: pointer; height: 80px; display: flex; align-items: center; justify-content: center;">
-                            {% if request.selected_company.logo %}
-                            <img src="{{ request.selected_company.logo }}" alt="{{ request.selected_company.companyname }}" style="max-height: 75px; max-width: 100%; object-fit: contain;">
-                            {% else %}
-                            <span class="fs-5">{{ request.selected_company.companyname }}</span>
-                            {% endif %}
-                        </div>
-                    </div>
-
+            <div class="card card-dashboard bg-success bg-opacity-10" style="border-color: #198754 !important;" onclick="window.location.href='{% url 'accounting_hub' %}'">
+                <div class="card-body text-center">
+                    <i class="bi bi-cash-coin card-icon text-success"></i>
+                    <h3>Accounting</h3>
+                    <p class="text-muted">AR, AP, and Ledger</p>
+                    <a href="{% url 'accounting_hub' %}" class="btn btn-success mt-2">View Accounting</a>
                 </div>
             </div>
         </div>
-        {% endif %}
 
-        <!-- HACCP Card -->
+        <!-- Compliance -->
         <div class="col-md-4 mb-3">
-            <div class="card card-dashboard bg-warning bg-opacity-10" style="border-color: #fd7e14 !important;" onclick="window.location.href='{% url 'haccp' %}'">
+            <div class="card card-dashboard bg-warning bg-opacity-10" style="border-color: #fd7e14 !important;" onclick="window.location.href='{% url 'compliance_hub' %}'">
                 <div class="card-body text-center">
                     <i class="bi bi-shield-check card-icon" style="color: #fd7e14;"></i>
-                    <h3>HACCP</h3>
-                    <p class="text-muted">Food safety documentation and compliance</p>
-                    <a href="{% url 'haccp' %}" class="btn mt-2" style="background-color: #fd7e14; color: white;">View HACCP</a>
+                    <h3>Compliance</h3>
+                    <p class="text-muted">HACCP and daily inspections</p>
+                    <a href="{% url 'compliance_hub' %}" class="btn mt-2" style="background-color: #fd7e14; color: white;">View Compliance</a>
                 </div>
             </div>
         </div>
 
-        <!-- Daily Inspections Card -->
+        <!-- Orders -->
         <div class="col-md-4 mb-3">
-            <div class="card card-dashboard bg-info bg-opacity-10" style="border-color: #0dcaf0 !important;" onclick="window.location.href='{% url 'operations_dashboard' %}'">
+            <div class="card card-dashboard bg-danger bg-opacity-10" style="border-color: #dc3545 !important;" onclick="window.location.href='{% url 'orders_landing' %}'">
                 <div class="card-body text-center">
-                    <i class="bi bi-clipboard-check card-icon text-info"></i>
-                    <h3>Daily Inspections</h3>
-                    <p class="text-muted">Manage daily operational inspections</p>
-                    <a href="{% url 'operations_dashboard' %}" class="btn btn-info mt-2">View Inspections</a>
+                    <i class="bi bi-bag card-icon text-danger"></i>
+                    <h3>Orders</h3>
+                    <p class="text-muted">Profile orders and fish market</p>
+                    <a href="{% url 'orders_landing' %}" class="btn btn-danger mt-2">View Orders</a>
                 </div>
             </div>
         </div>
 
-        <!-- Documents Card -->
+        <!-- Documents -->
         <div class="col-md-4 mb-3">
             <div class="card card-dashboard bg-primary bg-opacity-10" style="border-color: #0d6efd !important;" onclick="window.location.href='{% url 'documents_home' %}'">
                 <div class="card-body text-center">
                     <i class="bi bi-file-earmark-text card-icon text-primary"></i>
                     <h3>Documents</h3>
-                    <p class="text-muted">Sales orders, purchase orders, and files</p>
+                    <p class="text-muted">Files, licenses, and vehicles</p>
                     <a href="{% url 'documents_home' %}" class="btn btn-primary mt-2">View Documents</a>
                 </div>
             </div>
         </div>
 
-        <!-- Order Requests Card -->
-        <!-- Orders Card -->
+        <!-- Administration -->
         <div class="col-md-4 mb-3">
-            <div class="card card-dashboard bg-danger bg-opacity-10" style="border-color: #dc3545 !important;" onclick="window.location.href='{% url 'orders_hub' %}'">
-                <div class="card-body text-center">
-                    <i class="bi bi-bag card-icon text-danger"></i>
-                    <h3>Orders</h3>
-                    <p class="text-muted">Profile orders and order requests</p>
-                    <a href="{% url 'orders_hub' %}" class="btn btn-danger mt-2">View Orders</a>
-                </div>
-            </div>
-        </div>
-
-          <!-- Inventory Card -->
-        <div class="col-md-4 mb-3">
-            <div class="card card-dashboard bg-success bg-opacity-10 border-success" onclick="window.location.href='{% url 'inventory_list' %}'">
-                <div class="card-body text-center">
-                    <i class="bi bi-boxes card-icon text-success"></i>
-                    <h3>Inventory</h3>
-                    <p>View current stock levels and availability</p>
-                    <a href="{% url 'inventory_list' %}" class="btn btn-success">View Inventory</a>
-                </div>
-            </div>
-        </div>
-
-        <!-- Products Card -->
-        <div class="col-md-4 mb-3">
-            <div class="card card-dashboard bg-warning bg-opacity-10 border-warning" onclick="window.location.href='{% url 'product_list' %}'">
-                <div class="card-body text-center">
-                    <i class="bi bi-box-seam card-icon text-warning"></i>
-                    <h3>Products</h3>
-                    <p>Product catalog and item management</p>
-                    <a href="{% url 'product_list' %}" class="btn btn-warning">View Products</a>
-                </div>
-            </div>
-        </div>
-
-        <!-- Fish Market Card -->
-        <div class="col-md-4 mb-3">
-            <div class="card card-dashboard bg-info bg-opacity-10" style="border-color: #0dcaf0 !important;" onclick="window.location.href='{% url 'fish_market_redirect' %}'">
-                <div class="card-body text-center">
-                    <i class="bi bi-basket2-fill card-icon text-info"></i>
-                    <h3>Fish Market</h3>
-                    <p class="text-muted">Online fish ordering for your customers</p>
-                    <a href="{% url 'fish_market_redirect' %}" class="btn btn-info mt-2">View Fish Market</a>
-                </div>
-            </div>
-        </div>
-
-        <!-- Manage Users & Companies Card (Admin Only) -->
-        {% if is_admin %}
-        <div class="col-md-4 mb-3">
-            <div class="card card-dashboard bg-secondary bg-opacity-10 border-secondary" onclick="window.location.href='{% url 'manage_users' %}'">
+            <div class="card card-dashboard bg-secondary bg-opacity-10" style="border-color: #6c757d !important;" onclick="window.location.href='{% url 'manage_users' %}'">
                 <div class="card-body text-center">
                     <i class="bi bi-people card-icon text-secondary"></i>
                     <h3>Administration</h3>
@@ -194,17 +100,8 @@
                 </div>
             </div>
         </div>
-        {% endif %}
+
     </div>
 </div>
-<script>
-function selectCompany(companyId) {
-    window.location.href = '{% url "operations_hub" %}?company_id=' + companyId;
-}
 
-function resetCompanySelection() {
-    document.getElementById('company-grid').style.display = 'block';
-    document.getElementById('selected-company-display').style.display = 'none';
-}
-</script>
 {% endblock %}

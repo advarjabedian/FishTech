@@ -13,6 +13,40 @@ from core.models import Customer, Vendor, DocumentFile
 
 
 # =============================================================================
+# SEARCH / AUTOCOMPLETE
+# =============================================================================
+
+@login_required
+def search_customers(request):
+    """Search customers for autocomplete"""
+    if not request.tenant:
+        return JsonResponse({'error': 'Not authenticated'}, status=401)
+    search = request.GET.get('search', '')
+    if len(search) < 2:
+        return JsonResponse([], safe=False)
+    customers = Customer.objects.filter(name__icontains=search).order_by('name')[:20]
+    return JsonResponse([
+        {'id': c.id, 'customer_id': c.customer_id, 'name': c.name}
+        for c in customers
+    ], safe=False)
+
+
+@login_required
+def search_vendors(request):
+    """Search vendors for autocomplete"""
+    if not request.tenant:
+        return JsonResponse({'error': 'Not authenticated'}, status=401)
+    search = request.GET.get('search', '')
+    if len(search) < 2:
+        return JsonResponse([], safe=False)
+    vendors = Vendor.objects.filter(name__icontains=search).order_by('name')[:20]
+    return JsonResponse([
+        {'id': v.id, 'vendor_id': v.vendor_id, 'name': v.name}
+        for v in vendors
+    ], safe=False)
+
+
+# =============================================================================
 # CUSTOMER DOCUMENT APIs
 # =============================================================================
 

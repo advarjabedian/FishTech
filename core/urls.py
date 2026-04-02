@@ -3,8 +3,6 @@ from .views.public_pages import *
 from .views.platform_admin import *
 from .views.profile_orders import *
 from .views import *
-from .views.inventory_views import *
-from .views.product_views import *
 from .views.operations_reports import *
 from .views.stripe_billing import *
 from .views.fish_market import (
@@ -52,6 +50,7 @@ path('login/', login_view, name='login'),
     path('api/haccp-restore-product-type/', restore_product_type, name='api_haccp_restore_product_type'),
     path('api/haccp-update-product-type/', update_product_type, name='api_haccp_update_product_type'),  
     path('api/haccp-set-owner/<int:company_id>/', set_haccp_owner, name='haccp_set_owner'),
+    path('api/haccp-copy-previous-year/<int:company_id>/<slug:product_type>/<str:document_type>/', copy_from_previous_year, name='copy_from_previous_year'),
     path('api/company-certificates/<int:company_id>/', get_company_certificates, name='get_company_certificates'),
     path('api/company-certificates/<int:company_id>/save/', save_company_certificate, name='save_company_certificate'),
     
@@ -112,40 +111,17 @@ path('login/', login_view, name='login'),
     
     # Documents
     path('documents/', documents_home, name='documents_home'),
-    path('documents/so/', so_documents, name='so_documents'),
-    path('documents/po/', po_documents, name='po_documents'),
     path('documents/customer/', customer_documents, name='customer_documents'),
-    
-    # Documents API - Customers
+
+    # Documents API - Search
     path('api/documents/customers/search/', search_customers, name='search_customers'),
-    
-    # Documents API - Vendors
     path('api/documents/vendors/search/', search_vendors, name='search_vendors'),
-    
-    # Documents API - Sales Orders
-    path('api/documents/so/', get_sales_orders, name='get_sales_orders'),
-    path('api/documents/so/upload/', upload_so_file, name='upload_so_file'),
-    path('api/documents/so/<str:soid>/files/', get_so_files, name='get_so_files'),
-    path('api/documents/so/<str:soid>/files/<str:filename>/view/', view_so_file, name='view_so_file'),
-    path('api/documents/so/<str:soid>/files/<str:filename>/', delete_so_file, name='delete_so_file'),
-    path('api/documents/so/email-files/', email_so_files, name='email_so_files'),
-    
+
     # Tenant-wide Address Book
     path('api/documents/tenant-emails/', get_tenant_emails, name='get_tenant_emails'),
     path('api/documents/add-tenant-email/', add_tenant_email, name='add_tenant_email'),
     path('api/documents/delete-tenant-email/<int:email_id>/', delete_tenant_email, name='delete_tenant_email'),
-    
-    # Documents API - Purchase Orders
-    path('api/documents/po/', get_purchase_orders, name='get_purchase_orders'),
-    path('api/documents/po/upload/', upload_po_file, name='upload_po_file'),
-    path('api/documents/po/<str:poid>/files/', get_po_files, name='get_po_files'),
-    path('api/documents/po/<str:poid>/files/<str:filename>/view/', view_po_file, name='view_po_file'),
-    path('api/documents/po/<str:poid>/files/<str:filename>/', delete_po_file, name='delete_po_file'),
-    path('api/documents/po/<str:poid>/pod-items/', get_pod_items, name='get_pod_items'),
-    path('api/documents/po/download-bulk/', download_bulk_po_files, name='download_bulk_po_files'),
-    path('api/documents/po/email-bulk/', email_bulk_po_files, name='email_bulk_po_files'),
-    path('api/documents/po/email-files/', email_po_files, name='email_po_files'),
-    
+
     # Vendor Emails API
     path('api/documents/vendor-emails/<int:vendor_id>/', get_vendor_emails, name='get_vendor_emails'),
     path('api/documents/add-vendor-email/', add_vendor_email, name='add_vendor_email'),
@@ -170,10 +146,6 @@ path('login/', login_view, name='login'),
     path('api/documents/customer/email-files/', email_customer_files, name='email_customer_files'),
     
     # Documents API - Bulk operations
-    path('api/documents/so/download-bulk/', download_bulk_so_files, name='download_bulk_so_files'),
-    path('api/documents/so/email-bulk/', email_bulk_so_files, name='email_bulk_so_files'),
-    path('api/documents/customer-emails/<int:customer_id>/', get_customer_emails, name='get_customer_emails'),
-
     # Documents - Vendor
     path('documents/vendor/', vendor_documents, name='vendor_documents'),
     
@@ -209,37 +181,25 @@ path('login/', login_view, name='login'),
     
     # Expiration counts for navbar badges
     path('api/expiration-counts/', get_expiration_counts_api, name='get_expiration_counts_api'),
-    # Inventory
-    path('inventory/', inventory_list, name='inventory_list'),
-    path('api/inventory/', inventory_api, name='inventory_api'),
-    path('api/inventory-detail/<str:product_id>/', inventory_detail_api, name='inventory_detail_api'),
-    path('api/inventory/import/template/', inventory_import_template, name='inventory_import_template'),
-    path('api/inventory/import/preview/', inventory_import_preview, name='inventory_import_preview'),
-    path('api/inventory/import/confirm/', inventory_import_confirm, name='inventory_import_confirm'),
-    path('api/inventory/create/', inventory_record_create, name='inventory_record_create'),
-    path('api/inventory/<int:record_id>/update/', inventory_record_update, name='inventory_record_update'),
-    path('api/inventory/<int:record_id>/delete/', inventory_record_delete, name='inventory_record_delete'),
-    path('api/inventory/product/<str:product_id>/delete/', inventory_product_delete, name='inventory_product_delete'),
-
-    # Products
-    path('products/', product_list, name='product_list'),
-    path('api/products/', product_api, name='product_api'),
-    path('api/products/create/', product_create, name='product_create'),
-    path('api/products/<int:product_id>/update/', product_update, name='product_update'),
-    path('api/products/<int:product_id>/delete/', product_delete, name='product_delete'),
-    path('api/products/import/template/', product_import_template, name='product_import_template'),
-    path('api/products/import/preview/', product_import_preview, name='product_import_preview'),
-    path('api/products/import/confirm/', product_import_confirm, name='product_import_confirm'),
-
     # Platform Admin (superuser only)
     # Platform Admin (superuser only)
     path('platform-admin/', platform_admin, name='platform_admin'),
     path('platform-admin/tenant/<int:tenant_id>/delete/', delete_tenant, name='delete_tenant'),
+    path('platform-admin/tenant/<int:tenant_id>/config/', save_tenant_config, name='save_tenant_config'),
+    path('platform-admin/leads/save/', save_lead, name='save_lead'),
+    path('platform-admin/leads/<int:lead_id>/delete/', delete_lead, name='delete_lead'),
+    path('platform-admin/document/<int:doc_id>/reset/', reset_document, name='reset_document'),
+    path('sign/<uuid:token>/', sign_document, name='sign_document'),
+    path('sign/<uuid:token>/submit/', submit_signature, name='submit_signature'),
     
     # Order Requests
     path('orders/', orders_hub, name='orders_hub'),
     path('orders/view/', profile_orders_list, name='profile_orders_list'),
     path('orders/customers/', customer_list, name='customer_list'),
+    path('orders/products/', products_page, name='products_page'),
+    path('api/product-images/<int:profile_id>/upload/', upload_product_image, name='upload_product_image'),
+    path('api/product-images/<int:profile_id>/delete/<int:slot>/', delete_product_image, name='delete_product_image'),
+    path('api/product-images/<int:profile_id>/', get_product_images, name='get_product_images'),
     path('api/profile-orders/list/', get_profile_orders_api, name='get_profile_orders_api'),
     path('api/profile-orders/<int:soid>/assign/', assign_profile_order_api, name='assign_profile_order_api'),
     path('api/profile-orders/<int:soid>/complete/', complete_profile_order_api, name='complete_profile_order_api'),
@@ -252,6 +212,8 @@ path('api/profile-orders/submit/', submit_profile_order, name='submit_profile_or
 path('api/profile-orders/import/preview/', import_preview, name='import_preview'),
 path('api/profile-orders/import/confirm/', import_confirm, name='import_confirm'),
     path('api/customers/add/', add_customer_api, name='add_customer_api'),
+    path('api/customers/<int:customer_id>/update/', update_customer_api, name='update_customer_api'),
+    path('api/customers/<int:customer_id>/delete/', delete_customer_api, name='delete_customer_api'),
     path('api/customers/<int:customer_id>/add-profile-item/', add_profile_item_api, name='add_profile_item_api'),
     path('api/profile-item/<int:profile_id>/update/', update_profile_item_api, name='update_profile_item_api'),
     path('api/profile-item/<int:profile_id>/delete/', delete_profile_item_api, name='delete_profile_item_api'),
@@ -280,6 +242,43 @@ path('api/profile-orders/import/template/', download_import_template, name='down
     path('sms-opt-in/', sms_opt_in, name='sms_opt_in'),
     path('privacy-policy/', privacy_policy, name='privacy_policy'),
     path('terms-of-service/', terms_of_service, name='terms_of_service'),
+
+    # Hub pages
+    path('more-tools/', unused_tiles, name='unused_tiles'),
+    path('accounting/', accounting_hub, name='accounting_hub'),
+    path('compliance/', compliance_hub, name='compliance_hub'),
+    path('orders-landing/', orders_landing, name='orders_landing'),
+
+    # Finance — Reports
+    path('accounting/reports/', accounting_reports, name='accounting_reports'),
+    path('api/accounting/reports/', accounting_reports_api, name='accounting_reports_api'),
+
+    # Finance — AR
+    path('accounts-receivable/', ar_invoices, name='ar_invoices'),
+    path('api/ar/', ar_list, name='ar_list'),
+    path('api/ar/create/', ar_create, name='ar_create'),
+    path('api/ar/<int:invoice_id>/update/', ar_update, name='ar_update'),
+    path('api/ar/<int:invoice_id>/delete/', ar_delete, name='ar_delete'),
+    path('api/ar/<int:invoice_id>/mark-paid/', ar_mark_paid, name='ar_mark_paid'),
+    path('api/ar/customer-balances/', ar_customer_balances, name='ar_customer_balances'),
+
+    # Vendor Management
+    path('vendors/', vendor_list_page, name='vendor_list_page'),
+    path('api/vendors/list/', vendor_list_api, name='vendor_list_api'),
+    path('api/vendors/create/', vendor_create_api, name='vendor_create_api'),
+    path('api/vendors/<int:vendor_id>/update/', vendor_update_api, name='vendor_update_api'),
+    path('api/vendors/<int:vendor_id>/delete/', vendor_delete_api, name='vendor_delete_api'),
+
+    # Finance — AP
+    path('accounts-payable/', ap_expenses, name='ap_expenses'),
+    path('api/ap/', ap_list, name='ap_list'),
+    path('api/ap/create/', ap_create, name='ap_create'),
+    path('api/ap/<int:expense_id>/update/', ap_update, name='ap_update'),
+    path('api/ap/<int:expense_id>/delete/', ap_delete, name='ap_delete'),
+
+    # Finance — Ledger
+    path('ledger/', ledger, name='ledger'),
+    path('api/ledger/', ledger_data, name='ledger_data'),
 
     # Fish Market — public ordering page
     path('fish-market/', fish_market_redirect, name='fish_market_redirect'),

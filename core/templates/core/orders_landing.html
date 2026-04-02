@@ -1,0 +1,81 @@
+{% extends 'core/base.html' %}
+{% block title %}Orders - FishTeck{% endblock %}
+
+{% block extra_css %}
+<style>
+.hub-tile {
+    border: 3px solid;
+    border-radius: 20px;
+    padding: 40px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s;
+    min-height: 220px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+}
+.hub-tile:hover { transform: translateY(-8px); box-shadow: 0 12px 24px rgba(0,0,0,0.15); background: white !important; }
+.hub-tile i { font-size: 4rem; margin-bottom: 20px; color: white; }
+.hub-tile h3 { font-size: 1.4rem; font-weight: 700; color: white; margin-bottom: 6px; }
+.hub-tile .sub { font-size: 0.95rem; color: rgba(255,255,255,0.9); margin: 0; }
+.hub-tile:hover i, .hub-tile:hover h3, .hub-tile:hover .sub { color: inherit !important; }
+.tile-cyan { background: #0dcaf0; border-color: #0dcaf0; }
+.tile-cyan:hover { border-color: #0aa2c0; }
+.tile-cyan:hover i, .tile-cyan:hover h3, .tile-cyan:hover .sub { color: #0dcaf0 !important; }
+.tile-blue { background: #0d6efd; border-color: #0d6efd; }
+.tile-blue:hover { border-color: #0a58ca; }
+.tile-blue:hover i, .tile-blue:hover h3, .tile-blue:hover .sub { color: #0d6efd !important; }
+.tile-green { background: #198754; border-color: #198754; }
+.tile-green:hover { border-color: #157347; }
+.tile-green:hover i, .tile-green:hover h3, .tile-green:hover .sub { color: #198754 !important; }
+.tile-orange { background: #fd7e14; border-color: #fd7e14; }
+.tile-orange:hover { border-color: #e06b0a; }
+.tile-orange:hover i, .tile-orange:hover h3, .tile-orange:hover .sub { color: #fd7e14 !important; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex align-items-center gap-2 mb-4">
+        <a href="{% url 'operations_hub' %}" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Home
+        </a>
+        <h4 class="mb-0 ms-2">Orders</h4>
+    </div>
+    <div class="d-flex justify-content-center">
+        <div class="row g-4" style="max-width:1100px;width:100%;">
+            <div class="col-md-3">
+                <a href="{% url 'fish_market_redirect' %}" class="hub-tile tile-cyan">
+                    <i class="bi bi-basket2-fill"></i>
+                    <h3>Retail Orders</h3>
+                    <div class="sub">Online ordering for your customers</div>
+                </a>
+            </div>
+            <div class="col-md-3">
+                <a href="{% url 'customer_list' %}" class="hub-tile tile-blue">
+                    <i class="bi bi-file-earmark-text"></i>
+                    <h3>Business Orders</h3>
+                    <div class="sub">Customer profiles and order forms</div>
+                </a>
+            </div>
+            <div class="col-md-3">
+                <a href="{% url 'products_page' %}" class="hub-tile tile-orange">
+                    <i class="bi bi-box-seam"></i>
+                    <h3>Products</h3>
+                    <div class="sub">Manage items assigned to customers</div>
+                </a>
+            </div>
+            <div class="col-md-3">
+                <a href="{% url 'profile_orders_list' %}" class="hub-tile tile-green">
+                    <i class="bi bi-list-check"></i>
+                    <h3>View Orders</h3>
+                    <div class="sub">Manage and fulfill submitted orders</div>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
