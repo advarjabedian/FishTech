@@ -126,30 +126,6 @@
             </div>
         </div>
 
-        <!-- Inventory -->
-        <div class="col-md-4 mb-3">
-            <div class="card card-dashboard bg-success bg-opacity-10 border-success" onclick="window.location.href='{% url 'inventory_list' %}'">
-                <div class="card-body text-center">
-                    <i class="bi bi-boxes card-icon text-success"></i>
-                    <h3>Inventory</h3>
-                    <p>View current stock levels and availability</p>
-                    <a href="{% url 'inventory_list' %}" class="btn btn-success">View Inventory</a>
-                </div>
-            </div>
-        </div>
-
-        <!-- Products -->
-        <div class="col-md-4 mb-3">
-            <div class="card card-dashboard bg-warning bg-opacity-10 border-warning" onclick="window.location.href='{% url 'product_list' %}'">
-                <div class="card-body text-center">
-                    <i class="bi bi-box-seam card-icon text-warning"></i>
-                    <h3>Products</h3>
-                    <p>Product catalog and item management</p>
-                    <a href="{% url 'product_list' %}" class="btn btn-warning">View Products</a>
-                </div>
-            </div>
-        </div>
-
         <!-- Administration (admin only) -->
         {% if is_admin %}
         <div class="col-md-4 mb-3">

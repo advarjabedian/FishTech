@@ -20,8 +20,8 @@
     <!-- Header -->
     <div class="d-flex align-items-center justify-content-between mb-4">
         <div class="d-flex align-items-center gap-2">
-            <a href="{% url 'operations_hub' %}" class="btn btn-sm btn-outline-secondary">
-                <i class="bi bi-arrow-left me-1"></i>Home
+            <a href="{% url 'accounting_hub' %}" class="btn btn-sm btn-outline-secondary">
+                <i class="bi bi-arrow-left me-1"></i>Accounting
             </a>
             <h4 class="mb-0 ms-2"><i class="bi bi-receipt-cutoff me-2 text-danger"></i>Accounts Payable</h4>
         </div>
@@ -110,7 +110,11 @@
                 <div class="row g-3">
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Vendor <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" id="f-vendor" placeholder="e.g. Pacific Fish Supply">
+                        <div class="position-relative">
+                            <input type="text" class="form-control" id="f-vendor" placeholder="Search vendors..." autocomplete="off"
+                                   oninput="searchVendors(this.value)" onfocus="searchVendors(this.value)">
+                            <div id="vendor-dropdown" class="list-group position-absolute w-100 shadow-sm" style="z-index:1055; max-height:200px; overflow-y:auto; display:none;"></div>
+                        </div>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Description <span class="text-danger">*</span></label>
@@ -160,6 +164,36 @@
 <script>
 let allExpenses = [];
 let modal;
+let vendorSearchTimeout = null;
+
+function searchVendors(query) {
+    const dropdown = document.getElementById('vendor-dropdown');
+    if (query.length < 2) { dropdown.style.display = 'none'; return; }
+    clearTimeout(vendorSearchTimeout);
+    vendorSearchTimeout = setTimeout(async () => {
+        const res = await fetch(`/api/documents/vendors/search/?search=${encodeURIComponent(query)}`);
+        const vendors = await res.json();
+        if (!vendors.length) { dropdown.style.display = 'none'; return; }
+        dropdown.innerHTML = vendors.map(v =>
+            `<button type="button" class="list-group-item list-group-item-action py-2" onclick="selectVendor('${v.name.replace(/'/g, "\\'")}')">
+                ${v.name}
+            </button>`
+        ).join('');
+        dropdown.style.display = 'block';
+    }, 250);
+}
+
+function selectVendor(name) {
+    document.getElementById('f-vendor').value = name;
+    document.getElementById('vendor-dropdown').style.display = 'none';
+}
+
+document.addEventListener('click', function(e) {
+    const dropdown = document.getElementById('vendor-dropdown');
+    if (dropdown && !e.target.closest('#f-vendor') && !e.target.closest('#vendor-dropdown')) {
+        dropdown.style.display = 'none';
+    }
+});
 
 document.addEventListener('DOMContentLoaded', () => {
     modal = new bootstrap.Modal(document.getElementById('expenseModal'));

@@ -729,10 +729,34 @@ def add_customer_api(request):
             contact_name=data.get('contact_name', ''),
             phone=data.get('phone', ''),
             email=data.get('email', ''),
+            address=data.get('address', ''),
             city=data.get('city', ''),
             state=data.get('state', ''),
+            zipcode=data.get('zipcode', ''),
         )
         return JsonResponse({'success': True, 'id': customer.id, 'name': customer.name})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@login_required
+@require_POST
+def update_customer_api(request, customer_id):
+    tenant = get_current_tenant()
+    if not tenant:
+        return JsonResponse({'error': 'No tenant context'}, status=400)
+    try:
+        customer = get_object_or_404(Customer, id=customer_id, tenant=tenant)
+        data = json.loads(request.body)
+        name = data.get('name', '').strip()
+        if not name:
+            return JsonResponse({'error': 'Name is required'}, status=400)
+        customer.name = name
+        for field in ('contact_name', 'phone', 'email', 'address', 'city', 'state', 'zipcode'):
+            if field in data:
+                setattr(customer, field, data[field].strip() if isinstance(data[field], str) else data[field])
+        customer.save()
+        return JsonResponse({'success': True})
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
 

@@ -1003,3 +1003,35 @@ class APExpense(TenantModel):
 
     def __str__(self):
         return f"{self.vendor} — ${self.amount}"
+
+
+# =============================================================================
+# ACCOUNTS RECEIVABLE MODULE
+# =============================================================================
+
+class ARInvoice(TenantModel):
+    """Accounts Receivable — invoices owed to the business"""
+    STATUS_CHOICES = [
+        ('Unpaid', 'Unpaid'),
+        ('Paid', 'Paid'),
+        ('Overdue', 'Overdue'),
+    ]
+
+    customer = models.CharField(max_length=255)
+    description = models.CharField(max_length=500)
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    invoice_date = models.DateField()
+    due_date = models.DateField(null=True, blank=True)
+    paid_date = models.DateField(null=True, blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Unpaid')
+    payment_type = models.CharField(max_length=100, blank=True)
+    payment_notes = models.TextField(blank=True)
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-invoice_date', '-created_at']
+
+    def __str__(self):
+        return f"{self.customer} — ${self.amount}"

@@ -1,0 +1,449 @@
+{% extends 'core/base.html' %}
+{% block title %}Accounts Receivable - FishTeck{% endblock %}
+
+{% block extra_css %}
+<style>
+.status-badge-Unpaid  { background: #fff3cd; color: #856404; border: 1px solid #ffc107; }
+.status-badge-Paid    { background: #d1e7dd; color: #0a3622; border: 1px solid #198754; }
+.status-badge-Overdue { background: #f8d7da; color: #842029; border: 1px solid #dc3545; }
+.status-badge { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 0.78rem; font-weight: 600; }
+.summary-card { border-left: 4px solid; border-radius: 8px; }
+.summary-card.blue    { border-color: #0a58ca; }
+.summary-card.success { border-color: #198754; }
+.summary-card.danger  { border-color: #dc3545; }
+.summary-card.warning { border-color: #ffc107; }
+.balance-item { cursor: pointer; transition: background 0.15s; border-radius: 6px; padding: 8px 12px; }
+.balance-item:hover { background: #f8f9fa; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 mt-4 pb-5">
+
+    <!-- Header -->
+    <div class="d-flex align-items-center justify-content-between mb-4">
+        <div class="d-flex align-items-center gap-2">
+            <a href="{% url 'accounting_hub' %}" class="btn btn-sm btn-outline-secondary">
+                <i class="bi bi-arrow-left me-1"></i>Accounting
+            </a>
+            <h4 class="mb-0 ms-2"><i class="bi bi-cash-stack me-2 text-success"></i>Accounts Receivable</h4>
+        </div>
+        <button class="btn btn-success" onclick="openAddModal()">
+            <i class="bi bi-plus-circle me-2"></i>Add Invoice
+        </button>
+    </div>
+
+    <!-- KPI Summary -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card summary-card blue p-3">
+                <div class="text-muted small">Total Billed</div>
+                <div class="fs-4 fw-bold text-primary" id="s-billed">--</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card summary-card success p-3">
+                <div class="text-muted small">Collected</div>
+                <div class="fs-4 fw-bold text-success" id="s-collected">--</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card summary-card danger p-3">
+                <div class="text-muted small">Outstanding</div>
+                <div class="fs-4 fw-bold text-danger" id="s-outstanding">--</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card summary-card warning p-3">
+                <div class="text-muted small">Unpaid Invoices</div>
+                <div class="fs-4 fw-bold text-warning" id="s-unpaid-count">--</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Customer Balances -->
+        <div class="col-md-4">
+            <div class="card shadow-sm p-3">
+                <h6 class="fw-bold mb-3 text-primary">Customer Balances</h6>
+                <div id="customer-balances"><p class="text-muted">Loading...</p></div>
+            </div>
+        </div>
+
+        <!-- Invoice Table -->
+        <div class="col-md-8">
+            <div class="d-flex gap-2 mb-3 flex-wrap">
+                <select class="form-select form-select-sm" style="width:160px;" id="filter-status" onchange="renderTable()">
+                    <option value="">All Statuses</option>
+                    <option value="Unpaid">Unpaid</option>
+                    <option value="Paid">Paid</option>
+                    <option value="Overdue">Overdue</option>
+                </select>
+                <input type="text" class="form-control form-control-sm" style="max-width:240px;" id="filter-search" placeholder="Search customer..." oninput="renderTable()">
+            </div>
+            <div class="card shadow-sm">
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Customer</th>
+                                    <th>Description</th>
+                                    <th>Amount</th>
+                                    <th>Invoice Date</th>
+                                    <th>Due Date</th>
+                                    <th>Status</th>
+                                    <th>Payment</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody id="ar-tbody">
+                                <tr><td colspan="8" class="text-center text-muted py-4">Loading...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add / Edit Modal -->
+<div class="modal fade" id="invoiceModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalTitle">Add Invoice</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="edit-id">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Customer <span class="text-danger">*</span></label>
+                        <div class="position-relative">
+                            <input type="text" class="form-control" id="f-customer" placeholder="Search customers..." autocomplete="off"
+                                   oninput="searchCustomers(this.value)" onfocus="searchCustomers(this.value)">
+                            <div id="customer-dropdown" class="list-group position-absolute w-100 shadow-sm" style="z-index:1055; max-height:200px; overflow-y:auto; display:none;"></div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Description <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="f-description" placeholder="Invoice description">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Amount ($) <span class="text-danger">*</span></label>
+                        <input type="number" class="form-control" id="f-amount" step="0.01" min="0" placeholder="0.00">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Invoice Date <span class="text-danger">*</span></label>
+                        <input type="date" class="form-control" id="f-invoice-date">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Status</label>
+                        <select class="form-select" id="f-status">
+                            <option value="Unpaid">Unpaid</option>
+                            <option value="Paid">Paid</option>
+                            <option value="Overdue">Overdue</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Due Date</label>
+                        <input type="date" class="form-control" id="f-due-date">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Paid Date</label>
+                        <input type="date" class="form-control" id="f-paid-date">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Payment Type</label>
+                        <input type="text" class="form-control" id="f-payment-type" placeholder="Check, Wire, Cash">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">Notes</label>
+                        <textarea class="form-control" id="f-notes" rows="2" placeholder="Optional notes..."></textarea>
+                    </div>
+                </div>
+                <div id="modal-error" class="alert alert-danger mt-3 d-none small"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button class="btn btn-success" onclick="saveInvoice()">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Payment Modal -->
+<div class="modal fade" id="paymentModal" tabindex="-1" style="z-index:1060;">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Record Payment</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Payment Date</label>
+                    <input type="date" class="form-control" id="pay-date">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Payment Type</label>
+                    <input type="text" class="form-control" id="pay-type" placeholder="e.g. Check, Wire, Cash">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Notes</label>
+                    <textarea class="form-control" id="pay-notes" rows="2" placeholder="Optional notes"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button class="btn btn-success" onclick="confirmPayment()">Mark Paid</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+#paymentModal { z-index: 1060 !important; }
+#paymentModal + .modal-backdrop { z-index: 1059 !important; }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let allInvoices = [];
+let balances = [];
+let modal, payModal;
+let pendingPaymentId = null;
+let searchTimeout = null;
+
+function searchCustomers(query) {
+    const dropdown = document.getElementById('customer-dropdown');
+    if (query.length < 2) { dropdown.style.display = 'none'; return; }
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(async () => {
+        const res = await fetch(`/api/documents/customers/search/?search=${encodeURIComponent(query)}`);
+        const customers = await res.json();
+        if (!customers.length) { dropdown.style.display = 'none'; return; }
+        dropdown.innerHTML = customers.map(c =>
+            `<button type="button" class="list-group-item list-group-item-action py-2" onclick="selectCustomer('${c.name.replace(/'/g, "\\'")}')">
+                ${c.name}
+            </button>`
+        ).join('');
+        dropdown.style.display = 'block';
+    }, 250);
+}
+
+function selectCustomer(name) {
+    document.getElementById('f-customer').value = name;
+    document.getElementById('customer-dropdown').style.display = 'none';
+}
+
+// Close dropdown when clicking outside
+document.addEventListener('click', function(e) {
+    const dropdown = document.getElementById('customer-dropdown');
+    if (dropdown && !e.target.closest('#f-customer') && !e.target.closest('#customer-dropdown')) {
+        dropdown.style.display = 'none';
+    }
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+    modal = new bootstrap.Modal(document.getElementById('invoiceModal'));
+    payModal = new bootstrap.Modal(document.getElementById('paymentModal'));
+    loadAll();
+});
+
+function fmt(n) { return '$' + parseFloat(n).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}); }
+
+function getCookie(name) {
+    let v = null;
+    document.cookie.split(';').forEach(c => {
+        const [k, val] = c.trim().split('=');
+        if (k === name) v = decodeURIComponent(val);
+    });
+    return v;
+}
+
+async function loadAll() {
+    const [invRes, balRes] = await Promise.all([
+        fetch('/api/ar/').then(r => r.json()),
+        fetch('/api/ar/customer-balances/').then(r => r.json()),
+    ]);
+    allInvoices = invRes.invoices || [];
+    balances = balRes.balances || [];
+    updateSummary();
+    renderTable();
+    renderBalances();
+}
+
+function updateSummary() {
+    let billed = 0, collected = 0, outstanding = 0, unpaidCount = 0;
+    allInvoices.forEach(inv => {
+        billed += inv.amount;
+        if (inv.status === 'Paid') collected += inv.amount;
+        else { outstanding += inv.amount; unpaidCount++; }
+    });
+    document.getElementById('s-billed').textContent = fmt(billed);
+    document.getElementById('s-collected').textContent = fmt(collected);
+    document.getElementById('s-outstanding').textContent = fmt(outstanding);
+    document.getElementById('s-unpaid-count').textContent = unpaidCount;
+}
+
+function renderBalances() {
+    const el = document.getElementById('customer-balances');
+    if (!balances.length) { el.innerHTML = '<p class="text-muted">No invoices yet</p>'; return; }
+    el.innerHTML = balances.map(b => `
+        <div class="balance-item d-flex justify-content-between align-items-center border-bottom pb-2 mb-2"
+             onclick="filterByCustomer('${b.customer.replace(/'/g, "\\'")}')">
+            <div>
+                <strong>${b.customer}</strong>
+                <div class="small text-muted">${b.unpaid_count} unpaid</div>
+            </div>
+            <span class="fw-bold" style="color:${b.outstanding > 0 ? '#dc3545' : '#198754'};">${fmt(b.outstanding)}</span>
+        </div>
+    `).join('');
+}
+
+function filterByCustomer(name) {
+    document.getElementById('filter-search').value = name;
+    document.getElementById('filter-status').value = '';
+    renderTable();
+}
+
+function renderTable() {
+    const status = document.getElementById('filter-status').value;
+    const search = document.getElementById('filter-search').value.toLowerCase();
+    const filtered = allInvoices.filter(inv => {
+        if (status && inv.status !== status) return false;
+        if (search && !inv.customer.toLowerCase().includes(search) && !inv.description.toLowerCase().includes(search)) return false;
+        return true;
+    });
+    const tbody = document.getElementById('ar-tbody');
+    if (!filtered.length) {
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">No invoices found.</td></tr>';
+        return;
+    }
+    tbody.innerHTML = filtered.map(inv => `
+        <tr>
+            <td class="fw-semibold">${inv.customer}</td>
+            <td>${inv.description}</td>
+            <td class="fw-bold">${fmt(inv.amount)}</td>
+            <td class="small">${inv.invoice_date || '--'}</td>
+            <td class="small">${inv.due_date || '--'}</td>
+            <td><span class="status-badge status-badge-${inv.status}">${inv.status}</span></td>
+            <td class="small text-muted">${inv.status === 'Paid' ? [inv.paid_date, inv.payment_type].filter(Boolean).join(' | ') : '--'}</td>
+            <td class="text-end text-nowrap">
+                <button class="btn btn-sm ${inv.status === 'Paid' ? 'btn-outline-secondary' : 'btn-success'}" onclick="togglePaid(${inv.id})">${inv.status === 'Paid' ? 'Unmark' : 'Mark Paid'}</button>
+                <button class="btn btn-sm btn-outline-primary" onclick="openEditModal(${inv.id})"><i class="bi bi-pencil"></i></button>
+                <button class="btn btn-sm btn-outline-danger" onclick="deleteInvoice(${inv.id})"><i class="bi bi-trash"></i></button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function openAddModal() {
+    document.getElementById('edit-id').value = '';
+    document.getElementById('modalTitle').textContent = 'Add Invoice';
+    ['f-customer','f-description','f-amount','f-invoice-date','f-due-date','f-paid-date','f-payment-type','f-notes'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('f-status').value = 'Unpaid';
+    document.getElementById('f-invoice-date').value = new Date().toISOString().split('T')[0];
+    document.getElementById('modal-error').classList.add('d-none');
+    modal.show();
+}
+
+function openEditModal(id) {
+    const inv = allInvoices.find(x => x.id === id);
+    if (!inv) return;
+    document.getElementById('edit-id').value = id;
+    document.getElementById('modalTitle').textContent = 'Edit Invoice';
+    document.getElementById('f-customer').value = inv.customer;
+    document.getElementById('f-description').value = inv.description;
+    document.getElementById('f-amount').value = inv.amount;
+    document.getElementById('f-invoice-date').value = inv.invoice_date;
+    document.getElementById('f-due-date').value = inv.due_date;
+    document.getElementById('f-paid-date').value = inv.paid_date;
+    document.getElementById('f-payment-type').value = inv.payment_type;
+    document.getElementById('f-status').value = inv.status;
+    document.getElementById('f-notes').value = inv.notes;
+    document.getElementById('modal-error').classList.add('d-none');
+    modal.show();
+}
+
+function saveInvoice() {
+    const id = document.getElementById('edit-id').value;
+    const payload = {
+        customer: document.getElementById('f-customer').value.trim(),
+        description: document.getElementById('f-description').value.trim(),
+        amount: parseFloat(document.getElementById('f-amount').value) || 0,
+        invoice_date: document.getElementById('f-invoice-date').value || null,
+        due_date: document.getElementById('f-due-date').value || null,
+        paid_date: document.getElementById('f-paid-date').value || null,
+        status: document.getElementById('f-status').value,
+        payment_type: document.getElementById('f-payment-type').value.trim(),
+        notes: document.getElementById('f-notes').value.trim(),
+    };
+    if (!payload.customer || !payload.description) {
+        document.getElementById('modal-error').textContent = 'Customer and Description are required.';
+        document.getElementById('modal-error').classList.remove('d-none');
+        return;
+    }
+    const url = id ? `/api/ar/${id}/update/` : '/api/ar/create/';
+    fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+        body: JSON.stringify(payload),
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success || data.id) { modal.hide(); loadAll(); }
+        else {
+            document.getElementById('modal-error').textContent = data.error || 'Error saving.';
+            document.getElementById('modal-error').classList.remove('d-none');
+        }
+    });
+}
+
+function togglePaid(id) {
+    const inv = allInvoices.find(x => x.id === id);
+    if (inv.status === 'Paid') {
+        // Unmark directly
+        fetch(`/api/ar/${id}/mark-paid/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+            body: '{}',
+        }).then(() => loadAll());
+        return;
+    }
+    // Show payment modal
+    pendingPaymentId = id;
+    document.getElementById('pay-date').value = new Date().toISOString().split('T')[0];
+    document.getElementById('pay-type').value = '';
+    document.getElementById('pay-notes').value = '';
+    payModal.show();
+}
+
+function confirmPayment() {
+    if (!pendingPaymentId) return;
+    const payload = {
+        paid_date: document.getElementById('pay-date').value,
+        payment_type: document.getElementById('pay-type').value.trim(),
+        payment_notes: document.getElementById('pay-notes').value.trim(),
+    };
+    payModal.hide();
+    fetch(`/api/ar/${pendingPaymentId}/mark-paid/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+        body: JSON.stringify(payload),
+    }).then(() => { pendingPaymentId = null; loadAll(); });
+}
+
+function deleteInvoice(id) {
+    if (!confirm('Delete this invoice?')) return;
+    fetch(`/api/ar/${id}/delete/`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCookie('csrftoken') },
+    }).then(() => loadAll());
+}
+</script>
+{% endblock %}

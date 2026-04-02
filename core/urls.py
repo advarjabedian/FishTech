@@ -3,8 +3,6 @@ from .views.public_pages import *
 from .views.platform_admin import *
 from .views.profile_orders import *
 from .views import *
-from .views.inventory_views import *
-from .views.product_views import *
 from .views.operations_reports import *
 from .views.stripe_billing import *
 from .views.fish_market import (
@@ -209,28 +207,6 @@ path('login/', login_view, name='login'),
     
     # Expiration counts for navbar badges
     path('api/expiration-counts/', get_expiration_counts_api, name='get_expiration_counts_api'),
-    # Inventory
-    path('inventory/', inventory_list, name='inventory_list'),
-    path('api/inventory/', inventory_api, name='inventory_api'),
-    path('api/inventory-detail/<str:product_id>/', inventory_detail_api, name='inventory_detail_api'),
-    path('api/inventory/import/template/', inventory_import_template, name='inventory_import_template'),
-    path('api/inventory/import/preview/', inventory_import_preview, name='inventory_import_preview'),
-    path('api/inventory/import/confirm/', inventory_import_confirm, name='inventory_import_confirm'),
-    path('api/inventory/create/', inventory_record_create, name='inventory_record_create'),
-    path('api/inventory/<int:record_id>/update/', inventory_record_update, name='inventory_record_update'),
-    path('api/inventory/<int:record_id>/delete/', inventory_record_delete, name='inventory_record_delete'),
-    path('api/inventory/product/<str:product_id>/delete/', inventory_product_delete, name='inventory_product_delete'),
-
-    # Products
-    path('products/', product_list, name='product_list'),
-    path('api/products/', product_api, name='product_api'),
-    path('api/products/create/', product_create, name='product_create'),
-    path('api/products/<int:product_id>/update/', product_update, name='product_update'),
-    path('api/products/<int:product_id>/delete/', product_delete, name='product_delete'),
-    path('api/products/import/template/', product_import_template, name='product_import_template'),
-    path('api/products/import/preview/', product_import_preview, name='product_import_preview'),
-    path('api/products/import/confirm/', product_import_confirm, name='product_import_confirm'),
-
     # Platform Admin (superuser only)
     # Platform Admin (superuser only)
     path('platform-admin/', platform_admin, name='platform_admin'),
@@ -253,6 +229,7 @@ path('api/profile-orders/submit/', submit_profile_order, name='submit_profile_or
 path('api/profile-orders/import/preview/', import_preview, name='import_preview'),
 path('api/profile-orders/import/confirm/', import_confirm, name='import_confirm'),
     path('api/customers/add/', add_customer_api, name='add_customer_api'),
+    path('api/customers/<int:customer_id>/update/', update_customer_api, name='update_customer_api'),
     path('api/customers/<int:customer_id>/add-profile-item/', add_profile_item_api, name='add_profile_item_api'),
     path('api/profile-item/<int:profile_id>/update/', update_profile_item_api, name='update_profile_item_api'),
     path('api/profile-item/<int:profile_id>/delete/', delete_profile_item_api, name='delete_profile_item_api'),
@@ -282,14 +259,37 @@ path('api/profile-orders/import/template/', download_import_template, name='down
     path('privacy-policy/', privacy_policy, name='privacy_policy'),
     path('terms-of-service/', terms_of_service, name='terms_of_service'),
 
-    # Finance — AP & Ledger
+    # Hub pages
     path('more-tools/', unused_tiles, name='unused_tiles'),
+    path('accounting/', accounting_hub, name='accounting_hub'),
+    path('compliance/', compliance_hub, name='compliance_hub'),
+    path('orders-landing/', orders_landing, name='orders_landing'),
+
+    # Finance — AR
+    path('accounts-receivable/', ar_invoices, name='ar_invoices'),
+    path('api/ar/', ar_list, name='ar_list'),
+    path('api/ar/create/', ar_create, name='ar_create'),
+    path('api/ar/<int:invoice_id>/update/', ar_update, name='ar_update'),
+    path('api/ar/<int:invoice_id>/delete/', ar_delete, name='ar_delete'),
+    path('api/ar/<int:invoice_id>/mark-paid/', ar_mark_paid, name='ar_mark_paid'),
+    path('api/ar/customer-balances/', ar_customer_balances, name='ar_customer_balances'),
+
+    # Vendor Management
+    path('vendors/', vendor_list_page, name='vendor_list_page'),
+    path('api/vendors/list/', vendor_list_api, name='vendor_list_api'),
+    path('api/vendors/create/', vendor_create_api, name='vendor_create_api'),
+    path('api/vendors/<int:vendor_id>/update/', vendor_update_api, name='vendor_update_api'),
+    path('api/vendors/<int:vendor_id>/delete/', vendor_delete_api, name='vendor_delete_api'),
+
+    # Finance — AP
     path('accounts-payable/', ap_expenses, name='ap_expenses'),
-    path('ledger/', ledger, name='ledger'),
     path('api/ap/', ap_list, name='ap_list'),
     path('api/ap/create/', ap_create, name='ap_create'),
     path('api/ap/<int:expense_id>/update/', ap_update, name='ap_update'),
     path('api/ap/<int:expense_id>/delete/', ap_delete, name='ap_delete'),
+
+    # Finance — Ledger
+    path('ledger/', ledger, name='ledger'),
     path('api/ledger/', ledger_data, name='ledger_data'),
 
     # Fish Market — public ordering page
