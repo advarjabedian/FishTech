@@ -239,6 +239,10 @@ path('api/profile-orders/import/template/', download_import_template, name='down
     path('compliance/', compliance_hub, name='compliance_hub'),
     path('orders-landing/', orders_landing, name='orders_landing'),
 
+    # Finance — Reports
+    path('accounting/reports/', accounting_reports, name='accounting_reports'),
+    path('api/accounting/reports/', accounting_reports_api, name='accounting_reports_api'),
+
     # Finance — AR
     path('accounts-receivable/', ar_invoices, name='ar_invoices'),
     path('api/ar/', ar_list, name='ar_list'),

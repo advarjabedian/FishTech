@@ -17,6 +17,7 @@ from .finance import (
     ar_list, ar_create, ar_update, ar_delete, ar_mark_paid, ar_customer_balances,
     ap_list, ap_create, ap_update, ap_delete,
     ledger_data,
+    accounting_reports, accounting_reports_api,
     vendor_list_page, vendor_list_api, vendor_create_api, vendor_update_api, vendor_delete_api,
 )
 

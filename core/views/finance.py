@@ -2,9 +2,12 @@ from django.shortcuts import render
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 from django.contrib.auth.decorators import login_required
+from django.db.models import Sum
+from django.db.models.functions import TruncMonth
 from ..models import APExpense, ARInvoice, FishOrder, Vendor, get_current_tenant
 import json
 import logging
+from collections import defaultdict
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +39,11 @@ def orders_landing(request):
 @login_required
 def ar_invoices(request):
     return render(request, 'core/ar_invoices.html')
+
+
+@login_required
+def accounting_reports(request):
+    return render(request, 'core/accounting_reports.html')
 
 
 @login_required
@@ -449,3 +457,80 @@ def vendor_delete_api(request, vendor_id):
         return JsonResponse({'success': True})
     except Vendor.DoesNotExist:
         return JsonResponse({'error': 'Not found'}, status=404)
+
+
+# ── Reports API ───────────────────────────────────────────────────────────────
+
+@login_required
+def accounting_reports_api(request):
+    tenant = get_current_tenant()
+    if not tenant:
+        return JsonResponse({'error': 'No tenant'}, status=400)
+
+    ar_all = ARInvoice.objects.all()
+    ar_total = float(ar_all.aggregate(t=Sum('amount'))['t'] or 0)
+    ar_collected = float(ar_all.filter(status='Paid').aggregate(t=Sum('amount'))['t'] or 0)
+    ar_outstanding = ar_total - ar_collected
+
+    ap_all = APExpense.objects.all()
+    ap_total = float(ap_all.aggregate(t=Sum('amount'))['t'] or 0)
+    ap_paid = float(ap_all.filter(status='Paid').aggregate(t=Sum('amount'))['t'] or 0)
+    ap_unpaid = ap_total - ap_paid
+
+    fm_total = float(FishOrder.objects.filter(
+        status__in=['Confirmed', 'Delivered', 'Pending']
+    ).aggregate(t=Sum('subtotal'))['t'] or 0)
+
+    total_income = ar_collected + fm_total
+    net = total_income - ap_paid
+
+    # Monthly breakdown
+    monthly_income = defaultdict(float)
+    for inv in ar_all.filter(status='Paid', paid_date__isnull=False).values('paid_date__year', 'paid_date__month').annotate(total=Sum('amount')):
+        key = f"{inv['paid_date__year']}-{inv['paid_date__month']:02d}"
+        monthly_income[key] += float(inv['total'])
+    for o in FishOrder.objects.filter(
+        status__in=['Confirmed', 'Delivered', 'Pending']
+    ).values('created_at__year', 'created_at__month').annotate(total=Sum('subtotal')):
+        key = f"{o['created_at__year']}-{o['created_at__month']:02d}"
+        monthly_income[key] += float(o['total'])
+
+    monthly_expenses = defaultdict(float)
+    for e in ap_all.filter(status='Paid', paid_date__isnull=False).values('paid_date__year', 'paid_date__month').annotate(total=Sum('amount')):
+        key = f"{e['paid_date__year']}-{e['paid_date__month']:02d}"
+        monthly_expenses[key] += float(e['total'])
+
+    all_months = sorted(set(list(monthly_income.keys()) + list(monthly_expenses.keys())))
+    monthly = [{'month': m, 'income': round(monthly_income.get(m, 0), 2), 'expenses': round(monthly_expenses.get(m, 0), 2), 'net': round(monthly_income.get(m, 0) - monthly_expenses.get(m, 0), 2)} for m in all_months]
+
+    # Top customers
+    top_customers = []
+    for inv in ar_all.values('customer').annotate(total=Sum('amount')).order_by('-total')[:10]:
+        paid = float(ar_all.filter(customer=inv['customer'], status='Paid').aggregate(t=Sum('amount'))['t'] or 0)
+        top_customers.append({'customer': inv['customer'], 'total_billed': float(inv['total']), 'total_paid': paid, 'outstanding': float(inv['total']) - paid})
+
+    # Top vendors
+    top_vendors = []
+    for e in ap_all.values('vendor').annotate(total=Sum('amount')).order_by('-total')[:10]:
+        paid = float(ap_all.filter(vendor=e['vendor'], status='Paid').aggregate(t=Sum('amount'))['t'] or 0)
+        top_vendors.append({'vendor': e['vendor'], 'total': float(e['total']), 'paid': paid, 'unpaid': float(e['total']) - paid})
+
+    # Expense categories
+    categories = [{'category': c['category'], 'total': float(c['total'])} for c in ap_all.exclude(category='').values('category').annotate(total=Sum('amount')).order_by('-total')]
+
+    return JsonResponse({
+        'summary': {
+            'total_income': round(total_income, 2),
+            'ar_collected': round(ar_collected, 2),
+            'ar_outstanding': round(ar_outstanding, 2),
+            'fm_income': round(fm_total, 2),
+            'total_expenses': round(ap_total, 2),
+            'expenses_paid': round(ap_paid, 2),
+            'expenses_unpaid': round(ap_unpaid, 2),
+            'net': round(net, 2),
+        },
+        'monthly': monthly,
+        'top_customers': top_customers,
+        'top_vendors': top_vendors,
+        'categories': categories,
+    })
