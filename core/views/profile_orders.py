@@ -763,6 +763,20 @@ def update_customer_api(request, customer_id):
 
 @login_required
 @require_POST
+def delete_customer_api(request, customer_id):
+    tenant = get_current_tenant()
+    if not tenant:
+        return JsonResponse({'error': 'No tenant context'}, status=400)
+    try:
+        customer = get_object_or_404(Customer, id=customer_id, tenant=tenant)
+        customer.delete()
+        return JsonResponse({'success': True})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@login_required
+@require_POST
 def add_profile_item_api(request, customer_id):
     tenant = get_current_tenant()
     if not tenant:

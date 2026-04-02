@@ -22,15 +22,15 @@
 .hub-tile h3 { font-size: 1.4rem; font-weight: 700; color: white; margin-bottom: 6px; }
 .hub-tile .sub { font-size: 0.95rem; color: rgba(255,255,255,0.9); margin: 0; }
 .hub-tile:hover i, .hub-tile:hover h3, .hub-tile:hover .sub { color: inherit !important; }
-.tile-red { background: #dc3545; border-color: #dc3545; }
-.tile-red:hover { border-color: #b02a37; }
-.tile-red:hover i, .tile-red:hover h3, .tile-red:hover .sub { color: #dc3545 !important; }
 .tile-cyan { background: #0dcaf0; border-color: #0dcaf0; }
 .tile-cyan:hover { border-color: #0aa2c0; }
 .tile-cyan:hover i, .tile-cyan:hover h3, .tile-cyan:hover .sub { color: #0dcaf0 !important; }
-.tile-purple { background: #6f42c1; border-color: #6f42c1; }
-.tile-purple:hover { border-color: #5a32a3; }
-.tile-purple:hover i, .tile-purple:hover h3, .tile-purple:hover .sub { color: #6f42c1 !important; }
+.tile-blue { background: #0d6efd; border-color: #0d6efd; }
+.tile-blue:hover { border-color: #0a58ca; }
+.tile-blue:hover i, .tile-blue:hover h3, .tile-blue:hover .sub { color: #0d6efd !important; }
+.tile-green { background: #198754; border-color: #198754; }
+.tile-green:hover { border-color: #157347; }
+.tile-green:hover i, .tile-green:hover h3, .tile-green:hover .sub { color: #198754 !important; }
 </style>
 {% endblock %}
 
@@ -45,17 +45,24 @@
     <div class="d-flex justify-content-center">
         <div class="row g-4" style="max-width:900px;width:100%;">
             <div class="col-md-4">
-                <a href="{% url 'orders_hub' %}" class="hub-tile tile-red">
-                    <i class="bi bi-bag"></i>
-                    <h3>Profile Orders</h3>
-                    <div class="sub">Profile orders and order requests</div>
+                <a href="{% url 'fish_market_redirect' %}" class="hub-tile tile-cyan">
+                    <i class="bi bi-basket2-fill"></i>
+                    <h3>Retail Orders</h3>
+                    <div class="sub">Online ordering for your customers</div>
                 </a>
             </div>
             <div class="col-md-4">
-                <a href="{% url 'fish_market_redirect' %}" class="hub-tile tile-cyan">
-                    <i class="bi bi-basket2-fill"></i>
-                    <h3>Fish Market</h3>
-                    <div class="sub">Online fish ordering for your customers</div>
+                <a href="{% url 'customer_list' %}" class="hub-tile tile-blue">
+                    <i class="bi bi-file-earmark-text"></i>
+                    <h3>Business Orders</h3>
+                    <div class="sub">Customer profiles and order forms</div>
+                </a>
+            </div>
+            <div class="col-md-4">
+                <a href="{% url 'profile_orders_list' %}" class="hub-tile tile-green">
+                    <i class="bi bi-list-check"></i>
+                    <h3>View Orders</h3>
+                    <div class="sub">Manage and fulfill submitted orders</div>
                 </a>
             </div>
         </div>

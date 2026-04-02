@@ -110,40 +110,17 @@ path('login/', login_view, name='login'),
     
     # Documents
     path('documents/', documents_home, name='documents_home'),
-    path('documents/so/', so_documents, name='so_documents'),
-    path('documents/po/', po_documents, name='po_documents'),
     path('documents/customer/', customer_documents, name='customer_documents'),
-    
-    # Documents API - Customers
+
+    # Documents API - Search
     path('api/documents/customers/search/', search_customers, name='search_customers'),
-    
-    # Documents API - Vendors
     path('api/documents/vendors/search/', search_vendors, name='search_vendors'),
-    
-    # Documents API - Sales Orders
-    path('api/documents/so/', get_sales_orders, name='get_sales_orders'),
-    path('api/documents/so/upload/', upload_so_file, name='upload_so_file'),
-    path('api/documents/so/<str:soid>/files/', get_so_files, name='get_so_files'),
-    path('api/documents/so/<str:soid>/files/<str:filename>/view/', view_so_file, name='view_so_file'),
-    path('api/documents/so/<str:soid>/files/<str:filename>/', delete_so_file, name='delete_so_file'),
-    path('api/documents/so/email-files/', email_so_files, name='email_so_files'),
-    
+
     # Tenant-wide Address Book
     path('api/documents/tenant-emails/', get_tenant_emails, name='get_tenant_emails'),
     path('api/documents/add-tenant-email/', add_tenant_email, name='add_tenant_email'),
     path('api/documents/delete-tenant-email/<int:email_id>/', delete_tenant_email, name='delete_tenant_email'),
-    
-    # Documents API - Purchase Orders
-    path('api/documents/po/', get_purchase_orders, name='get_purchase_orders'),
-    path('api/documents/po/upload/', upload_po_file, name='upload_po_file'),
-    path('api/documents/po/<str:poid>/files/', get_po_files, name='get_po_files'),
-    path('api/documents/po/<str:poid>/files/<str:filename>/view/', view_po_file, name='view_po_file'),
-    path('api/documents/po/<str:poid>/files/<str:filename>/', delete_po_file, name='delete_po_file'),
-    path('api/documents/po/<str:poid>/pod-items/', get_pod_items, name='get_pod_items'),
-    path('api/documents/po/download-bulk/', download_bulk_po_files, name='download_bulk_po_files'),
-    path('api/documents/po/email-bulk/', email_bulk_po_files, name='email_bulk_po_files'),
-    path('api/documents/po/email-files/', email_po_files, name='email_po_files'),
-    
+
     # Vendor Emails API
     path('api/documents/vendor-emails/<int:vendor_id>/', get_vendor_emails, name='get_vendor_emails'),
     path('api/documents/add-vendor-email/', add_vendor_email, name='add_vendor_email'),
@@ -168,10 +145,6 @@ path('login/', login_view, name='login'),
     path('api/documents/customer/email-files/', email_customer_files, name='email_customer_files'),
     
     # Documents API - Bulk operations
-    path('api/documents/so/download-bulk/', download_bulk_so_files, name='download_bulk_so_files'),
-    path('api/documents/so/email-bulk/', email_bulk_so_files, name='email_bulk_so_files'),
-    path('api/documents/customer-emails/<int:customer_id>/', get_customer_emails, name='get_customer_emails'),
-
     # Documents - Vendor
     path('documents/vendor/', vendor_documents, name='vendor_documents'),
     
@@ -230,6 +203,7 @@ path('api/profile-orders/import/preview/', import_preview, name='import_preview'
 path('api/profile-orders/import/confirm/', import_confirm, name='import_confirm'),
     path('api/customers/add/', add_customer_api, name='add_customer_api'),
     path('api/customers/<int:customer_id>/update/', update_customer_api, name='update_customer_api'),
+    path('api/customers/<int:customer_id>/delete/', delete_customer_api, name='delete_customer_api'),
     path('api/customers/<int:customer_id>/add-profile-item/', add_profile_item_api, name='add_profile_item_api'),
     path('api/profile-item/<int:profile_id>/update/', update_profile_item_api, name='update_profile_item_api'),
     path('api/profile-item/<int:profile_id>/delete/', delete_profile_item_api, name='delete_profile_item_api'),

@@ -12,7 +12,7 @@
 
     <div class="d-flex justify-content-between align-items-center mb-3">
         <div class="d-flex align-items-center gap-2">
-            <a href="{% url 'orders_hub' %}" class="btn btn-outline-secondary btn-sm">
+            <a href="{% url 'orders_landing' %}" class="btn btn-outline-secondary btn-sm">
                 <i class="bi bi-arrow-left"></i> Back
             </a>
             <h2 class="mb-0"><i class="bi bi-people me-2"></i>Customers</h2>
@@ -61,6 +61,9 @@
                             <td class="text-end text-nowrap">
                                 <button class="btn btn-outline-primary btn-sm" onclick="openEditModal({{ customer.id }})">
                                     <i class="bi bi-pencil"></i>
+                                </button>
+                                <button class="btn btn-outline-danger btn-sm" onclick="deleteCustomer({{ customer.id }}, '{{ customer.name|escapejs }}')">
+                                    <i class="bi bi-trash"></i>
                                 </button>
                                 <button class="btn btn-outline-secondary btn-sm"
                                     onclick="copyOrderLink('{{ request.scheme }}://{{ request.get_host }}{% url 'public_profile_order_form' customer.public_token %}', this)">
@@ -245,6 +248,17 @@ function saveCustomer() {
             return;
         }
         location.reload();
+    });
+}
+
+function deleteCustomer(id, name) {
+    if (!confirm(`Delete customer "${name}"?`)) return;
+    fetch(`/api/customers/${id}/delete/`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCookie('csrftoken') },
+    }).then(r => r.json()).then(r => {
+        if (r.error) alert('Error: ' + r.error);
+        else location.reload();
     });
 }
 
