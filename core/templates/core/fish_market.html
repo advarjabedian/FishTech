@@ -38,6 +38,7 @@
     width: 100%;
     height: 100%;
     object-fit: cover;
+    transition: opacity 0.3s ease;
 }
 .menu-item-img .placeholder-icon {
     font-size: 4rem;
@@ -167,12 +168,16 @@
                             <span class="badge bg-secondary unavailable-badge">Unavailable</span>
                             {% endif %}
 
-                            <div class="menu-item-img">
+                            <div class="menu-item-img"
+                                 {% with imgs=item.images.all %}
+                                 {% for img in imgs %}
+                                 data-img{{ img.slot }}="{{ img.image.url }}"
+                                 {% endfor %}
+                                 {% endwith %}
+                                 onmouseenter="swapImg(this, true)" onmouseleave="swapImg(this, false)">
                                 {% with first_img=item.images.all.0 %}
                                 {% if first_img %}
                                 <img src="{{ first_img.image.url }}" alt="{{ item.description }}" id="item-img-{{ item.id }}">
-                                {% elif item.image %}
-                                <img src="{{ item.image }}" alt="{{ item.description }}" id="item-img-{{ item.id }}">
                                 {% else %}
                                 <div class="placeholder-icon d-flex align-items-center justify-content-center w-100 h-100">
                                     <i class="bi bi-fish" id="item-img-placeholder-{{ item.id }}"></i>
@@ -408,6 +413,22 @@
 const SLUG = "{{ slug }}";
 const IS_MANAGER = {{ is_manager|yesno:'true,false' }};
 const STRIPE_PUBLIC_KEY = "{{ stripe_public_key }}";
+
+// ── Image Hover Swap ─────────────────────────────────────────────────────────
+function swapImg(container, hovering) {
+    const img = container.querySelector('img');
+    if (!img) return;
+    const img1 = container.dataset.img1;
+    const img2 = container.dataset.img2;
+    if (!img2) return; // no second image, nothing to swap
+    if (hovering) {
+        img.style.opacity = '0';
+        setTimeout(() => { img.src = img2; img.style.opacity = '1'; }, 150);
+    } else {
+        img.style.opacity = '0';
+        setTimeout(() => { img.src = img1; img.style.opacity = '1'; }, 150);
+    }
+}
 
 // ── Cart State ────────────────────────────────────────────────────────────────
 const cart = {};  // { itemId: { name, price, qty } }
