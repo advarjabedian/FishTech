@@ -5,168 +5,6 @@
 
 {% block content %}
 <div class="container mt-4">
-    
-    <!-- Billing Section -->
-    <div class="card mb-4" id="billingSection">
-        <div class="card-header bg-primary text-white">
-            <h5 class="mb-0"><i class="bi bi-credit-card me-2"></i>Subscription & Billing</h5>
-        </div>
-        <div class="card-body">
-            <div id="billingLoading" class="text-center py-3">
-                <div class="spinner-border spinner-border-sm" role="status"></div>
-                Loading billing status...
-            </div>
-            <div id="billingContent" style="display: none;">
-                <div class="row align-items-center">
-                    <div class="col-md-6">
-                        <div class="d-flex align-items-center mb-2">
-                            <strong class="me-2">Status:</strong>
-                            <span id="subscriptionBadge" class="badge"></span>
-                        </div>
-                        <div id="trialInfo" style="display: none;">
-                            <span class="text-muted">Trial ends in <strong id="daysRemaining"></strong> days</span>
-                        </div>
-                        <div id="subscriptionInfo" style="display: none;">
-                            <span class="text-muted">Next billing: <span id="nextBilling"></span></span>
-                        </div>
-                    </div>
-                    <div class="col-md-6 text-md-end mt-3 mt-md-0">
-                        <button id="subscribeBtn" class="btn btn-success" style="display: none;" onclick="startCheckout()">
-                            <i class="bi bi-credit-card me-1"></i>Subscribe - $10/month
-                        </button>
-                        <button id="manageBtn" class="btn btn-outline-primary" style="display: none;" onclick="openPortal()">
-                            <i class="bi bi-gear me-1"></i>Manage Subscription
-                        </button>
-                    </div>
-                </div>
-                <div id="pastDueAlert" class="alert alert-warning mt-3" style="display: none;">
-                    <i class="bi bi-exclamation-triangle me-2"></i>
-                    <strong>Payment Failed:</strong> Please update your payment method to continue using FishTech.
-                </div>
-                <div id="expiredAlert" class="alert alert-danger mt-3" style="display: none;">
-                    <i class="bi bi-x-circle me-2"></i>
-                    <strong>Trial Expired:</strong> Subscribe now to continue using FishTech.
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Address Book Section -->
-    <div class="card mb-4">
-        <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
-            <h5 class="mb-0"><i class="bi bi-person-lines-fill me-2"></i>Company Address Book</h5>
-            <button class="btn btn-light btn-sm" data-bs-toggle="modal" data-bs-target="#addTenantEmailModal">
-                <i class="bi bi-plus"></i> Add Email
-            </button>
-        </div>
-        <div class="card-body">
-            <p class="text-muted small mb-3">These emails are shared across all users in your organization for quick access when emailing documents.</p>
-            <div id="tenantEmailsList">
-                <div class="text-center py-3">
-                    <div class="spinner-border spinner-border-sm" role="status"></div> Loading...
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Email Settings Section -->
-    <div class="card mb-4">
-        <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
-            <h5 class="mb-0"><i class="bi bi-envelope-at me-2"></i>Inbound Email Settings</h5>
-            <button class="btn btn-dark btn-sm" onclick="testEmailConnection()">
-                <i class="bi bi-plug me-1"></i>Test Connection
-            </button>
-        </div>
-        <div class="card-body">
-            <p class="text-muted small mb-3">Configure the email account to check for customer orders. Use an app password, not your regular password.</p>
-            <div class="row g-3">
-                <div class="col-md-4">
-                    <label class="form-label">Email Address</label>
-                    <input type="email" id="inboundEmailAddress" class="form-control" placeholder="orders@yourcompany.com">
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label">App Password</label>
-                    <div class="input-group">
-                        <input type="password" id="inboundEmailPassword" class="form-control" placeholder="••••••••••••">
-                        <button class="btn btn-outline-secondary" type="button" onclick="togglePasswordVisibility()">
-                            <i class="bi bi-eye" id="passwordToggleIcon"></i>
-                        </button>
-                    </div>
-                    <small class="text-muted">Leave blank to keep existing</small>
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label">IMAP Server</label>
-                    <select id="inboundImapServer" class="form-select">
-                        <option value="imap.gmail.com">Gmail (imap.gmail.com)</option>
-                        <option value="outlook.office365.com">Outlook/Office 365</option>
-                        <option value="imap.mail.yahoo.com">Yahoo Mail</option>
-                        <option value="custom">Custom...</option>
-                    </select>
-                    <input type="text" id="inboundImapServerCustom" class="form-control mt-2" placeholder="imap.yourserver.com" style="display: none;">
-                </div>
-            </div>
-            <div class="mt-3">
-                <button class="btn btn-primary" onclick="saveEmailSettings()">
-                    <i class="bi bi-save me-1"></i>Save Email Settings
-                </button>
-                <span id="emailSettingsStatus" class="ms-3"></span>
-            </div>
-        </div>
-    </div>
-
-    <!-- Twilio SMS Settings -->
-<div class="card mb-4 border-success">
-    <div class="card-header bg-success text-white">
-        <i class="bi bi-chat-dots"></i> SMS Settings (Twilio)
-    </div>
-    <div class="card-body">
-        <p class="text-muted small">Configure Twilio to receive customer orders via text message. Each tenant has their own phone number.</p>
-        
-        <div class="row g-3">
-            <div class="col-md-4">
-                <label class="form-label">Account SID</label>
-                <input type="text" id="twilioAccountSid" class="form-control" placeholder="ACxxxxx...">
-            </div>
-            <div class="col-md-4">
-                <label class="form-label">Auth Token</label>
-                <div class="input-group">
-                    <input type="password" id="twilioAuthToken" class="form-control" placeholder="Leave blank to keep existing">
-                    <button class="btn btn-outline-secondary" type="button" onclick="toggleTwilioToken()">
-                        <i class="bi bi-eye" id="twilioTokenIcon"></i>
-                    </button>
-                </div>
-                <small class="text-muted">Leave blank to keep existing</small>
-            </div>
-            <div class="col-md-4">
-                <label class="form-label">Phone Number</label>
-                <input type="text" id="twilioPhoneNumber" class="form-control" placeholder="+18555551234">
-                <small class="text-muted">Include country code (+1)</small>
-            </div>
-        </div>
-        
-        <div class="mt-3 d-flex gap-2">
-            <button class="btn btn-success" onclick="saveTwilioSettings()">
-                <i class="bi bi-check-lg"></i> Save SMS Settings
-            </button>
-            <button class="btn btn-outline-success" onclick="testTwilioConnection()">
-                <i class="bi bi-plug"></i> Test Connection
-            </button>
-        </div>
-        <div id="twilioStatus" class="mt-2"></div>
-    </div>
-</div>
-
-    <!-- Payment Success/Cancel Messages -->
-    <div id="paymentSuccessAlert" class="alert alert-success alert-dismissible fade show" style="display: none;">
-        <i class="bi bi-check-circle me-2"></i>
-        <strong>Payment Successful!</strong> Your subscription is now active.
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
-    <div id="paymentCancelledAlert" class="alert alert-info alert-dismissible fade show" style="display: none;">
-        <i class="bi bi-info-circle me-2"></i>
-        Payment was cancelled. You can subscribe anytime.
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
 
     <!-- Companies Filter -->
     <div class="mb-4">
@@ -186,7 +24,7 @@
             Add User
         </button>
     </div>
-    
+
     <div class="card mb-5">
         <div class="card-body">
             <table class="table table-hover">
@@ -205,14 +43,14 @@
                         <td>{{ user.name }}</td>
                         <td>{{ user.email }}</td>
                         <td>
-                            <button class="btn btn-sm {% if user.id in user_admins and user_admins|lookup:user.id %}btn-primary{% else %}btn-outline-secondary{% endif %}" 
+                            <button class="btn btn-sm {% if user.id in user_admins and user_admins|lookup:user.id %}btn-primary{% else %}btn-outline-secondary{% endif %}"
                                     onclick="toggleUserAdmin({{ user.id }}, this)">
                                 {% if user.id in user_admins and user_admins|lookup:user.id %}Admin{% else %}User{% endif %}
                             </button>
                         </td>
                         <td>
                             {% for company in companies %}
-                            <button class="btn btn-sm {% if user.id in user_companies and company.companyid in user_companies|lookup:user.id %}btn-success{% else %}btn-outline-secondary{% endif %}" 
+                            <button class="btn btn-sm {% if user.id in user_companies and company.companyid in user_companies|lookup:user.id %}btn-success{% else %}btn-outline-secondary{% endif %}"
                                     onclick="toggleUserCompany({{ user.id }}, {{ company.companyid }}, this)">
                                 {{ company.companyname }}
                             </button>
@@ -240,7 +78,7 @@
             Add Company
         </button>
     </div>
-    
+
     <div class="card">
         <div class="card-body">
             <div class="row">
@@ -453,37 +291,7 @@
     </div>
 </div>
 
-
-<!-- Add Tenant Email Modal -->
-<div class="modal fade" id="addTenantEmailModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Add Email to Address Book</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <div class="mb-3">
-                    <label class="form-label">Email Address <span class="text-danger">*</span></label>
-                    <input type="email" class="form-control" id="tenantEmailAddress" placeholder="email@example.com" required>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Label (optional)</label>
-                    <input type="text" class="form-control" id="tenantEmailLabel" placeholder="e.g., Accounts Payable, John Smith">
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" onclick="addTenantEmail()">
-                    <i class="bi bi-plus"></i> Add Email
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
-
 <script>
-// Helper to get CSRF token from cookie
 function getCookie(name) {
     let cookieValue = null;
     if (document.cookie && document.cookie !== '') {
@@ -499,91 +307,18 @@ function getCookie(name) {
     return cookieValue;
 }
 
-// Twilio Settings
-function loadTwilioSettings() {
-    fetch('/api/twilio-settings/')
-        .then(r => r.json())
-        .then(data => {
-            document.getElementById('twilioAccountSid').value = data.twilio_account_sid || '';
-            document.getElementById('twilioPhoneNumber').value = data.twilio_phone_number || '';
-            document.getElementById('twilioAuthToken').placeholder = data.has_token ? 'Leave blank to keep existing' : 'Enter auth token';
-        });
-}
-
-function saveTwilioSettings() {
-    const data = {
-        twilio_account_sid: document.getElementById('twilioAccountSid').value,
-        twilio_auth_token: document.getElementById('twilioAuthToken').value,
-        twilio_phone_number: document.getElementById('twilioPhoneNumber').value,
-    };
-    
-    fetch('/api/twilio-settings/save/', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': getCookie('csrftoken')
-        },
-        body: JSON.stringify(data)
-    })
-    .then(r => r.json())
-    .then(data => {
-        if (data.success) {
-            document.getElementById('twilioStatus').innerHTML = '<div class="alert alert-success py-1"><i class="bi bi-check-circle"></i> Settings saved!</div>';
-            document.getElementById('twilioAuthToken').value = '';
-            loadTwilioSettings();
-        } else {
-            document.getElementById('twilioStatus').innerHTML = `<div class="alert alert-danger py-1"><i class="bi bi-x-circle"></i> ${data.error}</div>`;
-        }
-    });
-}
-
-function testTwilioConnection() {
-    document.getElementById('twilioStatus').innerHTML = '<div class="alert alert-info py-1"><i class="bi bi-hourglass-split"></i> Testing...</div>';
-    
-    fetch('/api/twilio-settings/test/', {
-        method: 'POST',
-        headers: {
-            'X-CSRFToken': getCookie('csrftoken')
-        }
-    })
-    .then(r => r.json())
-    .then(data => {
-        if (data.success) {
-            document.getElementById('twilioStatus').innerHTML = `<div class="alert alert-success py-1"><i class="bi bi-check-circle"></i> ${data.message}</div>`;
-        } else {
-            document.getElementById('twilioStatus').innerHTML = `<div class="alert alert-danger py-1"><i class="bi bi-x-circle"></i> ${data.error}</div>`;
-        }
-    });
-}
-
-function toggleTwilioToken() {
-    const input = document.getElementById('twilioAuthToken');
-    const icon = document.getElementById('twilioTokenIcon');
-    if (input.type === 'password') {
-        input.type = 'text';
-        icon.classList.replace('bi-eye', 'bi-eye-slash');
-    } else {
-        input.type = 'password';
-        icon.classList.replace('bi-eye-slash', 'bi-eye');
-    }
-}
-
 function filterByCompany(companyId) {
-    // Update button states
     document.querySelectorAll('.btn-group button').forEach(btn => {
         btn.classList.remove('active');
     });
     event.target.classList.add('active');
-    
-    // Filter table rows
+
     const rows = document.querySelectorAll('#userTable tr');
     rows.forEach(row => {
-        // Skip rows without data-companies attribute
         if (!row.dataset.companies) {
             row.style.display = companyId ? 'none' : '';
             return;
         }
-        
         if (!companyId) {
             row.style.display = '';
         } else {
@@ -612,7 +347,6 @@ function toggleUserCompany(userId, companyId, button) {
                 button.classList.remove('btn-success');
                 button.classList.add('btn-outline-secondary');
             }
-            // Update data attribute
             const row = button.closest('tr');
             const companies = row.dataset.companies.split(',').filter(c => c).map(c => parseInt(c));
             if (result.associated && !companies.includes(companyId)) {
@@ -663,7 +397,7 @@ function submitAddCompany() {
         state: document.getElementById('add_state').value,
         zipcode: document.getElementById('add_zipcode').value
     };
-    
+
     fetch('{% url "add_company" %}', {
         method: 'POST',
         headers: {
@@ -685,7 +419,7 @@ function submitAddCompany() {
 function submitAddUser() {
     const password = document.getElementById('add_password').value;
     const password2 = document.getElementById('add_password2').value;
-    
+
     if (password !== password2) {
         alert('Passwords do not match');
         return;
@@ -694,13 +428,13 @@ function submitAddUser() {
         alert('Password must be at least 8 characters');
         return;
     }
-    
+
     const data = {
         name: document.getElementById('add_name').value,
         email: document.getElementById('add_email').value,
         password: password
     };
-    
+
     fetch('{% url "add_user" %}', {
         method: 'POST',
         headers: {
@@ -723,7 +457,6 @@ function editUser(id, name, email) {
     document.getElementById('edit_user_id').value = id;
     document.getElementById('edit_name').value = name;
     document.getElementById('edit_email').value = email;
-    
     new bootstrap.Modal(document.getElementById('editUserModal')).show();
 }
 
@@ -748,7 +481,7 @@ function submitEditUser() {
         email: document.getElementById('edit_email').value,
         password: password || null
     };
-    
+
     fetch(`/api/edit-user/${userId}/`, {
         method: 'POST',
         headers: {
@@ -790,13 +523,11 @@ function deleteUser(id, name) {
 function updateCompanyLogo(companyId) {
     const input = document.getElementById(`logo_input_${companyId}`);
     const file = input.files[0];
-    
     if (!file) return;
-    
+
     const reader = new FileReader();
     reader.onload = function(e) {
         const logo = e.target.result;
-        
         fetch(`/api/update-company-logo/${companyId}/`, {
             method: 'POST',
             headers: {
@@ -825,7 +556,6 @@ function editCompany(id, name, address, city, state, zipcode) {
     document.getElementById('edit_city').value = city || '';
     document.getElementById('edit_state').value = state || '';
     document.getElementById('edit_zipcode').value = zipcode || '';
-    
     new bootstrap.Modal(document.getElementById('editCompanyModal')).show();
 }
 
@@ -838,7 +568,7 @@ function submitEditCompany() {
         state: document.getElementById('edit_state').value,
         zipcode: document.getElementById('edit_zipcode').value
     };
-    
+
     fetch(`/api/edit-company/${companyId}/`, {
         method: 'POST',
         headers: {
@@ -876,377 +606,5 @@ function deleteCompany(id, name) {
         });
     }
 }
-// Billing Functions
-function loadBillingStatus() {
-    fetch('{% url "billing_status" %}')
-        .then(response => response.json())
-        .then(data => {
-            document.getElementById('billingLoading').style.display = 'none';
-            document.getElementById('billingContent').style.display = 'block';
-            
-            if (!data.success) {
-                console.error('Failed to load billing status');
-                return;
-            }
-            
-            const badge = document.getElementById('subscriptionBadge');
-            const subscribeBtn = document.getElementById('subscribeBtn');
-            const manageBtn = document.getElementById('manageBtn');
-            const trialInfo = document.getElementById('trialInfo');
-            const subscriptionInfo = document.getElementById('subscriptionInfo');
-            const pastDueAlert = document.getElementById('pastDueAlert');
-            const expiredAlert = document.getElementById('expiredAlert');
-            
-            // Reset all
-            subscribeBtn.style.display = 'none';
-            manageBtn.style.display = 'none';
-            trialInfo.style.display = 'none';
-            subscriptionInfo.style.display = 'none';
-            pastDueAlert.style.display = 'none';
-            expiredAlert.style.display = 'none';
-            
-            switch(data.subscription_status) {
-                case 'trialing':
-                    badge.className = 'badge bg-info';
-                    badge.textContent = 'Trial';
-                    trialInfo.style.display = 'block';
-                    document.getElementById('daysRemaining').textContent = data.days_remaining;
-                    subscribeBtn.style.display = 'inline-block';
-                    if (!data.is_valid) {
-                        expiredAlert.style.display = 'block';
-                    }
-                    break;
-                case 'active':
-                    badge.className = 'badge bg-success';
-                    badge.textContent = 'Active';
-                    manageBtn.style.display = 'inline-block';
-                    if (data.subscription_ends_at) {
-                        subscriptionInfo.style.display = 'block';
-                        document.getElementById('nextBilling').textContent = new Date(data.subscription_ends_at).toLocaleDateString();
-                    }
-                    break;
-                case 'past_due':
-                    badge.className = 'badge bg-warning';
-                    badge.textContent = 'Past Due';
-                    pastDueAlert.style.display = 'block';
-                    manageBtn.style.display = 'inline-block';
-                    break;
-                case 'canceled':
-                    badge.className = 'badge bg-secondary';
-                    badge.textContent = 'Canceled';
-                    subscribeBtn.style.display = 'inline-block';
-                    break;
-                case 'unpaid':
-                    badge.className = 'badge bg-danger';
-                    badge.textContent = 'Unpaid';
-                    pastDueAlert.style.display = 'block';
-                    manageBtn.style.display = 'inline-block';
-                    break;
-                default:
-                    badge.className = 'badge bg-secondary';
-                    badge.textContent = data.subscription_status || 'Unknown';
-                    subscribeBtn.style.display = 'inline-block';
-            }
-        })
-        .catch(error => {
-            console.error('Error loading billing status:', error);
-            document.getElementById('billingLoading').innerHTML = '<span class="text-danger">Failed to load billing status</span>';
-        });
-}
-
-function startCheckout() {
-    const btn = document.getElementById('subscribeBtn');
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Loading...';
-    
-    fetch('{% url "create_checkout" %}', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': getCookie('csrftoken')
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success && data.checkout_url) {
-            window.location.href = data.checkout_url;
-        } else {
-            alert('Error: ' + (data.error || 'Could not start checkout'));
-            btn.disabled = false;
-            btn.innerHTML = '<i class="bi bi-credit-card me-1"></i>Subscribe - $10/month';
-        }
-    })
-    .catch(error => {
-        alert('Error starting checkout: ' + error);
-        btn.disabled = false;
-        btn.innerHTML = '<i class="bi bi-credit-card me-1"></i>Subscribe - $10/month';
-    });
-}
-
-function openPortal() {
-    const btn = document.getElementById('manageBtn');
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Loading...';
-    
-    fetch('{% url "create_portal" %}', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': getCookie('csrftoken')
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success && data.portal_url) {
-            window.location.href = data.portal_url;
-        } else {
-            alert('Error: ' + (data.error || 'Could not open billing portal'));
-            btn.disabled = false;
-            btn.innerHTML = '<i class="bi bi-gear me-1"></i>Manage Subscription';
-        }
-    })
-    .catch(error => {
-        alert('Error opening portal: ' + error);
-        btn.disabled = false;
-        btn.innerHTML = '<i class="bi bi-gear me-1"></i>Manage Subscription';
-    });
-}
-
-// ============================================================================
-// EMAIL SETTINGS
-// ============================================================================
-
-function loadEmailSettings() {
-    fetch('/api/email-settings/')
-        .then(r => r.json())
-        .then(data => {
-            if (data.success) {
-                document.getElementById('inboundEmailAddress').value = data.email_address || '';
-                // Don't populate password for security
-                
-                const server = data.imap_server || 'imap.gmail.com';
-                const select = document.getElementById('inboundImapServer');
-                const customInput = document.getElementById('inboundImapServerCustom');
-                
-                // Check if server is in dropdown
-                const option = Array.from(select.options).find(o => o.value === server);
-                if (option) {
-                    select.value = server;
-                    customInput.style.display = 'none';
-                } else {
-                    select.value = 'custom';
-                    customInput.style.display = 'block';
-                    customInput.value = server;
-                }
-            }
-        })
-        .catch(err => console.error('Error loading email settings:', err));
-}
-
-function saveEmailSettings() {
-    const select = document.getElementById('inboundImapServer');
-    let imapServer = select.value;
-    if (imapServer === 'custom') {
-        imapServer = document.getElementById('inboundImapServerCustom').value.trim();
-    }
-    
-    const data = {
-        email_address: document.getElementById('inboundEmailAddress').value.trim(),
-        email_password: document.getElementById('inboundEmailPassword').value,
-        imap_server: imapServer
-    };
-    
-    const statusEl = document.getElementById('emailSettingsStatus');
-    statusEl.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Saving...';
-    
-    fetch('/api/email-settings/save/', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': getCookie('csrftoken')
-        },
-        body: JSON.stringify(data)
-    })
-    .then(r => r.json())
-    .then(data => {
-        if (data.success) {
-            statusEl.innerHTML = '<span class="text-success"><i class="bi bi-check-circle"></i> Saved!</span>';
-            document.getElementById('inboundEmailPassword').value = '';
-            setTimeout(() => statusEl.innerHTML = '', 3000);
-        } else {
-            statusEl.innerHTML = '<span class="text-danger"><i class="bi bi-x-circle"></i> ' + (data.error || 'Error') + '</span>';
-        }
-    })
-    .catch(err => {
-        statusEl.innerHTML = '<span class="text-danger"><i class="bi bi-x-circle"></i> Error saving</span>';
-    });
-}
-
-function testEmailConnection() {
-    const statusEl = document.getElementById('emailSettingsStatus');
-    statusEl.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Testing connection...';
-    
-    fetch('/api/email-settings/test/', {
-        method: 'POST',
-        headers: { 'X-CSRFToken': getCookie('csrftoken') }
-    })
-    .then(r => r.json())
-    .then(data => {
-        if (data.success) {
-            statusEl.innerHTML = '<span class="text-success"><i class="bi bi-check-circle"></i> Connection successful! Found ' + data.unread_count + ' unread emails.</span>';
-        } else {
-            statusEl.innerHTML = '<span class="text-danger"><i class="bi bi-x-circle"></i> ' + (data.error || 'Connection failed') + '</span>';
-        }
-    })
-    .catch(err => {
-        statusEl.innerHTML = '<span class="text-danger"><i class="bi bi-x-circle"></i> Error testing connection</span>';
-    });
-}
-
-function togglePasswordVisibility() {
-    const input = document.getElementById('inboundEmailPassword');
-    const icon = document.getElementById('passwordToggleIcon');
-    if (input.type === 'password') {
-        input.type = 'text';
-        icon.classList.remove('bi-eye');
-        icon.classList.add('bi-eye-slash');
-    } else {
-        input.type = 'password';
-        icon.classList.remove('bi-eye-slash');
-        icon.classList.add('bi-eye');
-    }
-}
-
-// Handle IMAP server dropdown
-document.getElementById('inboundImapServer').addEventListener('change', function() {
-    const customInput = document.getElementById('inboundImapServerCustom');
-    customInput.style.display = this.value === 'custom' ? 'block' : 'none';
-});
-
-// Check URL params for payment status
-document.addEventListener('DOMContentLoaded', function() {
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('payment') === 'success') {
-        document.getElementById('paymentSuccessAlert').style.display = 'block';
-        // Clean URL
-        window.history.replaceState({}, document.title, window.location.pathname);
-    } else if (urlParams.get('payment') === 'cancelled') {
-        document.getElementById('paymentCancelledAlert').style.display = 'block';
-        window.history.replaceState({}, document.title, window.location.pathname);
-    }
-    
-    // Load billing status
-    loadBillingStatus();
-    
-    // Load address book
-    loadTenantEmails();
-    
-    // Load email settings
-    loadEmailSettings();
-});
-
-// ============================================================================
-// TENANT ADDRESS BOOK
-// ============================================================================
-
-function loadTenantEmails() {
-    fetch('/api/documents/tenant-emails/')
-        .then(response => response.json())
-        .then(emails => {
-            renderTenantEmails(emails);
-        })
-        .catch(error => {
-            console.error('Error loading tenant emails:', error);
-            document.getElementById('tenantEmailsList').innerHTML = 
-                '<p class="text-danger">Error loading address book</p>';
-        });
-}
-
-function renderTenantEmails(emails) {
-    const container = document.getElementById('tenantEmailsList');
-    
-    if (emails.length === 0) {
-        container.innerHTML = '<p class="text-muted text-center mb-0">No emails in address book yet. Click "Add Email" to get started.</p>';
-        return;
-    }
-    
-    container.innerHTML = `
-        <table class="table table-sm table-hover mb-0">
-            <thead>
-                <tr>
-                    <th>Email</th>
-                    <th>Label</th>
-                    <th style="width: 100px;">Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${emails.map(email => `
-                    <tr>
-                        <td>${email.email}</td>
-                        <td>${email.label || '<span class="text-muted">-</span>'}</td>
-                        <td>
-                            <button class="btn btn-sm btn-outline-danger" onclick="deleteTenantEmail(${email.id})" title="Delete">
-                                <i class="bi bi-trash"></i>
-                            </button>
-                        </td>
-                    </tr>
-                `).join('')}
-            </tbody>
-        </table>
-    `;
-}
-
-function addTenantEmail() {
-    const email = document.getElementById('tenantEmailAddress').value.trim();
-    const label = document.getElementById('tenantEmailLabel').value.trim();
-    
-    if (!email) {
-        alert('Please enter an email address');
-        return;
-    }
-    
-    fetch('/api/documents/add-tenant-email/', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': getCookie('csrftoken')
-        },
-        body: JSON.stringify({ email, label })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            document.getElementById('tenantEmailAddress').value = '';
-            document.getElementById('tenantEmailLabel').value = '';
-            bootstrap.Modal.getInstance(document.getElementById('addTenantEmailModal')).hide();
-            loadTenantEmails();
-        } else {
-            alert('Error: ' + (data.error || 'Failed to add email'));
-        }
-    })
-    .catch(error => alert('Error: ' + error));
-}
-
-function deleteTenantEmail(emailId) {
-    if (!confirm('Delete this email from the address book?')) return;
-    
-    fetch(`/api/documents/delete-tenant-email/${emailId}/`, {
-        method: 'DELETE',
-        headers: { 'X-CSRFToken': getCookie('csrftoken') }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            loadTenantEmails();
-        } else {
-            alert('Error deleting email');
-        }
-    })
-    .catch(error => alert('Error: ' + error));
-}
-
-
-
-
 </script>
 {% endblock %}

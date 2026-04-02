@@ -2,10 +2,40 @@
 
 {% block title %}Platform Admin - FishTech{% endblock %}
 
+{% block extra_css %}
+<style>
+.tenant-config {
+    background: #f8f9fa;
+    border-top: 1px solid #dee2e6;
+}
+.config-section {
+    border-left: 3px solid;
+    padding-left: 12px;
+    margin-bottom: 1rem;
+}
+.config-section.email { border-color: #ffc107; }
+.config-section.twilio { border-color: #198754; }
+.config-section.subscription { border-color: #0d6efd; }
+.config-value {
+    font-family: monospace;
+    font-size: 0.85rem;
+    color: #495057;
+}
+.config-value.empty {
+    color: #adb5bd;
+    font-style: italic;
+}
+.tenant-row { cursor: pointer; }
+.tenant-row:hover { background-color: #f0f4ff; }
+.chevron-icon { transition: transform 0.2s; }
+.chevron-icon.open { transform: rotate(90deg); }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container mt-4">
     <h2 class="mb-4"><i class="bi bi-speedometer2 me-2"></i>Platform Admin Dashboard</h2>
-    
+
     <!-- Metrics Cards -->
     <div class="row mb-4">
         <div class="col-md-3">
@@ -41,7 +71,7 @@
             </div>
         </div>
     </div>
-    
+
     <!-- Status Breakdown -->
     <div class="row mb-4">
         <div class="col-md-12">
@@ -56,16 +86,17 @@
             </div>
         </div>
     </div>
-    
-    <!-- Tenants Table -->
+
+    <!-- Tenants Table with Expandable Config -->
     <div class="card">
         <div class="card-header">
             <h5 class="mb-0">All Tenants</h5>
         </div>
-        <div class="card-body">
-            <table class="table table-hover">
+        <div class="card-body p-0">
+            <table class="table table-hover mb-0">
                 <thead>
                     <tr>
+                        <th style="width: 30px;"></th>
                         <th>ID</th>
                         <th>Name</th>
                         <th>Subdomain</th>
@@ -79,9 +110,10 @@
                 </thead>
                 <tbody>
                     {% for tenant in tenants %}
-                    <tr>
+                    <tr class="tenant-row" onclick="toggleTenantConfig({{ tenant.id }})">
+                        <td><i class="bi bi-chevron-right chevron-icon" id="chevron-{{ tenant.id }}"></i></td>
                         <td>{{ tenant.id }}</td>
-                        <td>{{ tenant.name }}</td>
+                        <td><strong>{{ tenant.name }}</strong></td>
                         <td><code>{{ tenant.subdomain }}</code></td>
                         <td>
                             {% if tenant.subscription_status == 'active' %}
@@ -100,7 +132,7 @@
                         <td>{{ tenant.trial_ends_at|date:"M d, Y"|default:"-" }}</td>
                         <td>
                             {% if tenant.stripe_customer_id %}
-                            <a href="https://dashboard.stripe.com/customers/{{ tenant.stripe_customer_id }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                            <a href="https://dashboard.stripe.com/customers/{{ tenant.stripe_customer_id }}" target="_blank" class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation();">
                                 <i class="bi bi-box-arrow-up-right"></i> View
                             </a>
                             {% else %}
@@ -109,14 +141,96 @@
                         </td>
                         <td>{{ tenant.created_at|date:"M d, Y"|default:"-" }}</td>
                         <td>
-                            <button class="btn btn-sm btn-outline-danger" onclick="deleteTenant({{ tenant.id }}, '{{ tenant.name }}')">
+                            <button class="btn btn-sm btn-outline-danger" onclick="event.stopPropagation(); deleteTenant({{ tenant.id }}, '{{ tenant.name }}')">
                                 <i class="bi bi-trash"></i>
                             </button>
                         </td>
                     </tr>
+                    <!-- Expandable Config Row -->
+                    <tr id="config-row-{{ tenant.id }}" style="display: none;">
+                        <td colspan="10" class="p-0">
+                            <div class="tenant-config p-4">
+                                <div class="row">
+                                    <!-- Email Settings -->
+                                    <div class="col-md-4">
+                                        <div class="config-section email">
+                                            <h6><i class="bi bi-envelope-at me-1 text-warning"></i>Email Settings</h6>
+                                            <div class="mb-2">
+                                                <label class="form-label small mb-0">Inbound Email</label>
+                                                <input type="email" class="form-control form-control-sm" id="email-address-{{ tenant.id }}" value="{{ tenant.inbound_email_address|default:'' }}">
+                                            </div>
+                                            <div class="mb-2">
+                                                <label class="form-label small mb-0">App Password</label>
+                                                <input type="password" class="form-control form-control-sm" id="email-password-{{ tenant.id }}" placeholder="{% if tenant.inbound_email_password %}(saved - leave blank to keep){% else %}Not set{% endif %}">
+                                            </div>
+                                            <div class="mb-2">
+                                                <label class="form-label small mb-0">IMAP Server</label>
+                                                <input type="text" class="form-control form-control-sm" id="email-imap-{{ tenant.id }}" value="{{ tenant.inbound_email_imap_server|default:'imap.gmail.com' }}">
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Twilio Settings -->
+                                    <div class="col-md-4">
+                                        <div class="config-section twilio">
+                                            <h6><i class="bi bi-chat-dots me-1 text-success"></i>Twilio SMS Settings</h6>
+                                            <div class="mb-2">
+                                                <label class="form-label small mb-0">Account SID</label>
+                                                <input type="text" class="form-control form-control-sm" id="twilio-sid-{{ tenant.id }}" value="{{ tenant.twilio_account_sid|default:'' }}">
+                                            </div>
+                                            <div class="mb-2">
+                                                <label class="form-label small mb-0">Auth Token</label>
+                                                <input type="password" class="form-control form-control-sm" id="twilio-token-{{ tenant.id }}" placeholder="{% if tenant.twilio_auth_token %}(saved - leave blank to keep){% else %}Not set{% endif %}">
+                                            </div>
+                                            <div class="mb-2">
+                                                <label class="form-label small mb-0">Phone Number</label>
+                                                <input type="text" class="form-control form-control-sm" id="twilio-phone-{{ tenant.id }}" value="{{ tenant.twilio_phone_number|default:'' }}">
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Subscription Settings -->
+                                    <div class="col-md-4">
+                                        <div class="config-section subscription">
+                                            <h6><i class="bi bi-credit-card me-1 text-primary"></i>Subscription</h6>
+                                            <div class="mb-2">
+                                                <label class="form-label small mb-0">Status</label>
+                                                <select class="form-select form-select-sm" id="sub-status-{{ tenant.id }}">
+                                                    <option value="trialing" {% if tenant.subscription_status == 'trialing' %}selected{% endif %}>Trialing</option>
+                                                    <option value="active" {% if tenant.subscription_status == 'active' %}selected{% endif %}>Active</option>
+                                                    <option value="past_due" {% if tenant.subscription_status == 'past_due' %}selected{% endif %}>Past Due</option>
+                                                    <option value="canceled" {% if tenant.subscription_status == 'canceled' %}selected{% endif %}>Canceled</option>
+                                                    <option value="unpaid" {% if tenant.subscription_status == 'unpaid' %}selected{% endif %}>Unpaid</option>
+                                                </select>
+                                            </div>
+                                            <div class="mb-2">
+                                                <label class="form-label small mb-0">Stripe Customer</label>
+                                                <div class="config-value {% if not tenant.stripe_customer_id %}empty{% endif %}">
+                                                    {{ tenant.stripe_customer_id|default:"Not linked" }}
+                                                </div>
+                                            </div>
+                                            <div class="mb-2">
+                                                <label class="form-label small mb-0">Stripe Subscription</label>
+                                                <div class="config-value {% if not tenant.stripe_subscription_id %}empty{% endif %}">
+                                                    {{ tenant.stripe_subscription_id|default:"None" }}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="mt-3 d-flex gap-2">
+                                    <button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); saveTenantConfig({{ tenant.id }})">
+                                        <i class="bi bi-save me-1"></i>Save Configuration
+                                    </button>
+                                    <span id="config-status-{{ tenant.id }}" class="align-self-center"></span>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="9" class="text-center text-muted">No tenants yet</td>
+                        <td colspan="10" class="text-center text-muted">No tenants yet</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -130,6 +244,60 @@ function getCookie(name) {
     const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
     return match ? decodeURIComponent(match[2]) : '';
 }
+
+function toggleTenantConfig(tenantId) {
+    const row = document.getElementById(`config-row-${tenantId}`);
+    const chevron = document.getElementById(`chevron-${tenantId}`);
+    if (row.style.display === 'none') {
+        row.style.display = '';
+        chevron.classList.add('open');
+    } else {
+        row.style.display = 'none';
+        chevron.classList.remove('open');
+    }
+}
+
+function saveTenantConfig(tenantId) {
+    const data = {
+        inbound_email_address: document.getElementById(`email-address-${tenantId}`).value,
+        inbound_email_password: document.getElementById(`email-password-${tenantId}`).value,
+        inbound_email_imap_server: document.getElementById(`email-imap-${tenantId}`).value,
+        twilio_account_sid: document.getElementById(`twilio-sid-${tenantId}`).value,
+        twilio_auth_token: document.getElementById(`twilio-token-${tenantId}`).value,
+        twilio_phone_number: document.getElementById(`twilio-phone-${tenantId}`).value,
+        subscription_status: document.getElementById(`sub-status-${tenantId}`).value,
+    };
+
+    const statusEl = document.getElementById(`config-status-${tenantId}`);
+    statusEl.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Saving...';
+
+    fetch(`/platform-admin/tenant/${tenantId}/config/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify(data)
+    })
+    .then(r => r.json())
+    .then(result => {
+        if (result.success) {
+            statusEl.innerHTML = '<span class="text-success"><i class="bi bi-check-circle"></i> Saved!</span>';
+            // Clear password fields after save
+            document.getElementById(`email-password-${tenantId}`).value = '';
+            document.getElementById(`twilio-token-${tenantId}`).value = '';
+            document.getElementById(`email-password-${tenantId}`).placeholder = '(saved - leave blank to keep)';
+            document.getElementById(`twilio-token-${tenantId}`).placeholder = '(saved - leave blank to keep)';
+            setTimeout(() => statusEl.innerHTML = '', 3000);
+        } else {
+            statusEl.innerHTML = `<span class="text-danger"><i class="bi bi-x-circle"></i> ${result.error}</span>`;
+        }
+    })
+    .catch(err => {
+        statusEl.innerHTML = '<span class="text-danger"><i class="bi bi-x-circle"></i> Error saving</span>';
+    });
+}
+
 function deleteTenant(id, name) {
     if (!confirm(`DELETE tenant "${name}"?\n\nThis will permanently delete all their data. This cannot be undone.`)) return;
     fetch(`/platform-admin/tenant/${id}/delete/`, {

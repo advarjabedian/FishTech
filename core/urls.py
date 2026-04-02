@@ -235,6 +235,7 @@ path('login/', login_view, name='login'),
     # Platform Admin (superuser only)
     path('platform-admin/', platform_admin, name='platform_admin'),
     path('platform-admin/tenant/<int:tenant_id>/delete/', delete_tenant, name='delete_tenant'),
+    path('platform-admin/tenant/<int:tenant_id>/config/', save_tenant_config, name='save_tenant_config'),
     
     # Order Requests
     path('orders/', orders_hub, name='orders_hub'),

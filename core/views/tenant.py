@@ -14,12 +14,9 @@ def manage_users(request):
     if not request.tenant:
         return redirect('admin:index')
     
-    # Check if current user is admin
+    # Verify user belongs to this tenant
     try:
         tenant_user = TenantUser.objects.get(user=request.user, tenant=request.tenant)
-        if not tenant_user.is_admin:
-            messages.error(request, 'You do not have permission to access this page.')
-            return redirect('operations_hub')
     except TenantUser.DoesNotExist:
         return redirect('login')
     

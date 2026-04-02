@@ -355,18 +355,18 @@
         const passBtn = item.querySelector('.pass-btn');
         const failBtn = item.querySelector('.fail-btn');
         const zoneName = item.dataset.zone;
-        const inputRequired = passBtn.dataset.inputRequired === '1';
-        const imageRequired = passBtn.dataset.imageRequired === '1';
-        
-        // Check if notes are required and present
+        const inputRequired = passBtn.dataset.inputRequired === 'True' || passBtn.dataset.inputRequired === '1';
+        const imageRequired = passBtn.dataset.imageRequired === 'True' || passBtn.dataset.imageRequired === '1';
+
+        // Check if temp/notes are required and present
         if (inputRequired) {
             const notesInput = document.getElementById(`notes-${sopId}`);
             if (notesInput && notesInput.value.trim() === '') {
-                alert('Please enter notes before selecting Pass or Fail for this item.');
+                alert('Please enter the temperature before selecting Pass or Fail.');
                 return;
             }
         }
-        
+
         // Check if image is required and present
         if (imageRequired && !inspectionData[sopId]?.image) {
             alert('Please take a photo before selecting Pass or Fail for this item.');

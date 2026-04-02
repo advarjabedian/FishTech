@@ -115,14 +115,86 @@
             </div>
         </div>
 
-        <!-- More Tools -->
+        <!-- HACCP -->
         <div class="col-md-4 mb-3">
-            <div class="card card-dashboard bg-secondary bg-opacity-10" style="border-color: #6c757d !important;" onclick="window.location.href='{% url 'unused_tiles' %}'">
+            <div class="card card-dashboard bg-warning bg-opacity-10" style="border-color: #fd7e14 !important;" onclick="window.location.href='{% url 'haccp' %}'">
                 <div class="card-body text-center">
-                    <i class="bi bi-grid-3x3-gap card-icon text-secondary"></i>
-                    <h3>More Tools</h3>
-                    <p class="text-muted">HACCP, Inspections, Documents, Orders, Inventory & more</p>
-                    <a href="{% url 'unused_tiles' %}" class="btn btn-secondary mt-2">View All Tools</a>
+                    <i class="bi bi-shield-check card-icon" style="color: #fd7e14;"></i>
+                    <h3>HACCP</h3>
+                    <p class="text-muted">Food safety documentation and compliance</p>
+                    <a href="{% url 'haccp' %}" class="btn mt-2" style="background-color: #fd7e14; color: white;">View HACCP</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Daily Inspections -->
+        <div class="col-md-4 mb-3">
+            <div class="card card-dashboard bg-info bg-opacity-10" style="border-color: #0dcaf0 !important;" onclick="window.location.href='{% url 'operations_dashboard' %}'">
+                <div class="card-body text-center">
+                    <i class="bi bi-clipboard-check card-icon text-info"></i>
+                    <h3>Daily Inspections</h3>
+                    <p class="text-muted">Manage daily operational inspections</p>
+                    <a href="{% url 'operations_dashboard' %}" class="btn btn-info mt-2">View Inspections</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Documents -->
+        <div class="col-md-4 mb-3">
+            <div class="card card-dashboard bg-primary bg-opacity-10" style="border-color: #0d6efd !important;" onclick="window.location.href='{% url 'documents_home' %}'">
+                <div class="card-body text-center">
+                    <i class="bi bi-file-earmark-text card-icon text-primary"></i>
+                    <h3>Documents</h3>
+                    <p class="text-muted">Sales orders, purchase orders, and files</p>
+                    <a href="{% url 'documents_home' %}" class="btn btn-primary mt-2">View Documents</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Orders -->
+        <div class="col-md-4 mb-3">
+            <div class="card card-dashboard bg-danger bg-opacity-10" style="border-color: #dc3545 !important;" onclick="window.location.href='{% url 'orders_hub' %}'">
+                <div class="card-body text-center">
+                    <i class="bi bi-bag card-icon text-danger"></i>
+                    <h3>Orders</h3>
+                    <p class="text-muted">Profile orders and order requests</p>
+                    <a href="{% url 'orders_hub' %}" class="btn btn-danger mt-2">View Orders</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Inventory -->
+        <div class="col-md-4 mb-3">
+            <div class="card card-dashboard bg-success bg-opacity-10 border-success" onclick="window.location.href='{% url 'inventory_list' %}'">
+                <div class="card-body text-center">
+                    <i class="bi bi-boxes card-icon text-success"></i>
+                    <h3>Inventory</h3>
+                    <p class="text-muted">View current stock levels and availability</p>
+                    <a href="{% url 'inventory_list' %}" class="btn btn-success mt-2">View Inventory</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Products -->
+        <div class="col-md-4 mb-3">
+            <div class="card card-dashboard bg-warning bg-opacity-10 border-warning" onclick="window.location.href='{% url 'product_list' %}'">
+                <div class="card-body text-center">
+                    <i class="bi bi-box-seam card-icon text-warning"></i>
+                    <h3>Products</h3>
+                    <p class="text-muted">Product catalog and item management</p>
+                    <a href="{% url 'product_list' %}" class="btn btn-warning mt-2">View Products</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Administration -->
+        <div class="col-md-4 mb-3">
+            <div class="card card-dashboard bg-secondary bg-opacity-10" style="border-color: #6c757d !important;" onclick="window.location.href='{% url 'manage_users' %}'">
+                <div class="card-body text-center">
+                    <i class="bi bi-people card-icon text-secondary"></i>
+                    <h3>Administration</h3>
+                    <p class="text-muted">Manage users and companies</p>
+                    <a href="{% url 'manage_users' %}" class="btn btn-secondary mt-2">Manage</a>
                 </div>
             </div>
         </div>
