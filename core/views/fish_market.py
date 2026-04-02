@@ -4,7 +4,7 @@ from django.views.decorators.http import require_POST
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User as DjangoUser
 from django.conf import settings
-from ..models import FishMenuItem, FishOrder, Tenant, TenantUser, get_current_tenant
+from ..models import FishMenuItem, FishOrder, Tenant, TenantUser, Customer, CustomerProfile, ProductImage, get_current_tenant
 import stripe
 import json
 import logging
@@ -28,13 +28,20 @@ def fish_market_page(request, slug):
     except Tenant.DoesNotExist:
         raise Http404
 
-    menu_items = FishMenuItem.all_objects.filter(
-        tenant=tenant, is_available=True
-    ).order_by('sort_order', 'name')
+    # Get the Retail customer's profile items as menu items
+    retail_customer = Customer.all_objects.filter(tenant=tenant, is_retail=True).first()
 
-    all_items = FishMenuItem.all_objects.filter(
-        tenant=tenant
-    ).order_by('sort_order', 'name')
+    if retail_customer:
+        menu_items = CustomerProfile.all_objects.filter(
+            tenant=tenant, customer=retail_customer, is_active=True
+        ).prefetch_related('images').order_by('sort_order', 'description')
+
+        all_items = CustomerProfile.all_objects.filter(
+            tenant=tenant, customer=retail_customer
+        ).prefetch_related('images').order_by('sort_order', 'description')
+    else:
+        menu_items = CustomerProfile.objects.none()
+        all_items = CustomerProfile.objects.none()
 
     is_manager = False
     if request.user.is_authenticated:
@@ -55,6 +62,11 @@ def fish_market_page(request, slug):
 
 # ── Menu Management (login required) ─────────────────────────────────────────
 
+def _get_retail_customer(tenant):
+    """Helper to get the Retail customer for a tenant."""
+    return Customer.all_objects.filter(tenant=tenant, is_retail=True).first()
+
+
 @login_required
 @require_POST
 def fish_market_add_item(request, slug):
@@ -66,15 +78,20 @@ def fish_market_add_item(request, slug):
         return JsonResponse({'error': 'Unauthorized'}, status=403)
 
     try:
+        retail = _get_retail_customer(tenant)
+        if not retail:
+            return JsonResponse({'error': 'Retail customer not found'}, status=500)
+
         data = json.loads(request.body)
-        item = FishMenuItem.all_objects.create(
+        item = CustomerProfile.all_objects.create(
             tenant=tenant,
-            name=data.get('name', '').strip(),
-            description=data.get('description', '').strip(),
-            price=data.get('price', 0),
+            customer=retail,
+            description=data.get('name', '').strip(),
+            instruction=data.get('description', '').strip(),
+            sales_price=data.get('price', 0),
             category=data.get('category', '').strip(),
             sort_order=data.get('sort_order', 0),
-            is_available=data.get('is_available', True),
+            is_active=data.get('is_available', True),
         )
         return JsonResponse({'success': True, 'id': item.id})
     except Exception as e:
@@ -93,25 +110,25 @@ def fish_market_update_item(request, slug, item_id):
         return JsonResponse({'error': 'Unauthorized'}, status=403)
 
     try:
-        item = FishMenuItem.all_objects.get(id=item_id, tenant=tenant)
+        item = CustomerProfile.all_objects.get(id=item_id, tenant=tenant)
         data = json.loads(request.body)
 
         if 'name' in data:
-            item.name = data['name'].strip()
+            item.description = data['name'].strip()
         if 'description' in data:
-            item.description = data['description'].strip()
+            item.instruction = data['description'].strip()
         if 'price' in data:
-            item.price = data['price']
+            item.sales_price = data['price']
         if 'category' in data:
             item.category = data['category'].strip()
         if 'sort_order' in data:
             item.sort_order = data['sort_order']
         if 'is_available' in data:
-            item.is_available = data['is_available']
+            item.is_active = data['is_available']
 
         item.save()
         return JsonResponse({'success': True})
-    except FishMenuItem.DoesNotExist:
+    except CustomerProfile.DoesNotExist:
         return JsonResponse({'error': 'Item not found'}, status=404)
     except Exception as e:
         logger.error(f"fish_market_update_item error: {e}")
@@ -129,10 +146,10 @@ def fish_market_delete_item(request, slug, item_id):
         return JsonResponse({'error': 'Unauthorized'}, status=403)
 
     try:
-        item = FishMenuItem.all_objects.get(id=item_id, tenant=tenant)
+        item = CustomerProfile.all_objects.get(id=item_id, tenant=tenant)
         item.delete()
         return JsonResponse({'success': True})
-    except FishMenuItem.DoesNotExist:
+    except CustomerProfile.DoesNotExist:
         return JsonResponse({'error': 'Item not found'}, status=404)
 
 
@@ -147,19 +164,17 @@ def fish_market_update_image(request, slug, item_id):
         return JsonResponse({'error': 'Unauthorized'}, status=403)
 
     try:
-        item = FishMenuItem.all_objects.get(id=item_id, tenant=tenant)
+        item = CustomerProfile.all_objects.get(id=item_id, tenant=tenant)
         image_file = request.FILES.get('image')
         if not image_file:
             return JsonResponse({'error': 'No image provided'}, status=400)
 
-        import base64
-        content_type = image_file.content_type
-        image_data = base64.b64encode(image_file.read()).decode('utf-8')
-        item.image = f"data:{content_type};base64,{image_data}"
-        item.save()
+        # Upload to R2 as slot 1 (primary image)
+        ProductImage.objects.filter(profile=item, slot=1).delete()
+        img = ProductImage.objects.create(profile=item, slot=1, image=image_file)
 
-        return JsonResponse({'success': True, 'image': item.image})
-    except FishMenuItem.DoesNotExist:
+        return JsonResponse({'success': True, 'image': img.image.url})
+    except CustomerProfile.DoesNotExist:
         return JsonResponse({'error': 'Item not found'}, status=404)
     except Exception as e:
         logger.error(f"fish_market_update_image error: {e}")
@@ -186,8 +201,8 @@ def fish_market_create_payment_intent(request, slug):
         # Calculate total server-side from saved prices
         item_ids = [i.get('id') for i in items if i.get('id')]
         db_items = {
-            m.id: m for m in FishMenuItem.all_objects.filter(
-                tenant=tenant, id__in=item_ids, is_available=True
+            m.id: m for m in CustomerProfile.all_objects.filter(
+                tenant=tenant, id__in=item_ids, is_active=True
             )
         }
 
@@ -196,7 +211,7 @@ def fish_market_create_payment_intent(request, slug):
             db_item = db_items.get(cart_item.get('id'))
             if db_item:
                 qty = max(1, int(cart_item.get('quantity', 1)))
-                total_cents += int(float(db_item.price) * qty * 100)
+                total_cents += int(float(db_item.sales_price or 0) * qty * 100)
 
         if total_cents == 0:
             return JsonResponse({'error': 'No valid items found'}, status=400)
@@ -255,8 +270,8 @@ def fish_market_submit_order(request, slug):
         # Calculate subtotal from saved prices (don't trust client prices)
         item_ids = [i.get('id') for i in items if i.get('id')]
         db_items = {
-            m.id: m for m in FishMenuItem.all_objects.filter(
-                tenant=tenant, id__in=item_ids, is_available=True
+            m.id: m for m in CustomerProfile.all_objects.filter(
+                tenant=tenant, id__in=item_ids, is_active=True
             )
         }
 
@@ -267,12 +282,13 @@ def fish_market_submit_order(request, slug):
             if not db_item:
                 continue
             qty = max(1, int(cart_item.get('quantity', 1)))
-            line_total = float(db_item.price) * qty
+            price = float(db_item.sales_price or 0)
+            line_total = price * qty
             subtotal += line_total
             order_items.append({
                 'id': db_item.id,
-                'name': db_item.name,
-                'price': float(db_item.price),
+                'name': db_item.description,
+                'price': price,
                 'quantity': qty,
                 'subtotal': line_total,
             })

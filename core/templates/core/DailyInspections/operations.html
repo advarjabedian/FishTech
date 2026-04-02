@@ -72,10 +72,9 @@
             <div class="d-flex justify-content-between align-items-center">
                 <h2>Daily Inspections</h2>
         <div style="width: 250px; text-align: right;">
-            <button type="button" class="btn btn-success btn-sm me-2" onclick="openBulkReportModal()">
+            <button type="button" class="btn btn-success btn-sm" onclick="openBulkReportModal()">
                 <i class="bi bi-printer"></i> Bulk Reports
             </button>
-            <a href="#" class="btn btn-outline-secondary btn-sm" onclick="checkAdminPassword(event)">Operations Admin</a>
         </div>
     </div>
     
@@ -102,15 +101,7 @@
     </div>
 
 <script>
-function checkAdminPassword(e) {
-    e.preventDefault();
-    const password = prompt('Enter admin password:');
-    if (password === '123') {
-        window.location.href = '/operations/admin/';
-    } else if (password !== null) {
-        alert('Incorrect password');
-    }
-}
+
 </script>
     
     <div class="header-section">

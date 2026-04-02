@@ -2,7 +2,7 @@ from django.shortcuts import render, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse, HttpResponse
 from django.views.decorators.http import require_POST
-from ..models import Customer, CustomerProfile, SO, SOD, get_current_tenant
+from ..models import Customer, CustomerProfile, ProductImage, SO, SOD, get_current_tenant
 import json
 import logging
 from ..models import Tenant, InboundMessage
@@ -14,6 +14,16 @@ logger = logging.getLogger(__name__)
 def customer_list(request):
     customers = Customer.objects.order_by('name')
     return render(request, 'core/Orders/customer_list.html', {'customers': customers})
+
+
+@login_required
+def products_page(request):
+    """View all product assignments across all customers"""
+    from django.db.models import Prefetch
+    customers = Customer.objects.prefetch_related(
+        Prefetch('profiles', queryset=CustomerProfile.objects.prefetch_related('images'))
+    ).order_by('name')
+    return render(request, 'core/Orders/products.html', {'customers': customers})
 
 
 def profile_order_form(request, customer_id):
@@ -850,7 +860,69 @@ def delete_profile_item_api(request, profile_id):
         return JsonResponse({'success': True})
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
-    
+
+
+@login_required
+@require_POST
+def upload_product_image(request, profile_id):
+    """Upload an image (slot 1, 2, or 3) for a product"""
+    tenant = get_current_tenant()
+    if not tenant:
+        return JsonResponse({'error': 'No tenant context'}, status=400)
+    try:
+        profile = get_object_or_404(CustomerProfile, id=profile_id)
+        slot = int(request.POST.get('slot', 1))
+        if slot not in (1, 2, 3):
+            return JsonResponse({'error': 'Slot must be 1, 2, or 3'}, status=400)
+
+        image_file = request.FILES.get('image')
+        if not image_file:
+            return JsonResponse({'error': 'No image provided'}, status=400)
+
+        # Delete existing image in this slot
+        ProductImage.objects.filter(profile=profile, slot=slot).delete()
+
+        img = ProductImage.objects.create(
+            profile=profile,
+            slot=slot,
+            image=image_file,
+        )
+        return JsonResponse({'success': True, 'url': img.image.url, 'slot': slot})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@login_required
+@require_POST
+def delete_product_image(request, profile_id, slot):
+    """Delete a product image by slot"""
+    tenant = get_current_tenant()
+    if not tenant:
+        return JsonResponse({'error': 'No tenant context'}, status=400)
+    try:
+        profile = get_object_or_404(CustomerProfile, id=profile_id)
+        img = ProductImage.objects.filter(profile=profile, slot=slot).first()
+        if img:
+            img.image.delete(save=False)
+            img.delete()
+        return JsonResponse({'success': True})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@login_required
+def get_product_images(request, profile_id):
+    """Get all images for a product"""
+    try:
+        profile = get_object_or_404(CustomerProfile, id=profile_id)
+        images = []
+        for img in ProductImage.objects.filter(profile=profile).order_by('slot'):
+            images.append({'slot': img.slot, 'url': img.image.url})
+        return JsonResponse({'success': True, 'images': images})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
 # =============================================================================
 # VIEW ORDERS
 # =============================================================================

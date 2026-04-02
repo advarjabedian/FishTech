@@ -986,7 +986,7 @@ function restoreProductType(slug, name) {
     if (!confirm(`Restore product type "${name}"?`)) {
         return;
     }
-    
+
     fetch('/api/haccp-restore-product-type/', {
         method: 'POST',
         headers: {
@@ -1007,6 +1007,31 @@ function restoreProductType(slug, name) {
     .catch(err => {
         console.error('Error restoring product type:', err);
         alert('Error restoring product type');
+    });
+}
+
+function setHACCPOwner(companyId, userId) {
+    fetch(`/api/haccp-set-owner/${companyId}/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({
+            user_id: userId || null
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            console.log('Owner updated successfully');
+        } else {
+            alert('Error updating owner: ' + data.error);
+        }
+    })
+    .catch(err => {
+        console.error('Error updating owner:', err);
+        alert('Error updating owner');
     });
 }
 </script>

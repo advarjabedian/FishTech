@@ -4,7 +4,8 @@ from django.db.models import Count, Q
 from django.utils import timezone
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
-from core.models import Tenant, TenantUser
+from django.views.decorators.csrf import csrf_exempt
+from core.models import Tenant, TenantUser, Lead, TenantDocument
 import stripe
 import json
 from django.conf import settings
@@ -65,6 +66,25 @@ def platform_admin(request):
     except:
         pass
 
+    # Ensure all tenants have document records
+    for tenant in tenants:
+        for doc_type, _ in TenantDocument.DOCUMENT_TYPES:
+            TenantDocument.objects.get_or_create(
+                tenant=tenant, document_type=doc_type
+            )
+        tenant.docs = {
+            d.document_type: d for d in TenantDocument.objects.filter(tenant=tenant)
+        }
+
+    # Lead tracking
+    leads = Lead.objects.all().order_by('next_followup', '-updated_at')
+    leads_by_stage = {}
+    for stage_key, stage_label in Lead.STAGE_CHOICES:
+        leads_by_stage[stage_key] = {
+            'label': stage_label,
+            'count': leads.filter(stage=stage_key).count()
+        }
+
     return render(request, 'core/platform_admin.html', {
         'tenants': tenants,
         'total_tenants': total_tenants,
@@ -74,6 +94,10 @@ def platform_admin(request):
         'canceled': canceled,
         'monthly_revenue': monthly_revenue,
         'stripe_balance': stripe_balance,
+        'leads': leads,
+        'leads_by_stage': leads_by_stage,
+        'stage_choices': Lead.STAGE_CHOICES,
+        'today': timezone.now().date(),
     })
 
 
@@ -113,3 +137,106 @@ def save_tenant_config(request, tenant_id):
 
     tenant.save()
     return JsonResponse({'success': True})
+
+
+@superuser_required
+@require_http_methods(["POST"])
+def save_lead(request):
+    """Create or update a lead"""
+    try:
+        data = json.loads(request.body)
+        lead_id = data.get('id')
+
+        if lead_id:
+            lead = Lead.objects.get(id=lead_id)
+        else:
+            lead = Lead()
+
+        lead.company_name = data.get('company_name', '').strip()
+        lead.contact_name = data.get('contact_name', '').strip()
+        lead.contact_email = data.get('contact_email', '').strip()
+        lead.contact_phone = data.get('contact_phone', '').strip()
+        lead.stage = data.get('stage', 'prospect')
+        lead.contract_value = data.get('contract_value') or None
+        lead.notes = data.get('notes', '').strip()
+        lead.last_contacted = data.get('last_contacted') or None
+        lead.next_followup = data.get('next_followup') or None
+        lead.save()
+
+        return JsonResponse({'success': True, 'id': lead.id})
+    except Lead.DoesNotExist:
+        return JsonResponse({'error': 'Lead not found'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@superuser_required
+@require_http_methods(["POST"])
+def delete_lead(request, lead_id):
+    """Delete a lead"""
+    try:
+        lead = Lead.objects.get(id=lead_id)
+        lead.delete()
+        return JsonResponse({'success': True})
+    except Lead.DoesNotExist:
+        return JsonResponse({'error': 'Lead not found'}, status=404)
+
+
+def sign_document(request, token):
+    """Public page for customer to view and sign a document"""
+    from django.shortcuts import get_object_or_404
+    import uuid as uuid_mod
+    try:
+        token_uuid = uuid_mod.UUID(str(token))
+    except ValueError:
+        from django.http import HttpResponseNotFound
+        return HttpResponseNotFound("Invalid link")
+
+    doc = get_object_or_404(TenantDocument, signing_token=token_uuid)
+    return render(request, 'core/sign_document.html', {
+        'doc': doc,
+        'tenant': doc.tenant,
+    })
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def submit_signature(request, token):
+    """Submit a signature for a document"""
+    import uuid as uuid_mod
+    try:
+        token_uuid = uuid_mod.UUID(str(token))
+        doc = TenantDocument.objects.get(signing_token=token_uuid)
+    except (ValueError, TenantDocument.DoesNotExist):
+        return JsonResponse({'error': 'Document not found'}, status=404)
+
+    try:
+        data = json.loads(request.body)
+        doc.signer_name = data.get('signer_name', '').strip()
+        doc.signer_title = data.get('signer_title', '').strip()
+        doc.signature = data.get('signature', '')
+        doc.is_signed = True
+        doc.signed_at = timezone.now()
+        doc.save()
+        return JsonResponse({'success': True})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@superuser_required
+@require_http_methods(["POST"])
+def reset_document(request, doc_id):
+    """Reset a signed document so it can be re-signed"""
+    try:
+        doc = TenantDocument.objects.get(id=doc_id)
+        doc.is_signed = False
+        doc.signer_name = ''
+        doc.signer_title = ''
+        doc.signature = ''
+        doc.signed_at = None
+        import uuid as uuid_mod
+        doc.signing_token = uuid_mod.uuid4()
+        doc.save()
+        return JsonResponse({'success': True})
+    except TenantDocument.DoesNotExist:
+        return JsonResponse({'error': 'Document not found'}, status=404)

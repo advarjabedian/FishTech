@@ -121,22 +121,25 @@ def haccp_documents(request, company_id, product_type):
         }
     ]
     
+    # HACCP documents are shared across companies (stored with company=NULL in master set)
+    # All queries for documents should use company_id=None regardless of which company is viewing
+
     # Find the active set (latest completed version where all 4 docs are completed)
     version_stats = HACCPDocument.objects.filter(
-        company_id=company_id if company_id != 0 else None,
+        company_id=None,
         product_type=product_type,
         year=current_year
     ).values('version').annotate(
         total_docs=Count('id'),
         completed_docs=Count('id', filter=Q(status='completed'))
     ).filter(total_docs=4, completed_docs=4).order_by('-version')
-    
+
     active_version = version_stats.first()['version'] if version_stats.exists() else None
-    
+
     # Check if viewing a specific version from query params
     year_param = request.GET.get('year')
     version_param = request.GET.get('version')
-    
+
     if year_param and version_param:
         current_version = int(version_param)
         year_to_display = int(year_param)
@@ -149,56 +152,55 @@ def haccp_documents(request, company_id, product_type):
                 year=current_year
             ).order_by('-version').values_list('version', flat=True).first()
         else:
-            # Get the latest COMPLETED set only
+            # Get the latest COMPLETED set only (from master/shared documents)
             completed_sets = HACCPDocument.objects.filter(
-                company_id=company_id,
+                company_id=None,
                 product_type=product_type,
                 year=current_year
             ).values('version').annotate(
                 total_docs=Count('id'),
                 completed_docs=Count('id', filter=Q(status='completed'))
             ).filter(total_docs=4, completed_docs=4).order_by('-version')
-            
+
             if completed_sets.exists():
                 current_version = completed_sets.first()['version']
             else:
                 current_version = None
-        
+
         if current_version is None:
             current_version = 0
-        
+
         year_to_display = current_year
-    
+
     # Check if there's ANY in-progress set for current year
     all_versions_check = HACCPDocument.objects.filter(
-        company_id=company_id if company_id != 0 else None,
+        company_id=None,
         product_type=product_type,
         year=current_year
     ).values('version').annotate(
         total_docs=Count('id'),
         completed_docs=Count('id', filter=Q(status='completed'))
     )
-    
+
     has_in_progress_set = False
     for version_check in all_versions_check:
         if version_check['total_docs'] < 4 or version_check['completed_docs'] < 4:
             has_in_progress_set = True
             break
-    
-    # Get documents for current version
+
     # Get documents for current version
     documents = []
     completed_count = 0
-    
+
     for doc_type in document_types:
         doc = HACCPDocument.objects.filter(
-            company_id=company_id if company_id != 0 else None,
+            company_id=None,
             product_type=product_type,
             document_type=doc_type['type'],
             year=year_to_display,
             version=current_version
         ).first() if current_version else None
-        
+
         if doc:
             documents.append({
                 'name': doc_type['name'],
@@ -221,23 +223,23 @@ def haccp_documents(request, company_id, product_type):
                 'approved_date': None,
                 'approved_by': None
             })
-    
+
     total_documents = len(document_types)
     set_is_complete = (completed_count == total_documents)
     completion_percentage = int((completed_count / total_documents) * 100)
-    
+
     # For company views, check if there's any completed set for current year
     has_completed_set = False
     if company_id != 0:
         completed_sets = HACCPDocument.objects.filter(
-            company_id=company_id,
+            company_id=None,
             product_type=product_type,
             year=year_to_display
         ).values('version').annotate(
             total_docs=Count('id'),
             completed_docs=Count('id', filter=Q(status='completed'))
         ).filter(total_docs=4, completed_docs=4)
-        
+
         has_completed_set = completed_sets.exists()
     
     return render(request, 'core/haccp/haccp_documents.html', {
@@ -1089,6 +1091,47 @@ def save_company_certificate(request, company_id):
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)})
     
+
+@login_required
+@require_http_methods(["POST"])
+def copy_from_previous_year(request, company_id, product_type, document_type):
+    """Copy document data from previous year"""
+    if not request.tenant:
+        return JsonResponse({'success': False, 'error': 'Not authenticated'})
+
+    try:
+        current_year = datetime.now().year
+        previous_year = current_year - 1
+
+        # Get previous year's document
+        prev_doc = HACCPDocument.objects.filter(
+            product_type=product_type,
+            document_type=document_type,
+            year=previous_year
+        ).first()
+
+        if not prev_doc:
+            return JsonResponse({'success': False, 'error': 'No previous year document found'})
+
+        # Get or create current year document
+        current_doc, created = HACCPDocument.objects.get_or_create(
+            product_type=product_type,
+            document_type=document_type,
+            year=current_year,
+            defaults={'version': 1, 'status': 'in_progress'}
+        )
+
+        # Copy data
+        current_doc.document_data = prev_doc.document_data
+        current_doc.originated_by = prev_doc.originated_by
+        current_doc.version = prev_doc.version
+        current_doc.save()
+
+        return JsonResponse({'success': True})
+
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
 
 @require_http_methods(["POST"])
 def add_company(request):

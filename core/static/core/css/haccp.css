@@ -498,6 +498,34 @@
     background: #f8f9fa;
 }
 
+.ccp-print-caption {
+    display: none;
+}
+
+.ccp-print-div {
+    display: none;
+}
+
+/* ==================== DOCUMENT VIEW OVERRIDES ==================== */
+.content-table td { padding: 3px 6px !important; vertical-align: middle; }
+.content-table .auto-expand-textarea { padding: 3px 6px !important; margin: 0 !important; min-height: unset !important; }
+.content-table .row-actions { padding: 0 !important; margin: 0 !important; gap: 4px; }
+.content-table .row-actions input { padding: 3px 6px !important; margin: 0 !important; }
+.hazard-table { table-layout: fixed; width: 100%; }
+.hazard-table td { padding: 3px 5px !important; word-wrap: break-word; }
+.hazard-table textarea { padding: 3px 5px !important; margin: 0 !important; }
+.hazard-step { margin-bottom: 1rem !important; }
+
+/* ==================== PRINT MODAL BUTTONS ==================== */
+.print-modal-btn {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.print-modal-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
 /* ==================== PRINT STYLES ==================== */
 @media print {
     @page {
@@ -605,28 +633,72 @@
     .hazard-step-header {
         padding: 4px 8px !important;
         margin: 0 !important;
+        break-after: avoid !important;
+        page-break-after: avoid !important;
     }
-    
+
     .hazard-step .hazard-table {
         page-break-inside: auto !important;
     }
-    
-    .hazard-step .hazard-table tr {
+
+    .hazard-step .hazard-table:not(.ccp-table) tr {
         page-break-inside: avoid;
         break-inside: avoid;
     }
-    
-    .hazard-table { 
-        table-layout: fixed !important; 
-        width: 100% !important; 
+
+    .hazard-step .ccp-table tr {
+        page-break-inside: auto !important;
+        break-inside: auto !important;
     }
-    
-    .hazard-table th:nth-child(1) { width: 8% !important; }
-    .hazard-table th:nth-child(2) { width: 14% !important; }
-    .hazard-table th:nth-child(3) { width: 9% !important; }
-    .hazard-table th:nth-child(4) { width: 38% !important; }
-    .hazard-table th:nth-child(5) { width: 26% !important; }
-    .hazard-table th:nth-child(6) { width: 5% !important; }
+
+    .ccp-table,
+    .ccp-table tbody,
+    .ccp-table tr,
+    .ccp-table td {
+        page-break-inside: auto !important;
+        break-inside: auto !important;
+        overflow: visible !important;
+    }
+
+    .hazard-table {
+        table-layout: fixed !important;
+        width: 100% !important;
+    }
+
+    /* Hazard analysis print column widths */
+    .hazard-table:not(.ccp-table) th:nth-child(1) { width: 8% !important; }
+    .hazard-table:not(.ccp-table) th:nth-child(2) { width: 14% !important; }
+    .hazard-table:not(.ccp-table) th:nth-child(3) { width: 9% !important; }
+    .hazard-table:not(.ccp-table) th:nth-child(4) { width: 38% !important; }
+    .hazard-table:not(.ccp-table) th:nth-child(5) { width: 26% !important; }
+    .hazard-table:not(.ccp-table) th:nth-child(6) { width: 5% !important; }
+
+    /* CCP table print column widths */
+    .ccp-table th:nth-child(1) { width: 14% !important; }
+    .ccp-table th:nth-child(2) { width: 16% !important; }
+    .ccp-table th:nth-child(3) { width: 18% !important; }
+    .ccp-table th:nth-child(4) { width: 20% !important; }
+    .ccp-table th:nth-child(5) { width: 16% !important; }
+    .ccp-table th:nth-child(6) { width: 16% !important; }
+
+    /* CCP & Hazard table print font sizing */
+    .ccp-table td,
+    .ccp-table th {
+        font-size: 9px !important;
+        line-height: 1.2 !important;
+        padding: 1px 2px !important;
+    }
+
+    .hazard-table:not(.ccp-table) td {
+        font-size: 10px !important;
+        line-height: 1.2 !important;
+        padding: 2px 3px !important;
+    }
+
+    .hazard-table:not(.ccp-table) textarea {
+        font-size: 10px !important;
+        line-height: 1.2 !important;
+    }
 
     .hazard-print-div {
         display: block !important;
@@ -728,5 +800,22 @@
         border: none !important;
         box-shadow: none !important;
     }
-    
+
+    /* Document view print overrides */
+    .content-table .row-actions input {
+        border: none !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        outline: none !important;
+        font-weight: bold;
+        padding: 2px 0 !important;
+    }
+    .content-table td { padding: 2px 4px !important; }
+    .content-table .auto-expand-textarea {
+        padding: 2px 4px !important;
+        border: none !important;
+        box-shadow: none !important;
+    }
+    .signature-pad { height: 60px !important; }
+
 }

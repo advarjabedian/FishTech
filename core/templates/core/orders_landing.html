@@ -31,6 +31,9 @@
 .tile-green { background: #198754; border-color: #198754; }
 .tile-green:hover { border-color: #157347; }
 .tile-green:hover i, .tile-green:hover h3, .tile-green:hover .sub { color: #198754 !important; }
+.tile-orange { background: #fd7e14; border-color: #fd7e14; }
+.tile-orange:hover { border-color: #e06b0a; }
+.tile-orange:hover i, .tile-orange:hover h3, .tile-orange:hover .sub { color: #fd7e14 !important; }
 </style>
 {% endblock %}
 
@@ -43,22 +46,29 @@
         <h4 class="mb-0 ms-2">Orders</h4>
     </div>
     <div class="d-flex justify-content-center">
-        <div class="row g-4" style="max-width:900px;width:100%;">
-            <div class="col-md-4">
+        <div class="row g-4" style="max-width:1100px;width:100%;">
+            <div class="col-md-3">
                 <a href="{% url 'fish_market_redirect' %}" class="hub-tile tile-cyan">
                     <i class="bi bi-basket2-fill"></i>
                     <h3>Retail Orders</h3>
                     <div class="sub">Online ordering for your customers</div>
                 </a>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <a href="{% url 'customer_list' %}" class="hub-tile tile-blue">
                     <i class="bi bi-file-earmark-text"></i>
                     <h3>Business Orders</h3>
                     <div class="sub">Customer profiles and order forms</div>
                 </a>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
+                <a href="{% url 'products_page' %}" class="hub-tile tile-orange">
+                    <i class="bi bi-box-seam"></i>
+                    <h3>Products</h3>
+                    <div class="sub">Manage items assigned to customers</div>
+                </a>
+            </div>
+            <div class="col-md-3">
                 <a href="{% url 'profile_orders_list' %}" class="hub-tile tile-green">
                     <i class="bi bi-list-check"></i>
                     <h3>View Orders</h3>

@@ -1,4 +1,5 @@
 {% extends 'core/base.html' %}
+{% load dict_filters %}
 
 {% block title %}Platform Admin - FishTech{% endblock %}
 
@@ -29,6 +30,13 @@
 .tenant-row:hover { background-color: #f0f4ff; }
 .chevron-icon { transition: transform 0.2s; }
 .chevron-icon.open { transform: rotate(90deg); }
+.stage-prospect { background: #6c757d; color: #fff; }
+.stage-contacted { background: #0dcaf0; color: #000; }
+.stage-demo { background: #6f42c1; color: #fff; }
+.stage-proposal { background: #fd7e14; color: #fff; }
+.stage-negotiation { background: #ffc107; color: #000; }
+.stage-won { background: #198754; color: #fff; }
+.stage-lost { background: #dc3545; color: #fff; }
 </style>
 {% endblock %}
 
@@ -82,6 +90,150 @@
                     <span class="badge bg-info me-3">Trialing: {{ trialing }}</span>
                     <span class="badge bg-warning me-3">Past Due: {{ past_due }}</span>
                     <span class="badge bg-secondary">Canceled: {{ canceled }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lead Tracking -->
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center" style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#leadsCollapse">
+            <h5 class="mb-0"><i class="bi bi-funnel me-2"></i>Lead Tracking</h5>
+            <div class="d-flex align-items-center gap-3">
+                <div>
+                    {% for key, info in leads_by_stage.items %}
+                    {% if info.count > 0 %}
+                    <span class="badge stage-{{ key }} me-1">{{ info.label }}: {{ info.count }}</span>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+                <i class="bi bi-chevron-down"></i>
+            </div>
+        </div>
+        <div id="leadsCollapse" class="collapse show">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div class="d-flex gap-2">
+                        <select class="form-select form-select-sm" id="leadFilterStage" onchange="filterLeads()" style="width: auto;">
+                            <option value="">All Stages</option>
+                            {% for key, label in stage_choices %}
+                            <option value="{{ key }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <button class="btn btn-sm btn-success" onclick="openLeadModal()">
+                        <i class="bi bi-plus-circle me-1"></i>Add Lead
+                    </button>
+                </div>
+                <table class="table table-hover mb-0" id="leadsTable">
+                    <thead>
+                        <tr>
+                            <th>Company</th>
+                            <th>Contact</th>
+                            <th>Stage</th>
+                            <th>Contract Value</th>
+                            <th>Last Contacted</th>
+                            <th>Next Follow-up</th>
+                            <th>Notes</th>
+                            <th style="width: 80px;"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for lead in leads %}
+                        <tr class="lead-row" data-stage="{{ lead.stage }}">
+                            <td><strong>{{ lead.company_name }}</strong></td>
+                            <td>
+                                <div>{{ lead.contact_name|default:"-" }}</div>
+                                {% if lead.contact_email %}<small class="text-muted">{{ lead.contact_email }}</small>{% endif %}
+                                {% if lead.contact_phone %}<br><small class="text-muted">{{ lead.contact_phone }}</small>{% endif %}
+                            </td>
+                            <td><span class="badge stage-{{ lead.stage }}">{{ lead.get_stage_display }}</span></td>
+                            <td>{% if lead.contract_value %}${{ lead.contract_value|floatformat:2 }}{% else %}-{% endif %}</td>
+                            <td class="{% if lead.last_contacted %}{% else %}text-danger fw-bold{% endif %}">
+                                {{ lead.last_contacted|date:"M d, Y"|default:"Never" }}
+                            </td>
+                            <td class="{% if lead.next_followup and lead.next_followup <= today %}text-danger fw-bold{% endif %}">
+                                {{ lead.next_followup|date:"M d, Y"|default:"-" }}
+                            </td>
+                            <td><small>{{ lead.notes|truncatewords:12|default:"-" }}</small></td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-primary me-1" onclick="editLead({{ lead.id }}, {{ lead|lead_json }})" title="Edit">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-danger" onclick="deleteLead({{ lead.id }}, '{{ lead.company_name }}')" title="Delete">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="8" class="text-center text-muted">No leads yet. Click "Add Lead" to get started.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lead Modal -->
+    <div class="modal fade" id="leadModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="leadModalTitle">Add Lead</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="leadId">
+                    <div class="mb-3">
+                        <label class="form-label">Company Name *</label>
+                        <input type="text" class="form-control" id="leadCompany" required>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Contact Name</label>
+                            <input type="text" class="form-control" id="leadContactName">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Stage</label>
+                            <select class="form-select" id="leadStage">
+                                {% for key, label in stage_choices %}
+                                <option value="{{ key }}">{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Email</label>
+                            <input type="email" class="form-control" id="leadEmail">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Phone</label>
+                            <input type="text" class="form-control" id="leadPhone">
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Contract Value ($)</label>
+                            <input type="number" class="form-control" id="leadContractValue" step="1">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Last Contacted</label>
+                            <input type="date" class="form-control" id="leadLastContacted">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Next Follow-up</label>
+                            <input type="date" class="form-control" id="leadNextFollowup">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Notes</label>
+                        <textarea class="form-control" id="leadNotes" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="saveLead()">Save Lead</button>
                 </div>
             </div>
         </div>
@@ -219,6 +371,102 @@
                                     </div>
                                 </div>
 
+                                <!-- Documents Section -->
+                                <hr class="my-3">
+                                <h6 class="mb-3"><i class="bi bi-file-earmark-text me-1"></i>Documents</h6>
+                                <div class="row g-2 mb-3">
+                                    {% for doc_type, doc_label in stage_choices %}{% endfor %}
+                                    {% with sub_doc=tenant.docs.subscription_agreement pp_doc=tenant.docs.privacy_policy sla_doc=tenant.docs.sla %}
+                                    <div class="col-md-4">
+                                        <div class="border rounded p-3 h-100 {% if sub_doc.is_signed %}border-success{% endif %}">
+                                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                                <strong class="small">Subscription Agreement</strong>
+                                                {% if sub_doc.is_signed %}
+                                                <span class="badge bg-success">Signed</span>
+                                                {% else %}
+                                                <span class="badge bg-warning text-dark">Unsigned</span>
+                                                {% endif %}
+                                            </div>
+                                            {% if sub_doc.is_signed %}
+                                            <small class="text-muted d-block">By: {{ sub_doc.signer_name }}{% if sub_doc.signer_title %} ({{ sub_doc.signer_title }}){% endif %}</small>
+                                            <small class="text-muted d-block mb-2">{{ sub_doc.signed_at|date:"M d, Y g:i A" }}</small>
+                                            <div class="d-flex gap-1">
+                                                <a href="/sign/{{ sub_doc.signing_token }}/" target="_blank" class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation();">View</a>
+                                                <button class="btn btn-sm btn-outline-danger" onclick="event.stopPropagation(); resetDoc({{ sub_doc.id }})">Reset</button>
+                                            </div>
+                                            {% else %}
+                                            <div class="d-flex gap-1">
+                                                <a href="/sign/{{ sub_doc.signing_token }}/" target="_blank" class="btn btn-sm btn-success flex-fill" onclick="event.stopPropagation();">
+                                                    <i class="bi bi-pen me-1"></i>Sign Now
+                                                </a>
+                                                <button class="btn btn-sm btn-outline-primary flex-fill" onclick="event.stopPropagation(); copySignLink('{{ sub_doc.signing_token }}', 'Subscription Agreement')">
+                                                    <i class="bi bi-link-45deg me-1"></i>Copy Link
+                                                </button>
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="border rounded p-3 h-100 {% if pp_doc.is_signed %}border-success{% endif %}">
+                                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                                <strong class="small">Privacy Policy</strong>
+                                                {% if pp_doc.is_signed %}
+                                                <span class="badge bg-success">Signed</span>
+                                                {% else %}
+                                                <span class="badge bg-warning text-dark">Unsigned</span>
+                                                {% endif %}
+                                            </div>
+                                            {% if pp_doc.is_signed %}
+                                            <small class="text-muted d-block">By: {{ pp_doc.signer_name }}{% if pp_doc.signer_title %} ({{ pp_doc.signer_title }}){% endif %}</small>
+                                            <small class="text-muted d-block mb-2">{{ pp_doc.signed_at|date:"M d, Y g:i A" }}</small>
+                                            <div class="d-flex gap-1">
+                                                <a href="/sign/{{ pp_doc.signing_token }}/" target="_blank" class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation();">View</a>
+                                                <button class="btn btn-sm btn-outline-danger" onclick="event.stopPropagation(); resetDoc({{ pp_doc.id }})">Reset</button>
+                                            </div>
+                                            {% else %}
+                                            <div class="d-flex gap-1">
+                                                <a href="/sign/{{ pp_doc.signing_token }}/" target="_blank" class="btn btn-sm btn-success flex-fill" onclick="event.stopPropagation();">
+                                                    <i class="bi bi-pen me-1"></i>Sign Now
+                                                </a>
+                                                <button class="btn btn-sm btn-outline-primary flex-fill" onclick="event.stopPropagation(); copySignLink('{{ pp_doc.signing_token }}', 'Privacy Policy')">
+                                                    <i class="bi bi-link-45deg me-1"></i>Copy Link
+                                                </button>
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="border rounded p-3 h-100 {% if sla_doc.is_signed %}border-success{% endif %}">
+                                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                                <strong class="small">Service Level Agreement</strong>
+                                                {% if sla_doc.is_signed %}
+                                                <span class="badge bg-success">Signed</span>
+                                                {% else %}
+                                                <span class="badge bg-warning text-dark">Unsigned</span>
+                                                {% endif %}
+                                            </div>
+                                            {% if sla_doc.is_signed %}
+                                            <small class="text-muted d-block">By: {{ sla_doc.signer_name }}{% if sla_doc.signer_title %} ({{ sla_doc.signer_title }}){% endif %}</small>
+                                            <small class="text-muted d-block mb-2">{{ sla_doc.signed_at|date:"M d, Y g:i A" }}</small>
+                                            <div class="d-flex gap-1">
+                                                <a href="/sign/{{ sla_doc.signing_token }}/" target="_blank" class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation();">View</a>
+                                                <button class="btn btn-sm btn-outline-danger" onclick="event.stopPropagation(); resetDoc({{ sla_doc.id }})">Reset</button>
+                                            </div>
+                                            {% else %}
+                                            <div class="d-flex gap-1">
+                                                <a href="/sign/{{ sla_doc.signing_token }}/" target="_blank" class="btn btn-sm btn-success flex-fill" onclick="event.stopPropagation();">
+                                                    <i class="bi bi-pen me-1"></i>Sign Now
+                                                </a>
+                                                <button class="btn btn-sm btn-outline-primary flex-fill" onclick="event.stopPropagation(); copySignLink('{{ sla_doc.signing_token }}', 'Service Level Agreement')">
+                                                    <i class="bi bi-link-45deg me-1"></i>Copy Link
+                                                </button>
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    {% endwith %}
+                                </div>
+
                                 <div class="mt-3 d-flex gap-2">
                                     <button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); saveTenantConfig({{ tenant.id }})">
                                         <i class="bi bi-save me-1"></i>Save Configuration
@@ -308,6 +556,115 @@ function deleteTenant(id, name) {
     .then(data => {
         if (data.success) location.reload();
         else alert('Error: ' + data.error);
+    });
+}
+
+// Documents
+function copySignLink(token, docName) {
+    const url = window.location.origin + '/sign/' + token + '/';
+    navigator.clipboard.writeText(url).then(() => {
+        alert('Signing link for "' + docName + '" copied to clipboard!\n\nSend this to your customer to sign.');
+    }).catch(() => {
+        prompt('Copy this signing link:', url);
+    });
+}
+
+function resetDoc(docId) {
+    if (!confirm('Reset this document? The customer will need to sign again with a new link.')) return;
+    fetch(`/platform-admin/document/${docId}/reset/`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCookie('csrftoken') }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) location.reload();
+        else alert('Error: ' + data.error);
+    });
+}
+
+// Lead Tracking
+let leadModal;
+document.addEventListener('DOMContentLoaded', () => {
+    leadModal = new bootstrap.Modal(document.getElementById('leadModal'));
+});
+
+function openLeadModal() {
+    document.getElementById('leadModalTitle').textContent = 'Add Lead';
+    document.getElementById('leadId').value = '';
+    document.getElementById('leadCompany').value = '';
+    document.getElementById('leadContactName').value = '';
+    document.getElementById('leadEmail').value = '';
+    document.getElementById('leadPhone').value = '';
+    document.getElementById('leadStage').value = 'prospect';
+    document.getElementById('leadContractValue').value = '';
+    document.getElementById('leadLastContacted').value = '';
+    document.getElementById('leadNextFollowup').value = '';
+    document.getElementById('leadNotes').value = '';
+    leadModal.show();
+}
+
+function editLead(id, data) {
+    document.getElementById('leadModalTitle').textContent = 'Edit Lead';
+    document.getElementById('leadId').value = id;
+    document.getElementById('leadCompany').value = data.company_name || '';
+    document.getElementById('leadContactName').value = data.contact_name || '';
+    document.getElementById('leadEmail').value = data.contact_email || '';
+    document.getElementById('leadPhone').value = data.contact_phone || '';
+    document.getElementById('leadStage').value = data.stage || 'prospect';
+    document.getElementById('leadContractValue').value = data.contract_value || '';
+    document.getElementById('leadLastContacted').value = data.last_contacted || '';
+    document.getElementById('leadNextFollowup').value = data.next_followup || '';
+    document.getElementById('leadNotes').value = data.notes || '';
+    leadModal.show();
+}
+
+function saveLead() {
+    const company = document.getElementById('leadCompany').value.trim();
+    if (!company) { alert('Company name is required'); return; }
+
+    const data = {
+        id: document.getElementById('leadId').value || null,
+        company_name: company,
+        contact_name: document.getElementById('leadContactName').value,
+        contact_email: document.getElementById('leadEmail').value,
+        contact_phone: document.getElementById('leadPhone').value,
+        stage: document.getElementById('leadStage').value,
+        contract_value: document.getElementById('leadContractValue').value || null,
+        last_contacted: document.getElementById('leadLastContacted').value || null,
+        next_followup: document.getElementById('leadNextFollowup').value || null,
+        notes: document.getElementById('leadNotes').value,
+    };
+
+    fetch('/platform-admin/leads/save/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+        body: JSON.stringify(data)
+    })
+    .then(r => r.json())
+    .then(result => {
+        if (result.success) { leadModal.hide(); location.reload(); }
+        else alert('Error: ' + result.error);
+    })
+    .catch(() => alert('Error saving lead'));
+}
+
+function deleteLead(id, name) {
+    if (!confirm(`Delete lead "${name}"?`)) return;
+    fetch(`/platform-admin/leads/${id}/delete/`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCookie('csrftoken') }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) location.reload();
+        else alert('Error: ' + data.error);
+    });
+}
+
+function filterLeads() {
+    const stage = document.getElementById('leadFilterStage').value;
+    document.querySelectorAll('.lead-row').forEach(row => {
+        row.style.display = (!stage || row.dataset.stage === stage) ? '' : 'none';
     });
 }
 </script>
