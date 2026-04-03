@@ -4,8 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FishTeck – HACCP Compliance & Operations Platform for Seafood Processors</title>
-    <meta name="description" content="FishTeck helps seafood processing facilities manage HACCP compliance documentation, daily inspections, purchase orders, and sales orders in one platform. Built specifically for the seafood industry.">
+    <title>FishTeck – Digital Ordering, Compliance & Filing for Seafood Businesses</title>
+    <meta name="description" content="FishTeck is an all-in-one digital platform for seafood processors and distributors. Receive orders by text, email, and web. Manage HACCP and SOPs. Organize invoices, licenses, and documents — all in one place.">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🐟</text></svg>">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
@@ -286,8 +286,9 @@
             max-width: 600px;
         }
 
-        /* ── FEATURES ── */
-        #features { background: rgba(255,255,255,0.02); }
+        /* ── FEATURES / PILLARS ── */
+        #ordering { background: rgba(255,255,255,0.02); }
+        #filing { background: rgba(255,255,255,0.02); }
         .features-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
@@ -374,10 +375,7 @@
         .step h4 { font-size: 1rem; font-weight: 700; margin-bottom: 10px; }
         .step p { font-size: 0.85rem; color: rgba(255,255,255,0.55); line-height: 1.6; }
 
-        /* ── COMPLIANCE ── */
-        #compliance {
-            background: linear-gradient(135deg, rgba(0,180,216,0.06) 0%, transparent 60%);
-        }
+        /* ── WHY SECTION ── */
         .compliance-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -672,10 +670,10 @@
     <div class="nav-inner">
         <a href="/" class="nav-logo">Fish<span>Teck</span></a>
         <div class="nav-links">
-            <a href="#features">Features</a>
+            <a href="#ordering">Ordering</a>
             <a href="#compliance">Compliance</a>
+            <a href="#filing">Filing</a>
             <a href="#customers">Customers</a>
-            <a href="#about">About</a>
             <a href="#pricing">Pricing</a>
             <a href="#contact">Contact</a>
             <a href="/login/" class="btn-nav">Sign In</a>
@@ -694,11 +692,11 @@
                 Built for the Seafood Industry
             </div>
             <h1 class="fade-up delay-1">
-                HACCP Compliance.<br>
-                <span class="accent">Simplified.</span>
+                Orders. Compliance. Files.<br>
+                <span class="accent">All Digital.</span>
             </h1>
             <p class="hero-sub fade-up delay-2">
-                FishTeck is an all-in-one operations platform for seafood processors and distributors. Manage HACCP documentation, daily inspections, purchase orders, and customer communications — all in one place.
+                FishTeck is the all-in-one platform for seafood processors and distributors. Receive orders by text, email, and web. Stay on top of HACCP and SOPs. Organize invoices, licenses, and documents — no more paper, no more chaos.
             </p>
             <div class="hero-cta fade-up delay-3">
                 <a href="/login/" class="btn-primary-hero">
@@ -717,37 +715,37 @@
                 <div class="mockup-nav">🐟 FishTeck Dashboard — Golden State Seafood</div>
                 <div class="mockup-cards">
                     <div class="mockup-card">
-                        <div class="mockup-card-label">Today's Inspections</div>
+                        <div class="mockup-card-label">New Orders Today</div>
+                        <div class="mockup-card-val">14</div>
+                        <div class="mockup-card-sub">SMS, Email & Web</div>
+                    </div>
+                    <div class="mockup-card">
+                        <div class="mockup-card-label">Inspections</div>
                         <div class="mockup-card-val">3/3</div>
                         <div class="mockup-card-sub">All shifts complete</div>
                     </div>
                     <div class="mockup-card">
-                        <div class="mockup-card-label">Open POs</div>
-                        <div class="mockup-card-val">12</div>
-                        <div class="mockup-card-sub">4 receiving today</div>
-                    </div>
-                    <div class="mockup-card">
-                        <div class="mockup-card-label">HACCP Docs</div>
+                        <div class="mockup-card-label">HACCP & SOPs</div>
                         <div class="mockup-card-val">100%</div>
                         <div class="mockup-card-sub">All current</div>
                     </div>
                     <div class="mockup-card">
-                        <div class="mockup-card-label">Orders Ready</div>
-                        <div class="mockup-card-val">8</div>
-                        <div class="mockup-card-sub">2 pending review</div>
+                        <div class="mockup-card-label">Documents Filed</div>
+                        <div class="mockup-card-val">247</div>
+                        <div class="mockup-card-sub">Invoices & licenses</div>
                     </div>
+                </div>
+                <div class="mockup-row">
+                    <span>SMS Order – Bay Area Seafood Co.</span>
+                    <span class="badge-pass">✓ Confirmed</span>
                 </div>
                 <div class="mockup-row">
                     <span>Pre-Op Inspection – Line A</span>
                     <span class="badge-pass">✓ PASS</span>
                 </div>
                 <div class="mockup-row">
-                    <span>PO-2847 – Pacific Shrimp</span>
-                    <span class="badge-pass">✓ Received</span>
-                </div>
-                <div class="mockup-row">
-                    <span>Hazard Analysis – Salmon</span>
-                    <span class="badge-pend">In Review</span>
+                    <span>License Renewal – Wholesale Permit</span>
+                    <span class="badge-pend">Expiring Soon</span>
                 </div>
             </div>
         </div>
@@ -757,20 +755,46 @@
 <!-- TRUST BAR -->
 <div class="trust-bar">
     <div class="trust-bar-inner">
-        <div class="trust-item"><i class="bi bi-patch-check"></i> FDA HACCP Compliant</div>
-        <div class="trust-item"><i class="bi bi-lock"></i> Multi-Tenant Secure</div>
+        <div class="trust-item"><i class="bi bi-chat-dots"></i> Digital Ordering</div>
+        <div class="trust-item"><i class="bi bi-shield-check"></i> Digital Compliance</div>
+        <div class="trust-item"><i class="bi bi-folder-check"></i> Digital Filing</div>
         <div class="trust-item"><i class="bi bi-cloud-check"></i> Cloud-Based</div>
-        <div class="trust-item"><i class="bi bi-phone"></i> SMS Notifications</div>
-        <div class="trust-item"><i class="bi bi-envelope-check"></i> Email Integration</div>
+        <div class="trust-item"><i class="bi bi-lock"></i> Multi-Tenant Secure</div>
     </div>
 </div>
 
-<!-- FEATURES -->
-<section id="features">
+<!-- DIGITAL ORDERING -->
+<section id="ordering">
     <div class="section-inner">
-        <div class="section-label">What We Do</div>
-        <h2 class="section-title">Everything a seafood facility needs</h2>
-        <p class="section-sub">From the receiving dock to regulatory audits, FishTeck covers the full operational lifecycle of a modern seafood processing facility.</p>
+        <div class="section-label">Digital Ordering</div>
+        <h2 class="section-title">Receive orders by text, email, and web</h2>
+        <p class="section-sub">Your customers order however they want — FishTeck captures it all in one place. No more lost voicemails, missed texts, or buried emails.</p>
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon"><i class="bi bi-phone"></i></div>
+                <h3>SMS / Text Orders</h3>
+                <p>Customers text their orders to your dedicated number. FishTeck automatically transcribes and creates order requests — ready for your team to review and confirm.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon"><i class="bi bi-envelope-open"></i></div>
+                <h3>Email Orders</h3>
+                <p>Incoming email orders are automatically pulled into FishTeck. Attachments, line items, and customer details are parsed and organized — no manual data entry.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon"><i class="bi bi-globe"></i></div>
+                <h3>Website Orders</h3>
+                <p>Give customers a clean online ordering portal. They browse your product catalog, build their order, and submit — it flows straight into your order queue.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- DIGITAL COMPLIANCE -->
+<section id="compliance" style="background: rgba(255,255,255,0.02);">
+    <div class="section-inner">
+        <div class="section-label">Digital Compliance</div>
+        <h2 class="section-title">HACCP plans and SOPs, always audit-ready</h2>
+        <p class="section-sub">Replace binders and spreadsheets with a compliance platform built around FDA seafood HACCP requirements and your facility's standard operating procedures.</p>
         <div class="features-grid">
             <div class="feature-card">
                 <div class="feature-icon"><i class="bi bi-shield-check"></i></div>
@@ -779,28 +803,39 @@
             </div>
             <div class="feature-card">
                 <div class="feature-icon"><i class="bi bi-clipboard-check"></i></div>
-                <h3>Daily Inspections</h3>
+                <h3>SOP Inspections</h3>
                 <p>Pre-Op, Mid-Day, and Post-Op shift inspections with digital signatures, deviation tracking, and corrective action documentation. Replace paper logs entirely.</p>
-            </div>
-            <div class="feature-card">
-                <div class="feature-icon"><i class="bi bi-file-earmark-text"></i></div>
-                <h3>Purchase Orders</h3>
-                <p>Receive and verify incoming product with temperature logging, lot tracking, and condition inspection. Attach vendor documents and invoices directly to each PO.</p>
-            </div>
-            <div class="feature-card">
-                <div class="feature-icon"><i class="bi bi-bag-check"></i></div>
-                <h3>Sales Orders</h3>
-                <p>Manage customer orders with full line-item detail. Attach proof of delivery documents and share files with customers via email directly from the platform.</p>
-            </div>
-            <div class="feature-card">
-                <div class="feature-icon"><i class="bi bi-chat-dots"></i></div>
-                <h3>Order Communications</h3>
-                <p>Receive customer orders via email or SMS. Assign order requests to team members, track status, and respond — all from a centralized communication hub.</p>
             </div>
             <div class="feature-card">
                 <div class="feature-icon"><i class="bi bi-graph-up"></i></div>
                 <h3>Reports & Audit Trails</h3>
-                <p>Generate operational and deviation reports on demand. Every action is logged with timestamps and user signatures — ready for any regulatory audit.</p>
+                <p>Generate deviation and corrective action reports on demand. Every action is logged with timestamps and user signatures — ready for any regulatory audit.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- DIGITAL FILING -->
+<section id="filing">
+    <div class="section-inner">
+        <div class="section-label">Digital Filing</div>
+        <h2 class="section-title">Invoices, licenses, and documents — organized</h2>
+        <p class="section-sub">Stop digging through file cabinets. Every document your business needs is stored, searchable, and shareable from one central location.</p>
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon"><i class="bi bi-receipt"></i></div>
+                <h3>Invoices & Purchase Orders</h3>
+                <p>Attach invoices directly to purchase orders and sales orders. Track vendor documents, proof of delivery, and billing records — all linked to the right transaction.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon"><i class="bi bi-award"></i></div>
+                <h3>Licenses & Permits</h3>
+                <p>Store business licenses, health permits, wholesale permits, and certifications. Get notified before they expire so you never operate with a lapsed license.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon"><i class="bi bi-folder2-open"></i></div>
+                <h3>Customer & Vendor Files</h3>
+                <p>Organize documents by customer or vendor. Share files via email directly from the platform — certificates, spec sheets, or any document they need.</p>
             </div>
         </div>
     </div>
@@ -811,97 +846,97 @@
     <div class="section-inner">
         <div class="section-label">How It Works</div>
         <h2 class="section-title">Up and running in minutes</h2>
-        <p class="section-sub">FishTeck is designed for fish factory operators — not IT departments. Setup is fast and support is included.</p>
+        <p class="section-sub">FishTeck is designed for seafood business operators — not IT departments. Setup is fast and support is included.</p>
         <div class="steps">
             <div class="step">
                 <div class="step-num">1</div>
-                <h4>Register Your Facility</h4>
+                <h4>Register Your Business</h4>
                 <p>Create your account and set up your company profile with your facility details and logo.</p>
             </div>
             <div class="step">
                 <div class="step-num">2</div>
-                <h4>Configure Your SOPs</h4>
-                <p>Import or build your inspection SOPs, zones, and HACCP product types for your specific operation.</p>
+                <h4>Connect Your Channels</h4>
+                <p>Set up your SMS number, email inbox, and online ordering portal so customers can reach you any way they prefer.</p>
             </div>
             <div class="step">
                 <div class="step-num">3</div>
-                <h4>Invite Your Team</h4>
-                <p>Add inspectors, managers, and admins. Each gets role-appropriate access to the platform.</p>
+                <h4>Load Your SOPs & Docs</h4>
+                <p>Import your HACCP plans, inspection SOPs, licenses, and vendor files. We'll help you get everything organized.</p>
             </div>
             <div class="step">
                 <div class="step-num">4</div>
-                <h4>Go Paperless</h4>
-                <p>Replace paper logs, binders, and spreadsheets. Everything is searchable, printable, and audit-ready.</p>
+                <h4>Go Digital</h4>
+                <p>Replace paper logs, filing cabinets, and scattered inboxes. Everything is searchable, shareable, and audit-ready.</p>
             </div>
         </div>
     </div>
 </section>
 
-<!-- COMPLIANCE -->
-<section id="compliance">
+<!-- WHY FISHTECK -->
+<section id="why" style="background: linear-gradient(135deg, rgba(0,180,216,0.06) 0%, transparent 60%);">
     <div class="section-inner">
         <div class="compliance-grid">
             <div>
-                <div class="section-label">Regulatory Compliance</div>
-                <h2 class="section-title">Built around FDA food safety requirements</h2>
-                <p class="section-sub">FishTeck was built from the ground up to align with 21 CFR Part 123 — the FDA's seafood HACCP regulation.</p>
+                <div class="section-label">Why FishTeck</div>
+                <h2 class="section-title">One platform for your entire operation</h2>
+                <p class="section-sub">Most seafood businesses juggle texts, emails, paper forms, filing cabinets, and spreadsheets. FishTeck brings it all together.</p>
                 <ul class="compliance-list">
                     <li>
                         <i class="bi bi-check-circle-fill"></i>
                         <div>
-                            <strong>Hazard Analysis & CCPs</strong>
-                            <span>Document every hazard, critical control point, critical limit, monitoring procedure, and corrective action for each product type.</span>
+                            <strong>Orders from every channel in one queue</strong>
+                            <span>Text, email, voicemail, and web orders all land in the same place — nothing gets lost between phone calls and inboxes.</span>
                         </div>
                     </li>
                     <li>
                         <i class="bi bi-check-circle-fill"></i>
                         <div>
-                            <strong>Signed Verification Records</strong>
-                            <span>Every inspection and HACCP document is signed with a digital signature, timestamped, and stored with full audit trail.</span>
+                            <strong>Always audit-ready</strong>
+                            <span>HACCP plans, SOP inspections, and corrective actions are signed, timestamped, and stored — ready for any FDA audit at a moment's notice.</span>
                         </div>
                     </li>
                     <li>
                         <i class="bi bi-check-circle-fill"></i>
                         <div>
-                            <strong>Deviation & Corrective Action Log</strong>
-                            <span>All deviations are captured with mandatory corrective action documentation — exactly what auditors look for.</span>
+                            <strong>Every document in one place</strong>
+                            <span>Invoices, licenses, permits, vendor certificates — organized by customer and vendor, searchable, and shareable with one click.</span>
                         </div>
                     </li>
                     <li>
                         <i class="bi bi-check-circle-fill"></i>
                         <div>
-                            <strong>HACCP Certificates & Letters of Guarantee</strong>
-                            <span>Generate and store HACCP certificates and letters of guarantee for customers on demand.</span>
+                            <strong>Built for seafood, not generic ERP</strong>
+                            <span>FishTeck was designed working directly with fish factories and distributors — it fits how your business actually runs.</span>
                         </div>
                     </li>
                 </ul>
             </div>
             <div>
                 <div class="compliance-visual">
-                    <div class="cv-header">HACCP Audit Summary — Salmon Fillet (2025)</div>
+                    <div class="cv-header">FishTeck at a Glance</div>
                     <div class="cv-row">
-                        <span class="cv-label">Hazard Analysis</span>
+                        <span class="cv-label">Digital Ordering</span>
+                        <span class="cv-val"><span class="status-dot"><span class="dot-green"></span> Text, Email & Web</span></span>
+                    </div>
+                    <div class="cv-row">
+                        <span class="cv-label">HACCP Plans</span>
                         <span class="cv-val"><span class="status-dot"><span class="dot-green"></span> Complete</span></span>
                     </div>
                     <div class="cv-row">
-                        <span class="cv-label">CCP Summary</span>
-                        <span class="cv-val"><span class="status-dot"><span class="dot-green"></span> Complete</span></span>
-                    </div>
-                    <div class="cv-row">
-                        <span class="cv-label">Process Flow Chart</span>
-                        <span class="cv-val"><span class="status-dot"><span class="dot-green"></span> Complete</span></span>
-                    </div>
-                    <div class="cv-row">
-                        <span class="cv-label">Daily Inspections YTD</span>
+                        <span class="cv-label">SOP Inspections YTD</span>
                         <span class="cv-val">247 / 247</span>
                     </div>
                     <div class="cv-row">
-                        <span class="cv-label">Deviations Documented</span>
-                        <span class="cv-val">14 (all resolved)</span>
+                        <span class="cv-label">Invoices Filed</span>
+                        <span class="cv-val">1,842</span>
                     </div>
                     <div class="cv-row">
-                        <span class="cv-label">HACCP Certificate</span>
-                        <span class="cv-val"><span class="status-dot"><span class="dot-green"></span> Issued 01/15/2025</span></span>
+                        <span class="cv-label">Licenses & Permits</span>
+                        <span class="cv-val"><span class="status-dot"><span class="dot-green"></span> All Current</span></span>
+                    </div>
+                    <div class="cv-row">
+                        <span class="cv-label">Orders This Month</span>
+                        <span class="cv-val">326</span>
                     </div>
                     <div class="cv-row">
                         <span class="cv-label">Last Audit Result</span>
@@ -920,9 +955,9 @@
             <div>
                 <div class="section-label">About FishTeck</div>
                 <h2 class="section-title">Built by people who understand the seafood business</h2>
-                <p class="section-sub">FishTeck was developed working directly with seafood processing facilities to solve the real compliance and operations problems they face every day.</p>
+                <p class="section-sub">FishTeck was developed working directly with seafood processors and distributors to solve the real ordering, compliance, and filing problems they face every day.</p>
                 <p style="margin-top: 20px; font-size: 0.9rem; color: rgba(255,255,255,0.55); line-height: 1.7;">
-                    We saw too many facilities running HACCP programs on paper binders and spreadsheets — wasting hours preparing for audits that should take minutes. FishTeck replaces all of that with a cloud platform that's actually designed for the way fish factories operate.
+                    We saw too many businesses juggling orders across texts, emails, and voicemails — running compliance on paper binders — and burying invoices and licenses in filing cabinets. FishTeck replaces all of that with one cloud platform designed for how seafood businesses actually operate.
                 </p>
                 <div class="about-stats">
                     <div class="stat-box">
@@ -951,28 +986,28 @@
                             <div style="width: 36px; height: 36px; background: rgba(0,180,216,0.1); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--teal); flex-shrink: 0;"><i class="bi bi-building"></i></div>
                             <div>
                                 <div style="font-weight: 600; font-size: 0.9rem;">Seafood Processing Facilities</div>
-                                <div style="font-size: 0.8rem; color: rgba(255,255,255,0.5); margin-top: 3px;">Fish factories, processing plants, and cold storage operations that need to maintain FDA HACCP compliance.</div>
+                                <div style="font-size: 0.8rem; color: rgba(255,255,255,0.5); margin-top: 3px;">Fish factories and processing plants that need to manage orders, HACCP compliance, and document filing in one system.</div>
                             </div>
                         </div>
                         <div style="display: flex; gap: 14px; align-items: flex-start;">
                             <div style="width: 36px; height: 36px; background: rgba(0,180,216,0.1); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--teal); flex-shrink: 0;"><i class="bi bi-truck"></i></div>
                             <div>
                                 <div style="font-weight: 600; font-size: 0.9rem;">Seafood Distributors</div>
-                                <div style="font-size: 0.8rem; color: rgba(255,255,255,0.5); margin-top: 3px;">Distributors managing vendor relationships, receiving inspections, and customer order documentation.</div>
+                                <div style="font-size: 0.8rem; color: rgba(255,255,255,0.5); margin-top: 3px;">Distributors receiving orders by text and email, managing vendor documents, invoices, and customer relationships.</div>
                             </div>
                         </div>
                         <div style="display: flex; gap: 14px; align-items: flex-start;">
                             <div style="width: 36px; height: 36px; background: rgba(0,180,216,0.1); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--teal); flex-shrink: 0;"><i class="bi bi-clipboard2-data"></i></div>
                             <div>
-                                <div style="font-weight: 600; font-size: 0.9rem;">Compliance Managers</div>
-                                <div style="font-size: 0.8rem; color: rgba(255,255,255,0.5); margin-top: 3px;">QA and compliance staff who need reliable audit documentation and inspection records at their fingertips.</div>
+                                <div style="font-weight: 600; font-size: 0.9rem;">Compliance & QA Teams</div>
+                                <div style="font-size: 0.8rem; color: rgba(255,255,255,0.5); margin-top: 3px;">QA staff who need HACCP plans, SOP inspection records, and audit documentation always up to date and accessible.</div>
                             </div>
                         </div>
                         <div style="display: flex; gap: 14px; align-items: flex-start;">
                             <div style="width: 36px; height: 36px; background: rgba(0,180,216,0.1); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--teal); flex-shrink: 0;"><i class="bi bi-shop"></i></div>
                             <div>
                                 <div style="font-weight: 600; font-size: 0.9rem;">Multi-Location Operations</div>
-                                <div style="font-size: 0.8rem; color: rgba(255,255,255,0.5); margin-top: 3px;">Companies operating multiple facilities who need one platform that keeps each location's data properly separated.</div>
+                                <div style="font-size: 0.8rem; color: rgba(255,255,255,0.5); margin-top: 3px;">Companies with multiple facilities who need one platform with proper data separation across locations.</div>
                             </div>
                         </div>
                     </div>
@@ -987,7 +1022,7 @@
     <div class="section-inner" style="text-align: center;">
         <div class="section-label">Trusted By</div>
         <h2 class="section-title">Seafood businesses running on FishTeck</h2>
-        <p class="section-sub" style="margin: 0 auto;">Leading seafood processors and distributors in California rely on FishTeck for daily compliance and operations management.</p>
+        <p class="section-sub" style="margin: 0 auto;">Leading seafood processors and distributors in California rely on FishTeck for digital ordering, compliance, and document management.</p>
         <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 56px;">
     <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 32px 24px; display: flex; align-items: center; justify-content: center; transition: all 0.3s;" onmouseover="this.style.borderColor='rgba(0,180,216,0.3)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.08)'">
         <img src="{% static 'core/images/customers/golden_state_seafood_logo.png' %}" alt="Golden State Seafood" style="max-height: 70px; max-width: 100%; object-fit: contain; filter: brightness(0) invert(1); opacity: 0.85;">
@@ -1022,14 +1057,14 @@
             <div class="pricing-price"><sup>$</sup>10<sub>/mo</sub></div>
             <div class="pricing-per">per facility · unlimited users · everything included</div>
             <ul class="pricing-features">
-                <li><i class="bi bi-check-circle-fill"></i> Full HACCP documentation suite</li>
-                <li><i class="bi bi-check-circle-fill"></i> Daily inspection management (3 shifts)</li>
-                <li><i class="bi bi-check-circle-fill"></i> Purchase orders & receiving</li>
-                <li><i class="bi bi-check-circle-fill"></i> Sales orders & customer documents</li>
-                <li><i class="bi bi-check-circle-fill"></i> Email & SMS order communications</li>
+                <li><i class="bi bi-check-circle-fill"></i> Digital ordering — SMS, email & web portal</li>
+                <li><i class="bi bi-check-circle-fill"></i> HACCP plans & compliance documentation</li>
+                <li><i class="bi bi-check-circle-fill"></i> SOP inspections — Pre-Op, Mid-Day & Post-Op</li>
+                <li><i class="bi bi-check-circle-fill"></i> Invoice, license & permit filing</li>
+                <li><i class="bi bi-check-circle-fill"></i> Customer & vendor document management</li>
                 <li><i class="bi bi-check-circle-fill"></i> Deviation & corrective action reports</li>
                 <li><i class="bi bi-check-circle-fill"></i> Unlimited users per facility</li>
-                <li><i class="bi bi-check-circle-fill"></i> Document storage & file sharing</li>
+                <li><i class="bi bi-check-circle-fill"></i> File sharing via email — one click</li>
             </ul>
             <a href="/login/" class="btn-pricing">Start 30-Day Free Trial</a>
             <div class="pricing-trial">No credit card required · Cancel anytime</div>
@@ -1041,10 +1076,10 @@
 <div class="sms-section">
     <div class="section-inner">
         <div class="sms-box">
-            <div class="section-label" style="text-align: center;">SMS Notifications</div>
-            <h2 class="section-title" style="text-align: center; font-size: 1.8rem;">Order notifications via text message</h2>
+            <div class="section-label" style="text-align: center;">SMS Ordering & Notifications</div>
+            <h2 class="section-title" style="text-align: center; font-size: 1.8rem;">Receive orders and send notifications via text</h2>
             <p style="color: rgba(255,255,255,0.6); font-size: 0.9rem; line-height: 1.8; margin-top: 16px;">
-                FishTeck can send your team SMS notifications for new order requests and important alerts. Message and data rates may apply. Message frequency varies based on order activity. Reply STOP to unsubscribe at any time. Reply HELP for help.
+                FishTeck lets your customers place orders via SMS and sends your team text notifications for new order requests and important alerts. Message and data rates may apply. Message frequency varies based on order activity. Reply STOP to unsubscribe at any time. Reply HELP for help.
             </p>
             <p style="margin-top: 16px;">
                 <a href="/sms-opt-in/" style="color: var(--teal); font-size: 0.875rem;">View SMS Terms & Opt-In Policy</a>
@@ -1134,12 +1169,13 @@
         <div class="footer-top">
             <div class="footer-brand">
                 <div style="font-size: 1.4rem; font-weight: 800;">Fish<span style="color: var(--teal);">Teck</span></div>
-                <p>HACCP compliance and operations management platform built specifically for seafood processing facilities.</p>
+                <p>Digital ordering, compliance, and filing platform built specifically for seafood processors and distributors.</p>
             </div>
             <div class="footer-col">
                 <h5>Product</h5>
-                <a href="#features">Features</a>
+                <a href="#ordering">Ordering</a>
                 <a href="#compliance">Compliance</a>
+                <a href="#filing">Filing</a>
                 <a href="#pricing">Pricing</a>
                 <a href="/login/">Sign In</a>
             </div>

@@ -8,8 +8,28 @@ from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
 from django.conf import settings
 from django.utils import timezone
-from django.core.mail import EmailMessage
+from django.core.mail import EmailMessage, get_connection
 from core.models import Customer, Vendor, DocumentFile
+
+
+def _get_tenant_email_connection(tenant):
+    """Return an SMTP connection using tenant credentials, or the global default."""
+    if tenant and tenant.smtp_host and tenant.smtp_user and tenant.smtp_password:
+        return get_connection(
+            host=tenant.smtp_host,
+            port=tenant.smtp_port or 587,
+            username=tenant.smtp_user,
+            password=tenant.smtp_password,
+            use_tls=tenant.smtp_use_tls,
+        )
+    return None  # will use Django's default connection
+
+
+def _get_from_email(tenant):
+    """Return tenant's from_email or the global default."""
+    if tenant and tenant.smtp_from_email:
+        return tenant.smtp_from_email
+    return settings.DEFAULT_FROM_EMAIL
 
 
 # =============================================================================
@@ -240,10 +260,14 @@ def email_customer_files(request):
     if request.tenant and request.tenant.reply_to_email:
         reply_to = [f'{request.tenant.reply_to_name} <{request.tenant.reply_to_email}>'] if request.tenant.reply_to_name else [request.tenant.reply_to_email]
     
+    connection = _get_tenant_email_connection(request.tenant)
+    from_email = _get_from_email(request.tenant)
+
     email_msg = EmailMessage(
         subject=f'Documents for {customer_name}',
         body=f'Attached are {len(filenames)} file(s) for {customer_name}.',
-        from_email=settings.DEFAULT_FROM_EMAIL, to=emails, reply_to=reply_to
+        from_email=from_email, to=emails, reply_to=reply_to,
+        connection=connection,
     )
     email_msg.attach(f'Customer_{customer_id}_{timestamp}.zip', zip_buffer.getvalue(), 'application/zip')
     email_msg.send()
@@ -445,10 +469,14 @@ def email_vendor_files(request):
     if request.tenant and request.tenant.reply_to_email:
         reply_to = [f'{request.tenant.reply_to_name} <{request.tenant.reply_to_email}>'] if request.tenant.reply_to_name else [request.tenant.reply_to_email]
     
+    connection = _get_tenant_email_connection(request.tenant)
+    from_email = _get_from_email(request.tenant)
+
     email_msg = EmailMessage(
         subject=f'Documents for {vendor_name}',
         body=f'Attached are {len(filenames)} file(s) for {vendor_name}.',
-        from_email=settings.DEFAULT_FROM_EMAIL, to=emails, reply_to=reply_to
+        from_email=from_email, to=emails, reply_to=reply_to,
+        connection=connection,
     )
     email_msg.attach(f'Vendor_{vendor_id}_{timestamp}.zip', zip_buffer.getvalue(), 'application/zip')
     email_msg.send()

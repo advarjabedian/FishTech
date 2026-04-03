@@ -123,6 +123,20 @@ def save_tenant_config(request, tenant_id):
     if data.get('inbound_email_password'):
         tenant.inbound_email_password = data['inbound_email_password']
 
+    # Outbound SMTP settings
+    if 'smtp_host' in data:
+        tenant.smtp_host = data['smtp_host']
+    if 'smtp_port' in data:
+        tenant.smtp_port = data['smtp_port'] or 587
+    if 'smtp_use_tls' in data:
+        tenant.smtp_use_tls = data['smtp_use_tls']
+    if 'smtp_user' in data:
+        tenant.smtp_user = data['smtp_user']
+    if data.get('smtp_password'):
+        tenant.smtp_password = data['smtp_password']
+    if 'smtp_from_email' in data:
+        tenant.smtp_from_email = data['smtp_from_email']
+
     # Twilio settings
     if 'twilio_account_sid' in data:
         tenant.twilio_account_sid = data['twilio_account_sid']
