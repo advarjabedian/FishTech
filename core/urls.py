@@ -16,6 +16,7 @@ from .views.fish_market import (
 urlpatterns = [
     # Auth routes
     path('', public_home, name='public_home'),
+    path('api/contact/', submit_contact_form, name='submit_contact_form'),
 path('login/', login_view, name='login'),
     path('register/', register_view, name='register'),
     path('logout/', logout_view, name='logout'),
