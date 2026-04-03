@@ -62,6 +62,14 @@ class Tenant(models.Model):
     inbound_email_password = models.CharField(max_length=255, blank=True, help_text="App password")
     inbound_email_imap_server = models.CharField(max_length=255, blank=True, default='imap.gmail.com')
     
+    # Outbound email SMTP settings (per-tenant)
+    smtp_host = models.CharField(max_length=255, blank=True, help_text="e.g. smtp-mail.outlook.com")
+    smtp_port = models.PositiveIntegerField(default=587, blank=True, null=True)
+    smtp_use_tls = models.BooleanField(default=True)
+    smtp_user = models.EmailField(blank=True, help_text="SMTP login email")
+    smtp_password = models.CharField(max_length=255, blank=True, help_text="SMTP login password")
+    smtp_from_email = models.EmailField(blank=True, help_text="From address for outbound emails")
+
     # Twilio SMS settings
     twilio_account_sid = models.CharField(max_length=100, blank=True)
     twilio_auth_token = models.CharField(max_length=100, blank=True)
