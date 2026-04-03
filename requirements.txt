@@ -27,3 +27,4 @@ reportlab
 PyPDF2
 twilio
 google-generativeai
+django-storages[boto3]>=1.14.0
