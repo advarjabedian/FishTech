@@ -16,8 +16,13 @@ stripe.api_key = settings.STRIPE_SECRET_KEY
 def fish_market_redirect(request):
     """Redirect logged-in users to their tenant's fish market page."""
     tenant = getattr(request, 'tenant', None)
-    if not tenant or not tenant.subdomain:
+    if not tenant:
         return redirect('login')
+    if not tenant.subdomain:
+        # Subdomain is blank — auto-populate from tenant name
+        from django.utils.text import slugify
+        tenant.subdomain = slugify(tenant.name) or str(tenant.id)
+        tenant.save(update_fields=['subdomain'])
     return redirect('fish_market_page', slug=tenant.subdomain)
 
 
