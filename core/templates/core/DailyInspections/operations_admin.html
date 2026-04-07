@@ -9,26 +9,18 @@
             <h2 class="mb-0">Operations Admin</h2>
         </div>
         <div>
-            {% if selected_company %}
-            <a href="{% url 'operations_admin' %}" class="btn btn-outline-primary me-2">
-                <i class="bi bi-arrow-left"></i> Back to Summary
-            </a>
-            {% endif %}
             <button type="button" class="btn btn-success me-2" onclick="openBulkReportModal()">
                 <i class="bi bi-printer"></i> Bulk Reports
             </button>
             <button class="btn btn-primary me-2" onclick="openSOPEditor()">
                 <i class="bi bi-list-check"></i> Manage SOPs
             </button>
-            <a href="{% url 'operations_dashboard' %}" class="btn btn-secondary">Back to Operations</a>
+            <a href="{% url 'compliance_hub' %}" class="btn btn-secondary">Back to Compliance</a>
         </div>
     </div>
     
-    {% if selected_company %}
     {% include 'core/DailyInspections/admin_drilldown.html' %}
-    {% else %}
-    {% include 'core/DailyInspections/admin_summary.html' %}
-    {% endif %}
+
 </div>
 
 {% include 'core/DailyInspections/admin_modals.html' %}
@@ -38,11 +30,10 @@
 {% include 'core/DailyInspections/operations_admin_scripts.html' %}
 <script>
 // Pass Django template variables to JS
-window.companyId = '{{ selected_company.companyid|default:"" }}';
+window.companyId = '{{ request.tenant.id }}';
 window.currentFilter = 'incomplete';
-window.currentSelectedCompanyId = '{{ request.selected_company.companyid|default:"" }}';
+window.currentSelectedCompanyId = '{{ request.tenant.id|default:"" }}';
 
-{% if selected_company %}
 window.incompleteDays = [
     {% for day in incomplete_days %}
     {
@@ -63,7 +54,45 @@ document.addEventListener('DOMContentLoaded', function() {
     if (filterParam === 'unverified') setFilter('unverified');
     else if (filterParam === 'all') setFilter('all');
     else setFilter('incomplete');
+
+    // Load user signature preview
+    loadUserSignature();
 });
-{% endif %}
+
+function loadUserSignature() {
+    fetch('/api/operations/get-user-signature/')
+        .then(r => r.json())
+        .then(data => {
+            if (data.success && data.has_signature) {
+                document.getElementById('mySignatureImg').src = data.signature;
+                document.getElementById('mySignaturePreview').style.display = '';
+                document.getElementById('noSignatureText').style.display = 'none';
+            }
+        });
+}
+
+let userSigCanvas, userSigCtx, userSigDrawing = false;
+
+function openUserSignatureModal() {
+    // Reuse the existing signature modal
+    document.getElementById('signatureModalTitle').textContent = 'My Signature';
+    document.getElementById('signatureUserName').textContent = '{{ request.user.get_full_name|default:request.user.username }}';
+    window.currentSignatureType = 'user';
+    const modal = new bootstrap.Modal(document.getElementById('signatureModal'));
+    modal.show();
+
+    // Load existing signature onto canvas after modal is shown
+    setTimeout(() => {
+        const canvas = document.getElementById('signatureCanvas');
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        const img = document.getElementById('mySignatureImg');
+        if (img && img.src && img.src !== window.location.href) {
+            const sigImg = new Image();
+            sigImg.onload = () => ctx.drawImage(sigImg, 0, 0, canvas.width, canvas.height);
+            sigImg.src = img.src;
+        }
+    }, 300);
+}
 </script>
 {% endblock %}

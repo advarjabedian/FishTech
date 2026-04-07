@@ -284,7 +284,7 @@
 <script>
 const USERS = [
     {% for u in users %}
-    { id: {{ u.id }}, name: "{{ u.get_full_name|default:u.username }}" },
+    { id: {{ u.id }}, name: "{{ u.name }}" },
     {% endfor %}
 ];
 

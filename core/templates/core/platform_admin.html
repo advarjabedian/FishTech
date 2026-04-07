@@ -293,7 +293,10 @@
                         </td>
                         <td>{{ tenant.created_at|date:"M d, Y"|default:"-" }}</td>
                         <td>
-                            <button class="btn btn-sm btn-outline-danger" onclick="event.stopPropagation(); deleteTenant({{ tenant.id }}, '{{ tenant.name }}')">
+                            <button class="btn btn-sm btn-outline-primary me-1" onclick="event.stopPropagation(); openEditTenant({{ tenant.id }}, '{{ tenant.name|escapejs }}', '{{ tenant.subdomain|escapejs }}', '{{ tenant.address|escapejs }}', '{{ tenant.city|escapejs }}', '{{ tenant.state|escapejs }}', '{{ tenant.zipcode|escapejs }}', '{{ tenant.subscription_status }}')" title="Edit">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="event.stopPropagation(); deleteTenant({{ tenant.id }}, '{{ tenant.name }}')" title="Delete">
                                 <i class="bi bi-trash"></i>
                             </button>
                         </td>
@@ -487,6 +490,61 @@
     </div>
 </div>
 
+<!-- Edit Tenant Modal -->
+<div class="modal fade" id="editTenantModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-pencil me-2"></i>Edit Tenant</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="editTenantId">
+                <div class="mb-3">
+                    <label class="form-label">Name *</label>
+                    <input type="text" class="form-control" id="editTenantName" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Subdomain</label>
+                    <input type="text" class="form-control" id="editTenantSubdomain">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Address</label>
+                    <input type="text" class="form-control" id="editTenantAddress">
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-5">
+                        <label class="form-label">City</label>
+                        <input type="text" class="form-control" id="editTenantCity">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">State</label>
+                        <input type="text" class="form-control" id="editTenantState" maxlength="2">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Zipcode</label>
+                        <input type="text" class="form-control" id="editTenantZipcode" maxlength="10">
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Subscription Status</label>
+                    <select class="form-select" id="editTenantStatus">
+                        <option value="trialing">Trial</option>
+                        <option value="active">Active</option>
+                        <option value="past_due">Past Due</option>
+                        <option value="canceled">Canceled</option>
+                        <option value="unpaid">Unpaid</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="saveEditTenant()">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 function getCookie(name) {
     const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
@@ -544,6 +602,44 @@ function saveTenantConfig(tenantId) {
     .catch(err => {
         statusEl.innerHTML = '<span class="text-danger"><i class="bi bi-x-circle"></i> Error saving</span>';
     });
+}
+
+function openEditTenant(id, name, subdomain, address, city, state, zipcode, status) {
+    document.getElementById('editTenantId').value = id;
+    document.getElementById('editTenantName').value = name;
+    document.getElementById('editTenantSubdomain').value = subdomain;
+    document.getElementById('editTenantAddress').value = address;
+    document.getElementById('editTenantCity').value = city;
+    document.getElementById('editTenantState').value = state;
+    document.getElementById('editTenantZipcode').value = zipcode;
+    document.getElementById('editTenantStatus').value = status;
+    new bootstrap.Modal(document.getElementById('editTenantModal')).show();
+}
+
+function saveEditTenant() {
+    const id = document.getElementById('editTenantId').value;
+    const payload = {
+        name: document.getElementById('editTenantName').value.trim(),
+        subdomain: document.getElementById('editTenantSubdomain').value.trim(),
+        address: document.getElementById('editTenantAddress').value.trim(),
+        city: document.getElementById('editTenantCity').value.trim(),
+        state: document.getElementById('editTenantState').value.trim(),
+        zipcode: document.getElementById('editTenantZipcode').value.trim(),
+        subscription_status: document.getElementById('editTenantStatus').value,
+    };
+    if (!payload.name) { alert('Name is required'); return; }
+
+    fetch(`/platform-admin/tenant/${id}/edit/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+        body: JSON.stringify(payload)
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) location.reload();
+        else alert('Error: ' + data.error);
+    })
+    .catch(() => alert('Error saving tenant'));
 }
 
 function deleteTenant(id, name) {

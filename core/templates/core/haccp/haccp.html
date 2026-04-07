@@ -59,11 +59,6 @@
 <div class="container mt-4">
     <h1 class="mb-4"><i class="bi bi-shield-check me-2"></i>HACCP Documentation</h1>
     
-    <div class="alert alert-info mb-4" role="alert">
-        <i class="bi bi-info-circle me-2"></i>
-        <strong>Note:</strong> For each product type and year, all companies share the same set of HACCP documents. 
-        When you view or print a document through a specific company, only the company logo will differ.
-    </div>
     
     <!-- Master Set Section -->
     <div class="card border-danger mb-4">
@@ -81,7 +76,7 @@
                 </div>
             </div>
         </div>
-        <div id="masterPlansCollapse" class="collapse">
+        <div id="masterPlansCollapse" class="collapse show">
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <p class="text-muted mb-0">Available HACCP Product Types:</p>
@@ -104,50 +99,21 @@
         </div>
     </div>
     
-    <!-- Company-Specific Views Section -->
-    <div class="card border-secondary mb-4">
-        <div class="card-header bg-secondary text-white" style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#companyViewsCollapse">
-            <div class="d-flex justify-content-between align-items-center">
-                <h3 class="mb-0">
-                    <i class="bi bi-chevron-right me-2 collapse-icon"></i>
-                    Company-Specific Views
-                </h3>
+    <input type="hidden" id="tenantCompanyId" value="{{ request.tenant.id }}">
+</div>
+
+<!-- Print Modal -->
+<div class="modal fade" id="printModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="printModalTitle"><i class="bi bi-printer me-2"></i>Print Documents</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-        </div>
-        <div id="companyViewsCollapse" class="collapse">
-            <div class="card-body">
-                <div class="row">
-                    {% for company in companies %}
-                    <div class="col-md-6 col-lg-4 mb-4">
-                        <div class="card company-card border-warning">
-                            <div class="card-header bg-warning text-white">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0">{{ company.companyname }}</h5>
-                        <div class="d-flex align-items-center gap-1 company-header-actions" id="header-actions-{{ company.companyid }}"></div>
-                    </div>
-                </div>
-                            <div class="card-body">
-                                <p class="text-muted mb-3">Product Types:</p>
-                                <div class="d-flex flex-wrap" id="product-types-{{ company.companyid }}">
-                                    <!-- Product types will be loaded via JS -->
-                                </div>
-                                <div class="mt-3 d-flex flex-column gap-2">
-                                    <button class="btn btn-warning btn-sm w-100" onclick="toggleProductTypeManager({{ company.companyid }})">
-                                        <i class="bi bi-gear me-1"></i>Manage Product Types
-                                    </button>
-                                    <div id="print-btn-{{ company.companyid }}"></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    {% endfor %}
-                </div>
-            </div>
+            <div class="modal-body" id="printModalBody"></div>
         </div>
     </div>
 </div>
-
-<!-- Company management moved to Manage Users page -->
 
 <!-- Product Type Manager Modal -->
 <div class="modal fade" id="productTypeModal" tabindex="-1">
@@ -235,18 +201,6 @@
     </div>
 </div>
 
-<!-- Print Modal -->
-<div class="modal fade" id="printModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="printModalTitle"><i class="bi bi-printer me-2"></i>Print Documents</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body" id="printModalBody"></div>
-        </div>
-    </div>
-</div>
 
 <script>
 let productTypes = [];
@@ -298,17 +252,12 @@ document.addEventListener('DOMContentLoaded', function() {
     masterVersionHistoryModal = new bootstrap.Modal(document.getElementById('masterVersionHistoryModal'));
     manageProductTypesModal = new bootstrap.Modal(document.getElementById('manageProductTypesModal'));
     recycleBinModal = new bootstrap.Modal(document.getElementById('recycleBinModal'));
-    printModal = new bootstrap.Modal(document.getElementById('printModal'));
     
+    printModal = new bootstrap.Modal(document.getElementById('printModal'));
+
     loadAllProductTypes().then(() => {
         loadMasterProductTypes();
-        loadAllCompanyProductTypes();
     });
-    
-    // Auto-expand company section if URL has expand parameter
-    if (window.location.hash === '#companies') {
-        new bootstrap.Collapse(document.getElementById('companyViewsCollapse'), {show: true});
-    }
 });
 
 
@@ -346,6 +295,11 @@ function loadMasterProductTypes() {
                         statusIcon = 'bi-folder';
                     }
                     
+                    const companyId = document.getElementById('tenantCompanyId')?.value;
+                    const printBtn = (status === 'completed' && companyId)
+                        ? `<button class="btn btn-sm btn-outline-success mt-2" onclick="event.stopPropagation(); openPrintModal('${slug}', '${pt.name}')" title="Print"><i class="bi bi-printer me-1"></i>Print</button>`
+                        : '';
+
                     const col = document.createElement('div');
                     col.className = 'col-md-4 col-lg-3 mb-3';
                     col.innerHTML = `
@@ -355,6 +309,7 @@ function loadMasterProductTypes() {
                                 <h6 class="card-title mb-2">${pt.name}</h6>
                                 <div class="mb-2">${statusBadge}</div>
                                 <small class="text-muted">4 Documents</small>
+                                ${printBtn}
                             </div>
                         </div>
                     `;
@@ -366,72 +321,7 @@ function loadMasterProductTypes() {
 }
 
 function loadAllCompanyProductTypes() {
-    {% for company in companies %}
-    loadProductTypes({{ company.companyid }});
-    {% endfor %}
-}
-
-function loadProductTypes(companyId) {
-    fetch(`/api/company-product-types/${companyId}/`)
-        .then(r => r.json())
-        .then(data => {
-            const container = document.getElementById(`product-types-${companyId}`);
-            container.innerHTML = '';
-            
-            let renderedCount = 0;
-            let allComplete = true;
-            
-            if (data.active_types.length === 0) {
-                container.innerHTML = '<span class="text-muted">No product types assigned</span>';
-                allComplete = false;
-            } else {
-                data.active_types.forEach(slug => {
-                    renderedCount++;
-                    const isCompleted = data.completed_types.includes(slug);
-                    
-                    if (!isCompleted) {
-                        allComplete = false;
-                    }
-                    
-                    const pt = productTypes.find(p => p.slug === slug);
-                    const name = pt ? pt.name : slug;
-                    const badge = document.createElement('span');
-                    badge.className = 'badge product-type-badge ' + (isCompleted ? 'bg-success' : 'bg-secondary');
-                    badge.style.cssText = 'cursor: pointer; font-size: 0.95rem; padding: 8px 14px; margin-bottom: 6px;';
-                    badge.innerHTML = isCompleted 
-                        ? `<i class="bi bi-check-circle-fill me-1"></i>${pt.name}`
-                        : pt.name;
-                    badge.onclick = () => window.location.href = `/haccp/${companyId}/${slug}/`;
-                    container.appendChild(badge);
-                });
-            }
-            
-            // Store completed types for print modal
-            companyCompletedTypes[companyId] = data.completed_types || [];
-            
-            // Update compliance status
-            const actionsContainer = document.getElementById(`header-actions-${companyId}`);
-            actionsContainer.innerHTML = '';
-            
-            if (allComplete && renderedCount > 0) {
-                const complianceBadge = document.createElement('span');
-                complianceBadge.className = 'badge bg-success compliance-badge';
-                complianceBadge.style.cssText = 'font-size: 0.95rem; padding: 8px 14px;';
-                complianceBadge.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i>In Compliance';
-                actionsContainer.appendChild(complianceBadge);
-            }
-            
-            // Show Print button below Manage Product Types
-            const printContainer = document.getElementById(`print-btn-${companyId}`);
-            if (printContainer) {
-                if (companyCompletedTypes[companyId].length > 0) {
-                    printContainer.innerHTML = `<button class="btn btn-outline-secondary btn-sm w-100" onclick="openPrintModal(${companyId})"><i class="bi bi-printer me-1"></i>Print Documents</button>`;
-                } else {
-                    printContainer.innerHTML = '';
-                }
-            }
-        })
-        .catch(err => console.error('Error loading product types:', err));
+    // No longer needed — single company, print buttons are on master cards
 }
 
 function loadCertificateIcons(companyId, companyHeader) {
@@ -473,30 +363,21 @@ function loadCertificateIcons(companyId, companyHeader) {
         .catch(err => console.error('Error loading certificates:', err));
 }
 
-function openPrintModal(companyId) {
-    const companyCard = document.getElementById(`product-types-${companyId}`).closest('.card');
-    const companyName = companyCard.querySelector('.card-header h5').childNodes[0].textContent.trim();
-    document.getElementById('printModalTitle').innerHTML = `<i class="bi bi-printer me-2"></i>Print - ${companyName}`;
-    
+function openPrintModal(slug, name) {
+    const companyId = document.getElementById('tenantCompanyId')?.value;
+    document.getElementById('printModalTitle').innerHTML = `<i class="bi bi-printer me-2"></i>Print - ${name}`;
+
     let html = '<h6 class="mb-2">Certificates</h6>';
     html += '<div class="d-flex flex-wrap gap-2 mb-4">';
     html += `<a href="/haccp/certificate/${companyId}/haccp_certificate/" class="btn btn-success"><i class="bi bi-file-earmark-text me-1"></i>HACCP Certificate</a>`;
     html += `<a href="/haccp/certificate/${companyId}/letter_of_guarantee/" class="btn btn-success"><i class="bi bi-file-earmark-check me-1"></i>Letter of Guarantee</a>`;
     html += '</div>';
-    
-    const completedSlugs = companyCompletedTypes[companyId] || [];
-    if (completedSlugs.length > 0) {
-        html += '<h6 class="mb-2">Print Full HACCP Plans</h6>';
-        html += '<div class="d-flex flex-wrap gap-2">';
-        completedSlugs.forEach(slug => {
-            const pt = productTypes.find(p => p.slug === slug);
-            if (pt) {
-                html += `<a href="/haccp/${companyId}/${slug}/print/" class="btn btn-info text-white"><i class="bi bi-printer me-1"></i>${pt.name}</a>`;
-            }
-        });
-        html += '</div>';
-    }
-    
+
+    html += '<h6 class="mb-2">Print Full HACCP Plan</h6>';
+    html += '<div class="d-flex flex-wrap gap-2">';
+    html += `<a href="/haccp/${companyId}/${slug}/print/" class="btn btn-info text-white"><i class="bi bi-printer me-1"></i>${name}</a>`;
+    html += '</div>';
+
     document.getElementById('printModalBody').innerHTML = html;
     printModal.show();
 }

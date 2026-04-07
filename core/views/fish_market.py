@@ -34,11 +34,11 @@ def fish_market_page(request, slug):
     if retail_customer:
         menu_items = CustomerProfile.all_objects.filter(
             tenant=tenant, customer=retail_customer, is_active=True
-        ).prefetch_related('images').order_by('sort_order', 'description')
+        ).select_related('tenant_product').prefetch_related('tenant_product__images').order_by('sort_order', 'description')
 
         all_items = CustomerProfile.all_objects.filter(
             tenant=tenant, customer=retail_customer
-        ).prefetch_related('images').order_by('sort_order', 'description')
+        ).select_related('tenant_product').prefetch_related('tenant_product__images').order_by('sort_order', 'description')
     else:
         menu_items = CustomerProfile.objects.none()
         all_items = CustomerProfile.objects.none()

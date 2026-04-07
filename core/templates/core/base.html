@@ -46,9 +46,9 @@
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
     <div class="container-fluid">
-        {% if request.tenant and request.selected_company and request.selected_company.logo and request.companies|length > 1 %}
+        {% if request.tenant and request.tenant.logo %}
         <a href="{% url 'operations_hub' %}" class="navbar-brand p-0 me-2">
-            <img src="{{ request.selected_company.logo }}" alt="{{ request.selected_company.companyname }}" style="height: 40px; max-width: 100px; object-fit: contain;">
+            <img src="{{ request.tenant.logo }}" alt="{{ request.tenant.name }}" style="height: 40px; max-width: 100px; object-fit: contain;">
         </a>
         {% endif %}
         <a class="navbar-brand" href="{% if request.user.is_authenticated %}{% url 'operations_hub' %}{% else %}{% url 'login' %}{% endif %}">FishTeck</a>

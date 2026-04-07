@@ -169,13 +169,16 @@
                             {% endif %}
 
                             <div class="menu-item-img"
-                                 {% with imgs=item.images.all %}
+                                 {% if item.tenant_product %}
+                                 {% with imgs=item.tenant_product.images.all %}
                                  {% for img in imgs %}
                                  data-img{{ img.slot }}="{{ img.image.url }}"
                                  {% endfor %}
                                  {% endwith %}
+                                 {% endif %}
                                  onmouseenter="swapImg(this, true)" onmouseleave="swapImg(this, false)">
-                                {% with first_img=item.images.all.0 %}
+                                {% if item.tenant_product %}
+                                {% with first_img=item.tenant_product.images.all.0 %}
                                 {% if first_img %}
                                 <img src="{{ first_img.image.url }}" alt="{{ item.description }}" id="item-img-{{ item.id }}">
                                 {% else %}
@@ -184,6 +187,11 @@
                                 </div>
                                 {% endif %}
                                 {% endwith %}
+                                {% else %}
+                                <div class="placeholder-icon d-flex align-items-center justify-content-center w-100 h-100">
+                                    <i class="bi bi-fish" id="item-img-placeholder-{{ item.id }}"></i>
+                                </div>
+                                {% endif %}
                             </div>
 
                             <div class="menu-item-body">

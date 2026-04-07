@@ -15,7 +15,7 @@ function initHazardAnalysis() {
 function syncFromFlowChart() {
     if (!confirm('Sync process steps from Flow Chart? This will REPLACE all existing hazard analysis data.')) return;
     
-    fetch('/api/haccp-flow-chart-data/{{ company.companyid }}/{{ product_type_slug }}/')
+    fetch('/api/haccp-flow-chart-data/{{ request.tenant.id }}/{{ product_type_slug }}/')
         .then(r => r.json())
         .then(data => {
             if (data.success && data.boxes) {

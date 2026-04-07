@@ -14,33 +14,31 @@
     </div>
 
     <!-- Facility Info -->
-    {% if companies %}
-    {% with company=companies.0 %}
     <div class="card mb-4">
         <div class="card-body">
             <h5 class="mb-3">Facility</h5>
             <div class="row align-items-center">
                 <div class="col-md-2 text-center">
-                    {% if company.logo %}
-                    <img id="logo_preview_{{ company.companyid }}" src="{{ company.logo }}" alt="Logo" class="img-fluid" style="max-height: 80px;">
+                    {% if request.tenant.logo %}
+                    <img id="logo_preview_{{ request.tenant.id }}" src="{{ request.tenant.logo }}" alt="Logo" class="img-fluid" style="max-height: 80px;">
                     {% else %}
-                    <img id="logo_preview_{{ company.companyid }}" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80'%3E%3Crect width='80' height='80' fill='%23e9ecef'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-size='12' fill='%236c757d'%3ENo Logo%3C/text%3E%3C/svg%3E" alt="No Logo" class="img-fluid" style="max-height: 80px;">
+                    <img id="logo_preview_{{ request.tenant.id }}" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80'%3E%3Crect width='80' height='80' fill='%23e9ecef'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-size='12' fill='%236c757d'%3ENo Logo%3C/text%3E%3C/svg%3E" alt="No Logo" class="img-fluid" style="max-height: 80px;">
                     {% endif %}
-                    <input type="file" id="logo_input_{{ company.companyid }}" accept="image/*" style="display: none;" onchange="updateCompanyLogo({{ company.companyid }})">
-                    <button class="btn btn-sm btn-outline-primary mt-2" onclick="document.getElementById('logo_input_{{ company.companyid }}').click()">
+                    <input type="file" id="logo_input_{{ request.tenant.id }}" accept="image/*" style="display: none;" onchange="updateCompanyLogo({{ request.tenant.id }})">
+                    <button class="btn btn-sm btn-outline-primary mt-2" onclick="document.getElementById('logo_input_{{ request.tenant.id }}').click()">
                         <i class="bi bi-upload"></i> Logo
                     </button>
                 </div>
                 <div class="col-md-10">
                     <div class="d-flex justify-content-between align-items-start">
                         <div>
-                            <h5 class="mb-1">{{ company.companyname }}</h5>
-                            {% if company.address %}<p class="mb-0 text-muted small">{{ company.address }}</p>{% endif %}
-                            {% if company.city or company.state or company.zipcode %}
-                            <p class="mb-0 text-muted small">{{ company.city }}{% if company.city and company.state %}, {% endif %}{{ company.state }} {{ company.zipcode }}</p>
+                            <h5 class="mb-1">{{ request.tenant.name }}</h5>
+                            {% if request.tenant.address %}<p class="mb-0 text-muted small">{{ request.tenant.address }}</p>{% endif %}
+                            {% if request.tenant.city or request.tenant.state or request.tenant.zipcode %}
+                            <p class="mb-0 text-muted small">{{ request.tenant.city }}{% if request.tenant.city and request.tenant.state %}, {% endif %}{{ request.tenant.state }} {{ request.tenant.zipcode }}</p>
                             {% endif %}
                         </div>
-                        <button class="btn btn-sm btn-outline-warning" onclick="editCompany({{ company.companyid }}, '{{ company.companyname|escapejs }}', '{{ company.address|escapejs }}', '{{ company.city|escapejs }}', '{{ company.state|escapejs }}', '{{ company.zipcode|escapejs }}')">
+                        <button class="btn btn-sm btn-outline-warning" onclick="editCompany({{ request.tenant.id }}, '{{ request.tenant.name|escapejs }}', '{{ request.tenant.address|escapejs }}', '{{ request.tenant.city|escapejs }}', '{{ request.tenant.state|escapejs }}', '{{ request.tenant.zipcode|escapejs }}')">
                             <i class="bi bi-pencil"></i> Edit
                         </button>
                     </div>
@@ -48,8 +46,6 @@
             </div>
         </div>
     </div>
-    {% endwith %}
-    {% endif %}
 
     <!-- Users Section -->
     <div class="d-flex justify-content-between align-items-center mb-3">

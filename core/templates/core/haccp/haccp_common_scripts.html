@@ -407,7 +407,7 @@ function collectFormData() {
 }
 
 function saveDocument(data) {
-    fetch('{% url "haccp_save_document" company.companyid product_type_slug document_type_slug %}', {
+    fetch('{% url "haccp_save_document" request.tenant.id product_type_slug document_type_slug %}', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -421,7 +421,7 @@ function saveDocument(data) {
             hasUnsavedChanges = false;
             if (data.status === 'completed') {
                 alert('Document submitted successfully!');
-                window.location.href = '{% url "haccp_documents" company.companyid product_type_slug %}';
+                window.location.href = '{% url "haccp_documents" request.tenant.id product_type_slug %}';
             } else {
                 alert('Document saved successfully!');
                 location.reload();

@@ -20,36 +20,23 @@ def manage_users(request):
     except TenantUser.DoesNotExist:
         return redirect('login')
     
-    # Get all companies for this tenant
-    from core.models import Company, UserCompany, User
-    companies = Company.objects.all().order_by('companyname')
-    
-    # Get all users for this tenant
-    users = User.objects.all().order_by('name')
-    
-    # Build user-company associations and admin status
-    user_companies = {}
+    # Get all users for this tenant via TenantUser (single source of truth)
+    tenant_users = TenantUser.objects.filter(
+        tenant=request.tenant
+    ).select_related('user').order_by('user__username')
+
+    users = []
     user_admins = {}
-    
-    for uc in UserCompany.objects.select_related('user', 'company'):
-        if uc.user_id not in user_companies:
-            user_companies[uc.user_id] = []
-        user_companies[uc.user_id].append(uc.company_id)
-    
-    # Get admin status for each user (using Django User model, not core.User)
-    from django.contrib.auth.models import User as DjangoUser
-    for user in users:
-        try:
-            django_user = DjangoUser.objects.get(username=user.name)
-            tenant_user = TenantUser.objects.get(user=django_user, tenant=request.tenant)
-            user_admins[user.id] = tenant_user.is_admin
-        except (DjangoUser.DoesNotExist, TenantUser.DoesNotExist):
-            user_admins[user.id] = False
-    
+    for tu in tenant_users:
+        users.append({
+            'id': tu.user.id,
+            'name': tu.user.username,
+            'email': tu.user.email,
+        })
+        user_admins[tu.user.id] = tu.is_admin
+
     return render(request, 'core/manage_users.html', {
         'users': users,
-        'companies': companies,
-        'user_companies': user_companies,
         'user_admins': user_admins
     })
 
@@ -69,45 +56,33 @@ def add_user(request):
         return JsonResponse({'success': False, 'error': 'Not authenticated'})
     
     try:
-        from core.models import User
-        
         data = json.loads(request.body)
         name = data.get('name', '').strip()
         email = data.get('email', '').strip()
         password = data.get('password', '').strip()
-        
+
         if not name:
             return JsonResponse({'success': False, 'error': 'Name is required'})
         if not password:
             return JsonResponse({'success': False, 'error': 'Password is required'})
         if len(password) < 8:
             return JsonResponse({'success': False, 'error': 'Password must be at least 8 characters'})
-        
-        # Check if Django username already exists
+
         if DjangoUser.objects.filter(username=name).exists():
             return JsonResponse({'success': False, 'error': f'A user with the name "{name}" already exists'})
-        
-        # Create Django auth user (enables login)
+
         django_user = DjangoUser.objects.create_user(
             username=name,
             email=email,
             password=password
         )
-        
-        # Link to tenant
+
         TenantUser.objects.create(
             user=django_user,
             tenant=request.tenant,
             is_admin=False
         )
-        
-        # Create core.User for business logic
-        User.objects.create(
-            tenant=request.tenant,
-            name=name,
-            email=email
-        )
-        
+
         return JsonResponse({'success': True})
         
     except Exception as e:
@@ -129,13 +104,10 @@ def update_company_logo(request, company_id):
         return JsonResponse({'success': False, 'error': 'Not authenticated'})
     
     try:
-        from core.models import Company
-        company = get_object_or_404(Company, companyid=company_id)
-        
         data = json.loads(request.body)
-        company.logo = data.get('logo', '')
-        company.save()
-        
+        request.tenant.logo = data.get('logo', '')
+        request.tenant.save()
+
         return JsonResponse({'success': True})
         
     except Exception as e:
@@ -157,26 +129,28 @@ def edit_user(request, user_id):
         return JsonResponse({'success': False, 'error': 'Not authenticated'})
     
     try:
-        from core.models import User
-        
-        user = get_object_or_404(User, id=user_id, tenant=request.tenant)
+        django_user = get_object_or_404(DjangoUser, id=user_id)
+        # Verify this user belongs to the tenant
+        if not TenantUser.objects.filter(user=django_user, tenant=request.tenant).exists():
+            return JsonResponse({'success': False, 'error': 'User not found'})
+
         data = json.loads(request.body)
-        
-        user.name = data.get('name', user.name)
-        user.email = data.get('email', user.email)
-        user.save()
-        
-        # Update Django auth user if it exists
-        django_user = DjangoUser.objects.filter(username=user.name).first()
-        if django_user:
-            django_user.email = user.email
-            password = data.get('password')
-            if password:
-                django_user.set_password(password)
-            django_user.save()
-        
+        new_name = data.get('name', django_user.username).strip()
+        new_email = data.get('email', django_user.email).strip()
+
+        # Check for username conflicts
+        if new_name != django_user.username and DjangoUser.objects.filter(username=new_name).exists():
+            return JsonResponse({'success': False, 'error': f'Username "{new_name}" is already taken'})
+
+        django_user.username = new_name
+        django_user.email = new_email
+        password = data.get('password')
+        if password:
+            django_user.set_password(password)
+        django_user.save()
+
         return JsonResponse({'success': True})
-        
+
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)})
 
@@ -196,55 +170,21 @@ def delete_user(request, user_id):
         return JsonResponse({'success': False, 'error': 'Not authenticated'})
     
     try:
-        from core.models import User
-        
-        # User.objects already filters by tenant through TenantManager
-        user = get_object_or_404(User, id=user_id, tenant=request.tenant)
-        user.delete()
-        
+        django_user = get_object_or_404(DjangoUser, id=user_id)
+        # Verify this user belongs to the tenant
+        if not TenantUser.objects.filter(user=django_user, tenant=request.tenant).exists():
+            return JsonResponse({'success': False, 'error': 'User not found'})
+        # Deleting DjangoUser cascades to TenantUser
+        django_user.delete()
         return JsonResponse({'success': True})
-        
+
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)})
     
 @require_http_methods(["POST"])
 def toggle_user_company(request):
-    """Toggle user-company association"""
-    if not request.tenant:
-        return JsonResponse({'success': False, 'error': 'Not authenticated'})
-    
-    # Check admin permission
-    try:
-        tenant_user = TenantUser.objects.get(user=request.user, tenant=request.tenant)
-        if not tenant_user.is_admin:
-            return JsonResponse({'success': False, 'error': 'Permission denied'})
-    except TenantUser.DoesNotExist:
-        return JsonResponse({'success': False, 'error': 'Not authenticated'})
-    
-    try:
-        from core.models import Company, UserCompany, User
-        
-        data = json.loads(request.body)
-        user_id = data.get('user_id')
-        company_id = data.get('company_id')
-        
-        user = get_object_or_404(User, id=user_id)
-        company = get_object_or_404(Company, companyid=company_id)
-        
-        uc, created = UserCompany.objects.get_or_create(
-            tenant=request.tenant,
-            user=user,
-            company=company
-        )
-        
-        if not created:
-            uc.delete()
-            return JsonResponse({'success': True, 'associated': False})
-        
-        return JsonResponse({'success': True, 'associated': True})
-        
-    except Exception as e:
-        return JsonResponse({'success': False, 'error': str(e)})
+    """No-op: Company associations removed. Kept for URL compatibility."""
+    return JsonResponse({'success': True})
     
 
 @require_http_methods(["POST"])
@@ -262,25 +202,15 @@ def toggle_user_admin(request):
         return JsonResponse({'success': False, 'error': 'Not authenticated'})
     
     try:
-        from core.models import User
-        from django.contrib.auth.models import User as DjangoUser
-        
         data = json.loads(request.body)
         user_id = data.get('user_id')
-        
-        core_user = get_object_or_404(User, id=user_id)
-        
-        # Find corresponding Django user by username (assuming username = name)
-        django_user = DjangoUser.objects.filter(username=core_user.name).first()
-        if not django_user:
-            return JsonResponse({'success': False, 'error': 'Django user not found'})
-        
-        tenant_user = TenantUser.objects.get(user=django_user, tenant=request.tenant)
+
+        tenant_user = TenantUser.objects.get(user_id=user_id, tenant=request.tenant)
         tenant_user.is_admin = not tenant_user.is_admin
         tenant_user.save()
-        
+
         return JsonResponse({'success': True, 'is_admin': tenant_user.is_admin})
-        
+
     except TenantUser.DoesNotExist:
         return JsonResponse({'success': False, 'error': 'User not associated with tenant'})
     except Exception as e:

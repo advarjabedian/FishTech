@@ -3,7 +3,7 @@ from django.http import JsonResponse, HttpResponse
 from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import csrf_exempt
 from django.conf import settings
-from ..models import InboundMessage, User, Tenant, get_current_tenant
+from ..models import InboundMessage, TenantUser, Tenant, get_current_tenant
 import json
 import logging
 import os
@@ -635,19 +635,12 @@ def get_order_request_users_api(request):
     if not tenant:
         return JsonResponse({'users': [], 'current_user_id': None})
 
-    users = User.objects.filter(tenant=tenant).values('id', 'name')
-    
-    # Get current django user's linked core User
-    current_user_id = None
-    try:
-        current_core_user = User.objects.filter(tenant=tenant, email=request.user.email).first()
-        current_user_id = current_core_user.id if current_core_user else None
-    except User.DoesNotExist:
-        pass
+    tenant_users = TenantUser.objects.filter(tenant=tenant).select_related('user')
+    users = [{'id': tu.user.id, 'name': tu.user.username} for tu in tenant_users]
 
     return JsonResponse({
-        'users': list(users),
-        'current_user_id': current_user_id,
+        'users': users,
+        'current_user_id': request.user.id,
     })
 
 @csrf_exempt
