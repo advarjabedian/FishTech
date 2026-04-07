@@ -16,7 +16,7 @@ stripe.api_key = settings.STRIPE_SECRET_KEY
 def fish_market_redirect(request):
     """Redirect logged-in users to their tenant's fish market page."""
     tenant = getattr(request, 'tenant', None)
-    if not tenant:
+    if not tenant or not tenant.subdomain:
         return redirect('login')
     return redirect('fish_market_page', slug=tenant.subdomain)
 
