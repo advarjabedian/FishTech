@@ -80,18 +80,18 @@
     
     <!-- Notifications -->
     <div class="text-center mb-3">
-        {% if selected_company and incomplete_count > 0 %}
+        {% if request.tenant and incomplete_count > 0 %}
         <div>
-            <a href="{% url 'operations_admin' %}?company_id={{ selected_company.companyid }}&filter=incomplete" style="text-decoration: none;">
+            <a href="{% url 'operations_admin' %}?company_id={{ request.tenant.id }}&filter=incomplete" style="text-decoration: none;">
                 <span style="color: #dc3545; font-weight: bold;">
                     {{ monitor_name|default:"Unassigned" }} has {{ incomplete_count }} incomplete day{{ incomplete_count|pluralize }}
                 </span>
             </a>
         </div>
         {% endif %}
-        {% if selected_company and unverified_count > 0 %}
+        {% if request.tenant and unverified_count > 0 %}
         <div>
-            <a href="{% url 'operations_admin' %}?company_id={{ selected_company.companyid }}&filter=unverified" style="text-decoration: none;">
+            <a href="{% url 'operations_admin' %}?company_id={{ request.tenant.id }}&filter=unverified" style="text-decoration: none;">
                 <span style="color: #0d6efd; font-weight: bold;">
                     {{ verifier_name|default:"Unassigned" }} has {{ unverified_count }} unverified log{{ unverified_count|pluralize }}
                 </span>
@@ -108,13 +108,13 @@
         <div class="header-controls">
             <!-- Company Display -->
             <div id="company-display" class="text-center mb-3">
-                {% if request.selected_company %}
+                {% if request.tenant %}
                     <div class="company-box shadow-sm mx-auto" style="width: auto; height: 140px; cursor: pointer; display: inline-block;" onclick="window.location.href='{% url 'operations_hub' %}'">
-                        {% if request.selected_company.logo %}
-                            <img src="{{ request.selected_company.logo }}" alt="{{ request.selected_company.companyname }}" style="height: 100%; object-fit: contain; padding: 10px;">
+                        {% if request.tenant.logo %}
+                            <img src="{{ request.tenant.logo }}" alt="{{ request.tenant.name }}" style="height: 100%; object-fit: contain; padding: 10px;">
                         {% else %}
                             <div style="height: 100%; display: flex; align-items: center; justify-content: center; padding: 10px;">
-                                <h4 class="text-muted mb-0">{{ request.selected_company.companyname }}</h4>
+                                <h4 class="text-muted mb-0">{{ request.tenant.name }}</h4>
                             </div>
                         {% endif %}
                     </div>
@@ -184,14 +184,7 @@
                     <option>{{ preop_data.inspected_name }}</option>
                 </select>
             {% else %}
-                <select class="form-control user-input" id="preop-inspector">
-                    <option value="">Select Monitor</option>
-                    {% for user in users %}
-                    <option value="{{ user.userid }}" {% if monitor_user_id and user.userid == monitor_user_id %}selected{% elif not monitor_user_id and user.userid == current_user_id %}selected{% endif %}>
-                        {{ user.name }}
-                    </option>
-                {% endfor %}
-                </select>
+                <input type="text" class="form-control user-input" value="{{ request.user.get_full_name|default:request.user.username }}" disabled>
             {% endif %}
         </div>
         <div class="completion-status">
@@ -246,14 +239,7 @@
                     <option>{{ midday_data.inspected_name }}</option>
                 </select>
             {% else %}
-                <select class="form-control user-input" id="midday-inspector">
-                    <option value="">Select Monitor</option>
-                    {% for user in users %}
-                    <option value="{{ user.userid }}" {% if monitor_user_id and user.userid == monitor_user_id %}selected{% elif not monitor_user_id and user.userid == current_user_id %}selected{% endif %}>
-                        {{ user.name }}
-                    </option>
-                {% endfor %}
-                </select>
+                <input type="text" class="form-control user-input" value="{{ request.user.get_full_name|default:request.user.username }}" disabled>
             {% endif %}
         </div>
         <div class="completion-status">
@@ -309,14 +295,7 @@
                     <option>{{ postop_data.inspected_name }}</option>
                 </select>
             {% else %}
-                <select class="form-control user-input" id="postop-inspector">
-                    <option value="">Select Monitor</option>
-                        {% for user in users %}
-                    <option value="{{ user.userid }}" {% if monitor_user_id and user.userid == monitor_user_id %}selected{% elif not monitor_user_id and user.userid == current_user_id %}selected{% endif %}>
-                        {{ user.name }}
-                    </option>
-                {% endfor %}
-                </select>
+                <input type="text" class="form-control user-input" value="{{ request.user.get_full_name|default:request.user.username }}" disabled>
             {% endif %}
         </div>
         <div class="completion-status">
@@ -448,13 +427,9 @@
             <div class="modal-body">
                 <div class="row mb-3">
                     <div class="col-md-6">
-                        <label class="form-label"><strong>Select Company:</strong></label>
-                        <select class="form-select" id="bulk-report-company" onchange="loadBulkReportCalendar()">
-                            <option value="">-- Select Company --</option>
-                            {% for company in companies %}
-                            <option value="{{ company.companyid }}" {% if company.companyid == selected_company_id %}selected{% endif %}>{{ company.companyname }}</option>
-                            {% endfor %}
-                        </select>
+                        <label class="form-label"><strong>Company:</strong></label>
+                        <input type="hidden" id="bulk-report-company" value="{{ request.tenant.id }}">
+                        <p class="form-control-plaintext fw-bold">{{ request.tenant.name }}</p>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label"><strong>Report Types:</strong></label>
@@ -512,31 +487,16 @@
     }
     
     function handleDateChange(dateValue) {
-    const selectedCompanyId = '{{ selected_company_id }}';
+    const selectedCompanyId = '{{ request.tenant.id }}';
     window.location.href = `/operations/daily/?date=${dateValue}&company_id=${selectedCompanyId}`;
 }
     
     function handleShiftClick(shift) {
-        // Get inspector from dropdown
-        let inspectorId;
-        if (shift === 'Pre-Op') {
-            inspectorId = document.getElementById('preop-inspector').value;
-        } else if (shift === 'Mid-Day') {
-            inspectorId = document.getElementById('midday-inspector').value;
-        } else if (shift === 'Post-Op') {
-            inspectorId = document.getElementById('postop-inspector').value;
-        }
-        
-        if (!inspectorId) {
-            alert('Please select a monitor');
-            return;
-        }
-        
-        startInspection(shift, inspectorId);
+        startInspection(shift, '{{ current_user_id }}');
     }
     
     function startInspection(shift, inspectorId) {
-        const companyId = '{{ selected_company_id }}';
+        const companyId = '{{ request.tenant.id }}';
         const date = '{{ selected_date }}';
         
         fetch('/api/operations/start-inspection/', {
@@ -571,7 +531,7 @@
 }
 
     function toggleHoliday() {
-        const companyId = '{{ selected_company_id }}';
+        const companyId = '{{ request.tenant.id }}';
         const date = '{{ selected_date }}';
         
         fetch('/api/operations/toggle-holiday/', {
@@ -721,7 +681,7 @@
     function downloadCurrentReport() {
         // Download combined report (operational + deviations)
         const params = new URLSearchParams({
-            company_id: '{{ selected_company_id }}',
+            company_id: '{{ request.tenant.id }}',
             dates: '{{ selected_date }}',
             include_operational: '1',
             include_deviations: '1'
@@ -978,7 +938,7 @@
     }
 
     function useSavedSignature() {
-        const companyId = '{{ selected_company_id }}';
+        const companyId = '{{ request.tenant.id }}';
         
         // Double-check (button should already be hidden for non-verifiers)
         if (!isAssignedVerifier) {

@@ -215,30 +215,39 @@ function saveSignature() {
     }
     
     const signature = signatureCanvas.toDataURL('image/png');
-    const endpoint = currentSignatureType === 'verifier' 
-        ? '/api/operations/save-verifier-signature/'
-        : '/api/operations/save-monitor-signature/';
-    
+    let endpoint;
+    if (currentSignatureType === 'user') {
+        endpoint = '/api/operations/save-user-signature/';
+    } else if (currentSignatureType === 'verifier') {
+        endpoint = '/api/operations/save-verifier-signature/';
+    } else {
+        endpoint = '/api/operations/save-monitor-signature/';
+    }
+
     fetch(endpoint, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
             'X-CSRFToken': getCookie('csrftoken')
         },
-        body: JSON.stringify({
-            company_id: currentSignatureCompanyId,
-            signature: signature
-        })
+        body: JSON.stringify({ signature: signature })
     })
     .then(r => r.json())
     .then(data => {
         if (data.success) {
             bootstrap.Modal.getInstance(document.getElementById('signatureModal')).hide();
-            const indicatorId = currentSignatureType === 'verifier' 
-                ? `sig-indicator-${currentSignatureCompanyId}`
-                : `monitor-sig-indicator-${currentSignatureCompanyId}`;
-            const indicator = document.getElementById(indicatorId);
-            if (indicator) indicator.style.display = 'inline';
+            if (currentSignatureType === 'user') {
+                // Update the preview
+                document.getElementById('mySignatureImg').src = signature;
+                document.getElementById('mySignaturePreview').style.display = '';
+                document.getElementById('noSignatureText').style.display = 'none';
+            } else {
+                const indicatorId = currentSignatureType === 'verifier'
+                    ? `sig-indicator-${currentSignatureCompanyId}`
+                    : `monitor-sig-indicator-${currentSignatureCompanyId}`;
+                const indicator = document.getElementById(indicatorId);
+                if (indicator) indicator.style.display = 'inline';
+            }
             alert('Signature saved successfully');
         } else {
             alert('Error saving signature');

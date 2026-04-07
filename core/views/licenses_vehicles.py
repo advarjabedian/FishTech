@@ -8,7 +8,7 @@ from django.http import JsonResponse, HttpResponse, Http404
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_exempt
 from django.conf import settings
-from ..models import License, Vehicle, User, Company, UserCompany
+from ..models import License, Vehicle, User
 from django.views.decorators.http import require_http_methods
 
 logger = logging.getLogger(__name__)
@@ -33,48 +33,35 @@ def get_licenses_api(request):
         return JsonResponse({'error': 'No tenant'}, status=403)
     
     try:
-        licenses = License.objects.filter(tenant=request.tenant).select_related('managing_user', 'company').order_by('-created_at')
-        
+        licenses = License.objects.filter(tenant=request.tenant).select_related('managing_user').order_by('-created_at')
+
         files = []
         for lic in licenses:
             files.append({
                 'id': lic.id,
                 'filename': lic.filename,
                 'title': lic.title,
-                'company_id': lic.company_id,
-                'company_name': lic.company.companyname if lic.company else None,
+                'company_id': request.tenant.id,
+                'company_name': request.tenant.name,
                 'issuance_date': lic.issuance_date.isoformat() if lic.issuance_date else None,
                 'expiration_date': lic.expiration_date.isoformat() if lic.expiration_date else None,
                 'managing_user_id': lic.managing_user_id,
                 'managing_user_name': lic.managing_user.name if lic.managing_user else None,
                 'url': f'/api/documents/licenses/{lic.filename}/view/'
             })
-        
-        # Get companies for dropdown
-        companies = Company.objects.filter(tenant=request.tenant).values('companyid', 'companyname').order_by('companyname')
-        companies_list = [{'id': c['companyid'], 'name': c['companyname']} for c in companies]
-        
-        # Get all users with their company associations
+
+        # Get all users for the tenant
         users = User.objects.filter(tenant=request.tenant).values('id', 'name').order_by('name')
         users_list = [{'id': u['id'], 'name': u['name']} for u in users if u['name']]
-        
-        # Get user-company mappings
-        user_companies = {}
-        for uc in UserCompany.objects.filter(tenant=request.tenant).values('user_id', 'company_id'):
-            if uc['user_id'] not in user_companies:
-                user_companies[uc['user_id']] = []
-            user_companies[uc['user_id']].append(uc['company_id'])
-        
+
         return JsonResponse({
-            'files': files, 
-            'users': users_list, 
-            'companies': companies_list,
-            'user_companies': user_companies
+            'files': files,
+            'users': users_list,
         })
         
     except Exception as e:
         logger.error(f"Error in get_licenses_api: {str(e)}")
-        return JsonResponse({'files': [], 'users': [], 'companies': [], 'user_companies': {}, 'error': str(e)})
+        return JsonResponse({'files': [], 'users': [], 'error': str(e)})
 
 
 @csrf_exempt
@@ -122,16 +109,14 @@ def upload_license_api(request):
                 f.write(chunk)
         
         # Create database record
-        company_id = request.POST.get('company_id') or None
         issuance_date = request.POST.get('issuance_date') or None
         expiration_date = request.POST.get('expiration_date') or None
         managing_user_id = request.POST.get('managing_user_id') or None
-        
+
         license_obj = License.objects.create(
             tenant=request.tenant,
             filename=filename,
             title=title,
-            company_id=company_id,
             issuance_date=issuance_date,
             expiration_date=expiration_date,
             managing_user_id=managing_user_id
@@ -159,7 +144,6 @@ def update_license_api(request, license_id):
         
         license_obj = License.objects.get(id=license_id, tenant=request.tenant)
         license_obj.title = data.get('title') or license_obj.title
-        license_obj.company_id = data.get('company_id') or None
         license_obj.issuance_date = data.get('issuance_date') or None
         license_obj.expiration_date = data.get('expiration_date') or None
         license_obj.managing_user_id = data.get('managing_user_id') or None
@@ -412,16 +396,12 @@ def get_vehicles_api(request):
                 'created_at': v.created_at.isoformat() if v.created_at else None
             })
         
-        # Get companies for dropdown
-        companies = Company.objects.filter(tenant=request.tenant).order_by('companyname')
-        companies_list = [{'id': c.companyid, 'name': c.companyname} for c in companies]
-        
-        return JsonResponse({'vehicles': files, 'companies': companies_list})
-        
+        return JsonResponse({'vehicles': files})
+
     except Exception as e:
         import logging
         logging.error(f"Error in get_vehicles_api: {str(e)}")
-        return JsonResponse({'vehicles': [], 'companies': [], 'error': str(e)})
+        return JsonResponse({'vehicles': [], 'error': str(e)})
 
 
 @login_required
@@ -435,16 +415,6 @@ def add_vehicle_api(request):
         import json
         data = json.loads(request.body)
         
-        # Get company name if company_id provided
-        company_name = None
-        company_id = data.get('company_id')
-        if company_id:
-            try:
-                company = Company.objects.get(companyid=company_id, tenant=request.tenant)
-                company_name = company.companyname
-            except Company.DoesNotExist:
-                pass
-        
         vehicle = Vehicle.objects.create(
             tenant=request.tenant,
             year=data.get('year') or None,
@@ -455,7 +425,7 @@ def add_vehicle_api(request):
             number=data.get('number') or None,
             driver=data.get('driver') or None,
             dmv_renewal_date=data.get('dmv_renewal_date') or None,
-            company=company_name,
+            company=data.get('company') or None,
             status=data.get('status') or None,
             title=data.get('title') or None,
             carb_number=data.get('carb_number') or None,
@@ -491,16 +461,7 @@ def update_vehicle_api(request, vehicle_id):
         vehicle.number = data.get('number') or None
         vehicle.driver = data.get('driver') or None
         vehicle.dmv_renewal_date = data.get('dmv_renewal_date') or None
-        # Get company name if company_id provided
-        company_id = data.get('company_id')
-        if company_id:
-            try:
-                company = Company.objects.get(companyid=company_id, tenant=request.tenant)
-                vehicle.company = company.companyname
-            except Company.DoesNotExist:
-                vehicle.company = None
-        else:
-            vehicle.company = None
+        vehicle.company = data.get('company') or None
         vehicle.status = data.get('status') or None
         vehicle.title = data.get('title') or None
         vehicle.carb_number = data.get('carb_number') or None

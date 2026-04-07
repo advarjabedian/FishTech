@@ -25,6 +25,29 @@ def superuser_required(view_func):
 
 
 @superuser_required
+def edit_tenant(request, tenant_id):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
+    try:
+        tenant = Tenant.objects.get(id=tenant_id)
+        data = json.loads(request.body)
+        tenant.name = data.get('name', tenant.name)
+        tenant.subdomain = data.get('subdomain', tenant.subdomain)
+        tenant.address = data.get('address', tenant.address)
+        tenant.city = data.get('city', tenant.city)
+        tenant.state = data.get('state', tenant.state)
+        tenant.zipcode = data.get('zipcode', tenant.zipcode)
+        if data.get('subscription_status'):
+            tenant.subscription_status = data['subscription_status']
+        tenant.save()
+        return JsonResponse({'success': True})
+    except Tenant.DoesNotExist:
+        return JsonResponse({'error': 'Tenant not found'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@superuser_required
 def delete_tenant(request, tenant_id):
     if request.method != 'POST':
         return JsonResponse({'error': 'POST required'}, status=405)

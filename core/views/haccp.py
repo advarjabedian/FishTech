@@ -3,7 +3,7 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required
 from core.models import (
-    Company, HACCPDocument, HACCPProductType, CompanyProductType,
+    HACCPDocument, HACCPProductType, CompanyProductType,
     CompanyHACCPOwner, CompanyCertificate
 )
 from django.contrib.auth.models import User
@@ -14,23 +14,15 @@ from datetime import datetime
 
 @login_required
 def haccp(request):
-    """HACCP main page showing all companies"""
+    """HACCP main page"""
     if not request.tenant:
         return redirect('admin:index')
-    
-    companies = Company.objects.all().order_by('companyname')
-    
+
+    tenant = request.tenant
     users = User.objects.all().order_by('username')
-    
-    # Get owner mappings
-    owner_mappings = {owner.company_id: owner.user_id for owner in CompanyHACCPOwner.objects.all()}
-    
-    # Add owner_id to each company object
-    for company in companies:
-        company.owner_id = owner_mappings.get(company.companyid)
-    
+
     return render(request, 'core/haccp/haccp.html', {
-        'companies': companies,
+        'tenant': tenant,
         'users': users
     })
 
@@ -40,27 +32,32 @@ def haccp_company(request, company_id):
     """HACCP company/product type grid"""
     if not request.tenant:
         return redirect('admin:index')
-    
+
+    tenant = request.tenant
+
     # Handle master set (company_id = 0)
     if company_id == 0:
         company = type('obj', (object,), {
             'companyid': 0,
             'companyname': 'Master Set'
         })()
-        
+
         # Get all active product types across all companies
         active_types = CompanyProductType.objects.filter(
             is_active=True
         ).values_list('product_type', flat=True).distinct()
     else:
-        company = get_object_or_404(Company, companyid=company_id)
-        
-        # Get active product types for this company
+        company = type('obj', (object,), {
+            'companyid': tenant.id,
+            'companyname': tenant.name
+        })()
+
+        # Get active product types for this tenant
         active_types = CompanyProductType.objects.filter(
-            company_id=company_id,
+            tenant=tenant,
             is_active=True
         ).values_list('product_type', flat=True)
-    
+
     product_type_map = {
         'box-in-box-out': 'Box In - Box Out',
         'live-molluscan': 'Live Molluscan',
@@ -68,9 +65,9 @@ def haccp_company(request, company_id):
         'scombroid-haccp': 'Scombroid HACCP',
         'smoked-fish': 'Smoked Fish'
     }
-    
+
     product_types = [product_type_map[pt] for pt in active_types if pt in product_type_map]
-    
+
     return render(request, 'core/haccp/haccp_company.html', {
         'company': company,
         'product_types': product_types
@@ -83,6 +80,8 @@ def haccp_documents(request, company_id, product_type):
     if not request.tenant:
         return redirect('admin:index')
     
+    tenant = request.tenant
+
     # Handle master set (company_id = 0)
     if company_id == 0:
         company = type('obj', (object,), {
@@ -90,14 +89,17 @@ def haccp_documents(request, company_id, product_type):
             'companyname': 'Master Set'
         })()
     else:
-        company = get_object_or_404(Company, companyid=company_id)
-    
+        company = type('obj', (object,), {
+            'companyid': tenant.id,
+            'companyname': tenant.name
+        })()
+
     current_year = datetime.now().year
-    
+
     # Get product type name from database
     product_type_obj = HACCPProductType.objects.filter(slug=product_type).first()
     product_type_name = product_type_obj.name if product_type_obj else product_type
-    
+
     document_types = [
         {
             'name': 'Product Description',
@@ -265,6 +267,8 @@ def haccp_document_view(request, company_id, product_type, document_type):
     if not request.tenant:
         return redirect('admin:index')
     
+    tenant = request.tenant
+
     # Handle master set (company_id = 0)
     if company_id == 0:
         company = type('obj', (object,), {
@@ -272,15 +276,18 @@ def haccp_document_view(request, company_id, product_type, document_type):
             'companyname': 'Master Set'
         })()
     else:
-        company = get_object_or_404(Company, companyid=company_id)
-    
+        company = type('obj', (object,), {
+            'companyid': tenant.id,
+            'companyname': tenant.name
+        })()
+
     # Check if viewing a specific year/version
     year_param = request.GET.get('year')
     version_param = request.GET.get('version')
     
     if year_param and version_param:
         document = HACCPDocument.objects.filter(
-            company_id=company_id if company_id != 0 else None,
+            company_id=None,
             product_type=product_type,
             document_type=document_type,
             year=int(year_param),
@@ -290,7 +297,7 @@ def haccp_document_view(request, company_id, product_type, document_type):
         if not document:
             document = HACCPDocument.objects.create(
                 tenant=request.tenant,
-                company_id=company_id if company_id != 0 else None,
+                company_id=None,
                 product_type=product_type,
                 document_type=document_type,
                 year=int(year_param),
@@ -300,7 +307,7 @@ def haccp_document_view(request, company_id, product_type, document_type):
             )
         
         latest_version = HACCPDocument.objects.filter(
-            company_id=company_id if company_id != 0 else None,
+            company_id=None,
             product_type=product_type,
             document_type=document_type,
             year=int(year_param)
@@ -312,7 +319,7 @@ def haccp_document_view(request, company_id, product_type, document_type):
         year = request.GET.get('year', current_year)
         
         last_completed = HACCPDocument.objects.filter(
-            company_id=company_id if company_id != 0 else None,
+            company_id=None,
             product_type=product_type,
             document_type=document_type,
             year=year,
@@ -320,7 +327,7 @@ def haccp_document_view(request, company_id, product_type, document_type):
         ).order_by('-version').first()
         
         in_progress = HACCPDocument.objects.filter(
-            company_id=company_id if company_id != 0 else None,
+            company_id=None,
             product_type=product_type,
             document_type=document_type,
             year=year,
@@ -336,7 +343,7 @@ def haccp_document_view(request, company_id, product_type, document_type):
         else:
             document = HACCPDocument.objects.create(
                 tenant=request.tenant,
-                company_id=company_id if company_id != 0 else None,
+                company_id=None,
                 product_type=product_type,
                 document_type=document_type,
                 year=year,
@@ -350,7 +357,7 @@ def haccp_document_view(request, company_id, product_type, document_type):
     set_complete = False
     if document.version:
         set_stats = HACCPDocument.objects.filter(
-            company_id=company_id if company_id != 0 else None,
+            company_id=None,
             product_type=product_type,
             year=document.year,
             version=document.version
@@ -404,7 +411,7 @@ def haccp_save_document(request, company_id, product_type, document_type):
         new_status = data.get('status', 'in_progress')
         
         existing_doc = HACCPDocument.objects.filter(
-            company_id=company_id if company_id != 0 else None,
+            company_id=None,
             product_type=product_type,
             document_type=document_type,
             year=year,
@@ -416,7 +423,7 @@ def haccp_save_document(request, company_id, product_type, document_type):
         else:
             document = HACCPDocument.objects.create(
                 tenant=request.tenant,
-                company_id=company_id if company_id != 0 else None,
+                company_id=None,
                 product_type=product_type,
                 document_type=document_type,
                 year=year,
@@ -434,7 +441,7 @@ def haccp_save_document(request, company_id, product_type, document_type):
         
         if new_status == 'completed':
             HACCPDocument.objects.filter(
-                company_id=company_id if company_id != 0 else None,
+                company_id=None,
                 product_type=product_type,
                 document_type=document_type,
                 year=year,
@@ -449,11 +456,12 @@ def haccp_save_document(request, company_id, product_type, document_type):
 
 
 def get_company_product_types(request, company_id):
-    """Get active product types for a company"""
+    """Get active product types for the tenant"""
     current_year = datetime.now().year
-    
+    tenant = request.tenant
+
     active_types = list(CompanyProductType.objects.filter(
-        company_id=company_id,
+        tenant=tenant,
         is_active=True
     ).values_list('product_type', flat=True))
     
@@ -490,11 +498,8 @@ def toggle_company_product_type(request, company_id):
         product_type = data.get('product_type')
         is_active = data.get('is_active', True)
         
-        company = get_object_or_404(Company, companyid=company_id)
-        
         obj, created = CompanyProductType.objects.update_or_create(
             tenant=request.tenant,
-            company=company,
             product_type=product_type,
             defaults={'is_active': is_active}
         )
@@ -515,14 +520,14 @@ def generate_new_version(request, company_id, product_type, document_type):
         current_year = datetime.now().year
         
         existing_version = HACCPDocument.objects.filter(
-            company_id=company_id if company_id != 0 else None,
+            company_id=None,
             product_type=product_type,
             year=current_year
         ).order_by('-version').values_list('version', flat=True).first()
         
         if existing_version:
             version_stats = HACCPDocument.objects.filter(
-                company_id=company_id if company_id != 0 else None,
+                company_id=None,
                 product_type=product_type,
                 year=current_year,
                 version=existing_version
@@ -538,7 +543,7 @@ def generate_new_version(request, company_id, product_type, document_type):
                 })
         
         completed_sets = HACCPDocument.objects.filter(
-            company_id=company_id if company_id != 0 else None,
+            company_id=None,
             product_type=product_type,
             year=current_year
         ).values('version').annotate(
@@ -556,7 +561,7 @@ def generate_new_version(request, company_id, product_type, document_type):
             for doc_type in doc_types:
                 HACCPDocument.objects.create(
                     tenant=request.tenant,
-                    company_id=company_id if company_id != 0 else None,
+                    company_id=None,
                     product_type=product_type,
                     document_type=doc_type,
                     year=current_year,
@@ -577,7 +582,7 @@ def generate_new_version(request, company_id, product_type, document_type):
         
         for doc_type in doc_types:
             source_doc = HACCPDocument.objects.get(
-                company_id=company_id if company_id != 0 else None,
+                company_id=None,
                 product_type=product_type,
                 document_type=doc_type,
                 year=current_year,
@@ -586,7 +591,7 @@ def generate_new_version(request, company_id, product_type, document_type):
             
             HACCPDocument.objects.create(
                 tenant=request.tenant,
-                company_id=company_id if company_id != 0 else None,
+                company_id=None,
                 product_type=product_type,
                 document_type=doc_type,
                 year=current_year,
@@ -622,23 +627,27 @@ def view_company_certificate(request, company_id, certificate_type):
     if not request.tenant:
         return redirect('admin:index')
     
-    company = get_object_or_404(Company, companyid=company_id)
+    tenant = request.tenant
     current_year = datetime.now().year
-    
+
     cert = CompanyCertificate.objects.filter(
-        company_id=company_id,
+        tenant=tenant,
         year=current_year,
         certificate_type=certificate_type
     ).first()
-    
+
     if not cert:
         cert = CompanyCertificate.objects.create(
-            tenant=request.tenant,
-            company=company,
+            tenant=tenant,
             year=current_year,
             certificate_type=certificate_type
         )
-    
+
+    company = type('obj', (object,), {
+        'companyid': tenant.id,
+        'companyname': tenant.name
+    })()
+
     return render(request, 'core/haccp/company_certificate.html', {
         'company': company,
         'certificate': cert,
@@ -652,12 +661,12 @@ def get_version_history(request, company_id, product_type, document_type):
     year_filter = request.GET.get('year')
     
     all_years = HACCPDocument.objects.filter(
-        company_id=company_id if company_id != 0 else None,
+        company_id=None,
         product_type=product_type
     ).values_list('year', flat=True).distinct().order_by('-year')
     
     query = HACCPDocument.objects.filter(
-        company_id=company_id if company_id != 0 else None,
+        company_id=None,
         product_type=product_type
     )
     
@@ -704,7 +713,7 @@ def get_flow_chart_data(request, company_id, product_type):
     current_year = datetime.now().year
     
     in_progress = HACCPDocument.objects.filter(
-        company_id=company_id if company_id != 0 else None,
+        company_id=None,
         product_type=product_type,
         document_type='flow_chart',
         year=current_year,
@@ -712,7 +721,7 @@ def get_flow_chart_data(request, company_id, product_type):
     ).order_by('-version').first()
     
     last_completed = HACCPDocument.objects.filter(
-        company_id=company_id if company_id != 0 else None,
+        company_id=None,
         product_type=product_type,
         document_type='flow_chart',
         year=current_year,
@@ -741,7 +750,7 @@ def get_hazard_analysis_data(request, company_id, product_type):
     current_year = datetime.now().year
     
     in_progress = HACCPDocument.objects.filter(
-        company_id=company_id if company_id != 0 else None,
+        company_id=None,
         product_type=product_type,
         document_type='hazard_analysis',
         year=current_year,
@@ -749,7 +758,7 @@ def get_hazard_analysis_data(request, company_id, product_type):
     ).order_by('-version').first()
     
     last_completed = HACCPDocument.objects.filter(
-        company_id=company_id if company_id != 0 else None,
+        company_id=None,
         product_type=product_type,
         document_type='hazard_analysis',
         year=current_year,
@@ -784,7 +793,7 @@ def delete_haccp_version(request, company_id, product_type, document_type):
         version = int(data.get('version'))
         
         doc = HACCPDocument.objects.get(
-            company_id=company_id if company_id != 0 else None,
+            company_id=None,
             product_type=product_type,
             document_type=document_type,
             year=year,
@@ -811,7 +820,7 @@ def get_haccp_version(request, company_id, product_type, document_type):
         version = int(request.GET.get('version'))
         
         doc = HACCPDocument.objects.get(
-            company_id=company_id if company_id != 0 else None,
+            company_id=None,
             product_type=product_type,
             document_type=document_type,
             year=year,
@@ -1020,16 +1029,16 @@ def set_haccp_owner(request, company_id):
         data = json.loads(request.body)
         user_id = data.get('user_id')
         
-        company = get_object_or_404(Company, companyid=company_id)
-        
+        tenant = request.tenant
+
         if user_id:
             user = get_object_or_404(User, id=user_id)
             CompanyHACCPOwner.objects.update_or_create(
-                company=company,
+                tenant=tenant,
                 defaults={'user': user}
             )
         else:
-            CompanyHACCPOwner.objects.filter(company=company).delete()
+            CompanyHACCPOwner.objects.filter(tenant=tenant).delete()
         
         return JsonResponse({'success': True})
         
@@ -1038,13 +1047,14 @@ def set_haccp_owner(request, company_id):
 
 
 def get_company_certificates(request, company_id):
-    """Get certificate status for a company"""
+    """Get certificate status for the tenant"""
     current_year = datetime.now().year
-    
+    tenant = request.tenant
+
     certificates = {}
     for cert_type, _ in CompanyCertificate.CERTIFICATE_TYPE_CHOICES:
         cert = CompanyCertificate.objects.filter(
-            company_id=company_id,
+            tenant=tenant,
             year=current_year,
             certificate_type=cert_type
         ).first()
@@ -1072,10 +1082,10 @@ def save_company_certificate(request, company_id):
         cert_type = data.get('certificate_type')
         current_year = datetime.now().year
         
-        company = get_object_or_404(Company, companyid=company_id)
-        
+        tenant = request.tenant
+
         cert, created = CompanyCertificate.objects.get_or_create(
-            company=company,
+            tenant=tenant,
             year=current_year,
             certificate_type=cert_type
         )
@@ -1135,80 +1145,37 @@ def copy_from_previous_year(request, company_id, product_type, document_type):
 
 @require_http_methods(["POST"])
 def add_company(request):
-    """Add a new company to the tenant"""
-    if not request.tenant:
-        return JsonResponse({'success': False, 'error': 'Not authenticated'})
-    
-    try:
-        data = json.loads(request.body)
-        companyname = data.get('companyname', '').strip()
-        address = data.get('address', '').strip()
-        city = data.get('city', '').strip()
-        state = data.get('state', '').strip()
-        zipcode = data.get('zipcode', '').strip()
-        
-        if not companyname:
-            return JsonResponse({'success': False, 'error': 'Company name is required'})
-        
-        # Check if company name already exists for this tenant
-        if Company.objects.filter(companyname=companyname, tenant=request.tenant).exists():
-            return JsonResponse({'success': False, 'error': 'Company name already exists'})
-        
-        from core.utils import get_default_company_logo
-        count = Company.objects.count() + 1
-        company = Company.objects.create(
-            tenant=request.tenant,
-            companyname=companyname,
-            address=address,
-            city=city,
-            state=state,
-            zipcode=zipcode,
-            logo=get_default_company_logo(count),
-        )
-        
-        return JsonResponse({'success': True, 'company_id': company.companyid})
-        
-    except Exception as e:
-        return JsonResponse({'success': False, 'error': str(e)})
+    """Deprecated - Company model removed. Returns success no-op."""
+    return JsonResponse({'success': True, 'company_id': request.tenant.id if request.tenant else None})
 
 
 @require_http_methods(["POST"])
 def edit_company(request, company_id):
-    """Edit an existing company"""
+    """Edit tenant details (replaces company editing)"""
     if not request.tenant:
         return JsonResponse({'success': False, 'error': 'Not authenticated'})
-    
+
     try:
-        company = get_object_or_404(Company, companyid=company_id)
-        
+        tenant = request.tenant
         data = json.loads(request.body)
-        company.companyname = data.get('companyname', company.companyname)
-        company.address = data.get('address', company.address)
-        company.city = data.get('city', company.city)
-        company.state = data.get('state', company.state)
-        company.zipcode = data.get('zipcode', company.zipcode)
-        company.save()
-        
+
+        tenant.name = data.get('companyname', tenant.name)
+        tenant.address = data.get('address', tenant.address)
+        tenant.city = data.get('city', tenant.city)
+        tenant.state = data.get('state', tenant.state)
+        tenant.zipcode = data.get('zipcode', tenant.zipcode)
+        tenant.save()
+
         return JsonResponse({'success': True})
-        
+
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)})
 
 
 @require_http_methods(["POST"])
 def delete_company(request, company_id):
-    """Delete a company"""
-    if not request.tenant:
-        return JsonResponse({'success': False, 'error': 'Not authenticated'})
-    
-    try:
-        company = get_object_or_404(Company, companyid=company_id)
-        company.delete()
-        
-        return JsonResponse({'success': True})
-        
-    except Exception as e:
-        return JsonResponse({'success': False, 'error': str(e)})
+    """Deprecated - Company model removed. Returns success no-op."""
+    return JsonResponse({'success': True})
 
 
 @login_required
@@ -1219,14 +1186,21 @@ def haccp_print_set(request, company_id, product_type):
     
     current_year = datetime.now().year
     
+    tenant = request.tenant
+
     if company_id == 0:
         company = type('obj', (object,), {
             'companyid': 0,
-            'companyname': 'Master Set'
+            'companyname': 'Master Set',
+            'logo': tenant.logo
         })()
     else:
-        company = get_object_or_404(Company, companyid=company_id)
-    
+        company = type('obj', (object,), {
+            'companyid': tenant.id,
+            'companyname': tenant.name,
+            'logo': tenant.logo
+        })()
+
     pt_obj = HACCPProductType.objects.filter(slug=product_type).first()
     product_type_name = pt_obj.name if pt_obj else product_type
     
@@ -1300,7 +1274,7 @@ def delete_haccp_version_set(request, company_id, product_type):
         
         # Don't allow deleting the active (latest fully completed) version
         completed_sets = HACCPDocument.objects.filter(
-            company_id=company_id if company_id != 0 else None,
+            company_id=None,
             product_type=product_type,
             year=year
         ).values('version').annotate(
@@ -1312,7 +1286,7 @@ def delete_haccp_version_set(request, company_id, product_type):
             return JsonResponse({'success': False, 'error': 'Cannot delete the active version'})
         
         deleted_count, _ = HACCPDocument.objects.filter(
-            company_id=company_id if company_id != 0 else None,
+            company_id=None,
             product_type=product_type,
             year=year,
             version=version

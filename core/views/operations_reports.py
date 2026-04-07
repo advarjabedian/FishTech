@@ -2,7 +2,7 @@ from django.http import HttpResponse
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.clickjacking import xframe_options_sameorigin
 from django.contrib.auth.models import User
-from core.models import SOP, SOPParent, SOPChild, Company
+from core.models import SOP, SOPParent, SOPChild
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -21,12 +21,11 @@ def generate_operational_report(request, parent_id):
     children = SOPChild.objects.filter(sop_parent=sop_parent).order_by('sop_did')
     
     # Get company info
-    company = sop_parent.company
-    company_name = company.companyname if company else f"Company {parent_id}"
+    company_name = sop_parent.tenant.name if sop_parent.tenant else "Unknown"
     
     # Get SOP details
     sop_ids = [c.sop_did for c in children]
-    sops = {s.sop_did: s for s in SOP.objects.filter(sop_did__in=sop_ids, company=company)}
+    sops = {s.sop_did: s for s in SOP.objects.filter(sop_did__in=sop_ids, tenant=sop_parent.tenant)}
     
     # Get inspector name
     inspector = None
@@ -158,7 +157,7 @@ def generate_deviations_report(request, parent_id):
     
     # Get SOP details
     sop_ids = [c.sop_did for c in deviations]
-    sops = {s.sop_did: s for s in SOP.objects.filter(sop_did__in=sop_ids, company=company)}
+    sops = {s.sop_did: s for s in SOP.objects.filter(sop_did__in=sop_ids, tenant=sop_parent.tenant)}
     
     # Get inspector name
     inspector_name = sop_parent.user_inspected.get_full_name() if sop_parent.user_inspected else 'Unknown'
@@ -261,19 +260,18 @@ def generate_bulk_report(request):
     """Generate bulk PDF report for multiple days"""
     from PyPDF2 import PdfMerger
     
-    company_id = request.GET.get('company_id')
     dates_str = request.GET.get('dates', '')
     include_operational = request.GET.get('include_operational') == '1'
     include_deviations = request.GET.get('include_deviations') == '1'
-    
-    if not company_id or not dates_str:
+
+    if not dates_str:
         return HttpResponse('Missing parameters', status=400)
-    
+
     dates = dates_str.split(',')
-    
-    # Get all SOPParent records for these dates and company
+
+    # Get all SOPParent records for these dates
     parents = SOPParent.objects.filter(
-        company_id=company_id,
+        tenant=request.tenant,
         date__in=dates,
         completed=True
     ).order_by('date', 'shift')
@@ -322,7 +320,7 @@ def generate_bulk_report(request):
             img_elements.append(Spacer(1, 0.3*inch))
             
             sop_ids = [c.sop_did for c in image_children]
-            sops = {s.sop_did: s for s in SOP.objects.filter(sop_did__in=sop_ids, company=parent.company)}
+            sops = {s.sop_did: s for s in SOP.objects.filter(sop_did__in=sop_ids, tenant=parent.tenant)}
             
             for child in image_children:
                 sop = sops.get(child.sop_did)
@@ -367,5 +365,5 @@ def generate_bulk_report(request):
     
     buffer.seek(0)
     response = HttpResponse(buffer.getvalue(), content_type='application/pdf')
-    response['Content-Disposition'] = f'attachment; filename="BulkReport_{company_id}_{dates[0]}_to_{dates[-1]}.pdf"'
+    response['Content-Disposition'] = f'attachment; filename="BulkReport_{dates[0]}_to_{dates[-1]}.pdf"'
     return response

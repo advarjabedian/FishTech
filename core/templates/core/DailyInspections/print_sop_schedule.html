@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>SOP Schedule - {{ company.companyname }}</title>
+    <title>SOP Schedule - {{ tenant.name }}</title>
     <style>
         @media print {
             @page { margin: 0.5in; }
@@ -22,7 +22,7 @@
     <button class="no-print" onclick="window.print()" style="margin: 10px; padding: 10px;">Print</button>
     
     <h1>SOP Schedule</h1>
-    <h2>{{ company.companyname }}</h2>
+    <h2>{{ tenant.name }}</h2>
     
     <table>
         <thead>

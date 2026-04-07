@@ -74,7 +74,14 @@ class Tenant(models.Model):
     twilio_account_sid = models.CharField(max_length=100, blank=True)
     twilio_auth_token = models.CharField(max_length=100, blank=True)
     twilio_phone_number = models.CharField(max_length=20, blank=True, help_text="e.g. +18555975969")
-    
+
+    # Facility info (formerly on Company)
+    address = models.CharField(max_length=255, blank=True)
+    city = models.CharField(max_length=100, blank=True)
+    state = models.CharField(max_length=2, blank=True)
+    zipcode = models.CharField(max_length=10, blank=True)
+    logo = models.TextField(blank=True)
+
     def __str__(self):
         return self.name
     
@@ -100,6 +107,7 @@ class TenantUser(models.Model):
     user = models.OneToOneField(DjangoUser, on_delete=models.CASCADE)
     tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE)
     is_admin = models.BooleanField(default=False)
+    signature = models.TextField(blank=True)
 
     def __str__(self):
         return f"{self.user.username} - {self.tenant.name}"
@@ -161,19 +169,19 @@ class TenantDocument(models.Model):
 
 
 class Company(TenantModel):
-    """Company/facility within a tenant"""
+    """DEPRECATED - kept for migration compatibility. Use Tenant instead."""
     companyid = models.AutoField(primary_key=True)
     companyname = models.CharField(max_length=255)
     address = models.CharField(max_length=255, blank=True)
     city = models.CharField(max_length=100, blank=True)
     state = models.CharField(max_length=2, blank=True)
     zipcode = models.CharField(max_length=10, blank=True)
-    logo = models.TextField(blank=True)  # Base64 encoded logo
-    
+    logo = models.TextField(blank=True)
+
     class Meta:
         db_table = 'company'
         unique_together = [['tenant', 'companyname']]
-    
+
     def __str__(self):
         return self.companyname
 
@@ -186,6 +194,7 @@ class User(TenantModel):
     cellnumber = models.CharField(max_length=50, null=True, blank=True)
     usercode = models.CharField(max_length=100, null=True, blank=True)
     commission = models.IntegerField(null=True, blank=True)
+    signature = models.TextField(blank=True)
 
     class Meta:
         db_table = 'core_user'
@@ -209,17 +218,17 @@ class HACCPProductType(TenantModel):
         return self.name
 
 class CompanyProductType(TenantModel):
-    """Which product types are active for each company"""
-    company = models.ForeignKey(Company, on_delete=models.CASCADE)
+    """Which HACCP product types are active for this tenant"""
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, null=True, blank=True)
     product_type = models.CharField(max_length=100)
     is_active = models.BooleanField(default=True)
-    
+
     class Meta:
-        unique_together = [['tenant', 'company', 'product_type']]
+        unique_together = [['tenant', 'product_type']]
 
 class CompanyHACCPOwner(TenantModel):
-    """HACCP process owner for each company"""
-    company = models.OneToOneField(Company, on_delete=models.CASCADE)
+    """HACCP process owner for the tenant"""
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, null=True, blank=True)
     user = models.ForeignKey(DjangoUser, on_delete=models.SET_NULL, null=True)
 
 class HACCPDocument(TenantModel):
@@ -230,25 +239,25 @@ class HACCPDocument(TenantModel):
         ('completed', 'Completed'),
     ]
     
-    company = models.ForeignKey(Company, on_delete=models.CASCADE, null=True, blank=True, help_text="NULL = tenant master set")
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, null=True, blank=True)
     product_type = models.CharField(max_length=100)
     document_type = models.CharField(max_length=100)
     year = models.IntegerField()
     version = models.IntegerField()
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='not_started')
     document_data = models.JSONField(default=dict)
-    
+
     originated_date = models.DateField(null=True, blank=True)
     originated_by = models.CharField(max_length=255, blank=True)
     approved_date = models.DateField(null=True, blank=True)
     approved_by = models.CharField(max_length=255, blank=True)
     approved_signature = models.TextField(blank=True)
-    
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
     class Meta:
-        unique_together = [['tenant', 'company', 'product_type', 'document_type', 'year', 'version']]
+        unique_together = [['tenant', 'product_type', 'document_type', 'year', 'version']]
 
 
 
@@ -256,15 +265,15 @@ class HACCPDocument(TenantModel):
 # Daily Inspections Models
 
 class Zone(TenantModel):
-    """Inspection zones for each company"""
+    """Inspection zones"""
     name = models.CharField(max_length=255)
-    company = models.ForeignKey(Company, on_delete=models.CASCADE)
-    
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, null=True, blank=True)
+
     class Meta:
-        unique_together = [['tenant', 'company', 'name']]
-    
+        unique_together = [['tenant', 'name']]
+
     def __str__(self):
-        return f"{self.name} ({self.company.companyname})"
+        return self.name
 
 
 class SOP(TenantModel):
@@ -277,11 +286,11 @@ class SOP(TenantModel):
     post = models.BooleanField(default=False)  # Post-Op shift
     input_required = models.BooleanField(default=False)  # Requires data input
     image_required = models.BooleanField(default=False)  # Requires image
-    company = models.ForeignKey(Company, on_delete=models.CASCADE)
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    
+
     class Meta:
-        unique_together = [['tenant', 'company', 'sop_did']]
+        unique_together = [['tenant', 'sop_did']]
     
     def __str__(self):
         return f"SOP {self.sop_did}: {self.description}" if self.description else f"SOP {self.sop_did}"
@@ -298,27 +307,27 @@ class SOPParent(TenantModel):
     date = models.DateField()
     time = models.TimeField()
     shift = models.CharField(max_length=20, choices=SHIFT_CHOICES)
-    company = models.ForeignKey(Company, on_delete=models.CASCADE)
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, null=True, blank=True)
     user_inspected = models.ForeignKey(DjangoUser, on_delete=models.SET_NULL, null=True, blank=True, related_name='inspections')
     user_verified = models.ForeignKey(DjangoUser, on_delete=models.SET_NULL, null=True, blank=True, related_name='verifications')
     completed = models.BooleanField(default=False)
-    
+
     # Inspector signature
     inspector_name = models.CharField(max_length=100, blank=True)
     inspector_signature = models.TextField(blank=True)
     completed_at = models.DateTimeField(null=True, blank=True)
-    
+
     # Verification
     verified = models.BooleanField(default=False)
     verifier_name = models.CharField(max_length=100, blank=True)
     verifier_signature = models.TextField(blank=True)
     verified_at = models.DateTimeField(null=True, blank=True)
-    
+
     class Meta:
-        unique_together = [['tenant', 'company', 'date', 'shift']]
-    
+        unique_together = [['tenant', 'date', 'shift']]
+
     def __str__(self):
-        return f"{self.company.companyname} - {self.shift} - {self.date}"
+        return f"{self.tenant.name} - {self.shift} - {self.date}"
 
 
 class SOPChild(models.Model):
@@ -341,8 +350,8 @@ class SOPChild(models.Model):
 
 
 class CompanyOperationConfig(TenantModel):
-    """Configuration for daily inspections per company"""
-    company = models.OneToOneField(Company, on_delete=models.CASCADE)
+    """Configuration for daily inspections"""
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, null=True, blank=True)
     start_date = models.DateField(null=True, blank=True)
     monday = models.BooleanField(default=True)
     tuesday = models.BooleanField(default=True)
@@ -364,12 +373,12 @@ class CompanyOperationConfig(TenantModel):
 
 
 class CompanyHoliday(TenantModel):
-    """Non-operating days for companies"""
-    company = models.ForeignKey(Company, on_delete=models.CASCADE)
+    """Non-operating days"""
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, null=True, blank=True)
     date = models.DateField()
-    
+
     class Meta:
-        unique_together = [['tenant', 'company', 'date']]
+        unique_together = [['tenant', 'date']]
 
 
 class CompanyCertificate(TenantModel):
@@ -379,16 +388,16 @@ class CompanyCertificate(TenantModel):
         ('letter_of_guarantee', 'Letter of Guarantee'),
     ]
     
-    company = models.ForeignKey(Company, on_delete=models.CASCADE)
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, null=True, blank=True)
     year = models.IntegerField()
     certificate_type = models.CharField(max_length=50, choices=CERTIFICATE_TYPE_CHOICES)
     date_issued = models.DateField(null=True, blank=True)
     signed_by = models.CharField(max_length=255, blank=True)
     signature = models.TextField(blank=True)
     is_completed = models.BooleanField(default=False)
-    
+
     class Meta:
-        unique_together = [['tenant', 'company', 'year', 'certificate_type']]
+        unique_together = [['tenant', 'year', 'certificate_type']]
 
 
 class UserCompany(TenantModel):
@@ -878,7 +887,8 @@ class InboundMessage(TenantModel):
 class CustomerProfile(TenantModel):
     """Order profile items for a customer — what they regularly order"""
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='profiles')
-    
+    tenant_product = models.ForeignKey('TenantProduct', on_delete=models.SET_NULL, null=True, blank=True, related_name='assignments')
+
     # Item info
     profile_did = models.IntegerField(null=True, blank=True)  # Legacy line ID
     comp_item_id = models.IntegerField(null=True, blank=True)
@@ -911,26 +921,63 @@ class CustomerProfile(TenantModel):
         return f"{self.customer.name} - {self.description}"
 
 
+class ProductSize(models.Model):
+    """Size variants for a CustomerProfile item (e.g. 1oz, 2oz, 4oz)."""
+    profile = models.ForeignKey(CustomerProfile, on_delete=models.CASCADE, related_name='sizes')
+    name = models.CharField(max_length=50)  # e.g. "1oz", "2oz"
+    price = models.DecimalField(max_digits=10, decimal_places=2)
+    sort_order = models.IntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        db_table = 'profile_productsize'
+        ordering = ['sort_order', 'name']
+
+    def __str__(self):
+        return f"{self.profile.description} - {self.name} (${self.price})"
+
+
 def product_image_path(instance, filename):
-    """Upload to: products/{profile_id}/{filename}"""
+    """Upload to: products/{tenant_product_id}/{slot}{ext}"""
     import os
     ext = os.path.splitext(filename)[1]
-    return f"products/{instance.profile_id}/{instance.slot}{ext}"
+    return f"products/{instance.tenant_product_id}/{instance.slot}{ext}"
 
 
 class ProductImage(models.Model):
-    """Up to 3 images per CustomerProfile item, stored in R2"""
-    profile = models.ForeignKey(CustomerProfile, on_delete=models.CASCADE, related_name='images')
+    """Up to 3 images per TenantProduct, shared across all customer assignments"""
+    tenant_product = models.ForeignKey('TenantProduct', on_delete=models.CASCADE, related_name='images', null=True)
     slot = models.IntegerField(help_text="1, 2, or 3")
     image = models.ImageField(upload_to=product_image_path)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        unique_together = [['profile', 'slot']]
+        unique_together = [['tenant_product', 'slot']]
         ordering = ['slot']
 
     def __str__(self):
-        return f"{self.profile.description} - Image {self.slot}"
+        return f"{self.tenant_product.description} - Image {self.slot}"
+
+
+class TenantProduct(TenantModel):
+    """Master product catalog at the tenant level.
+    Tenants define their products here, then assign them to customers."""
+    description = models.CharField(max_length=255)
+    unit_type = models.CharField(max_length=50, blank=True)
+    pack_size = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    default_price = models.DecimalField(max_digits=10, decimal_places=4, null=True, blank=True)
+    is_active = models.BooleanField(default=True)
+    sort_order = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'tenant_product'
+        ordering = ['sort_order', 'description']
+        unique_together = [['tenant', 'description']]
+
+    def __str__(self):
+        return self.description
 
 
 # =============================================================================

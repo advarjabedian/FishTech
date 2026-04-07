@@ -148,7 +148,8 @@
                 <div class="row row-cols-1 row-cols-sm-2 row-cols-xl-3 g-3" id="menu-grid">
                     {% for item in menu_items %}
                     <div class="col" id="item-col-{{ item.id }}">
-                        <div class="menu-item-card card position-relative" data-item-id="{{ item.id }}" data-price="{{ item.sales_price|default:'0' }}" data-name="{{ item.description }}">
+                        <div class="menu-item-card card position-relative" data-item-id="{{ item.id }}" data-price="{{ item.sales_price|default:'0' }}" data-name="{{ item.description }}"
+                             {% if item.sizes.all %}data-sizes='[{% for s in item.sizes.all %}{% if s.is_active %}{"id":{{ s.id }},"name":"{{ s.name|escapejs }}","price":{{ s.price }}}{% if not forloop.last %},{% endif %}{% endif %}{% endfor %}]'{% endif %}>
 
                             {% if is_manager %}
                             <div class="edit-overlay">
@@ -169,13 +170,16 @@
                             {% endif %}
 
                             <div class="menu-item-img"
-                                 {% with imgs=item.images.all %}
+                                 {% if item.tenant_product %}
+                                 {% with imgs=item.tenant_product.images.all %}
                                  {% for img in imgs %}
                                  data-img{{ img.slot }}="{{ img.image.url }}"
                                  {% endfor %}
                                  {% endwith %}
+                                 {% endif %}
                                  onmouseenter="swapImg(this, true)" onmouseleave="swapImg(this, false)">
-                                {% with first_img=item.images.all.0 %}
+                                {% if item.tenant_product %}
+                                {% with first_img=item.tenant_product.images.all.0 %}
                                 {% if first_img %}
                                 <img src="{{ first_img.image.url }}" alt="{{ item.description }}" id="item-img-{{ item.id }}">
                                 {% else %}
@@ -184,6 +188,11 @@
                                 </div>
                                 {% endif %}
                                 {% endwith %}
+                                {% else %}
+                                <div class="placeholder-icon d-flex align-items-center justify-content-center w-100 h-100">
+                                    <i class="bi bi-fish" id="item-img-placeholder-{{ item.id }}"></i>
+                                </div>
+                                {% endif %}
                             </div>
 
                             <div class="menu-item-body">
@@ -194,8 +203,17 @@
                                 {% if item.instruction %}
                                 <p class="text-muted small mb-2">{{ item.instruction }}</p>
                                 {% endif %}
-                                <div class="d-flex align-items-center justify-content-between mt-2">
-                                    <span class="item-price">${{ item.sales_price|floatformat:2|default:"0.00" }}</span>
+                                {% if item.sizes.all %}
+                                <div class="mb-2 mt-2">
+                                    <select class="form-select form-select-sm" id="size-{{ item.id }}" onchange="onSizeChange({{ item.id }})">
+                                        <option value="" disabled selected>Select size</option>
+                                        {% for s in item.sizes.all %}{% if s.is_active %}
+                                        <option value="{{ s.id }}" data-price="{{ s.price }}">{{ s.name }} — ${{ s.price|floatformat:2 }}</option>
+                                        {% endif %}{% endfor %}
+                                    </select>
+                                </div>
+                                <div class="d-flex align-items-center justify-content-between">
+                                    <span class="item-price" id="price-{{ item.id }}">$—</span>
                                     {% if item.is_active %}
                                     <div class="qty-control">
                                         <button class="btn btn-sm btn-outline-secondary" onclick="changeQty({{ item.id }}, -1)">−</button>
@@ -206,6 +224,20 @@
                                     <span class="text-muted small">Not available</span>
                                     {% endif %}
                                 </div>
+                                {% else %}
+                                <div class="d-flex align-items-center justify-content-between mt-2">
+                                    <span class="item-price" id="price-{{ item.id }}">${{ item.sales_price|floatformat:2|default:"0.00" }}</span>
+                                    {% if item.is_active %}
+                                    <div class="qty-control">
+                                        <button class="btn btn-sm btn-outline-secondary" onclick="changeQty({{ item.id }}, -1)">−</button>
+                                        <input type="number" class="form-control form-control-sm qty-input" id="qty-{{ item.id }}" value="0" min="0" max="99" onchange="updateCart({{ item.id }})">
+                                        <button class="btn btn-sm btn-outline-primary" onclick="changeQty({{ item.id }}, 1)">+</button>
+                                    </div>
+                                    {% else %}
+                                    <span class="text-muted small">Not available</span>
+                                    {% endif %}
+                                </div>
+                                {% endif %}
                             </div>
                         </div>
                     </div>
@@ -365,6 +397,12 @@
                         </div>
                     </div>
                 </div>
+                <hr>
+                <label class="form-label fw-semibold">Sizes <span class="text-muted fw-normal">(optional — leave empty for single-price items)</span></label>
+                <div id="edit-sizes-list"></div>
+                <button type="button" class="btn btn-sm btn-outline-secondary mt-1" onclick="addSizeRow()">
+                    <i class="bi bi-plus me-1"></i>Add Size
+                </button>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -431,9 +469,29 @@ function swapImg(container, hovering) {
 }
 
 // ── Cart State ────────────────────────────────────────────────────────────────
-const cart = {};  // { itemId: { name, price, qty } }
+const cart = {};  // { cartKey: { itemId, name, price, qty, sizeId, sizeName } }
+
+function getCartKey(itemId) {
+    const sizeSelect = document.getElementById(`size-${itemId}`);
+    const sizeId = sizeSelect ? sizeSelect.value : '';
+    return sizeId ? `${itemId}_${sizeId}` : `${itemId}`;
+}
+
+function onSizeChange(itemId) {
+    const sizeSelect = document.getElementById(`size-${itemId}`);
+    const opt = sizeSelect.options[sizeSelect.selectedIndex];
+    const price = parseFloat(opt.dataset.price || 0);
+    const priceEl = document.getElementById(`price-${itemId}`);
+    if (priceEl) priceEl.textContent = `$${price.toFixed(2)}`;
+}
 
 function changeQty(itemId, delta) {
+    const card = document.querySelector(`[data-item-id="${itemId}"]`);
+    const hasSizes = card.dataset.sizes;
+    if (hasSizes) {
+        const sizeSelect = document.getElementById(`size-${itemId}`);
+        if (!sizeSelect.value) { alert('Please select a size first.'); return; }
+    }
     const input = document.getElementById(`qty-${itemId}`);
     let val = parseInt(input.value || 0) + delta;
     val = Math.max(0, Math.min(99, val));
@@ -447,13 +505,26 @@ function updateCart(itemId) {
     input.value = qty;
 
     const card = document.querySelector(`[data-item-id="${itemId}"]`);
-    const price = parseFloat(card.dataset.price);
     const name = card.dataset.name;
 
-    if (qty === 0) {
-        delete cart[itemId];
+    const sizeSelect = document.getElementById(`size-${itemId}`);
+    let sizeId = null, sizeName = '', price;
+
+    if (sizeSelect && sizeSelect.value) {
+        const opt = sizeSelect.options[sizeSelect.selectedIndex];
+        sizeId = parseInt(sizeSelect.value);
+        sizeName = opt.textContent.split('—')[0].trim();
+        price = parseFloat(opt.dataset.price);
     } else {
-        cart[itemId] = { name, price, qty };
+        price = parseFloat(card.dataset.price);
+    }
+
+    const cartKey = getCartKey(itemId);
+
+    if (qty === 0) {
+        delete cart[cartKey];
+    } else {
+        cart[cartKey] = { itemId: parseInt(itemId), name, price, qty, sizeId, sizeName };
     }
     renderCart();
 }
@@ -481,13 +552,14 @@ function renderCart() {
 
     emptyMsg.style.display = 'none';
     let html = '';
-    for (const id of keys) {
-        const { name, price, qty } = cart[id];
+    for (const key of keys) {
+        const { name, price, qty, sizeName } = cart[key];
         const sub = price * qty;
         total += sub;
         count += qty;
+        const label = sizeName ? `${name} (${sizeName})` : name;
         html += `<div class="cart-item-row d-flex justify-content-between align-items-center">
-            <div class="small"><strong>${name}</strong><br><span class="text-muted">× ${qty} @ $${price.toFixed(2)}</span></div>
+            <div class="small"><strong>${label}</strong><br><span class="text-muted">× ${qty} @ $${price.toFixed(2)}</span></div>
             <div class="small fw-bold">$${sub.toFixed(2)}</div>
         </div>`;
     }
@@ -533,9 +605,11 @@ async function submitOrder(e) {
     errorEl.classList.add('d-none');
 
     const paymentType = document.getElementById('f-payment-type').value;
-    const items = Object.entries(cart).map(([id, { name, price, qty }]) => ({
-        id: parseInt(id), name, price, quantity: qty
-    }));
+    const items = Object.values(cart).map(({ itemId, name, price, qty, sizeId, sizeName }) => {
+        const entry = { id: itemId, name, price, quantity: qty };
+        if (sizeId) { entry.size_id = sizeId; entry.size_name = sizeName; }
+        return entry;
+    });
 
     const btn = document.getElementById('submit-btn');
     btn.disabled = true;
@@ -647,6 +721,11 @@ function resetPage() {
     document.getElementById('order-form').reset();
     Object.keys(cart).forEach(k => delete cart[k]);
     document.querySelectorAll('.qty-input').forEach(el => el.value = 0);
+    document.querySelectorAll('[id^="size-"]').forEach(el => el.selectedIndex = 0);
+    document.querySelectorAll('[id^="price-"]').forEach(el => {
+        const card = el.closest('.menu-item-card');
+        if (card && card.dataset.sizes) el.textContent = '$—';
+    });
     renderCart();
     toggleCardFields();
 }
@@ -686,6 +765,28 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
+function addSizeRow(name='', price='') {
+    const list = document.getElementById('edit-sizes-list');
+    const row = document.createElement('div');
+    row.className = 'd-flex gap-2 mb-1 size-row';
+    row.innerHTML = `
+        <input type="text" class="form-control form-control-sm size-name" placeholder="Size (e.g. 1oz)" value="${name}">
+        <input type="number" class="form-control form-control-sm size-price" placeholder="Price" step="0.01" min="0" style="max-width:100px;" value="${price}">
+        <button type="button" class="btn btn-sm btn-outline-danger" onclick="this.parentElement.remove()"><i class="bi bi-x"></i></button>`;
+    list.appendChild(row);
+}
+
+function getSizesFromModal() {
+    return Array.from(document.querySelectorAll('#edit-sizes-list .size-row')).map(row => ({
+        name: row.querySelector('.size-name').value.trim(),
+        price: parseFloat(row.querySelector('.size-price').value) || 0,
+    })).filter(s => s.name);
+}
+
+function clearSizeRows() {
+    document.getElementById('edit-sizes-list').innerHTML = '';
+}
+
 function openAddItemModal() {
     document.getElementById('edit-item-id').value = '';
     document.getElementById('itemModalTitle').textContent = 'Add Menu Item';
@@ -695,6 +796,7 @@ function openAddItemModal() {
     document.getElementById('edit-category').value = '';
     document.getElementById('edit-sort-order').value = 0;
     document.getElementById('edit-available').checked = true;
+    clearSizeRows();
     itemModal.show();
 }
 
@@ -707,11 +809,20 @@ function openEditItemModal(id, name, desc, price, cat, sortOrder, available) {
     document.getElementById('edit-category').value = cat;
     document.getElementById('edit-sort-order').value = sortOrder;
     document.getElementById('edit-available').checked = available;
+    clearSizeRows();
+    // Load existing sizes from the card's data attribute
+    const card = document.querySelector(`[data-item-id="${id}"]`);
+    if (card && card.dataset.sizes) {
+        try {
+            JSON.parse(card.dataset.sizes).forEach(s => addSizeRow(s.name, s.price));
+        } catch(e) {}
+    }
     itemModal.show();
 }
 
 function saveItem() {
     const id = document.getElementById('edit-item-id').value;
+    const sizes = getSizesFromModal();
     const payload = {
         name: document.getElementById('edit-name').value.trim(),
         description: document.getElementById('edit-description').value.trim(),
@@ -719,6 +830,7 @@ function saveItem() {
         category: document.getElementById('edit-category').value.trim(),
         sort_order: parseInt(document.getElementById('edit-sort-order').value) || 0,
         is_available: document.getElementById('edit-available').checked,
+        sizes: sizes,
     };
     if (!payload.name) { alert('Name is required.'); return; }
 
@@ -827,7 +939,7 @@ function loadOrders() {
                 </tr>
             </thead><tbody>`;
         for (const o of data.orders) {
-            const itemsSummary = o.items.map(i => `${i.quantity}× ${i.name}`).join(', ');
+            const itemsSummary = o.items.map(i => `${i.quantity}× ${i.name}${i.size ? ' ('+i.size+')' : ''}`).join(', ');
             const payInfo = o.payment_type === 'card' && o.card_last_four
                 ? `${o.card_brand} ···${o.card_last_four}`
                 : o.payment_type;

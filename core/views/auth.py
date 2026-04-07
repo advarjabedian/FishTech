@@ -127,14 +127,10 @@ def register_view(request):
             # Link user to tenant as admin
             TenantUser.objects.create(user=user, tenant=tenant, is_admin=True)
 
-            # Auto-create default company
-            from core.models import Company
+            # Set default logo on tenant
             from core.utils import get_default_company_logo
-            Company.objects.create(
-                tenant=tenant,
-                companyname=company_name,
-                logo=get_default_company_logo(1),
-            )
+            tenant.logo = get_default_company_logo(1)
+            tenant.save()
 
             # Auto-create default Retail customer
             from core.models import Customer

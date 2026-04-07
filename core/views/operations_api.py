@@ -20,13 +20,11 @@ def update_company_config(request):
     
     try:
         data = json.loads(request.body)
-        company_id = data['company_id']
         field = data['field']
         value = data['value']
-        
+
         config, created = CompanyOperationConfig.objects.get_or_create(
-            tenant=request.tenant,
-            company_id=company_id
+            tenant=request.tenant
         )
         
         if field == 'operating_days':
@@ -60,12 +58,10 @@ def toggle_holiday(request):
     
     try:
         data = json.loads(request.body)
-        company_id = data['company_id']
         date_str = data['date']
-        
+
         holiday, created = CompanyHoliday.objects.get_or_create(
             tenant=request.tenant,
-            company_id=company_id,
             date=date_str
         )
         
@@ -176,12 +172,10 @@ def save_verifier_signature(request):
     
     try:
         data = json.loads(request.body)
-        company_id = data['company_id']
         signature = data['signature']
-        
+
         config, created = CompanyOperationConfig.objects.get_or_create(
-            tenant=request.tenant,
-            company_id=company_id
+            tenant=request.tenant
         )
         config.verifier_signature = signature
         config.save()
@@ -199,9 +193,8 @@ def get_verifier_signature(request):
         return JsonResponse({'success': False, 'error': 'Not authenticated'})
     
     try:
-        company_id = request.GET.get('company_id')
-        config = CompanyOperationConfig.objects.filter(company_id=company_id).first()
-        
+        config = CompanyOperationConfig.objects.filter(tenant=request.tenant).first()
+
         if config and config.verifier_signature:
             return JsonResponse({
                 'success': True,
@@ -226,12 +219,10 @@ def save_monitor_signature(request):
     
     try:
         data = json.loads(request.body)
-        company_id = data['company_id']
         signature = data['signature']
-        
+
         config, created = CompanyOperationConfig.objects.get_or_create(
-            tenant=request.tenant,
-            company_id=company_id
+            tenant=request.tenant
         )
         config.monitor_signature = signature
         config.save()
@@ -249,9 +240,8 @@ def get_monitor_signature(request):
         return JsonResponse({'success': False, 'error': 'Not authenticated'})
     
     try:
-        company_id = request.GET.get('company_id')
-        config = CompanyOperationConfig.objects.filter(company_id=company_id).first()
-        
+        config = CompanyOperationConfig.objects.filter(tenant=request.tenant).first()
+
         if config and config.monitor_signature:
             return JsonResponse({
                 'success': True,
@@ -267,6 +257,42 @@ def get_monitor_signature(request):
         return JsonResponse({'success': False, 'error': str(e)})
 
 
+@require_http_methods(["POST"])
+@login_required
+def save_user_signature(request):
+    """Save the current user's signature"""
+    if not request.tenant:
+        return JsonResponse({'success': False, 'error': 'Not authenticated'})
+    try:
+        from core.models import TenantUser
+        data = json.loads(request.body)
+        signature = data.get('signature', '')
+        tu = TenantUser.objects.filter(user=request.user, tenant=request.tenant).first()
+        if not tu:
+            return JsonResponse({'success': False, 'error': 'User not found'})
+        tu.signature = signature
+        tu.save()
+        return JsonResponse({'success': True})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+
+@require_http_methods(["GET"])
+@login_required
+def get_user_signature(request):
+    """Get the current user's saved signature"""
+    if not request.tenant:
+        return JsonResponse({'success': False, 'error': 'Not authenticated'})
+    try:
+        from core.models import TenantUser
+        tu = TenantUser.objects.filter(user=request.user, tenant=request.tenant).first()
+        if tu and tu.signature:
+            return JsonResponse({'success': True, 'signature': tu.signature, 'has_signature': True})
+        return JsonResponse({'success': True, 'has_signature': False})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+
 @require_http_methods(["GET"])
 @login_required
 def get_operations_config(request):
@@ -275,9 +301,8 @@ def get_operations_config(request):
         return JsonResponse({'success': False, 'error': 'Not authenticated'})
     
     try:
-        company_id = request.GET.get('company_id')
-        config = CompanyOperationConfig.objects.filter(company_id=company_id).first()
-        
+        config = CompanyOperationConfig.objects.filter(tenant=request.tenant).first()
+
         if config:
             return JsonResponse({
                 'success': True,
@@ -308,8 +333,7 @@ def get_sop_list(request):
         return JsonResponse({'success': False, 'error': 'Not authenticated'})
     
     try:
-        company_id = request.GET.get('company_id')
-        sops = SOP.objects.filter(company_id=company_id).select_related('zone').order_by('sop_did')
+        sops = SOP.objects.filter(tenant=request.tenant).select_related('zone').order_by('sop_did')
         
         sop_list = []
         for sop in sops:
@@ -346,32 +370,26 @@ def create_sop(request):
         if 'sop_did' in data and data['sop_did']:
             sop_did = int(data['sop_did'])
             # Check if this ID already exists
-            if SOP.objects.filter(sop_did=sop_did, company_id=data['company_id']).exists():
-                return JsonResponse({'success': False, 'error': f'SOP ID {sop_did} already exists for this company'})
+            if SOP.objects.filter(sop_did=sop_did, tenant=request.tenant).exists():
+                return JsonResponse({'success': False, 'error': f'SOP ID {sop_did} already exists'})
         else:
-            # Get next SOP ID for this company
-            max_id = SOP.objects.filter(company_id=data['company_id']).aggregate(Max('sop_did'))['sop_did__max'] or 0
+            # Get next SOP ID for this tenant
+            max_id = SOP.objects.filter(tenant=request.tenant).aggregate(Max('sop_did'))['sop_did__max'] or 0
             sop_did = max_id + 1
-        
-        from core.models import Company
-        company = Company.objects.get(companyid=data['company_id'])
-        
+
         sop = SOP.objects.create(
             tenant=request.tenant,
             sop_did=sop_did,
             description=data.get('description', ''),
             zone=zone,
-            company=company,
             pre=data.get('pre', False),
             mid=data.get('mid', False),
             post=data.get('post', False),
             input_required=data.get('input_required', False),
             image_required=data.get('image_required', False),
         )
-        
+
         return JsonResponse({'success': True, 'sop_id': sop.sop_did})
-    except Company.DoesNotExist:
-        return JsonResponse({'success': False, 'error': 'Company not found'})
     except Zone.DoesNotExist:
         return JsonResponse({'success': False, 'error': 'Zone not found'})
     except Exception as e:
@@ -431,8 +449,7 @@ def get_zones(request):
         return JsonResponse({'success': False, 'error': 'Not authenticated'})
     
     try:
-        company_id = request.GET.get('company_id')
-        zones = Zone.objects.filter(company_id=company_id).order_by('name')
+        zones = Zone.objects.filter(tenant=request.tenant).order_by('name')
         
         zone_list = []
         for zone in zones:
@@ -460,8 +477,7 @@ def create_zone(request):
         
         zone = Zone.objects.create(
             tenant=request.tenant,
-            name=data['zone_name'],
-            company_id=data['company_id']
+            name=data['zone_name']
         )
         
         return JsonResponse({'success': True, 'zone_id': zone.id})
@@ -520,15 +536,13 @@ def get_calendar_data(request):
         return JsonResponse({'success': False, 'error': 'Not authenticated'})
     
     try:
-        company_id = request.GET.get('company_id')
-        
-        config = CompanyOperationConfig.objects.filter(company_id=company_id).first()
+        config = CompanyOperationConfig.objects.filter(tenant=request.tenant).first()
         if not config:
             return JsonResponse({'success': True, 'calendar_data': {}})
-        
-        parents = SOPParent.objects.filter(company_id=company_id)
-        
-        holidays = CompanyHoliday.objects.filter(company_id=company_id)
+
+        parents = SOPParent.objects.filter(tenant=request.tenant)
+
+        holidays = CompanyHoliday.objects.filter(tenant=request.tenant)
         holiday_dates = [h.date.isoformat() for h in holidays]
         
         calendar_data = {}
@@ -665,11 +679,9 @@ def get_companies(request):
         return JsonResponse({'success': False, 'error': 'Not authenticated'})
     
     try:
-        from core.models import Company
-        companies = Company.objects.all().order_by('companyname').values('companyid', 'companyname')
-        
-        company_list = [{'id': c['companyid'], 'name': c['companyname']} for c in companies]
-        
+        tenant = request.tenant
+        company_list = [{'id': tenant.id, 'name': tenant.name}]
+
         return JsonResponse({'success': True, 'companies': company_list})
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)})

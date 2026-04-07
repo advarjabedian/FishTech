@@ -4,7 +4,7 @@ from django.views.decorators.http import require_POST
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User as DjangoUser
 from django.conf import settings
-from ..models import FishMenuItem, FishOrder, Tenant, TenantUser, Customer, CustomerProfile, ProductImage, get_current_tenant
+from ..models import FishMenuItem, FishOrder, Tenant, TenantUser, Customer, CustomerProfile, ProductImage, ProductSize, TenantProduct, get_current_tenant
 import stripe
 import json
 import logging
@@ -18,6 +18,11 @@ def fish_market_redirect(request):
     tenant = getattr(request, 'tenant', None)
     if not tenant:
         return redirect('login')
+    if not tenant.subdomain:
+        # Subdomain is blank — auto-populate from tenant name
+        from django.utils.text import slugify
+        tenant.subdomain = slugify(tenant.name) or str(tenant.id)
+        tenant.save(update_fields=['subdomain'])
     return redirect('fish_market_page', slug=tenant.subdomain)
 
 
@@ -34,11 +39,11 @@ def fish_market_page(request, slug):
     if retail_customer:
         menu_items = CustomerProfile.all_objects.filter(
             tenant=tenant, customer=retail_customer, is_active=True
-        ).prefetch_related('images').order_by('sort_order', 'description')
+        ).select_related('tenant_product').prefetch_related('tenant_product__images', 'sizes').order_by('sort_order', 'description')
 
         all_items = CustomerProfile.all_objects.filter(
             tenant=tenant, customer=retail_customer
-        ).prefetch_related('images').order_by('sort_order', 'description')
+        ).select_related('tenant_product').prefetch_related('tenant_product__images', 'sizes').order_by('sort_order', 'description')
     else:
         menu_items = CustomerProfile.objects.none()
         all_items = CustomerProfile.objects.none()
@@ -93,6 +98,15 @@ def fish_market_add_item(request, slug):
             sort_order=data.get('sort_order', 0),
             is_active=data.get('is_available', True),
         )
+        # Create sizes if provided
+        for i, sz in enumerate(data.get('sizes', [])):
+            if sz.get('name', '').strip():
+                ProductSize.objects.create(
+                    profile=item,
+                    name=sz['name'].strip(),
+                    price=sz.get('price', 0),
+                    sort_order=i,
+                )
         return JsonResponse({'success': True, 'id': item.id})
     except Exception as e:
         logger.error(f"fish_market_add_item error: {e}")
@@ -127,6 +141,19 @@ def fish_market_update_item(request, slug, item_id):
             item.is_active = data['is_available']
 
         item.save()
+
+        # Sync sizes if provided
+        if 'sizes' in data:
+            item.sizes.all().delete()
+            for i, sz in enumerate(data['sizes']):
+                if sz.get('name', '').strip():
+                    ProductSize.objects.create(
+                        profile=item,
+                        name=sz['name'].strip(),
+                        price=sz.get('price', 0),
+                        sort_order=i,
+                    )
+
         return JsonResponse({'success': True})
     except CustomerProfile.DoesNotExist:
         return JsonResponse({'error': 'Item not found'}, status=404)
@@ -169,9 +196,19 @@ def fish_market_update_image(request, slug, item_id):
         if not image_file:
             return JsonResponse({'error': 'No image provided'}, status=400)
 
+        # Auto-create a TenantProduct if the profile doesn't have one
+        if not item.tenant_product:
+            tp = TenantProduct.all_objects.create(
+                tenant=tenant,
+                description=item.description,
+                default_price=item.sales_price or 0,
+            )
+            item.tenant_product = tp
+            item.save(update_fields=['tenant_product'])
+
         # Upload to R2 as slot 1 (primary image)
-        ProductImage.objects.filter(profile=item, slot=1).delete()
-        img = ProductImage.objects.create(profile=item, slot=1, image=image_file)
+        ProductImage.objects.filter(tenant_product=item.tenant_product, slot=1).delete()
+        img = ProductImage.objects.create(tenant_product=item.tenant_product, slot=1, image=image_file)
 
         return JsonResponse({'success': True, 'image': img.image.url})
     except CustomerProfile.DoesNotExist:
@@ -206,12 +243,21 @@ def fish_market_create_payment_intent(request, slug):
             )
         }
 
+        # Pre-load sizes for items that have size_id
+        size_ids = [i.get('size_id') for i in items if i.get('size_id')]
+        db_sizes = {}
+        if size_ids:
+            db_sizes = {s.id: s for s in ProductSize.objects.filter(id__in=size_ids, is_active=True)}
+
         total_cents = 0
         for cart_item in items:
             db_item = db_items.get(cart_item.get('id'))
             if db_item:
                 qty = max(1, int(cart_item.get('quantity', 1)))
-                total_cents += int(float(db_item.sales_price or 0) * qty * 100)
+                # Use size price if a size was selected
+                size = db_sizes.get(cart_item.get('size_id'))
+                price = float(size.price) if size else float(db_item.sales_price or 0)
+                total_cents += int(price * qty * 100)
 
         if total_cents == 0:
             return JsonResponse({'error': 'No valid items found'}, status=400)
@@ -275,6 +321,12 @@ def fish_market_submit_order(request, slug):
             )
         }
 
+        # Pre-load sizes for items that have size_id
+        size_ids = [i.get('size_id') for i in items if i.get('size_id')]
+        db_sizes = {}
+        if size_ids:
+            db_sizes = {s.id: s for s in ProductSize.objects.filter(id__in=size_ids, is_active=True)}
+
         order_items = []
         subtotal = 0
         for cart_item in items:
@@ -282,16 +334,23 @@ def fish_market_submit_order(request, slug):
             if not db_item:
                 continue
             qty = max(1, int(cart_item.get('quantity', 1)))
-            price = float(db_item.sales_price or 0)
+            # Use size price if a size was selected
+            size = db_sizes.get(cart_item.get('size_id'))
+            price = float(size.price) if size else float(db_item.sales_price or 0)
+            size_name = size.name if size else ''
             line_total = price * qty
             subtotal += line_total
-            order_items.append({
+            item_entry = {
                 'id': db_item.id,
                 'name': db_item.description,
                 'price': price,
                 'quantity': qty,
                 'subtotal': line_total,
-            })
+            }
+            if size_name:
+                item_entry['size'] = size_name
+                item_entry['size_id'] = size.id
+            order_items.append(item_entry)
 
         if not order_items:
             return JsonResponse({'error': 'No valid items found'}, status=400)

@@ -55,7 +55,7 @@
     
     <div class="d-flex justify-content-between align-items-center mb-4 no-print">
         <div>
-            <h2>{{ company.companyname }} &mdash; {{ product_type }} &mdash; Print Set</h2>
+            <h2>{{ request.tenant.name }} &mdash; {{ product_type }} &mdash; Print Set</h2>
             <span class="badge bg-secondary">Version {{ version }}</span>
             <span class="badge bg-success">Year {{ year }}</span>
         </div>
@@ -72,11 +72,11 @@
         <div class="document-container" style="border: 1px solid #dee2e6; padding: 25px; background: white; margin-bottom: 20px;">
             
             <!-- Header -->
-            <div class="doc-header" {% if company.companyid != 0 %}style="grid-template-columns: 120px 1fr 2fr 1fr;"{% endif %}>
-                {% if company.companyid != 0 and company.logo %}
+            <div class="doc-header" {% if request.tenant.id != 0 %}style="grid-template-columns: 120px 1fr 2fr 1fr;"{% endif %}>
+                {% if request.tenant.id != 0 and request.tenant.logo %}
                 <div>
-                    <img src="{{ company.logo }}" alt="{{ company.companyname }} Logo" style="max-width: 100px; height: auto;">
-                    <div class="mt-1"><strong>{{ company.companyname }}</strong></div>
+                    <img src="{{ request.tenant.logo }}" alt="{{ request.tenant.name }} Logo" style="max-width: 100px; height: auto;">
+                    <div class="mt-1"><strong>{{ request.tenant.name }}</strong></div>
                 </div>
                 {% endif %}
                 <div>
