@@ -921,6 +921,22 @@ class CustomerProfile(TenantModel):
         return f"{self.customer.name} - {self.description}"
 
 
+class ProductSize(models.Model):
+    """Size variants for a CustomerProfile item (e.g. 1oz, 2oz, 4oz)."""
+    profile = models.ForeignKey(CustomerProfile, on_delete=models.CASCADE, related_name='sizes')
+    name = models.CharField(max_length=50)  # e.g. "1oz", "2oz"
+    price = models.DecimalField(max_digits=10, decimal_places=2)
+    sort_order = models.IntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        db_table = 'profile_productsize'
+        ordering = ['sort_order', 'name']
+
+    def __str__(self):
+        return f"{self.profile.description} - {self.name} (${self.price})"
+
+
 def product_image_path(instance, filename):
     """Upload to: products/{tenant_product_id}/{slot}{ext}"""
     import os
