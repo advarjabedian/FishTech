@@ -6,11 +6,13 @@ from .views import *
 from .views.operations_reports import *
 from .views.stripe_billing import *
 from .views.fish_market import (
-    fish_market_redirect, fish_market_page,
+    fish_market_redirect, fish_market_page, fish_market_checkout,
+    fish_market_order_status,
     fish_market_add_item, fish_market_update_item, fish_market_delete_item,
     fish_market_update_image, fish_market_create_payment_intent,
     fish_market_submit_order, fish_market_orders_list,
     fish_market_update_order_status,
+    retail_orders_api, retail_order_update_status,
 )
 
 urlpatterns = [
@@ -296,6 +298,8 @@ path('api/profile-orders/import/template/', download_import_template, name='down
     # Fish Market — public ordering page
     path('fish-market/', fish_market_redirect, name='fish_market_redirect'),
     path('fish-market/<str:slug>/', fish_market_page, name='fish_market_page'),
+    path('fish-market/<str:slug>/checkout/', fish_market_checkout, name='fish_market_checkout'),
+    path('fish-market/<str:slug>/order/<int:order_id>/status/', fish_market_order_status, name='fish_market_order_status'),
     path('api/fish-market/<str:slug>/item/add/', fish_market_add_item, name='fish_market_add_item'),
     path('api/fish-market/<str:slug>/item/<int:item_id>/update/', fish_market_update_item, name='fish_market_update_item'),
     path('api/fish-market/<str:slug>/item/<int:item_id>/delete/', fish_market_delete_item, name='fish_market_delete_item'),
@@ -304,4 +308,6 @@ path('api/profile-orders/import/template/', download_import_template, name='down
     path('api/fish-market/<str:slug>/order/', fish_market_submit_order, name='fish_market_submit_order'),
     path('api/fish-market/<str:slug>/orders/', fish_market_orders_list, name='fish_market_orders_list'),
     path('api/fish-market/<str:slug>/order/<int:order_id>/status/', fish_market_update_order_status, name='fish_market_update_order_status'),
+    path('api/retail-orders/', retail_orders_api, name='retail_orders_api'),
+    path('api/retail-orders/<int:order_id>/status/', retail_order_update_status, name='retail_order_update_status'),
 ]

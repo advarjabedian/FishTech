@@ -2,14 +2,17 @@
 {% block title %}Fish Market - {{ tenant.name }}{% endblock %}
 
 {% block extra_css %}
-<script src="https://js.stripe.com/v3/"></script>
 <style>
+/* Centered wrapper — always 2-col with white space on sides */
+.menu-wrapper { max-width: 680px; padding: 0 12px; }
+
 .market-hero {
     background: #f8f9fa;
     border-bottom: 2px solid #dee2e6;
     padding: 1.5rem 0;
     margin-bottom: 2rem;
 }
+.market-hero .hero-inner { max-width: 680px; margin: 0 auto; padding: 0 12px; }
 .market-hero h1 { color: #212529; font-weight: 700; }
 .market-hero p { color: #6c757d; }
 
@@ -27,13 +30,14 @@
 }
 .menu-item-img {
     width: 100%;
-    height: 260px;
+    height: 180px;
     object-fit: cover;
     background: #f0f4f8;
     display: flex;
     align-items: center;
     justify-content: center;
 }
+@media (min-width: 576px) { .menu-item-img { height: 240px; } }
 .menu-item-img img {
     width: 100%;
     height: 100%;
@@ -44,31 +48,21 @@
     font-size: 4rem;
     color: #adb5bd;
 }
-.menu-item-body { padding: 1rem; }
-.item-price { color: #0d6efd; font-weight: 700; font-size: 1.1rem; }
-.item-category { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; color: #6c757d; }
-.qty-control { display: flex; align-items: center; gap: 6px; }
-.qty-input { width: 60px; text-align: center; }
+.menu-item-body { padding: 0.75rem; }
+@media (min-width: 576px) { .menu-item-body { padding: 1rem; } }
+.menu-item-body h6 { font-size: 0.85rem; }
+@media (min-width: 576px) { .menu-item-body h6 { font-size: 1rem; } }
+.item-price { color: #0d6efd; font-weight: 700; font-size: 0.95rem; }
+@media (min-width: 576px) { .item-price { font-size: 1.1rem; } }
+.item-category { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.5px; color: #6c757d; }
+.qty-control { display: flex; align-items: center; gap: 4px; }
+.qty-input { width: 40px; text-align: center; font-size: 0.85rem; }
+@media (min-width: 576px) { .qty-input { width: 55px; } }
 .unavailable-badge { position: absolute; top: 8px; right: 8px; }
 
-/* Cart sidebar */
-#cart-panel {
-    position: sticky;
-    top: 80px;
-}
+/* Cart */
 .cart-item-row { border-bottom: 1px solid #dee2e6; padding: 8px 0; }
 .cart-total { font-size: 1.2rem; font-weight: 700; color: #0d6efd; }
-
-/* Order form */
-.section-header {
-    background: #f8f9fa;
-    border-left: 4px solid #0d6efd;
-    padding: 0.5rem 1rem;
-    margin-bottom: 1rem;
-    border-radius: 0 6px 6px 0;
-    font-weight: 600;
-    color: #212529;
-}
 
 /* Manager controls */
 .manager-bar {
@@ -86,8 +80,14 @@
     gap: 4px;
 }
 
-/* Success screen */
-#order-success { display: none; }
+/* Add-to-cart row */
+.add-to-cart-row { display: flex; align-items: center; gap: 4px; margin-top: 0.5rem; flex-wrap: wrap; }
+.add-to-cart-row .btn-add { flex-shrink: 0; }
+.add-to-cart-row .item-price { width: 100%; margin-bottom: 2px; }
+@media (min-width: 576px) {
+    .add-to-cart-row { gap: 6px; flex-wrap: nowrap; }
+    .add-to-cart-row .item-price { width: auto; margin-bottom: 0; }
+}
 </style>
 {% endblock %}
 
@@ -108,7 +108,7 @@
 
 <!-- Hero -->
 <div class="market-hero">
-    <div class="container-fluid px-4">
+    <div class="hero-inner">
         <div class="d-flex align-items-center gap-3">
             <i class="bi bi-basket2-fill text-primary" style="font-size:2.5rem;"></i>
             <div>
@@ -119,226 +119,147 @@
     </div>
 </div>
 
-<div class="container-fluid px-4 pb-5">
-
-    <!-- Order Success Screen -->
-    <div id="order-success" class="text-center py-5">
-        <i class="bi bi-check-circle-fill text-success" style="font-size:4rem;"></i>
-        <h2 class="mt-3">Order Placed!</h2>
-        <p class="text-muted fs-5">Thank you, <strong id="success-name"></strong>. Your order has been received and will be processed shortly.</p>
-        <p class="text-muted">Order #<strong id="success-order-id"></strong> — Total: <strong id="success-total"></strong></p>
-        <button class="btn btn-primary mt-3" onclick="resetPage()">Place Another Order</button>
-    </div>
+<div class="market-content pb-5">
 
     <!-- Main content -->
     <div id="main-content">
-        <div class="row g-4">
 
-            <!-- Menu Grid -->
-            <div class="col-lg-8">
-                <h4 class="mb-3"><i class="bi bi-grid me-2 text-primary"></i>Our Menu</h4>
+        <!-- Menu Grid -->
+        <div class="menu-wrapper mx-auto">
+            <h4 class="mb-3 px-2"><i class="bi bi-grid me-2 text-primary"></i>Our Menu</h4>
 
-                {% if not menu_items %}
-                <div class="text-center text-muted py-5">
-                    <i class="bi bi-basket" style="font-size:3rem;"></i>
-                    <p class="mt-2">No items on the menu yet.{% if is_manager %} Click <strong>Add Item</strong> to get started.{% endif %}</p>
-                </div>
-                {% endif %}
+            {% if not menu_items %}
+            <div class="text-center text-muted py-5">
+                <i class="bi bi-basket" style="font-size:3rem;"></i>
+                <p class="mt-2">No items on the menu yet.{% if is_manager %} Click <strong>Add Item</strong> to get started.{% endif %}</p>
+            </div>
+            {% endif %}
 
-                <div class="row row-cols-1 row-cols-sm-2 row-cols-xl-3 g-3" id="menu-grid">
-                    {% for item in menu_items %}
-                    <div class="col" id="item-col-{{ item.id }}">
-                        <div class="menu-item-card card position-relative" data-item-id="{{ item.id }}" data-price="{{ item.sales_price|default:'0' }}" data-name="{{ item.description }}"
-                             {% if item.sizes.all %}data-sizes='[{% for s in item.sizes.all %}{% if s.is_active %}{"id":{{ s.id }},"name":"{{ s.name|escapejs }}","price":{{ s.price }}}{% if not forloop.last %},{% endif %}{% endif %}{% endfor %}]'{% endif %}>
+            <div class="row row-cols-2 g-2 g-sm-3" id="menu-grid">
+                {% for item in menu_items %}
+                <div class="col" id="item-col-{{ item.id }}">
+                    <div class="menu-item-card card position-relative" data-item-id="{{ item.id }}" data-price="{{ item.sales_price|default:'0' }}" data-name="{{ item.description }}"
+                         {% if item.sizes.all %}data-sizes='[{% for s in item.sizes.all %}{% if s.is_active %}{"id":{{ s.id }},"name":"{{ s.name|escapejs }}","price":{{ s.price }}}{% if not forloop.last %},{% endif %}{% endif %}{% endfor %}]'{% endif %}>
 
-                            {% if is_manager %}
-                            <div class="edit-overlay">
-                                <button class="btn btn-sm btn-light border shadow-sm" title="Edit" onclick="openEditItemModal({{ item.id }}, '{{ item.description|escapejs }}', '{{ item.instruction|escapejs }}', {{ item.sales_price|default:'0' }}, '{{ item.category|escapejs }}', {{ item.sort_order }}, {{ item.is_active|yesno:'true,false' }})">
-                                    <i class="bi bi-pencil text-primary"></i>
-                                </button>
-                                <button class="btn btn-sm btn-light border shadow-sm" title="Upload photo" onclick="openImageModal({{ item.id }})">
-                                    <i class="bi bi-camera text-success"></i>
-                                </button>
-                                <button class="btn btn-sm btn-light border shadow-sm" title="Delete" onclick="deleteItem({{ item.id }})">
-                                    <i class="bi bi-trash text-danger"></i>
-                                </button>
+                        {% if is_manager %}
+                        <div class="edit-overlay">
+                            <button class="btn btn-sm btn-light border shadow-sm" title="Edit" onclick="openEditItemModal({{ item.id }}, '{{ item.description|escapejs }}', '{{ item.instruction|escapejs }}', {{ item.sales_price|default:'0' }}, '{{ item.category|escapejs }}', {{ item.sort_order }}, {{ item.is_active|yesno:'true,false' }})">
+                                <i class="bi bi-pencil text-primary"></i>
+                            </button>
+                            <button class="btn btn-sm btn-light border shadow-sm" title="Upload photo" onclick="openImageModal({{ item.id }})">
+                                <i class="bi bi-camera text-success"></i>
+                            </button>
+                            <button class="btn btn-sm btn-light border shadow-sm" title="Delete" onclick="deleteItem({{ item.id }})">
+                                <i class="bi bi-trash text-danger"></i>
+                            </button>
+                        </div>
+                        {% endif %}
+
+                        {% if not item.is_active %}
+                        <span class="badge bg-secondary unavailable-badge">Unavailable</span>
+                        {% endif %}
+
+                        <div class="menu-item-img"
+                             {% if item.tenant_product %}
+                             {% with imgs=item.tenant_product.images.all %}
+                             {% for img in imgs %}
+                             data-img{{ img.slot }}="{{ img.image.url }}"
+                             {% endfor %}
+                             {% endwith %}
+                             {% endif %}
+                             onmouseenter="swapImg(this, true)" onmouseleave="swapImg(this, false)">
+                            {% if item.tenant_product %}
+                            {% with first_img=item.tenant_product.images.all.0 %}
+                            {% if first_img %}
+                            <img src="{{ first_img.image.url }}" alt="{{ item.description }}" id="item-img-{{ item.id }}">
+                            {% else %}
+                            <div class="placeholder-icon d-flex align-items-center justify-content-center w-100 h-100">
+                                <i class="bi bi-fish" id="item-img-placeholder-{{ item.id }}"></i>
                             </div>
                             {% endif %}
+                            {% endwith %}
+                            {% else %}
+                            <div class="placeholder-icon d-flex align-items-center justify-content-center w-100 h-100">
+                                <i class="bi bi-fish" id="item-img-placeholder-{{ item.id }}"></i>
+                            </div>
+                            {% endif %}
+                        </div>
 
-                            {% if not item.is_active %}
-                            <span class="badge bg-secondary unavailable-badge">Unavailable</span>
+                        <div class="menu-item-body">
+                            {% if item.category %}
+                            <div class="item-category">{{ item.category }}</div>
+                            {% endif %}
+                            <h6 class="mb-1 fw-bold">{{ item.description }}</h6>
+                            {% if item.instruction %}
+                            <p class="text-muted small mb-2">{{ item.instruction }}</p>
                             {% endif %}
 
-                            <div class="menu-item-img"
-                                 {% if item.tenant_product %}
-                                 {% with imgs=item.tenant_product.images.all %}
-                                 {% for img in imgs %}
-                                 data-img{{ img.slot }}="{{ img.image.url }}"
-                                 {% endfor %}
-                                 {% endwith %}
-                                 {% endif %}
-                                 onmouseenter="swapImg(this, true)" onmouseleave="swapImg(this, false)">
-                                {% if item.tenant_product %}
-                                {% with first_img=item.tenant_product.images.all.0 %}
-                                {% if first_img %}
-                                <img src="{{ first_img.image.url }}" alt="{{ item.description }}" id="item-img-{{ item.id }}">
+                            {% if item.sizes.all %}
+                            <!-- Size dropdown -->
+                            <select class="form-select form-select-sm mb-1" id="size-{{ item.id }}" onchange="onSizeChange({{ item.id }})">
+                                <option value="" disabled selected>Select size</option>
+                                {% for s in item.sizes.all %}{% if s.is_active %}
+                                <option value="{{ s.id }}" data-price="{{ s.price }}">{{ s.name }} — ${{ s.price|floatformat:2 }}</option>
+                                {% endif %}{% endfor %}
+                            </select>
+                            {% endif %}
+
+                            {% if item.is_active %}
+                            <div class="add-to-cart-row">
+                                {% if not item.sizes.all %}
+                                <span class="item-price me-auto">${{ item.sales_price|floatformat:2|default:"0.00" }}</span>
                                 {% else %}
-                                <div class="placeholder-icon d-flex align-items-center justify-content-center w-100 h-100">
-                                    <i class="bi bi-fish" id="item-img-placeholder-{{ item.id }}"></i>
-                                </div>
+                                <span class="item-price me-auto" id="price-{{ item.id }}">$—</span>
                                 {% endif %}
-                                {% endwith %}
-                                {% else %}
-                                <div class="placeholder-icon d-flex align-items-center justify-content-center w-100 h-100">
-                                    <i class="bi bi-fish" id="item-img-placeholder-{{ item.id }}"></i>
+                                <div class="qty-control">
+                                    <button class="btn btn-sm btn-outline-secondary" onclick="changeQty({{ item.id }}, -1)">−</button>
+                                    <input type="number" class="form-control form-control-sm qty-input" id="qty-{{ item.id }}" value="1" min="1" max="99">
+                                    <button class="btn btn-sm btn-outline-primary" onclick="changeQty({{ item.id }}, 1)">+</button>
                                 </div>
-                                {% endif %}
-                            </div>
-
-                            <div class="menu-item-body">
-                                {% if item.category %}
-                                <div class="item-category">{{ item.category }}</div>
-                                {% endif %}
-                                <h6 class="mb-1 fw-bold">{{ item.description }}</h6>
-                                {% if item.instruction %}
-                                <p class="text-muted small mb-2">{{ item.instruction }}</p>
-                                {% endif %}
-                                {% if item.sizes.all %}
-                                <div class="mb-2 mt-2">
-                                    <select class="form-select form-select-sm" id="size-{{ item.id }}" onchange="onSizeChange({{ item.id }})">
-                                        <option value="" disabled selected>Select size</option>
-                                        {% for s in item.sizes.all %}{% if s.is_active %}
-                                        <option value="{{ s.id }}" data-price="{{ s.price }}">{{ s.name }} — ${{ s.price|floatformat:2 }}</option>
-                                        {% endif %}{% endfor %}
-                                    </select>
-                                </div>
-                                <div class="d-flex align-items-center justify-content-between">
-                                    <span class="item-price" id="price-{{ item.id }}">$—</span>
-                                    {% if item.is_active %}
-                                    <div class="qty-control">
-                                        <button class="btn btn-sm btn-outline-secondary" onclick="changeQty({{ item.id }}, -1)">−</button>
-                                        <input type="number" class="form-control form-control-sm qty-input" id="qty-{{ item.id }}" value="0" min="0" max="99" onchange="updateCart({{ item.id }})">
-                                        <button class="btn btn-sm btn-outline-primary" onclick="changeQty({{ item.id }}, 1)">+</button>
-                                    </div>
-                                    {% else %}
-                                    <span class="text-muted small">Not available</span>
-                                    {% endif %}
-                                </div>
-                                {% else %}
-                                <div class="d-flex align-items-center justify-content-between mt-2">
-                                    <span class="item-price" id="price-{{ item.id }}">${{ item.sales_price|floatformat:2|default:"0.00" }}</span>
-                                    {% if item.is_active %}
-                                    <div class="qty-control">
-                                        <button class="btn btn-sm btn-outline-secondary" onclick="changeQty({{ item.id }}, -1)">−</button>
-                                        <input type="number" class="form-control form-control-sm qty-input" id="qty-{{ item.id }}" value="0" min="0" max="99" onchange="updateCart({{ item.id }})">
-                                        <button class="btn btn-sm btn-outline-primary" onclick="changeQty({{ item.id }}, 1)">+</button>
-                                    </div>
-                                    {% else %}
-                                    <span class="text-muted small">Not available</span>
-                                    {% endif %}
-                                </div>
-                                {% endif %}
-                            </div>
-                        </div>
-                    </div>
-                    {% endfor %}
-                </div>
-            </div>
-
-            <!-- Cart + Order Form -->
-            <div class="col-lg-4">
-                <div id="cart-panel">
-
-                    <!-- Cart -->
-                    <div class="card mb-3 shadow-sm">
-                        <div class="card-header d-flex align-items-center justify-content-between">
-                            <span><i class="bi bi-cart3 me-2 text-primary"></i><strong>Your Cart</strong></span>
-                            <span class="badge bg-primary" id="cart-count">0</span>
-                        </div>
-                        <div class="card-body p-2">
-                            <div id="cart-items">
-                                <p class="text-muted text-center small py-2" id="empty-cart-msg">Your cart is empty.</p>
-                            </div>
-                            <hr class="my-2">
-                            <div class="d-flex justify-content-between align-items-center px-1">
-                                <span class="fw-bold">Total</span>
-                                <span class="cart-total" id="cart-total">$0.00</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Order Form -->
-                    <div class="card shadow-sm" id="order-form-card">
-                        <div class="card-header"><i class="bi bi-person-lines-fill me-2 text-success"></i><strong>Your Information</strong></div>
-                        <div class="card-body">
-                            <form id="order-form" onsubmit="submitOrder(event)">
-
-                                <div class="section-header">Contact</div>
-                                <div class="mb-3">
-                                    <label class="form-label small fw-semibold">Full Name <span class="text-danger">*</span></label>
-                                    <input type="text" class="form-control" id="f-name" placeholder="Jane Smith" required>
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label small fw-semibold">Phone <span class="text-danger">*</span></label>
-                                    <input type="tel" class="form-control" id="f-phone" placeholder="(555) 000-0000" required>
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label small fw-semibold">Email</label>
-                                    <input type="email" class="form-control" id="f-email" placeholder="jane@example.com">
-                                </div>
-
-                                <div class="section-header">Delivery Address</div>
-                                <div class="mb-3">
-                                    <label class="form-label small fw-semibold">Address <span class="text-danger">*</span></label>
-                                    <textarea class="form-control" id="f-address" rows="2" placeholder="123 Main St, City, State, ZIP" required></textarea>
-                                </div>
-
-                                <div class="section-header">Payment</div>
-                                <div class="mb-3">
-                                    <label class="form-label small fw-semibold">Payment Method</label>
-                                    <select class="form-select" id="f-payment-type" onchange="toggleCardFields()">
-                                        <option value="card">Credit / Debit Card</option>
-                                        <option value="cash">Cash on Delivery</option>
-                                        <option value="check">Check</option>
-                                    </select>
-                                </div>
-
-                                <div id="card-fields">
-                                    <div class="mb-3">
-                                        <label class="form-label small fw-semibold">Cardholder Name</label>
-                                        <input type="text" class="form-control" id="f-card-name" placeholder="Name on card" autocomplete="cc-name">
-                                    </div>
-                                    <div class="mb-3">
-                                        <label class="form-label small fw-semibold">Card Details</label>
-                                        <div id="stripe-card-element" class="form-control" style="height:42px; padding-top:10px;"></div>
-                                        <div id="stripe-card-errors" class="text-danger small mt-1"></div>
-                                        <div class="form-text text-muted"><i class="bi bi-lock-fill me-1"></i>Secured by Stripe — your card details are never stored on our servers.</div>
-                                    </div>
-                                </div>
-
-                                <div class="mb-3">
-                                    <label class="form-label small fw-semibold">Order Notes</label>
-                                    <textarea class="form-control" id="f-notes" rows="2" placeholder="Any special requests..."></textarea>
-                                </div>
-
-                                <div id="form-error" class="alert alert-danger d-none small"></div>
-
-                                <button type="submit" class="btn btn-primary w-100" id="submit-btn" disabled>
-                                    <i class="bi bi-bag-check me-2"></i>Place Order
+                                <button class="btn btn-sm btn-primary btn-add" onclick="addToCart({{ item.id }})">
+                                    <i class="bi bi-cart-plus"></i>
                                 </button>
-                            </form>
+                            </div>
+                            {% else %}
+                            <div class="mt-2"><span class="text-muted small">Not available</span></div>
+                            {% endif %}
                         </div>
                     </div>
-
                 </div>
+                {% endfor %}
             </div>
-
         </div>
+
+        <!-- Cart at Bottom -->
+        <div class="menu-wrapper mx-auto mt-4">
+            <div class="card shadow-sm">
+                <div class="card-header d-flex align-items-center justify-content-between">
+                    <span><i class="bi bi-cart3 me-2 text-primary"></i><strong>Your Cart</strong></span>
+                    <span class="badge bg-primary" id="cart-count">0</span>
+                </div>
+                <div class="card-body p-2">
+                    <div id="cart-items">
+                        <p class="text-muted text-center small py-2">Your cart is empty.</p>
+                    </div>
+                    <hr class="my-2">
+                    <div class="d-flex justify-content-between align-items-center px-1">
+                        <span class="fw-bold">Total</span>
+                        <span class="cart-total" id="cart-total">$0.00</span>
+                    </div>
+                </div>
+                <div class="card-footer bg-white border-top-0 p-2">
+                    <button class="btn btn-success w-100 btn-lg" id="checkout-btn" disabled onclick="goToCheckout()">
+                        <i class="bi bi-bag-check me-2"></i>Proceed to Checkout
+                    </button>
+                </div>
+            </div>
+        </div>
+
     </div>
 
     <!-- Manager: Orders Panel (hidden by default) -->
     {% if is_manager %}
-    <div id="orders-panel" style="display:none;" class="mt-4">
+    <div id="orders-panel" style="display:none;" class="menu-wrapper mx-auto mt-4">
         <div class="d-flex align-items-center justify-content-between mb-3">
             <h4><i class="bi bi-list-check me-2 text-primary"></i>Submitted Orders</h4>
             <button class="btn btn-sm btn-outline-secondary" onclick="hideOrdersPanel()">
@@ -351,7 +272,7 @@
     </div>
     {% endif %}
 
-</div><!-- /container -->
+</div><!-- /market-content -->
 
 
 <!-- ── Modals (manager only) ───────────────────────────────────────────── -->
@@ -377,12 +298,12 @@
                 </div>
                 <div class="row g-2 mb-3">
                     <div class="col-6">
-                        <label class="form-label fw-semibold">Price ($) <span class="text-danger">*</span></label>
+                        <label class="form-label fw-semibold">Price ($) <span class="text-muted fw-normal">(if no sizes)</span></label>
                         <input type="number" class="form-control" id="edit-price" step="0.01" min="0">
                     </div>
                     <div class="col-6">
                         <label class="form-label fw-semibold">Category</label>
-                        <input type="text" class="form-control" id="edit-category" placeholder="e.g. Salmon">
+                        <input type="text" class="form-control" id="edit-category" placeholder="e.g. Caviar">
                     </div>
                 </div>
                 <div class="row g-2 mb-3">
@@ -450,7 +371,7 @@
 <script>
 const SLUG = "{{ slug }}";
 const IS_MANAGER = {{ is_manager|yesno:'true,false' }};
-const STRIPE_PUBLIC_KEY = "{{ stripe_public_key }}";
+const CART_KEY = `fishmarket_cart_${SLUG}`;
 
 // ── Image Hover Swap ─────────────────────────────────────────────────────────
 function swapImg(container, hovering) {
@@ -458,7 +379,7 @@ function swapImg(container, hovering) {
     if (!img) return;
     const img1 = container.dataset.img1;
     const img2 = container.dataset.img2;
-    if (!img2) return; // no second image, nothing to swap
+    if (!img2) return;
     if (hovering) {
         img.style.opacity = '0';
         setTimeout(() => { img.src = img2; img.style.opacity = '1'; }, 150);
@@ -468,49 +389,42 @@ function swapImg(container, hovering) {
     }
 }
 
-// ── Cart State ────────────────────────────────────────────────────────────────
-const cart = {};  // { cartKey: { itemId, name, price, qty, sizeId, sizeName } }
+// ── Cart State (persisted to localStorage) ───────────────────────────────────
+let cart = loadCart();
 
-function getCartKey(itemId) {
-    const sizeSelect = document.getElementById(`size-${itemId}`);
-    const sizeId = sizeSelect ? sizeSelect.value : '';
-    return sizeId ? `${itemId}_${sizeId}` : `${itemId}`;
+function loadCart() {
+    try {
+        return JSON.parse(localStorage.getItem(CART_KEY)) || [];
+    } catch { return []; }
+}
+
+function saveCart() {
+    localStorage.setItem(CART_KEY, JSON.stringify(cart));
 }
 
 function onSizeChange(itemId) {
-    const sizeSelect = document.getElementById(`size-${itemId}`);
-    const opt = sizeSelect.options[sizeSelect.selectedIndex];
-    const price = parseFloat(opt.dataset.price || 0);
+    const sel = document.getElementById(`size-${itemId}`);
+    const opt = sel.options[sel.selectedIndex];
     const priceEl = document.getElementById(`price-${itemId}`);
-    if (priceEl) priceEl.textContent = `$${price.toFixed(2)}`;
+    if (priceEl && opt.value) priceEl.textContent = `$${parseFloat(opt.dataset.price).toFixed(2)}`;
 }
 
 function changeQty(itemId, delta) {
-    const card = document.querySelector(`[data-item-id="${itemId}"]`);
-    const hasSizes = card.dataset.sizes;
-    if (hasSizes) {
-        const sizeSelect = document.getElementById(`size-${itemId}`);
-        if (!sizeSelect.value) { alert('Please select a size first.'); return; }
-    }
     const input = document.getElementById(`qty-${itemId}`);
-    let val = parseInt(input.value || 0) + delta;
-    val = Math.max(0, Math.min(99, val));
-    input.value = val;
-    updateCart(itemId);
+    let val = parseInt(input.value || 1) + delta;
+    input.value = Math.max(1, Math.min(99, val));
 }
 
-function updateCart(itemId) {
-    const input = document.getElementById(`qty-${itemId}`);
-    const qty = Math.max(0, parseInt(input.value || 0));
-    input.value = qty;
-
+function addToCart(itemId) {
     const card = document.querySelector(`[data-item-id="${itemId}"]`);
     const name = card.dataset.name;
+    const qty = Math.max(1, parseInt(document.getElementById(`qty-${itemId}`).value || 1));
 
     const sizeSelect = document.getElementById(`size-${itemId}`);
     let sizeId = null, sizeName = '', price;
 
-    if (sizeSelect && sizeSelect.value) {
+    if (sizeSelect) {
+        if (!sizeSelect.value) { alert('Please select a size.'); return; }
         const opt = sizeSelect.options[sizeSelect.selectedIndex];
         sizeId = parseInt(sizeSelect.value);
         sizeName = opt.textContent.split('—')[0].trim();
@@ -519,221 +433,82 @@ function updateCart(itemId) {
         price = parseFloat(card.dataset.price);
     }
 
-    const cartKey = getCartKey(itemId);
-
-    if (qty === 0) {
-        delete cart[cartKey];
+    // Check if same item+size already in cart — if so, add qty
+    const existing = cart.find(c => c.itemId === itemId && c.sizeId === sizeId);
+    if (existing) {
+        existing.qty = Math.min(99, existing.qty + qty);
     } else {
-        cart[cartKey] = { itemId: parseInt(itemId), name, price, qty, sizeId, sizeName };
+        cart.push({ itemId, name, price, qty, sizeId, sizeName });
     }
+
+    saveCart();
+    renderCart();
+
+    // Reset qty input back to 1
+    document.getElementById(`qty-${itemId}`).value = 1;
+
+    // Flash feedback
+    const btn = card.querySelector('.btn-add');
+    btn.classList.replace('btn-primary', 'btn-success');
+    btn.innerHTML = '<i class="bi bi-check"></i>';
+    setTimeout(() => {
+        btn.classList.replace('btn-success', 'btn-primary');
+        btn.innerHTML = '<i class="bi bi-cart-plus"></i>';
+    }, 800);
+}
+
+function removeFromCart(index) {
+    cart.splice(index, 1);
+    saveCart();
     renderCart();
 }
 
 function renderCart() {
     const container = document.getElementById('cart-items');
-    const emptyMsg = document.getElementById('empty-cart-msg');
     const countBadge = document.getElementById('cart-count');
     const totalEl = document.getElementById('cart-total');
-    const submitBtn = document.getElementById('submit-btn');
+    const checkoutBtn = document.getElementById('checkout-btn');
 
-    const keys = Object.keys(cart);
     let total = 0;
     let count = 0;
 
-    if (keys.length === 0) {
-        emptyMsg.style.display = '';
-        container.innerHTML = '';
-        container.appendChild(emptyMsg);
+    if (cart.length === 0) {
+        container.innerHTML = '<p class="text-muted text-center small py-2">Your cart is empty.</p>';
         countBadge.textContent = '0';
         totalEl.textContent = '$0.00';
-        submitBtn.disabled = true;
+        checkoutBtn.disabled = true;
         return;
     }
 
-    emptyMsg.style.display = 'none';
     let html = '';
-    for (const key of keys) {
-        const { name, price, qty, sizeName } = cart[key];
-        const sub = price * qty;
+    cart.forEach((item, i) => {
+        const sub = item.price * item.qty;
         total += sub;
-        count += qty;
-        const label = sizeName ? `${name} (${sizeName})` : name;
+        count += item.qty;
+        const label = item.sizeName ? `${item.name} (${item.sizeName})` : item.name;
         html += `<div class="cart-item-row d-flex justify-content-between align-items-center">
-            <div class="small"><strong>${label}</strong><br><span class="text-muted">× ${qty} @ $${price.toFixed(2)}</span></div>
-            <div class="small fw-bold">$${sub.toFixed(2)}</div>
+            <div class="small">
+                <strong>${label}</strong><br>
+                <span class="text-muted">&times; ${item.qty} @ $${item.price.toFixed(2)}</span>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <span class="small fw-bold">$${sub.toFixed(2)}</span>
+                <button class="btn btn-sm btn-outline-danger border-0 p-0 px-1" onclick="removeFromCart(${i})" title="Remove">
+                    <i class="bi bi-x"></i>
+                </button>
+            </div>
         </div>`;
-    }
+    });
 
     container.innerHTML = html;
     countBadge.textContent = count;
     totalEl.textContent = `$${total.toFixed(2)}`;
-    submitBtn.disabled = false;
+    checkoutBtn.disabled = false;
 }
 
-// ── Stripe Setup ──────────────────────────────────────────────────────────────
-let stripeInstance = null;
-let cardElement = null;
-
-function initStripe() {
-    if (!STRIPE_PUBLIC_KEY) return;
-    stripeInstance = Stripe(STRIPE_PUBLIC_KEY);
-    const elements = stripeInstance.elements();
-    cardElement = elements.create('card', {
-        style: {
-            base: {
-                fontSize: '15px',
-                color: '#212529',
-                fontFamily: 'system-ui, sans-serif',
-                '::placeholder': { color: '#adb5bd' },
-            },
-            invalid: { color: '#dc3545' },
-        },
-        hidePostalCode: false,
-    });
-    cardElement.mount('#stripe-card-element');
-    cardElement.on('change', e => {
-        const errEl = document.getElementById('stripe-card-errors');
-        errEl.textContent = e.error ? e.error.message : '';
-    });
-}
-
-// ── Order Submission ──────────────────────────────────────────────────────────
-async function submitOrder(e) {
-    e.preventDefault();
-
-    const errorEl = document.getElementById('form-error');
-    errorEl.classList.add('d-none');
-
-    const paymentType = document.getElementById('f-payment-type').value;
-    const items = Object.values(cart).map(({ itemId, name, price, qty, sizeId, sizeName }) => {
-        const entry = { id: itemId, name, price, quantity: qty };
-        if (sizeId) { entry.size_id = sizeId; entry.size_name = sizeName; }
-        return entry;
-    });
-
-    const btn = document.getElementById('submit-btn');
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Processing...';
-
-    let paymentIntentId = '';
-    let cardLastFour = '';
-    let cardBrand = '';
-
-    // ── Card payment via Stripe ───────────────────────────────────────────────
-    if (paymentType === 'card' && stripeInstance && cardElement) {
-        try {
-            // Step 1: Create PaymentIntent server-side
-            const piRes = await fetch(`/api/fish-market/${SLUG}/create-payment-intent/`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
-                body: JSON.stringify({ items }),
-            });
-            const piData = await piRes.json();
-            if (!piData.client_secret) {
-                throw new Error(piData.error || 'Could not initiate payment.');
-            }
-
-            // Step 2: Confirm payment with Stripe.js
-            const { paymentIntent, error } = await stripeInstance.confirmCardPayment(
-                piData.client_secret,
-                {
-                    payment_method: {
-                        card: cardElement,
-                        billing_details: {
-                            name: document.getElementById('f-card-name').value.trim(),
-                            email: document.getElementById('f-email').value.trim() || undefined,
-                        },
-                    },
-                }
-            );
-
-            if (error) {
-                document.getElementById('stripe-card-errors').textContent = error.message;
-                errorEl.textContent = error.message;
-                errorEl.classList.remove('d-none');
-                btn.disabled = false;
-                btn.innerHTML = '<i class="bi bi-bag-check me-2"></i>Place Order';
-                return;
-            }
-
-            paymentIntentId = paymentIntent.id;
-            // Extract card details from PaymentIntent result
-            const pm = paymentIntent.payment_method_details?.card || {};
-            cardLastFour = pm.last4 || '';
-            cardBrand = pm.brand || '';
-
-        } catch (err) {
-            errorEl.textContent = err.message || 'Payment failed. Please try again.';
-            errorEl.classList.remove('d-none');
-            btn.disabled = false;
-            btn.innerHTML = '<i class="bi bi-bag-check me-2"></i>Place Order';
-            return;
-        }
-    }
-
-    // ── Save order to database ────────────────────────────────────────────────
-    const payload = {
-        customer_name: document.getElementById('f-name').value.trim(),
-        customer_phone: document.getElementById('f-phone').value.trim(),
-        customer_email: document.getElementById('f-email').value.trim(),
-        customer_address: document.getElementById('f-address').value.trim(),
-        payment_type: paymentType,
-        card_holder_name: document.getElementById('f-card-name').value.trim(),
-        card_last_four: cardLastFour,
-        card_brand: cardBrand,
-        card_expiry: '',
-        payment_intent_id: paymentIntentId,
-        notes: document.getElementById('f-notes').value.trim(),
-        items,
-    };
-
-    fetch(`/api/fish-market/${SLUG}/order/`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
-        body: JSON.stringify(payload),
-    })
-    .then(r => r.json())
-    .then(data => {
-        if (data.success) {
-            document.getElementById('main-content').style.display = 'none';
-            document.getElementById('order-success').style.display = 'block';
-            document.getElementById('success-name').textContent = payload.customer_name;
-            document.getElementById('success-order-id').textContent = data.order_id;
-            document.getElementById('success-total').textContent = `$${data.subtotal.toFixed(2)}`;
-        } else {
-            errorEl.textContent = data.error || 'Could not save order. Please try again.';
-            errorEl.classList.remove('d-none');
-            btn.disabled = false;
-            btn.innerHTML = '<i class="bi bi-bag-check me-2"></i>Place Order';
-        }
-    })
-    .catch(() => {
-        errorEl.textContent = 'Network error. Please try again.';
-        errorEl.classList.remove('d-none');
-        btn.disabled = false;
-        btn.innerHTML = '<i class="bi bi-bag-check me-2"></i>Place Order';
-    });
-}
-
-function resetPage() {
-    document.getElementById('order-success').style.display = 'none';
-    document.getElementById('main-content').style.display = 'block';
-    document.getElementById('order-form').reset();
-    Object.keys(cart).forEach(k => delete cart[k]);
-    document.querySelectorAll('.qty-input').forEach(el => el.value = 0);
-    document.querySelectorAll('[id^="size-"]').forEach(el => el.selectedIndex = 0);
-    document.querySelectorAll('[id^="price-"]').forEach(el => {
-        const card = el.closest('.menu-item-card');
-        if (card && card.dataset.sizes) el.textContent = '$—';
-    });
-    renderCart();
-    toggleCardFields();
-}
-
-// ── Card helpers ──────────────────────────────────────────────────────────────
-function toggleCardFields() {
-    const show = document.getElementById('f-payment-type').value === 'card';
-    document.getElementById('card-fields').style.display = show ? '' : 'none';
+function goToCheckout() {
+    if (cart.length === 0) return;
+    window.location.href = `/fish-market/${SLUG}/checkout/`;
 }
 
 // ── CSRF ──────────────────────────────────────────────────────────────────────
@@ -810,12 +585,9 @@ function openEditItemModal(id, name, desc, price, cat, sortOrder, available) {
     document.getElementById('edit-sort-order').value = sortOrder;
     document.getElementById('edit-available').checked = available;
     clearSizeRows();
-    // Load existing sizes from the card's data attribute
     const card = document.querySelector(`[data-item-id="${id}"]`);
     if (card && card.dataset.sizes) {
-        try {
-            JSON.parse(card.dataset.sizes).forEach(s => addSizeRow(s.name, s.price));
-        } catch(e) {}
+        try { JSON.parse(card.dataset.sizes).forEach(s => addSizeRow(s.name, s.price)); } catch(e) {}
     }
     itemModal.show();
 }
@@ -845,12 +617,8 @@ function saveItem() {
     })
     .then(r => r.json())
     .then(data => {
-        if (data.success) {
-            itemModal.hide();
-            location.reload();
-        } else {
-            alert(data.error || 'Could not save item.');
-        }
+        if (data.success) { itemModal.hide(); location.reload(); }
+        else { alert(data.error || 'Could not save item.'); }
     });
 }
 
@@ -862,11 +630,8 @@ function deleteItem(id) {
     })
     .then(r => r.json())
     .then(data => {
-        if (data.success) {
-            document.getElementById(`item-col-${id}`).remove();
-        } else {
-            alert(data.error || 'Could not delete item.');
-        }
+        if (data.success) document.getElementById(`item-col-${id}`).remove();
+        else alert(data.error || 'Could not delete item.');
     });
 }
 
@@ -894,7 +659,6 @@ function uploadImage() {
     .then(data => {
         if (data.success) {
             imageModal.hide();
-            // Update image on the card without full reload
             const placeholder = document.getElementById(`item-img-placeholder-${id}`);
             if (placeholder) {
                 const wrapper = placeholder.closest('.menu-item-img');
@@ -903,9 +667,7 @@ function uploadImage() {
                 const img = document.getElementById(`item-img-${id}`);
                 if (img) img.src = data.image;
             }
-        } else {
-            alert(data.error || 'Could not upload image.');
-        }
+        } else { alert(data.error || 'Could not upload image.'); }
     });
 }
 
@@ -939,9 +701,9 @@ function loadOrders() {
                 </tr>
             </thead><tbody>`;
         for (const o of data.orders) {
-            const itemsSummary = o.items.map(i => `${i.quantity}× ${i.name}${i.size ? ' ('+i.size+')' : ''}`).join(', ');
+            const itemsSummary = o.items.map(i => `${i.quantity}&times; ${i.name}${i.size ? ' ('+i.size+')' : ''}`).join(', ');
             const payInfo = o.payment_type === 'card' && o.card_last_four
-                ? `${o.card_brand} ···${o.card_last_four}`
+                ? `${o.card_brand} &middot;&middot;&middot;${o.card_last_four}`
                 : o.payment_type;
             html += `<tr>
                 <td><strong>#${o.id}</strong></td>
@@ -977,13 +739,7 @@ function updateOrderStatus(orderId, status) {
 
 // Init
 document.addEventListener('DOMContentLoaded', () => {
-    toggleCardFields();
-    if (document.getElementById('f-payment-type').value === 'card') initStripe();
-});
-
-document.getElementById('f-payment-type')?.addEventListener('change', () => {
-    toggleCardFields();
-    if (document.getElementById('f-payment-type').value === 'card' && !cardElement) initStripe();
+    renderCart();
 });
 </script>
 {% endblock %}

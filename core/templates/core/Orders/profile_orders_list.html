@@ -19,6 +19,12 @@
             </a>
         </li>
         <li class="nav-item">
+            <a class="nav-link" href="#" onclick="switchTab('retail'); return false;">
+                <i class="bi bi-basket2 me-1"></i>Retail
+                <span class="badge bg-warning text-dark ms-1" id="retailBadge">...</span>
+            </a>
+        </li>
+        <li class="nav-item">
             <a class="nav-link" href="#" onclick="switchTab('email'); return false;">
                 <i class="bi bi-envelope me-1"></i>Email
                 <span class="badge bg-danger ms-1" id="emailBadge">...</span>
@@ -91,6 +97,41 @@
                         <tbody id="completedBody"></tbody>
                     </table>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Retail Orders Tab -->
+    <div id="retailSection" style="display:none;">
+        <div class="btn-group mb-3">
+            <button class="btn btn-sm btn-primary" id="btnRetailActive" onclick="switchRetailView('active')">
+                Active <span class="badge bg-white text-primary ms-1" id="retailActiveCount">0</span>
+            </button>
+            <button class="btn btn-sm btn-outline-primary" id="btnRetailDelivered" onclick="switchRetailView('delivered')">
+                Delivered
+            </button>
+            <button class="btn btn-sm btn-outline-primary" id="btnRetailCancelled" onclick="switchRetailView('cancelled')">
+                Cancelled
+            </button>
+        </div>
+        <div class="card">
+            <div class="card-body p-0">
+                <table class="table table-hover mb-0 table-sm">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>#</th>
+                            <th>Date</th>
+                            <th>Customer</th>
+                            <th>Phone</th>
+                            <th>Items</th>
+                            <th>Total</th>
+                            <th>Payment</th>
+                            <th>Status</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="retailBody"></tbody>
+                </table>
             </div>
         </div>
     </div>
@@ -317,20 +358,19 @@ function escHtml(str) {
 
 function switchTab(tab) {
     currentTab = tab;
+    const tabs = ['orders', 'retail', 'email', 'sms', 'voicemail'];
     document.querySelectorAll('#orderTabs .nav-link').forEach((el, i) => {
-        el.classList.toggle('active',
-            (i === 0 && tab === 'orders') ||
-            (i === 1 && tab === 'email') ||
-            (i === 2 && tab === 'sms') ||
-            (i === 3 && tab === 'voicemail'));
+        el.classList.toggle('active', tabs[i] === tab);
     });
-    document.getElementById('ordersSection').style.display    = tab === 'orders'    ? '' : 'none';
-    document.getElementById('emailSection').style.display     = tab === 'email'     ? '' : 'none';
-    document.getElementById('smsSection').style.display       = tab === 'sms'       ? '' : 'none';
-    document.getElementById('voicemailSection').style.display = tab === 'voicemail' ? '' : 'none';
+    tabs.forEach(t => {
+        const section = document.getElementById(t + 'Section');
+        if (section) section.style.display = t === tab ? '' : 'none';
+    });
 
     if (tab === 'orders') {
         loadOrders(currentOrdersView);
+    } else if (tab === 'retail') {
+        loadRetailOrders();
     } else {
         loadMessages();
     }
@@ -716,8 +756,112 @@ function checkEmails() {
     .finally(() => { btn.disabled = false; btn.innerHTML = orig; });
 }
 
+// ── Retail Orders ────────────────────────────────────────────────────────────
+
+let allRetailOrders = [];
+let retailView = 'active';
+
+function switchRetailView(view) {
+    retailView = view;
+    document.getElementById('btnRetailActive').className    = 'btn btn-sm ' + (view === 'active'    ? 'btn-primary' : 'btn-outline-primary');
+    document.getElementById('btnRetailDelivered').className  = 'btn btn-sm ' + (view === 'delivered'  ? 'btn-primary' : 'btn-outline-primary');
+    document.getElementById('btnRetailCancelled').className  = 'btn btn-sm ' + (view === 'cancelled'  ? 'btn-primary' : 'btn-outline-primary');
+    renderRetailOrders();
+}
+
+function loadRetailOrders() {
+    document.getElementById('loadingSpinner').style.display = '';
+    fetch('/api/retail-orders/')
+        .then(r => r.json())
+        .then(data => {
+            document.getElementById('loadingSpinner').style.display = 'none';
+            allRetailOrders = data.orders || [];
+            const activeCount = allRetailOrders.filter(o => !['Delivered','Cancelled'].includes(o.status)).length;
+            document.getElementById('retailBadge').textContent = activeCount;
+            document.getElementById('retailActiveCount').textContent = activeCount;
+            renderRetailOrders();
+        });
+}
+
+function renderRetailOrders() {
+    const tbody = document.getElementById('retailBody');
+    let filtered;
+    if (retailView === 'active') {
+        filtered = allRetailOrders.filter(o => !['Delivered','Cancelled'].includes(o.status));
+    } else if (retailView === 'delivered') {
+        filtered = allRetailOrders.filter(o => o.status === 'Delivered');
+    } else {
+        filtered = allRetailOrders.filter(o => o.status === 'Cancelled');
+    }
+
+    if (!filtered.length) {
+        tbody.innerHTML = `<tr><td colspan="9" class="text-center text-muted py-4">No ${retailView} retail orders.</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = filtered.map(o => {
+        const itemsSummary = o.items.map(i => `${i.quantity}&times; ${escHtml(i.name)}${i.size ? ' <small class="text-muted">('+escHtml(i.size)+')</small>' : ''}`).join(', ');
+        const payInfo = o.payment_type === 'card' && o.card_last_four
+            ? `${escHtml(o.card_brand)} &middot;&middot;&middot;${escHtml(o.card_last_four)}`
+            : escHtml(o.payment_type);
+        const statuses = ['Pending','Confirmed','Ready','Delivered','Cancelled'];
+        const statusOpts = statuses.map(s =>
+            `<option value="${s}" ${s === o.status ? 'selected' : ''}>${s}</option>`
+        ).join('');
+        return `<tr>
+            <td><strong>#${o.id}</strong></td>
+            <td class="small">${escHtml(o.created_at)}</td>
+            <td>
+                ${escHtml(o.customer_name)}
+                ${o.customer_email ? `<br><small class="text-muted">${escHtml(o.customer_email)}</small>` : ''}
+            </td>
+            <td class="small">${escHtml(o.customer_phone)}</td>
+            <td class="small">${itemsSummary}${o.notes ? `<br><em class="text-muted">${escHtml(o.notes)}</em>` : ''}</td>
+            <td><strong>$${o.subtotal.toFixed(2)}</strong></td>
+            <td class="small">${payInfo}</td>
+            <td>
+                <select class="form-select form-select-sm" style="min-width:110px;" onchange="updateRetailStatus(${o.id}, this.value)">
+                    ${statusOpts}
+                </select>
+            </td>
+            <td class="small">
+                ${o.customer_address ? `<span title="${escHtml(o.customer_address)}"><i class="bi bi-geo-alt text-muted"></i></span>` : ''}
+            </td>
+        </tr>`;
+    }).join('');
+}
+
+function updateRetailStatus(orderId, status) {
+    fetch(`/api/retail-orders/${orderId}/status/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+        body: JSON.stringify({ status }),
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            // Update in local array and re-render
+            const order = allRetailOrders.find(o => o.id === orderId);
+            if (order) order.status = status;
+            const activeCount = allRetailOrders.filter(o => !['Delivered','Cancelled'].includes(o.status)).length;
+            document.getElementById('retailBadge').textContent = activeCount;
+            document.getElementById('retailActiveCount').textContent = activeCount;
+            renderRetailOrders();
+        }
+    });
+}
+
 // Initial load
 loadOrders('pending');
+
+// Pre-load retail badge count
+fetch('/api/retail-orders/')
+    .then(r => r.json())
+    .then(data => {
+        const orders = data.orders || [];
+        const activeCount = orders.filter(o => !['Delivered','Cancelled'].includes(o.status)).length;
+        document.getElementById('retailBadge').textContent = activeCount;
+    });
 
 // Pre-load message badges
 fetch('/api/order-requests/')
