@@ -32,16 +32,18 @@
 {% endblock %}
 
 {% block content %}
-<div class="container-fluid mt-4">
-    <div class="row">
-        <div class="col-12">
-            <h2>POD Documents</h2>
-            
-            <div class="mb-3">
-                <a href="{% url 'documents_home' %}" class="btn btn-outline-secondary">
-                    <i class="bi bi-arrow-left"></i> Back to Documents Home
-                </a>
-            </div>
+<div class="inv-main">
+    <div class="inv-header">
+        <div>
+            <h2><i class="bi bi-file-earmark-check me-2" style="color:#2563eb;"></i>POD Documents</h2>
+            <span class="sub">Proof of delivery document management</span>
+        </div>
+        <div style="display:flex; gap:0.5rem;">
+            <a href="{% url 'documents_home' %}" class="btn-inv-outline">
+                <i class="bi bi-arrow-left"></i> Back
+            </a>
+        </div>
+    </div>
 
             <!-- Upload and Filters Section -->
             <div class="card mb-3">
@@ -132,8 +134,6 @@
                     </tbody>
                 </table>
             </div>
-        </div>
-    </div>
 </div>
 
 <!-- File Manager Modal -->
@@ -211,14 +211,6 @@ function setupFilters() {
     });
     
     document.getElementById('filter-product').addEventListener('input', debounce(searchProducts, 300));
-}
-
-function debounce(func, wait) {
-    let timeout;
-    return function(...args) {
-        clearTimeout(timeout);
-        timeout = setTimeout(() => func.apply(this, args), wait);
-    };
 }
 
 function searchProducts() {
@@ -597,21 +589,6 @@ function addUploadResult(message, type) {
 function clearUploadResults() {
     document.getElementById('uploadResults').style.display = 'none';
     document.getElementById('uploadResultsList').innerHTML = '';
-}
-
-function getCookie(name) {
-    let cookieValue = null;
-    if (document.cookie && document.cookie !== '') {
-        const cookies = document.cookie.split(';');
-        for (let i = 0; i < cookies.length; i++) {
-            const cookie = cookies[i].trim();
-            if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                break;
-            }
-        }
-    }
-    return cookieValue;
 }
 
 // Hide dropdown when clicking outside

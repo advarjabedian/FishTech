@@ -216,16 +216,6 @@ function toggleCardFields() {
     document.getElementById('card-fields').style.display = show ? '' : 'none';
 }
 
-// ── CSRF ──────────────────────────────────────────────────────────────────────
-function getCookie(name) {
-    let v = null;
-    document.cookie.split(';').forEach(c => {
-        const [k, val] = c.trim().split('=');
-        if (k === name) v = decodeURIComponent(val);
-    });
-    return v;
-}
-
 // ── Submit Order ─────────────────────────────────────────────────────────────
 async function submitOrder(e) {
     e.preventDefault();

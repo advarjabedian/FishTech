@@ -3,29 +3,10 @@
 
 {% block extra_css %}
 <style>
-.inv-main { margin-left: 72px; padding: 1.5rem 2rem; background: #f8fafc; min-height: calc(100vh - 56px); }
-.inv-header { margin-bottom: 1.25rem; display: flex; align-items: center; justify-content: space-between; }
-.inv-header h2 { font-size: 1.4rem; font-weight: 700; margin: 0; }
-.inv-header .sub { font-size: 0.8rem; color: #64748b; }
-.inv-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin-bottom: 1rem; flex-wrap: wrap; }
-.inv-toolbar-left { display: flex; align-items: center; gap: 0.5rem; }
-.filter-select { border: 1px solid #d1d5db; border-radius: 8px; padding: 6px 12px; font-size: 0.85rem; background: #fff; }
-.search-box { border: 1px solid #d1d5db; border-radius: 8px; padding: 6px 12px; font-size: 0.85rem; width: 220px; background: #fff; }
-.search-box:focus { border-color: #2563eb; box-shadow: 0 0 0 2px rgba(37,99,235,0.15); outline: none; }
-.btn-inv-outline { background: #fff; color: #374151; border: 1px solid #d1d5db; border-radius: 8px; padding: 7px 14px; font-size: 0.85rem; font-weight: 600; cursor: pointer; }
-.btn-inv-outline:hover { border-color: #2563eb; color: #2563eb; }
+/* ── Page-specific ────────────────────────────────────────────── */
 .btn-pdf { background: #dc2626; color: #fff; border: none; border-radius: 8px; padding: 8px 20px; font-size: 0.85rem; font-weight: 600; cursor: pointer; }
-
-.inv-table-card { background: #fff; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); overflow: hidden; }
-.inv-table { width: 100%; border-collapse: collapse; font-size: 0.83rem; }
-.inv-table thead th { background: #f1f5f9; color: #64748b; font-weight: 600; font-size: 0.73rem; text-transform: uppercase; padding: 10px 12px; border-bottom: 1px solid #e2e8f0; white-space: nowrap; }
-.inv-table tbody tr { border-bottom: 1px solid #f1f5f9; cursor: pointer; transition: background 0.1s; }
-.inv-table tbody tr:hover { background: #f0f7ff; }
-.inv-table tbody td { padding: 9px 12px; vertical-align: middle; color: #334155; }
-.badge-packed { background: #dcfce7; color: #16a34a; padding: 3px 10px; border-radius: 999px; font-size: 0.72rem; font-weight: 600; }
-.badge-not_packed { background: #f1f5f9; color: #64748b; padding: 3px 10px; border-radius: 999px; font-size: 0.72rem; font-weight: 600; }
 .badge-need_to_send { background: #e0e7ff; color: #4f46e5; padding: 3px 10px; border-radius: 999px; font-size: 0.72rem; font-weight: 600; }
-.inv-pagination { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; font-size: 0.8rem; color: #64748b; border-top: 1px solid #f1f5f9; }
+
 .inv-pagination .page-btns { display: flex; gap: 4px; }
 .inv-pagination .page-btn { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border: 1px solid #d1d5db; border-radius: 6px; background: #fff; color: #374151; cursor: pointer; font-size: 0.8rem; }
 .inv-pagination .page-btn:hover { border-color: #2563eb; color: #2563eb; }
@@ -91,8 +72,6 @@
 <script>
 let currentPage = 1;
 let searchTimeout;
-function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
-
 document.addEventListener('DOMContentLoaded', loadData);
 
 function debounceSearch() { clearTimeout(searchTimeout); searchTimeout = setTimeout(() => { currentPage = 1; loadData(); }, 300); }

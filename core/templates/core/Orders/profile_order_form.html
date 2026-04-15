@@ -52,15 +52,18 @@
 
 {% block content %}
 {% include 'core/includes/sidebar.html' with active='orders' %}
-<div class="container-fluid mt-3" style="margin-left:72px;">
+<div class="inv-main">
 
-    <!-- Back + Header -->
-    <div class="d-flex align-items-center gap-2 mb-3">
-        <a href="{% url 'customer_list' %}" class="btn btn-outline-secondary btn-sm">
-            <i class="bi bi-arrow-left"></i> Back
-        </a>
-        <h4 class="mb-0">{{ customer.name }}</h4>
-        {% if customer.city %}<span class="text-muted small">{{ customer.city }}, {{ customer.state }}</span>{% endif %}
+    <div class="inv-header">
+        <div>
+            <h2><i class="bi bi-cart me-2" style="color:#2563eb;"></i>{{ customer.name }}</h2>
+            <span class="sub">{% if customer.city %}{{ customer.city }}, {{ customer.state }}{% else %}Profile Order{% endif %}</span>
+        </div>
+        <div style="display:flex; gap:0.5rem;">
+            <a href="{% url 'customer_list' %}" class="btn-inv-outline">
+                <i class="bi bi-arrow-left"></i> Back
+            </a>
+        </div>
     </div>
 
     <form id="profileOrderForm">
@@ -493,10 +496,7 @@ function getOrderItems() {
     return items;
 }
 
-function getCookie(name) {
-    const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
-    return match ? decodeURIComponent(match[2]) : '';
-}
+
 </script>
 
 <!-- Edit Profile Modal -->

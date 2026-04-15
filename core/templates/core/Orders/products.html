@@ -92,12 +92,17 @@
 
 {% block content %}
 {% include 'core/includes/sidebar.html' with active='orders' %}
-<div class="container-fluid px-4 mt-4" style="margin-left:72px;">
-    <div class="d-flex align-items-center gap-2 mb-3">
-        <a href="{% url 'orders_landing' %}" class="btn btn-sm btn-outline-secondary">
-            <i class="bi bi-arrow-left me-1"></i>Orders
-        </a>
-        <h4 class="mb-0 ms-2">Products</h4>
+<div class="inv-main">
+    <div class="inv-header">
+        <div>
+            <h2><i class="bi bi-box-seam me-2" style="color:#2563eb;"></i>Products</h2>
+            <span class="sub">Product catalog and customer profiles</span>
+        </div>
+        <div style="display:flex; gap:0.5rem;">
+            <a href="{% url 'orders_landing' %}" class="btn-inv-outline">
+                <i class="bi bi-arrow-left me-1"></i>Orders
+            </a>
+        </div>
     </div>
 
     <div class="products-container">
@@ -348,11 +353,6 @@ document.addEventListener('DOMContentLoaded', () => {
     productModal = new bootstrap.Modal(document.getElementById('productModal'));
     imageModal = new bootstrap.Modal(document.getElementById('imageManagerModal'));
 });
-
-function getCookie(name) {
-    const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
-    return match ? decodeURIComponent(match[2]) : '';
-}
 
 // =========================================================================
 // CATALOG CRUD

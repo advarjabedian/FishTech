@@ -66,13 +66,14 @@
 {% endblock %}
 
 {% block content %}
-<div class="container-fluid mt-4">
-    <div class="row mb-3">
-        <div class="col-md-12">
-            <div class="d-flex justify-content-between align-items-center">
-                <h2>Daily Inspections</h2>
-        <div style="width: 250px; text-align: right;">
-            <button type="button" class="btn btn-success btn-sm" onclick="openBulkReportModal()">
+<div class="inv-main">
+    <div class="inv-header">
+        <div>
+            <h2><i class="bi bi-clipboard-check me-2" style="color:#2563eb;"></i>Daily Inspections</h2>
+            <span class="sub">Daily operational inspection logs</span>
+        </div>
+        <div style="display:flex; gap:0.5rem;">
+            <button type="button" class="btn-inv-success" onclick="openBulkReportModal()">
                 <i class="bi bi-printer"></i> Bulk Reports
             </button>
         </div>
@@ -470,21 +471,6 @@
 <script>
     let currentReportParentId = null;
     let currentReportType = 'operational';
-    
-    function getCookie(name) {
-        let cookieValue = null;
-        if (document.cookie && document.cookie !== '') {
-            const cookies = document.cookie.split(';');
-            for (let i = 0; i < cookies.length; i++) {
-                const cookie = cookies[i].trim();
-                if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                    break;
-                }
-            }
-        }
-        return cookieValue;
-    }
     
     function handleDateChange(dateValue) {
     const selectedCompanyId = '{{ request.tenant.id }}';

@@ -3,22 +3,9 @@
 
 {% block extra_css %}
 <style>
-.inv-main { margin-left: 72px; padding: 1.5rem 2rem; background: #f8fafc; min-height: calc(100vh - 56px); }
-.inv-header { margin-bottom: 1.25rem; display: flex; align-items: center; justify-content: space-between; }
-.inv-header h2 { font-size: 1.4rem; font-weight: 700; margin: 0; }
-.inv-header .sub { font-size: 0.8rem; color: #64748b; }
-.inv-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin-bottom: 1rem; flex-wrap: wrap; }
-.inv-toolbar-left { display: flex; align-items: center; gap: 0.5rem; }
-.inv-toolbar-right { display: flex; align-items: center; gap: 0.5rem; }
-.filter-select { border: 1px solid #d1d5db; border-radius: 8px; padding: 6px 12px; font-size: 0.85rem; background: #fff; color: #374151; }
-.search-box { border: 1px solid #d1d5db; border-radius: 8px; padding: 6px 12px; font-size: 0.85rem; width: 200px; background: #fff; }
-.search-box:focus { border-color: #2563eb; box-shadow: 0 0 0 2px rgba(37,99,235,0.15); outline: none; }
-.btn-inv-outline { background: #fff; color: #374151; border: 1px solid #d1d5db; border-radius: 8px; padding: 7px 14px; font-size: 0.85rem; font-weight: 600; cursor: pointer; }
-.btn-inv-outline:hover { border-color: #2563eb; color: #2563eb; }
+/* ── Page-specific ────────────────────────────────────────────── */
 .btn-pdf { background: #dc2626; color: #fff; border: none; border-radius: 8px; padding: 8px 20px; font-size: 0.85rem; font-weight: 600; cursor: pointer; }
 .btn-pdf:hover { background: #b91c1c; }
-
-.inv-table-card { background: #fff; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); overflow: hidden; }
 .pick-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
 .pick-table thead th { background: #f1f5f9; color: #64748b; font-weight: 600; font-size: 0.73rem; text-transform: uppercase; padding: 10px 14px; border-bottom: 1px solid #e2e8f0; }
 .pick-table tbody tr { border-bottom: 1px solid #f1f5f9; }
@@ -27,7 +14,6 @@
 .pick-table a:hover { text-decoration: underline; }
 .dept-row { background: #f8fafc; }
 .dept-row td { font-weight: 700; color: #1e293b; font-size: 0.9rem; padding: 10px 14px; }
-.inv-pagination { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; font-size: 0.8rem; color: #64748b; border-top: 1px solid #f1f5f9; }
 
 @media print { .inv-sidebar, .inv-toolbar, .inv-header > div:last-child, .inv-pagination { display: none !important; } .inv-main { margin-left: 0 !important; } }
 </style>
@@ -78,8 +64,6 @@
 {% block extra_js %}
 <script>
 let searchTimeout;
-function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
-
 document.addEventListener('DOMContentLoaded', () => {
     const today = new Date().toISOString().split('T')[0];
     document.getElementById('dateFrom').value = today;

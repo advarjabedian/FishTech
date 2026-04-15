@@ -175,32 +175,12 @@
     </div>
 </div>
 
-<!-- Signature Modal -->
-<div class="modal fade" id="signatureModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Draw Your Signature</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body text-center">
-                <canvas id="signature_canvas_modal" class="signature-pad mx-auto" width="600" height="300" style="border: 2px solid #dee2e6; border-radius: 5px; background: #f8f9fa; cursor: crosshair; touch-action: none;"></canvas>
-            </div>
-            <div class="modal-footer d-flex justify-content-between">
-                <button type="button" class="btn btn-outline-danger" onclick="clearModalSignature()">
-                    <i class="bi bi-x-circle me-1"></i>Clear Signature
-                </button>
-                <button type="button" class="btn btn-success" onclick="saveModalSignature()">
-                    <i class="bi bi-check-circle me-1"></i>Save Signature
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
+<!-- Shared signature modal injected by signature.js SignatureModal -->
 
 {% endblock %}
 
 {% block extra_js %}
+<script src="{% static 'core/js/signature.js' %}"></script>
 {% include 'core/haccp/haccp_common_scripts.html' %}
 {% if document_type_slug == 'product_description' %}
     {% include 'core/haccp/haccp_product_description_scripts.html' %}

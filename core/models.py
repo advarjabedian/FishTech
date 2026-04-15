@@ -168,22 +168,6 @@ class TenantDocument(models.Model):
         return f"{self.tenant.name} - {self.get_document_type_display()}"
 
 
-class Company(TenantModel):
-    """DEPRECATED - kept for migration compatibility. Use Tenant instead."""
-    companyid = models.AutoField(primary_key=True)
-    companyname = models.CharField(max_length=255)
-    address = models.CharField(max_length=255, blank=True)
-    city = models.CharField(max_length=100, blank=True)
-    state = models.CharField(max_length=2, blank=True)
-    zipcode = models.CharField(max_length=10, blank=True)
-    logo = models.TextField(blank=True)
-
-    class Meta:
-        db_table = 'company'
-        unique_together = [['tenant', 'companyname']]
-
-    def __str__(self):
-        return self.companyname
 
 
 class User(TenantModel):
@@ -219,7 +203,7 @@ class HACCPProductType(TenantModel):
 
 class CompanyProductType(TenantModel):
     """Which HACCP product types are active for this tenant"""
-    company = models.ForeignKey(Company, on_delete=models.CASCADE, null=True, blank=True)
+
     product_type = models.CharField(max_length=100)
     is_active = models.BooleanField(default=True)
 
@@ -228,7 +212,7 @@ class CompanyProductType(TenantModel):
 
 class CompanyHACCPOwner(TenantModel):
     """HACCP process owner for the tenant"""
-    company = models.ForeignKey(Company, on_delete=models.CASCADE, null=True, blank=True)
+
     user = models.ForeignKey(DjangoUser, on_delete=models.SET_NULL, null=True)
 
 class HACCPDocument(TenantModel):
@@ -239,7 +223,7 @@ class HACCPDocument(TenantModel):
         ('completed', 'Completed'),
     ]
     
-    company = models.ForeignKey(Company, on_delete=models.CASCADE, null=True, blank=True)
+
     product_type = models.CharField(max_length=100)
     document_type = models.CharField(max_length=100)
     year = models.IntegerField()
@@ -267,7 +251,7 @@ class HACCPDocument(TenantModel):
 class Zone(TenantModel):
     """Inspection zones"""
     name = models.CharField(max_length=255)
-    company = models.ForeignKey(Company, on_delete=models.CASCADE, null=True, blank=True)
+
 
     class Meta:
         unique_together = [['tenant', 'name']]
@@ -286,7 +270,7 @@ class SOP(TenantModel):
     post = models.BooleanField(default=False)  # Post-Op shift
     input_required = models.BooleanField(default=False)  # Requires data input
     image_required = models.BooleanField(default=False)  # Requires image
-    company = models.ForeignKey(Company, on_delete=models.CASCADE, null=True, blank=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -307,7 +291,7 @@ class SOPParent(TenantModel):
     date = models.DateField()
     time = models.TimeField()
     shift = models.CharField(max_length=20, choices=SHIFT_CHOICES)
-    company = models.ForeignKey(Company, on_delete=models.CASCADE, null=True, blank=True)
+
     user_inspected = models.ForeignKey(DjangoUser, on_delete=models.SET_NULL, null=True, blank=True, related_name='inspections')
     user_verified = models.ForeignKey(DjangoUser, on_delete=models.SET_NULL, null=True, blank=True, related_name='verifications')
     completed = models.BooleanField(default=False)
@@ -351,7 +335,7 @@ class SOPChild(models.Model):
 
 class CompanyOperationConfig(TenantModel):
     """Configuration for daily inspections"""
-    company = models.ForeignKey(Company, on_delete=models.CASCADE, null=True, blank=True)
+
     start_date = models.DateField(null=True, blank=True)
     monday = models.BooleanField(default=True)
     tuesday = models.BooleanField(default=True)
@@ -374,7 +358,7 @@ class CompanyOperationConfig(TenantModel):
 
 class CompanyHoliday(TenantModel):
     """Non-operating days"""
-    company = models.ForeignKey(Company, on_delete=models.CASCADE, null=True, blank=True)
+
     date = models.DateField()
 
     class Meta:
@@ -388,7 +372,7 @@ class CompanyCertificate(TenantModel):
         ('letter_of_guarantee', 'Letter of Guarantee'),
     ]
     
-    company = models.ForeignKey(Company, on_delete=models.CASCADE, null=True, blank=True)
+
     year = models.IntegerField()
     certificate_type = models.CharField(max_length=50, choices=CERTIFICATE_TYPE_CHOICES)
     date_issued = models.DateField(null=True, blank=True)
@@ -400,13 +384,6 @@ class CompanyCertificate(TenantModel):
         unique_together = [['tenant', 'year', 'certificate_type']]
 
 
-class UserCompany(TenantModel):
-    """Associates users with companies"""
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-    company = models.ForeignKey(Company, on_delete=models.CASCADE)
-    
-    class Meta:
-        unique_together = [['tenant', 'user', 'company']]
 
 
 # =============================================================================
@@ -509,151 +486,6 @@ class Vendor(TenantModel):
 
 
 
-class PO(TenantModel):
-    """Purchase Order header"""
-    poid = models.IntegerField()
-    company = models.ForeignKey(Company, on_delete=models.CASCADE, null=True, blank=True)
-    vendor = models.ForeignKey(Vendor, on_delete=models.SET_NULL, null=True, blank=True, related_name='purchase_orders')
-    vendorid = models.IntegerField(null=True, blank=True)  # Legacy ID reference
-    buyer = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='purchase_orders')
-    
-    # Dates
-    orderdate = models.DateField(null=True, blank=True)
-    receivedate = models.DateField(null=True, blank=True)
-    receivetime = models.CharField(max_length=50, blank=True)
-    
-    # Reference numbers
-    vendorref = models.CharField(max_length=100, blank=True)
-    awb = models.CharField(max_length=100, blank=True)  # Air waybill
-    
-    # Financials
-    totalcost = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
-    value = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
-    payment = models.CharField(max_length=50, blank=True)
-    paid = models.CharField(max_length=50, blank=True)
-    credit = models.CharField(max_length=50, blank=True)
-    account = models.CharField(max_length=100, blank=True)
-    
-    # Receiving - temperatures
-    temperature = models.CharField(max_length=50, blank=True)
-    trailertemp = models.CharField(max_length=50, blank=True)
-    top_temp = models.CharField(max_length=50, blank=True)
-    middle_temp = models.CharField(max_length=50, blank=True)
-    bottom_temp = models.CharField(max_length=50, blank=True)
-    trailer_temp_before = models.CharField(max_length=50, blank=True)
-    trailer_temp_after = models.CharField(max_length=50, blank=True)
-    
-    # Receiving - inspection
-    receiver = models.CharField(max_length=100, blank=True)
-    datalogreq = models.CharField(max_length=50, blank=True)
-    datalog = models.CharField(max_length=50, blank=True)
-    datalogrev = models.CharField(max_length=50, blank=True)
-    truckcondition = models.CharField(max_length=100, blank=True)
-    palletcondition = models.CharField(max_length=100, blank=True)
-    containercondition = models.CharField(max_length=100, blank=True)
-    iceadequate = models.CharField(max_length=50, blank=True)
-    shellfishTag = models.CharField(max_length=100, blank=True)
-    scombroidice = models.CharField(max_length=50, blank=True)
-    shuckedcc = models.CharField(max_length=50, blank=True)
-    frozenshell = models.CharField(max_length=50, blank=True)
-    labels = models.CharField(max_length=100, blank=True)
-    country_origin = models.CharField(max_length=50, blank=True)
-    seal_num = models.CharField(max_length=100, blank=True)
-    disposition_good = models.BooleanField(default=True)
-    
-    # Review/verification
-    reviewed = models.CharField(max_length=50, blank=True)
-    verified = models.BooleanField(default=False)
-    verified_at = models.DateTimeField(null=True, blank=True)
-    verified_by = models.CharField(max_length=100, blank=True)
-    verified_signature = models.TextField(blank=True)
-    received_at = models.DateTimeField(null=True, blank=True)
-    received_by = models.CharField(max_length=100, blank=True)
-    
-    # Other
-    memo = models.CharField(max_length=100, blank=True)
-    notes = models.TextField(blank=True)
-    padding = models.CharField(max_length=100, blank=True)
-    invoicecopyrequest = models.CharField(max_length=50, blank=True)
-    
-    # Metadata
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    
-    class Meta:
-        db_table = 'documents_po'
-        unique_together = [['tenant', 'poid']]
-    
-    def __str__(self):
-        return f"PO-{self.poid}"
-
-
-class POD(TenantModel):
-    """Purchase Order Detail / line items"""
-    podid = models.IntegerField()
-    po = models.ForeignKey(PO, on_delete=models.CASCADE, related_name='items', null=True, blank=True)
-    poid = models.IntegerField(null=True, blank=True)  # Legacy reference
-    
-    # Product info
-    productid = models.IntegerField(null=True, blank=True)
-    descriptionmemo = models.TextField(blank=True)
-    category = models.IntegerField(null=True, blank=True)
-    origin = models.IntegerField(null=True, blank=True)
-    
-    # Lot tracking
-    vendorlot = models.CharField(max_length=100, blank=True)
-    packdate = models.DateField(null=True, blank=True)
-    shelflife = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
-    
-    # Units
-    unittype = models.IntegerField(null=True, blank=True)
-    packsize = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
-    fixed = models.IntegerField(null=True, blank=True)
-    
-    # Quantities in
-    unitsin = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
-    weightin = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
-    unitsordered = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
-    
-    # Quantities out/allocated
-    unitsallocated = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
-    unitsout = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
-    weightout = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
-    weightbalance = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
-    dripout = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
-    billedweight = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
-    
-    # Storage
-    storageid = models.IntegerField(null=True, blank=True)
-    unitsstored = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
-    unitsrequested = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
-    unitsretrieved = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
-    
-    # Pricing
-    unitprice = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
-    origprice = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
-    promoprice = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
-    costverified = models.CharField(max_length=50, blank=True)
-    costpad = models.CharField(max_length=50, blank=True)
-    
-    # Claims
-    claimamount = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
-    reasonforclaim = models.CharField(max_length=255, blank=True)
-    
-    # Status
-    promotion = models.CharField(max_length=100, blank=True)
-    companyid = models.IntegerField(null=True, blank=True)
-    derived = models.IntegerField(null=True, blank=True)
-    flagged = models.IntegerField(null=True, blank=True)
-    hidden = models.IntegerField(null=True, blank=True)
-    ogpodid = models.IntegerField(null=True, blank=True)
-    
-    class Meta:
-        db_table = 'documents_pod'
-        unique_together = [['tenant', 'podid']]
-    
-    def __str__(self):
-        return f"POD-{self.podid}"
 
 
 class Receipt(TenantModel):
@@ -706,7 +538,7 @@ class License(TenantModel):
     """Business licenses"""
     filename = models.CharField(max_length=255)
     title = models.CharField(max_length=255)
-    company = models.ForeignKey(Company, on_delete=models.SET_NULL, null=True, blank=True)
+
     issuance_date = models.DateField(null=True, blank=True)
     expiration_date = models.DateField(null=True, blank=True)
     managing_user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
@@ -716,7 +548,7 @@ class License(TenantModel):
         db_table = 'documents_license'
     
     def __str__(self):
-        return f"{self.title} ({self.company.companyname if self.company else 'No Company'})"
+        return self.title
 
 
 class Vehicle(TenantModel):
@@ -954,7 +786,7 @@ class Product(TenantModel):
 
 class Inventory(TenantModel):
     """Inventory records"""
-    company = models.ForeignKey(Company, on_delete=models.SET_NULL, null=True, blank=True)
+
     productid = models.CharField(max_length=100, null=True, blank=True)
     desc = models.CharField(max_length=255, blank=True)
     vendorid = models.CharField(max_length=100, blank=True)

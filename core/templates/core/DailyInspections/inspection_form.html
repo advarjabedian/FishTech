@@ -211,6 +211,7 @@
     
 </div>
 
+<script src="{% static 'core/js/signature.js' %}"></script>
 <script>
     const inspectionData = {};
     let saveTimeout = null;
@@ -474,21 +475,6 @@
         document.getElementById('confirmDeviationBtn').disabled = true;
     }
     
-    function getCookie(name) {
-        let cookieValue = null;
-        if (document.cookie && document.cookie !== '') {
-            const cookies = document.cookie.split(';');
-            for (let i = 0; i < cookies.length; i++) {
-                const cookie = cookies[i].trim();
-                if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                    break;
-                }
-            }
-        }
-        return cookieValue;
-    }
-    
     function showSavingIndicator() {
         const indicator = document.getElementById('savingIndicator');
         if (indicator) {
@@ -709,27 +695,22 @@ function toggleNegative(sopId) {
 }
 
 // Inspector Signature Functions
-let inspectorIsDrawing = false;
+let inspectorSigPad = null;
 
 function showCompleteSignatureModal() {
-    console.log('showCompleteSignatureModal called');
-    console.log('inspectionData:', inspectionData);
-    
     // First check if all items are complete
     let allComplete = true;
     let incompleteItems = [];
     let notesOnlyItems = [];
-    
+
     document.querySelectorAll('.inspection-item').forEach(item => {
         const sopId = item.dataset.sopId;
         const data = inspectionData[sopId];
         const passBtn = item.querySelector('.pass-btn');
         const notesInput = document.getElementById(`notes-${sopId}`);
         const inputRequired = passBtn?.dataset.inputRequired === '1';
-        
-        console.log(`Item ${sopId}: data=`, data, 'inputRequired=', inputRequired);
-        
-        if (notesInput && notesInput.value.trim() !== '' && 
+
+        if (notesInput && notesInput.value.trim() !== '' &&
             (!data || (data.passed !== true && data.failed !== true))) {
             allComplete = false;
             notesOnlyItems.push(sopId);
@@ -743,139 +724,37 @@ function showCompleteSignatureModal() {
             incompleteItems.push(sopId);
         }
     });
-    
-    console.log('allComplete:', allComplete, 'incompleteItems:', incompleteItems, 'notesOnlyItems:', notesOnlyItems);
-    
+
     if (notesOnlyItems.length > 0) {
         alert(`Cannot complete: ${notesOnlyItems.length} items have notes but no Pass/Fail status.`);
         return;
     }
-    
     if (!allComplete) {
         alert(`Cannot complete: ${incompleteItems.length} items need Pass/Fail status or required notes`);
         return;
     }
-    
+
     // Show signature modal
-    console.log('Showing modal...');
     $('#inspectorSignatureModal').modal('show');
-    setTimeout(initInspectorSignaturePad, 300);
-    
-    // Check if current inspector has a saved signature
-    checkForSavedInspectorSignature();
-}
-
-function initInspectorSignaturePad() {
-    const canvas = document.getElementById('inspector-signature-pad');
-    if (!canvas) return;
-    
-    const ctx = canvas.getContext('2d');
-    
-    ctx.fillStyle = 'white';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.strokeStyle = '#000';
-    ctx.lineWidth = 2;
-    ctx.lineCap = 'round';
-    
-    // Remove old listeners
-    canvas.replaceWith(canvas.cloneNode(true));
-    const newCanvas = document.getElementById('inspector-signature-pad');
-    const newCtx = newCanvas.getContext('2d');
-    newCtx.fillStyle = 'white';
-    newCtx.fillRect(0, 0, newCanvas.width, newCanvas.height);
-    newCtx.strokeStyle = '#000';
-    newCtx.lineWidth = 2;
-    newCtx.lineCap = 'round';
-    
-    newCanvas.addEventListener('mousedown', inspectorStartDrawing);
-    newCanvas.addEventListener('mousemove', inspectorDraw);
-    newCanvas.addEventListener('mouseup', inspectorStopDrawing);
-    newCanvas.addEventListener('mouseout', inspectorStopDrawing);
-    
-    // Touch support
-    newCanvas.addEventListener('touchstart', inspectorHandleTouch);
-    newCanvas.addEventListener('touchmove', inspectorHandleTouchMove);
-    newCanvas.addEventListener('touchend', inspectorStopDrawing);
-}
-
-function inspectorStartDrawing(e) {
-    inspectorIsDrawing = true;
-    const canvas = document.getElementById('inspector-signature-pad');
-    const ctx = canvas.getContext('2d');
-    const rect = canvas.getBoundingClientRect();
-    ctx.beginPath();
-    ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
-}
-
-function inspectorDraw(e) {
-    if (!inspectorIsDrawing) return;
-    const canvas = document.getElementById('inspector-signature-pad');
-    const ctx = canvas.getContext('2d');
-    const rect = canvas.getBoundingClientRect();
-    ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
-    ctx.stroke();
-}
-
-function inspectorStopDrawing() {
-    inspectorIsDrawing = false;
-}
-
-function inspectorHandleTouch(e) {
-    e.preventDefault();
-    const touch = e.touches[0];
-    const mouseEvent = new MouseEvent('mousedown', {
-        clientX: touch.clientX,
-        clientY: touch.clientY
-    });
-    document.getElementById('inspector-signature-pad').dispatchEvent(mouseEvent);
-}
-
-function inspectorHandleTouchMove(e) {
-    e.preventDefault();
-    const touch = e.touches[0];
-    const mouseEvent = new MouseEvent('mousemove', {
-        clientX: touch.clientX,
-        clientY: touch.clientY
-    });
-    document.getElementById('inspector-signature-pad').dispatchEvent(mouseEvent);
+    setTimeout(() => {
+        inspectorSigPad = new SignaturePad('#inspector-signature-pad');
+        checkForSavedInspectorSignature();
+    }, 300);
 }
 
 function clearInspectorSignature() {
-    const canvas = document.getElementById('inspector-signature-pad');
-    const ctx = canvas.getContext('2d');
-    ctx.fillStyle = 'white';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    if (inspectorSigPad) inspectorSigPad.clear();
 }
 
 function saveSignatureForFuture() {
-    const canvas = document.getElementById('inspector-signature-pad');
-    const ctx = canvas.getContext('2d');
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    let isBlank = true;
-    for (let i = 0; i < imageData.data.length; i += 4) {
-        if (imageData.data[i] < 250 || imageData.data[i+1] < 250 || imageData.data[i+2] < 250) {
-            isBlank = false;
-            break;
-        }
-    }
-    
-    if (isBlank) {
+    if (!inspectorSigPad || inspectorSigPad.isEmpty()) {
         alert('Please draw a signature first');
         return;
     }
-    
-    const signature = canvas.toDataURL('image/png');
-    
     fetch('/api/operations/save-monitor-signature/', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': getCookie('csrftoken')
-        },
-        body: JSON.stringify({
-            company_id: '{{ sop_parent.company_id }}',
-            signature: signature
-        })
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+        body: JSON.stringify({ company_id: '{{ sop_parent.company_id }}', signature: inspectorSigPad.toDataURL() })
     })
     .then(r => r.json())
     .then(data => {
@@ -890,44 +769,19 @@ function saveSignatureForFuture() {
 
 function submitWithSignature() {
     const name = document.getElementById('inspector-name-input').value.trim();
-    if (!name) {
-        alert('Please enter your name');
-        return;
-    }
-    
-    const canvas = document.getElementById('inspector-signature-pad');
-    const signature = canvas.toDataURL('image/png');
-    
-    // Check if signature is blank
-    const ctx = canvas.getContext('2d');
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    let isBlank = true;
-    for (let i = 0; i < imageData.data.length; i += 4) {
-        if (imageData.data[i] < 250 || imageData.data[i+1] < 250 || imageData.data[i+2] < 250) {
-            isBlank = false;
-            break;
-        }
-    }
-    
-    if (isBlank) {
-        alert('Please sign before completing');
-        return;
-    }
-    
-    // Submit completion with signature
+    if (!name) { alert('Please enter your name'); return; }
+    if (!inspectorSigPad || inspectorSigPad.isEmpty()) { alert('Please sign before completing'); return; }
+
     fetch(`/api/operations/save-inspection/{{ sop_parent.id }}/`, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': getCookie('csrftoken')
-        },
-        body: JSON.stringify({ 
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+        body: JSON.stringify({
             toggle_complete: true,
             inspector_name: name,
-            inspector_signature: signature
+            inspector_signature: inspectorSigPad.toDataURL()
         })
     })
-    .then(response => response.json())
+    .then(r => r.json())
     .then(data => {
         if (data.success) {
             window.location.href = '/operations/daily/?date={{ sop_parent.date|date:"Y-m-d" }}&company_id={{ sop_parent.company_id }}';
@@ -935,56 +789,34 @@ function submitWithSignature() {
             alert('Error completing inspection');
         }
     })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('Error completing inspection');
-    });
+    .catch(() => alert('Error completing inspection'));
 }
 
 const isMonitor = {{ is_monitor|yesno:"true,false" }};
 
 function checkForSavedInspectorSignature() {
     if (!isMonitor) return;
-    
-    const companyId = '{{ sop_parent.company_id }}';
-    
-    fetch(`/api/operations/get-monitor-signature/?company_id=${companyId}`)
+    fetch(`/api/operations/get-monitor-signature/?company_id={{ sop_parent.company_id }}`)
         .then(r => r.json())
         .then(data => {
             const btn = document.getElementById('use-saved-inspector-sig-btn');
-            if (btn && data.has_signature) {
-                btn.style.display = 'inline-block';
-            }
+            if (btn && data.has_signature) btn.style.display = 'inline-block';
         })
         .catch(() => {});
 }
 
 function useSavedInspectorSignature() {
     if (!isMonitor) return;
-    
-    const companyId = '{{ sop_parent.company_id }}';
-    
-    fetch(`/api/operations/get-monitor-signature/?company_id=${companyId}`)
-        .then(response => response.json())
+    fetch(`/api/operations/get-monitor-signature/?company_id={{ sop_parent.company_id }}`)
+        .then(r => r.json())
         .then(data => {
             if (data.success && data.signature) {
-                const canvas = document.getElementById('inspector-signature-pad');
-                const ctx = canvas.getContext('2d');
-                const img = new Image();
-                img.onload = function() {
-                    ctx.fillStyle = 'white';
-                    ctx.fillRect(0, 0, canvas.width, canvas.height);
-                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                };
-                img.src = data.signature;
+                inspectorSigPad.loadImage(data.signature);
             } else {
                 alert('No saved signature found.');
             }
         })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('Error loading saved signature');
-        });
+        .catch(() => alert('Error loading saved signature'));
 }
 
 function handleImageCapture(sopId, input) {

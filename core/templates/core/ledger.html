@@ -19,14 +19,19 @@
 
 {% block content %}
 {% include 'core/includes/sidebar.html' with active='accounting' %}
-<div class="container-fluid px-4 mt-4 pb-5" style="margin-left:72px;">
+<div class="inv-main">
 
     <!-- Header -->
-    <div class="d-flex align-items-center gap-2 mb-4">
-        <a href="{% url 'accounting_hub' %}" class="btn btn-sm btn-outline-secondary">
-            <i class="bi bi-arrow-left me-1"></i>Accounting
-        </a>
-        <h4 class="mb-0 ms-2"><i class="bi bi-journal-text me-2 text-primary"></i>Ledger</h4>
+    <div class="inv-header">
+        <div>
+            <h2><i class="bi bi-journal-text me-2" style="color:#2563eb;"></i>Ledger</h2>
+            <span class="sub">Full transaction history</span>
+        </div>
+        <div style="display:flex; gap:0.5rem;">
+            <a href="{% url 'accounting_hub' %}" class="btn-inv-outline">
+                <i class="bi bi-arrow-left me-1"></i>Accounting
+            </a>
+        </div>
     </div>
 
     <!-- Summary Cards -->
@@ -69,25 +74,23 @@
     </div>
 
     <!-- Table -->
-    <div class="card shadow-sm">
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0">
-                    <thead class="table-dark">
-                        <tr>
-                            <th>Date</th>
-                            <th>Description</th>
-                            <th>Category</th>
-                            <th>Type</th>
-                            <th class="text-end">Amount</th>
-                            <th>Status</th>
-                        </tr>
-                    </thead>
-                    <tbody id="ledger-tbody">
-                        <tr><td colspan="6" class="text-center text-muted py-4">Loading…</td></tr>
-                    </tbody>
-                </table>
-            </div>
+    <div class="inv-table-card">
+        <div class="table-responsive">
+            <table class="inv-table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Description</th>
+                        <th>Category</th>
+                        <th>Type</th>
+                        <th class="text-end">Amount</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="ledger-tbody">
+                    <tr><td colspan="6" class="text-center text-muted py-4">Loading…</td></tr>
+                </tbody>
+            </table>
         </div>
     </div>
 

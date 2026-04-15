@@ -3,16 +3,9 @@
 
 {% block extra_css %}
 <style>
-.inv-main { margin-left: 72px; padding: 1.5rem 2rem; background: #f8fafc; min-height: calc(100vh - 56px); }
-
 .so-header { display: flex; align-items: start; justify-content: space-between; margin-bottom: 0.25rem; }
 .so-header h2 { font-size: 1.4rem; font-weight: 700; margin: 0; }
 .so-header .meta { font-size: 0.8rem; color: #64748b; }
-.badge-status { display: inline-block; padding: 4px 12px; border-radius: 999px; font-size: 0.75rem; font-weight: 600; }
-.badge-draft { background: #f1f5f9; color: #64748b; }
-.badge-open { background: #dbeafe; color: #2563eb; }
-.badge-needs_review { background: #fee2e2; color: #dc2626; }
-.badge-closed { background: #dcfce7; color: #16a34a; }
 
 /* Tabs */
 .so-tabs { display: flex; gap: 0; border-bottom: 2px solid #e2e8f0; margin-bottom: 1.5rem; }
@@ -59,10 +52,6 @@
 .notes-area { width: 100%; border: 1px solid #d1d5db; border-radius: 8px; padding: 10px 12px; font-size: 0.85rem; resize: vertical; }
 .notes-area:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.12); outline: none; }
 
-.btn-inv-primary { background: #2563eb; color: #fff; border: none; border-radius: 8px; padding: 8px 20px; font-size: 0.85rem; font-weight: 600; cursor: pointer; }
-.btn-inv-primary:hover { background: #1d4ed8; color: #fff; }
-.btn-inv-outline { background: #fff; color: #374151; border: 1px solid #d1d5db; border-radius: 8px; padding: 8px 20px; font-size: 0.85rem; font-weight: 600; cursor: pointer; }
-.btn-inv-outline:hover { border-color: #2563eb; color: #2563eb; }
 .btn-publish { background: #0ea5e9; color: #fff; border: none; border-radius: 8px; padding: 8px 20px; font-size: 0.85rem; font-weight: 600; cursor: pointer; }
 .btn-publish:hover { background: #0284c7; }
 
@@ -240,9 +229,6 @@ const SO_ID = {{ so.id }};
 let soData = null;
 let allProducts = [];
 let lineItems = [];
-
-function getCookie(name) { const m = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)')); return m ? decodeURIComponent(m[2]) : ''; }
-function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
 
 document.addEventListener('DOMContentLoaded', async () => {
     await loadProducts();

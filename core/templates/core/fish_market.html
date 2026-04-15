@@ -511,16 +511,6 @@ function goToCheckout() {
     window.location.href = `/fish-market/${SLUG}/checkout/`;
 }
 
-// ── CSRF ──────────────────────────────────────────────────────────────────────
-function getCookie(name) {
-    let v = null;
-    document.cookie.split(';').forEach(c => {
-        const [k, val] = c.trim().split('=');
-        if (k === name) v = decodeURIComponent(val);
-    });
-    return v;
-}
-
 // ── Manager: Menu Item CRUD ───────────────────────────────────────────────────
 {% if is_manager %}
 let itemModal, imageModal;

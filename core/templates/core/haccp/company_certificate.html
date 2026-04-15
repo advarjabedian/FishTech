@@ -177,88 +177,37 @@
     </div>
 </div>
 
-<!-- Signature Modal -->
-<div class="modal fade" id="signatureModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Draw Signature</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body text-center">
-                <canvas id="modal_canvas" width="600" height="200" style="border: 2px solid #000; cursor: crosshair; touch-action: none;"></canvas>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" onclick="clearModalCanvas()">Clear</button>
-                <button type="button" class="btn btn-primary" onclick="applyModalSignature()">Apply</button>
-            </div>
-        </div>
-    </div>
-</div>
-
+<script src="{% static 'core/js/signature.js' %}"></script>
 <script>
 const canvas = document.getElementById('signature_canvas');
 const ctx = canvas.getContext('2d');
-const modalCanvas = document.getElementById('modal_canvas');
-const modalCtx = modalCanvas.getContext('2d');
-let isDrawing = false;
-let sigModal;
+let _certSigData = '';
 
 document.addEventListener('DOMContentLoaded', function() {
-    sigModal = new bootstrap.Modal(document.getElementById('signatureModal'));
-
     {% if certificate.signature %}
     const img = new Image();
-    img.onload = () => ctx.drawImage(img, 0, 0);
+    img.onload = () => { ctx.drawImage(img, 0, 0); _certSigData = '{{ certificate.signature }}'; };
     img.src = '{{ certificate.signature }}';
     {% endif %}
 
     canvas.addEventListener('click', () => {
-        modalCtx.clearRect(0, 0, modalCanvas.width, modalCanvas.height);
-        if (canvas.toDataURL() !== document.createElement('canvas').toDataURL()) {
-            const img = new Image();
-            img.onload = () => modalCtx.drawImage(img, 0, 0, modalCanvas.width, modalCanvas.height);
-            img.src = canvas.toDataURL();
-        }
-        sigModal.show();
+        SignatureModal.open({
+            title: 'Draw Signature',
+            existingSignature: _certSigData || null,
+            onSave(dataUrl) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                const img = new Image();
+                img.onload = () => ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                img.src = dataUrl;
+                _certSigData = dataUrl;
+            }
+        });
     });
-
-    modalCanvas.addEventListener('mousedown', e => { isDrawing = true; startDraw(e, modalCtx, modalCanvas); });
-    modalCanvas.addEventListener('mousemove', e => { if (isDrawing) doDraw(e, modalCtx, modalCanvas); });
-    modalCanvas.addEventListener('mouseup', () => isDrawing = false);
-    modalCanvas.addEventListener('mouseout', () => isDrawing = false);
-
-    modalCanvas.addEventListener('touchstart', e => { e.preventDefault(); isDrawing = true; startDraw(e.touches[0], modalCtx, modalCanvas); }, { passive: false });
-    modalCanvas.addEventListener('touchmove', e => { e.preventDefault(); if (isDrawing) doDraw(e.touches[0], modalCtx, modalCanvas); }, { passive: false });
-    modalCanvas.addEventListener('touchend', () => isDrawing = false);
 });
-
-function startDraw(e, c, el) {
-    const r = el.getBoundingClientRect();
-    c.beginPath();
-    c.moveTo(e.clientX - r.left, e.clientY - r.top);
-}
-
-function doDraw(e, c, el) {
-    const r = el.getBoundingClientRect();
-    c.lineTo(e.clientX - r.left, e.clientY - r.top);
-    c.strokeStyle = '#000';
-    c.lineWidth = 2;
-    c.stroke();
-}
-
-function clearModalCanvas() {
-    modalCtx.clearRect(0, 0, modalCanvas.width, modalCanvas.height);
-}
-
-function applyModalSignature() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(modalCanvas, 0, 0, canvas.width, canvas.height);
-    sigModal.hide();
-}
 
 function clearSignature() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    _certSigData = '';
 }
 
 function updateDisplayDate() {
@@ -284,15 +233,12 @@ function saveCertificate(markComplete) {
         certificate_type: '{{ certificate.certificate_type }}',
         date_issued: document.getElementById('date_issued').value,
         signed_by: document.getElementById('signed_by').value,
-        signature: canvas.toDataURL(),
+        signature: _certSigData || canvas.toDataURL(),
         is_completed: markComplete
     };
     fetch('/api/company-certificates/{{ request.tenant.id }}/save/', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': '{{ csrf_token }}'
-        },
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
         body: JSON.stringify(data)
     })
     .then(r => r.json())
@@ -304,10 +250,7 @@ function saveCertificate(markComplete) {
             alert('Error: ' + result.error);
         }
     })
-    .catch(err => {
-        console.error('Error:', err);
-        alert('Error saving certificate');
-    });
+    .catch(() => alert('Error saving certificate'));
 }
 </script>
 {% endblock %}

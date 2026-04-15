@@ -9,38 +9,31 @@
 
 {% block content %}
 {% include 'core/includes/sidebar.html' with active='orders' %}
-<div class="container-fluid mt-4 pb-5" style="margin-left:72px;">
+<div class="inv-main">
 
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <div class="d-flex align-items-center gap-2">
-            <a href="{% url 'orders_landing' %}" class="btn btn-outline-secondary btn-sm">
+    <div class="inv-header">
+        <div>
+            <h2><i class="bi bi-people me-2" style="color:#2563eb;"></i>Customers</h2>
+            <span class="sub">Manage your customer records</span>
+        </div>
+        <div style="display:flex; gap:0.5rem; align-items:center;">
+            <span class="text-muted small" id="customer-count"></span>
+            <a href="{% url 'orders_landing' %}" class="btn-inv-outline">
                 <i class="bi bi-arrow-left"></i> Back
             </a>
-            <h2 class="mb-0"><i class="bi bi-people me-2"></i>Customers</h2>
-        </div>
-        <div class="d-flex align-items-center gap-2">
-            <span class="text-muted small" id="customer-count"></span>
-            <button class="btn btn-outline-primary btn-sm" onclick="openAddModal()">
+            <button class="btn-inv-primary" onclick="openAddModal()">
                 <i class="bi bi-plus me-1"></i>Add Customer
             </button>
-            <a href="{% url 'import_customers_page' %}" class="btn btn-outline-success btn-sm">
+            <a href="{% url 'import_customers_page' %}" class="btn-inv-outline">
                 <i class="bi bi-upload me-1"></i>Import
             </a>
         </div>
     </div>
 
-    <!-- Search -->
-    <div class="row mb-3">
-        <div class="col-md-4">
-            <input type="text" id="customer-search" class="form-control" placeholder="Search customers...">
-        </div>
-    </div>
-
     <!-- Customer Table -->
-    <div class="card">
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-striped table-hover mb-0">
+    <div class="inv-table-card">
+        <div class="table-responsive">
+            <table class="inv-table" id="customerTable">
                     <thead class="table-dark">
                         <tr>
                             <th>Customer Name</th>
@@ -70,7 +63,7 @@
                                     onclick="copyOrderLink('{{ request.scheme }}://{{ request.get_host }}{% url 'public_profile_order_form' customer.public_token %}', this)">
                                     <i class="bi bi-link-45deg"></i>
                                 </button>
-                                <a href="{% url 'profile_order_form' customer.id %}" class="btn btn-primary btn-sm">
+                                <a href="{% url 'profile_order_form' customer.id %}" class="btn-inv-primary">
                                     <i class="bi bi-file-earmark-check"></i>
                                 </a>
                             </td>
@@ -86,7 +79,6 @@
                     </tbody>
                 </table>
             </div>
-        </div>
     </div>
 </div>
 
@@ -168,26 +160,14 @@ document.addEventListener('DOMContentLoaded', () => {
     {% endfor %}
 });
 
-function getCookie(name) {
-    const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
-    return match ? decodeURIComponent(match[2]) : '';
-}
-
-// Search
-const rows = document.querySelectorAll('.customer-row');
-const countEl = document.getElementById('customer-count');
-countEl.textContent = rows.length + ' customers';
-
-document.getElementById('customer-search').addEventListener('input', function() {
-    const q = this.value.toLowerCase();
-    let visible = 0;
-    rows.forEach(row => {
-        const match = row.dataset.name.includes(q);
-        row.style.display = match ? '' : 'none';
-        if (match) visible++;
-    });
-    countEl.textContent = visible + ' customers';
+// DataTables
+const dt = $('#customerTable').DataTable({
+    pageLength: 25,
+    order: [[0, 'asc']],
+    columnDefs: [{ orderable: false, targets: -1 }],
+    language: { search: '', searchPlaceholder: 'Search customers...' },
 });
+document.getElementById('customer-count').textContent = dt.rows().count() + ' customers';
 
 function clearForm() {
     ['f-name','f-contact','f-phone','f-email','f-address','f-city','f-state','f-zipcode'].forEach(id => document.getElementById(id).value = '');

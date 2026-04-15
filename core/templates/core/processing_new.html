@@ -3,26 +3,6 @@
 
 {% block extra_css %}
 <style>
-.inv-sidebar {
-    width: 72px; min-height: calc(100vh - 56px); background: #f0f6ff;
-    border-right: 1px solid #d6e4f0; display: flex; flex-direction: column;
-    align-items: center; padding-top: 1rem; gap: 0.25rem;
-    position: fixed; left: 0; top: 56px; z-index: 100;
-}
-.inv-sidebar a {
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    width: 56px; padding: 10px 0; border-radius: 10px; color: #5a7ba6;
-    text-decoration: none; font-size: 0.65rem; font-weight: 500; transition: all 0.15s;
-}
-.inv-sidebar a i { font-size: 1.3rem; margin-bottom: 2px; }
-.inv-sidebar a:hover { background: #dbe8f7; color: #2563eb; }
-.inv-sidebar a.active { background: #2563eb; color: #fff; }
-
-.inv-main { margin-left: 72px; padding: 1.5rem 2rem; background: #f8fafc; min-height: calc(100vh - 56px); }
-.inv-header { margin-bottom: 1.25rem; }
-.inv-header h2 { font-size: 1.4rem; font-weight: 700; margin: 0; }
-.inv-header .sub { font-size: 0.8rem; color: #64748b; margin-top: 2px; }
-
 /* Steps */
 .steps-bar {
     display: flex; gap: 0; margin-bottom: 1.5rem; background: #fff;
@@ -121,25 +101,8 @@
 }
 .type-hint i { margin-right: 6px; }
 
-/* Search */
-.search-box {
-    border: 1px solid #d1d5db; border-radius: 8px; padding: 8px 14px;
-    font-size: 0.85rem; width: 300px; background: #fff;
-}
-.search-box:focus { border-color: #2563eb; box-shadow: 0 0 0 2px rgba(37,99,235,0.15); outline: none; }
-
 /* Buttons */
-.btn-inv-primary {
-    background: #2563eb; color: #fff; border: none; border-radius: 8px;
-    padding: 10px 28px; font-size: 0.9rem; font-weight: 600; cursor: pointer;
-}
-.btn-inv-primary:hover { background: #1d4ed8; color: #fff; }
 .btn-inv-primary:disabled { opacity: 0.5; cursor: not-allowed; }
-.btn-inv-outline {
-    background: #fff; color: #374151; border: 1px solid #d1d5db; border-radius: 8px;
-    padding: 10px 24px; font-size: 0.9rem; font-weight: 600; cursor: pointer;
-}
-.btn-inv-outline:hover { border-color: #2563eb; color: #2563eb; }
 .btn-danger-sm {
     background: none; border: none; color: #dc2626; cursor: pointer;
     font-size: 0.8rem; padding: 2px 6px;
@@ -156,16 +119,7 @@
 
 {% block content %}
 
-<!-- Sidebar -->
-<div class="inv-sidebar">
-    <a href="{% url 'operations_hub' %}" title="Dashboard"><i class="bi bi-grid-1x2"></i><span>Dashboard</span></a>
-    <a href="{% url 'purchases_page' %}" title="Purchase"><i class="bi bi-cart"></i><span>Purchase</span></a>
-    <a href="{% url 'receiving_page' %}" title="Receive"><i class="bi bi-box-arrow-in-down"></i><span>Receive</span></a>
-    <a href="{% url 'inventory_item_library' %}" title="Inventory"><i class="bi bi-box-seam"></i><span>Inventory</span></a>
-    <a href="{% url 'processing_hub' %}" class="active" title="Process"><i class="bi bi-gear"></i><span>Process</span></a>
-    <a href="#" title="Sales"><i class="bi bi-receipt"></i><span>Sales</span></a>
-    <a href="#" title="Ship"><i class="bi bi-truck"></i><span>Ship</span></a>
-</div>
+{% include 'core/includes/sidebar.html' with active='process' %}
 
 <div class="inv-main" style="padding-bottom: 80px;">
     <div class="inv-header">
@@ -262,11 +216,6 @@ const TYPE_HINTS = {
     wet_store: '<i class="bi bi-droplet-half"></i> <strong>Wet Store:</strong> Move lots into wet storage. Output is the same product.',
 };
 
-function getCookie(name) {
-    const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
-    return match ? decodeURIComponent(match[2]) : '';
-}
-
 document.addEventListener('DOMContentLoaded', () => {
     loadLots();
     loadProducts();
@@ -312,7 +261,7 @@ function renderLots() {
                 <div class="lot-meta">${esc(lot.lot_id)} &middot; ${esc(lot.product_id)}</div>
             </div>
             <div class="lot-qty">
-                <div class="qty-val">${fmtNum(lot.on_hand)}</div>
+                <div class="qty-val">${fmt(lot.on_hand)}</div>
                 <div class="qty-unit">${esc(lot.unit_type)}</div>
             </div>
         </div>
@@ -414,7 +363,7 @@ function renderQtyCards() {
                 <div class="lot-label">${esc(lot.item_name)}</div>
                 <div class="lot-sub">
                     ${esc(lot.vendor || '')} / ${esc(lot.lot_id)}
-                    &middot; On hand: <strong>${fmtNum(lot.on_hand)} ${esc(lot.unit_type)}</strong>
+                    &middot; On hand: <strong>${fmt(lot.on_hand)} ${esc(lot.unit_type)}</strong>
                 </div>
                 <div class="qty-input-row">
                     <label style="font-weight:600; font-size:0.85rem; margin-right:4px;">Quantity</label>
@@ -533,7 +482,7 @@ function renderOutputCards() {
 
             ${showYield && out.yield_percent ? `
             <div style="margin-top:4px;">
-                <span class="yield-badge">${out.yield_percent}% yield &rarr; ${fmtNum(totalQty * out.yield_percent / 100)} from ${fmtNum(totalQty)} input</span>
+                <span class="yield-badge">${out.yield_percent}% yield &rarr; ${fmt(totalQty * out.yield_percent / 100)} from ${fmt(totalQty)} input</span>
             </div>` : ''}
         </div>`;
     }).join('');
@@ -597,10 +546,10 @@ function renderSummary() {
         html += `<tr style="border-bottom:1px solid #f1f5f9;">
             <td style="padding:6px 8px;">${esc(lot.lot_id)}</td>
             <td style="padding:6px 8px;">${esc(lot.item_name)}</td>
-            <td style="padding:6px 8px; text-align:right; font-weight:600;">${fmtNum(q)} ${esc(lot.unit_type)}</td>
+            <td style="padding:6px 8px; text-align:right; font-weight:600;">${fmt(q)} ${esc(lot.unit_type)}</td>
         </tr>`;
     });
-    html += `<tr><td colspan="2" style="padding:6px 8px; font-weight:700;">Total Input</td><td style="padding:6px 8px; text-align:right; font-weight:700;">${fmtNum(totalIn)}</td></tr>`;
+    html += `<tr><td colspan="2" style="padding:6px 8px; font-weight:700;">Total Input</td><td style="padding:6px 8px; text-align:right; font-weight:700;">${fmt(totalIn)}</td></tr>`;
     html += '</table>';
 
     // Outputs
@@ -612,11 +561,11 @@ function renderSummary() {
         totalOut += (out.quantity || 0);
         html += `<tr style="border-bottom:1px solid #f1f5f9;">
             <td style="padding:6px 8px;">${esc(out.product_name || 'Same as source')}</td>
-            <td style="padding:6px 8px; text-align:right; font-weight:600;">${fmtNum(out.quantity)} ${esc(out.unit_type)}</td>
+            <td style="padding:6px 8px; text-align:right; font-weight:600;">${fmt(out.quantity)} ${esc(out.unit_type)}</td>
             <td style="padding:6px 8px; text-align:right;">${out.yield_percent ? out.yield_percent + '%' : '--'}</td>
         </tr>`;
     });
-    html += `<tr><td style="padding:6px 8px; font-weight:700;">Total Output</td><td style="padding:6px 8px; text-align:right; font-weight:700;">${fmtNum(totalOut)}</td><td style="padding:6px 8px; text-align:right; font-weight:700;">${totalIn > 0 ? Math.round(totalOut / totalIn * 100) + '%' : '--'}</td></tr>`;
+    html += `<tr><td style="padding:6px 8px; font-weight:700;">Total Output</td><td style="padding:6px 8px; text-align:right; font-weight:700;">${fmt(totalOut)}</td><td style="padding:6px 8px; text-align:right; font-weight:700;">${totalIn > 0 ? Math.round(totalOut / totalIn * 100) + '%' : '--'}</td></tr>`;
     html += '</table>';
 
     document.getElementById('summaryContent').innerHTML = html;
@@ -671,9 +620,6 @@ async function submitBatch() {
         nextBtn.innerHTML = '<i class="bi bi-check-circle me-1"></i> Start Processing';
     }
 }
-
-function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
-function fmtNum(n) { return n ? Number(n).toLocaleString(undefined, {maximumFractionDigits: 2}) : '0'; }
 
 updateButtons();
 </script>

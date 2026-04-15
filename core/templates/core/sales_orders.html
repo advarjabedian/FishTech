@@ -3,43 +3,16 @@
 
 {% block extra_css %}
 <style>
-.inv-main { margin-left: 72px; padding: 1.5rem 2rem; background: #f8fafc; min-height: calc(100vh - 56px); }
-.inv-header { margin-bottom: 1.25rem; display: flex; align-items: center; justify-content: space-between; }
-.inv-header h2 { font-size: 1.4rem; font-weight: 700; margin: 0; }
-.inv-header .sub { font-size: 0.8rem; color: #64748b; }
-.inv-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin-bottom: 1rem; flex-wrap: wrap; }
-.inv-toolbar-left { display: flex; align-items: center; gap: 0.5rem; }
-.search-box { border: 1px solid #d1d5db; border-radius: 8px; padding: 6px 12px; font-size: 0.85rem; width: 240px; background: #fff; }
-.search-box:focus { border-color: #2563eb; box-shadow: 0 0 0 2px rgba(37,99,235,0.15); outline: none; }
-.btn-inv-primary { background: #2563eb; color: #fff; border: none; border-radius: 8px; padding: 7px 16px; font-size: 0.85rem; font-weight: 600; cursor: pointer; }
-.btn-inv-primary:hover { background: #1d4ed8; color: #fff; }
-.btn-inv-outline { background: #fff; color: #374151; border: 1px solid #d1d5db; border-radius: 8px; padding: 7px 14px; font-size: 0.85rem; font-weight: 600; cursor: pointer; }
-.btn-inv-outline:hover { border-color: #2563eb; color: #2563eb; }
-
-.inv-table-card { background: #fff; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); overflow: hidden; }
-.inv-table { width: 100%; border-collapse: collapse; font-size: 0.83rem; }
-.inv-table thead th { background: #f1f5f9; color: #64748b; font-weight: 600; font-size: 0.73rem; text-transform: uppercase; letter-spacing: 0.03em; padding: 10px 12px; border-bottom: 1px solid #e2e8f0; white-space: nowrap; position: sticky; top: 0; }
-.inv-table tbody tr { border-bottom: 1px solid #f1f5f9; transition: background 0.1s; cursor: pointer; }
-.inv-table tbody tr:hover { background: #f0f7ff; }
-.inv-table tbody td { padding: 9px 12px; vertical-align: middle; color: #334155; }
-
-.badge-status { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 0.72rem; font-weight: 600; }
-.badge-draft { background: #f1f5f9; color: #64748b; }
-.badge-open { background: #dbeafe; color: #2563eb; }
-.badge-needs_review { background: #fee2e2; color: #dc2626; }
-.badge-closed { background: #dcfce7; color: #16a34a; }
-.badge-cancelled { background: #f1f5f9; color: #94a3b8; }
-.badge-packed { background: #dcfce7; color: #16a34a; }
-.badge-not_packed { background: #fef3c7; color: #d97706; }
+/* ── Page-specific badges ─────────────────────────────────────── */
 .badge-need_to_send { background: #e0e7ff; color: #4f46e5; }
 
-.inv-pagination { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; font-size: 0.8rem; color: #64748b; border-top: 1px solid #f1f5f9; }
+/* ── Pagination page buttons ──────────────────────────────────── */
 .inv-pagination .page-btns { display: flex; gap: 4px; }
 .inv-pagination .page-btn { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border: 1px solid #d1d5db; border-radius: 6px; background: #fff; color: #374151; cursor: pointer; font-size: 0.8rem; }
 .inv-pagination .page-btn:hover { border-color: #2563eb; color: #2563eb; }
 .inv-pagination .page-btn.active { background: #2563eb; color: #fff; border-color: #2563eb; }
 
-/* Filter panel */
+/* Filter panel (slide-over) */
 .filter-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.25); z-index: 1040; display: none; }
 .filter-overlay.open { display: block; }
 .filter-panel { position: fixed; top: 0; right: -460px; width: 440px; max-width: 90vw; height: 100vh; background: #fff; box-shadow: -4px 0 24px rgba(0,0,0,0.12); z-index: 1050; transition: right 0.3s ease; display: flex; flex-direction: column; }
@@ -195,9 +168,6 @@ let totalItems = 0;
 const PAGE_SIZE = 100;
 let searchTimeout;
 let activeFilters = {};
-
-function getCookie(name) { const m = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)')); return m ? decodeURIComponent(m[2]) : ''; }
-function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
 
 document.addEventListener('DOMContentLoaded', () => { loadOrders(); loadCustomers(); });
 

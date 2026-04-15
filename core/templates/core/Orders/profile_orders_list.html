@@ -3,13 +3,18 @@
 
 {% block content %}
 {% include 'core/includes/sidebar.html' with active='orders' %}
-<div class="container-fluid mt-4" style="margin-left:72px;">
+<div class="inv-main">
 
-    <div class="d-flex align-items-center gap-2 mb-3">
-        <a href="{% url 'orders_landing' %}" class="btn btn-outline-secondary btn-sm">
-            <i class="bi bi-arrow-left"></i> Back
-        </a>
-        <h2 class="mb-0"><i class="bi bi-list-check me-2"></i>View Orders</h2>
+    <div class="inv-header">
+        <div>
+            <h2><i class="bi bi-list-check me-2" style="color:#2563eb;"></i>View Orders</h2>
+            <span class="sub">Manage and fulfill submitted orders</span>
+        </div>
+        <div style="display:flex; gap:0.5rem;">
+            <a href="{% url 'orders_landing' %}" class="btn-inv-outline">
+                <i class="bi bi-arrow-left"></i> Back
+            </a>
+        </div>
     </div>
 
     <ul class="nav nav-tabs mb-3" id="orderTabs">
@@ -61,10 +66,9 @@
         </div>
 
         <div id="pendingSection">
-            <div class="card">
-                <div class="card-body p-0">
-                    <table class="table table-hover mb-0">
-                        <thead class="table-dark">
+            <div class="inv-table-card">
+                    <table class="inv-table">
+                        <thead>
                             <tr>
                                 <th>SO#</th>
                                 <th>Customer</th>
@@ -76,15 +80,13 @@
                         </thead>
                         <tbody id="pendingBody"></tbody>
                     </table>
-                </div>
             </div>
         </div>
 
         <div id="completedSection" style="display:none;">
-            <div class="card">
-                <div class="card-body p-0">
-                    <table class="table table-hover mb-0">
-                        <thead class="table-dark">
+            <div class="inv-table-card">
+                    <table class="inv-table">
+                        <thead>
                             <tr>
                                 <th>SO#</th>
                                 <th>Customer</th>
@@ -97,7 +99,6 @@
                         </thead>
                         <tbody id="completedBody"></tbody>
                     </table>
-                </div>
             </div>
         </div>
     </div>
@@ -115,10 +116,9 @@
                 Cancelled
             </button>
         </div>
-        <div class="card">
-            <div class="card-body p-0">
-                <table class="table table-hover mb-0 table-sm">
-                    <thead class="table-dark">
+        <div class="inv-table-card">
+                <table class="inv-table">
+                    <thead>
                         <tr>
                             <th>#</th>
                             <th>Date</th>
@@ -133,7 +133,6 @@
                     </thead>
                     <tbody id="retailBody"></tbody>
                 </table>
-            </div>
         </div>
     </div>
 
@@ -152,10 +151,9 @@
                 <i class="bi bi-envelope-arrow-down me-1"></i>Check Emails
             </button>
         </div>
-        <div class="card">
-            <div class="card-body p-0">
-                <table class="table table-striped table-hover mb-0 table-sm">
-                    <thead class="table-dark">
+        <div class="inv-table-card">
+                <table class="inv-table">
+                    <thead>
                         <tr>
                             <th>Date</th>
                             <th>From</th>
@@ -167,7 +165,6 @@
                     </thead>
                     <tbody id="emailBody"></tbody>
                 </table>
-            </div>
         </div>
     </div>
 
@@ -181,10 +178,9 @@
                 Completed
             </button>
         </div>
-        <div class="card">
-            <div class="card-body p-0">
-                <table class="table table-striped table-hover mb-0 table-sm">
-                    <thead class="table-dark">
+        <div class="inv-table-card">
+                <table class="inv-table">
+                    <thead>
                         <tr>
                             <th>Date</th>
                             <th>From</th>
@@ -196,7 +192,6 @@
                     </thead>
                     <tbody id="smsBody"></tbody>
                 </table>
-            </div>
         </div>
     </div>
 
@@ -210,10 +205,9 @@
                 Completed
             </button>
         </div>
-        <div class="card">
-            <div class="card-body p-0">
-                <table class="table table-striped table-hover mb-0 table-sm">
-                    <thead class="table-dark">
+        <div class="inv-table-card">
+                <table class="inv-table">
+                    <thead>
                         <tr>
                             <th>Date</th>
                             <th>From</th>
@@ -225,7 +219,6 @@
                     </thead>
                     <tbody id="voicemailBody"></tbody>
                 </table>
-            </div>
         </div>
     </div>
 
@@ -345,15 +338,6 @@ let allMessages = [];
 let msgUsers = [];
 let currentMsgId = null;
 let currentUserId = null;
-
-function getCookie(name) {
-    const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
-    return match ? decodeURIComponent(match[2]) : '';
-}
-
-function escHtml(str) {
-    return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
 
 // ── Tab Switching ─────────────────────────────────────────────────────────────
 

@@ -3,7 +3,8 @@
 
 {% block extra_css %}
 <style>
-.inv-main { margin-left: 72px; display: flex; min-height: calc(100vh - 56px); }
+/* Override: settings page uses inv-main as flex container */
+.inv-main { display: flex; }
 
 /* Settings left nav */
 .settings-nav {
@@ -49,9 +50,6 @@
 
 .btn-submit { background: #10b981; color: #fff; border: none; border-radius: 8px; padding: 10px 28px; font-size: 0.85rem; font-weight: 600; cursor: pointer; margin-top: 1rem; }
 .btn-submit:hover { background: #059669; }
-.btn-inv-outline { background: #fff; color: #374151; border: 1px solid #d1d5db; border-radius: 8px; padding: 8px 18px; font-size: 0.85rem; font-weight: 600; cursor: pointer; }
-.btn-inv-outline:hover { border-color: #2563eb; color: #2563eb; }
-
 /* Users table */
 .users-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
 .users-table th { text-align: left; color: #64748b; font-weight: 600; font-size: 0.73rem; text-transform: uppercase; padding: 8px 10px; border-bottom: 1px solid #e2e8f0; }
@@ -117,9 +115,6 @@
 {% block extra_js %}
 <script>
 let currentSection = 'profile';
-
-function getCookie(name) { const m = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)')); return m ? decodeURIComponent(m[2]) : ''; }
-function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
 
 document.addEventListener('DOMContentLoaded', () => loadSection('profile'));
 
