@@ -5,6 +5,20 @@ from .views.profile_orders import *
 from .views import *
 from .views.operations_reports import *
 from .views.stripe_billing import *
+from .views.settings_page import (
+    settings_page, settings_profile_api, settings_account_api,
+    settings_users_api, settings_item_groups_api,
+)
+from .views.shipping import (
+    shipping_hub, shipping_picking, shipping_packing, shipping_loading,
+    shipping_log_api, shipping_picking_api, shipping_packing_api, shipping_loading_api,
+)
+from .views.sales import (
+    sales_orders_page, sales_order_detail_page, sales_orders_list_api,
+    sales_order_create_api, sales_order_update_api, sales_order_delete_api,
+    sales_order_detail_api, sales_order_item_add_api, sales_order_item_delete_api,
+    sales_customers_api,
+)
 from .views.purchasing import (
     purchases_page, purchase_detail_page, purchases_list_api,
     purchase_create_api, purchase_update_api, purchase_delete_api,
@@ -292,6 +306,35 @@ path('api/profile-orders/import/template/', download_import_template, name='down
     path('api/inventory/items/<int:product_id>/toggle-active/', inventory_item_toggle_active_api, name='inventory_item_toggle_active_api'),
     path('api/inventory/items/<int:product_id>/lots/', inventory_item_lots_api, name='inventory_item_lots_api'),
     path('api/inventory/export/', inventory_export_api, name='inventory_export_api'),
+
+    # Settings
+    path('settings/', settings_page, name='settings_page'),
+    path('api/settings/profile/', settings_profile_api, name='settings_profile_api'),
+    path('api/settings/account/', settings_account_api, name='settings_account_api'),
+    path('api/settings/users/', settings_users_api, name='settings_users_api'),
+    path('api/settings/item-groups/', settings_item_groups_api, name='settings_item_groups_api'),
+
+    # Sales
+    path('sales/', sales_orders_page, name='sales_orders_page'),
+    path('sales/<int:so_id>/', sales_order_detail_page, name='sales_order_detail_page'),
+    path('api/sales/orders/', sales_orders_list_api, name='sales_orders_list_api'),
+    path('api/sales/orders/create/', sales_order_create_api, name='sales_order_create_api'),
+    path('api/sales/orders/<int:so_id>/update/', sales_order_update_api, name='sales_order_update_api'),
+    path('api/sales/orders/<int:so_id>/delete/', sales_order_delete_api, name='sales_order_delete_api'),
+    path('api/sales/orders/<int:so_id>/detail/', sales_order_detail_api, name='sales_order_detail_api'),
+    path('api/sales/orders/<int:so_id>/items/add/', sales_order_item_add_api, name='sales_order_item_add_api'),
+    path('api/sales/orders/<int:so_id>/items/<int:item_id>/delete/', sales_order_item_delete_api, name='sales_order_item_delete_api'),
+    path('api/sales/customers/', sales_customers_api, name='sales_customers_api'),
+
+    # Shipping
+    path('shipping/', shipping_hub, name='shipping_hub'),
+    path('shipping/picking/', shipping_picking, name='shipping_picking'),
+    path('shipping/packing/', shipping_packing, name='shipping_packing'),
+    path('shipping/loading/', shipping_loading, name='shipping_loading'),
+    path('api/shipping/log/', shipping_log_api, name='shipping_log_api'),
+    path('api/shipping/picking/', shipping_picking_api, name='shipping_picking_api'),
+    path('api/shipping/packing/', shipping_packing_api, name='shipping_packing_api'),
+    path('api/shipping/loading/', shipping_loading_api, name='shipping_loading_api'),
 
     # Purchasing
     path('purchasing/', purchases_page, name='purchases_page'),

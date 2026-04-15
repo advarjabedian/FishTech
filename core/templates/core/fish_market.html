@@ -160,16 +160,16 @@
                         {% endif %}
 
                         <div class="menu-item-img"
-                             {% if item.tenant_product %}
-                             {% with imgs=item.tenant_product.images.all %}
+                             {% if item.product %}
+                             {% with imgs=item.product.images.all %}
                              {% for img in imgs %}
                              data-img{{ img.slot }}="{{ img.image.url }}"
                              {% endfor %}
                              {% endwith %}
                              {% endif %}
                              onmouseenter="swapImg(this, true)" onmouseleave="swapImg(this, false)">
-                            {% if item.tenant_product %}
-                            {% with first_img=item.tenant_product.images.all.0 %}
+                            {% if item.product %}
+                            {% with first_img=item.product.images.all.0 %}
                             {% if first_img %}
                             <img src="{{ first_img.image.url }}" alt="{{ item.description }}" id="item-img-{{ item.id }}">
                             {% else %}

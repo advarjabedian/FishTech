@@ -2,7 +2,8 @@
 {% block title %}Import Customers & Items - FishTeck{% endblock %}
 
 {% block content %}
-<div class="container mt-4" style="max-width: 900px;">
+{% include 'core/includes/sidebar.html' with active='orders' %}
+<div class="container mt-4" style="max-width: 900px; margin-left: 72px;">
 
     <div class="d-flex align-items-center gap-2 mb-4">
         <a href="{% url 'customer_list' %}" class="btn btn-outline-secondary btn-sm">

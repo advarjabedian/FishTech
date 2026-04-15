@@ -4,7 +4,7 @@ from django.views.decorators.http import require_POST
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User as DjangoUser
 from django.conf import settings
-from ..models import FishMenuItem, FishOrder, Tenant, TenantUser, Customer, CustomerProfile, ProductImage, ProductSize, TenantProduct, get_current_tenant
+from ..models import FishOrder, Tenant, TenantUser, Customer, CustomerProfile, ProductImage, ProductSize, Product, get_current_tenant
 import stripe
 import json
 import logging
@@ -39,11 +39,11 @@ def fish_market_page(request, slug):
     if retail_customer:
         menu_items = CustomerProfile.all_objects.filter(
             tenant=tenant, customer=retail_customer, is_active=True
-        ).select_related('tenant_product').prefetch_related('tenant_product__images', 'sizes').order_by('sort_order', 'description')
+        ).select_related('product').prefetch_related('product__images', 'sizes').order_by('sort_order', 'description')
 
         all_items = CustomerProfile.all_objects.filter(
             tenant=tenant, customer=retail_customer
-        ).select_related('tenant_product').prefetch_related('tenant_product__images', 'sizes').order_by('sort_order', 'description')
+        ).select_related('product').prefetch_related('product__images', 'sizes').order_by('sort_order', 'description')
     else:
         menu_items = CustomerProfile.objects.none()
         all_items = CustomerProfile.objects.none()
@@ -225,19 +225,19 @@ def fish_market_update_image(request, slug, item_id):
         if not image_file:
             return JsonResponse({'error': 'No image provided'}, status=400)
 
-        # Auto-create a TenantProduct if the profile doesn't have one
-        if not item.tenant_product:
-            tp = TenantProduct.all_objects.create(
+        # Auto-create a Product if the profile doesn't have one
+        if not item.product:
+            p = Product.all_objects.create(
                 tenant=tenant,
                 description=item.description,
                 default_price=item.sales_price or 0,
             )
-            item.tenant_product = tp
-            item.save(update_fields=['tenant_product'])
+            item.product = p
+            item.save(update_fields=['product'])
 
         # Upload to R2 as slot 1 (primary image)
-        ProductImage.objects.filter(tenant_product=item.tenant_product, slot=1).delete()
-        img = ProductImage.objects.create(tenant_product=item.tenant_product, slot=1, image=image_file)
+        ProductImage.objects.filter(product=item.product, slot=1).delete()
+        img = ProductImage.objects.create(product=item.product, slot=1, image=image_file)
 
         return JsonResponse({'success': True, 'image': img.image.url})
     except CustomerProfile.DoesNotExist:

@@ -96,161 +96,53 @@ function saveDays() {
 }
 
 // ============================================
-// SIGNATURE CAPTURE
+// SIGNATURE CAPTURE (uses shared SignatureModal)
 // ============================================
-var signatureCanvas, signatureCtx;
-var isDrawing = false;
 var currentSignatureCompanyId = null;
 var currentSignatureType = null;
-
-function initSignatureCanvas() {
-    signatureCanvas = document.getElementById('signatureCanvas');
-    if (!signatureCanvas) return;
-    
-    signatureCtx = signatureCanvas.getContext('2d');
-    
-    signatureCtx.fillStyle = 'white';
-    signatureCtx.fillRect(0, 0, signatureCanvas.width, signatureCanvas.height);
-    
-    // Mouse events
-    signatureCanvas.addEventListener('mousedown', startDrawing);
-    signatureCanvas.addEventListener('mousemove', draw);
-    signatureCanvas.addEventListener('mouseup', stopDrawing);
-    signatureCanvas.addEventListener('mouseout', stopDrawing);
-    
-    // Touch events
-    signatureCanvas.addEventListener('touchstart', handleTouchStart);
-    signatureCanvas.addEventListener('touchmove', handleTouchMove);
-    signatureCanvas.addEventListener('touchend', stopDrawing);
-}
-
-function startDrawing(e) {
-    isDrawing = true;
-    signatureCtx.beginPath();
-    const rect = signatureCanvas.getBoundingClientRect();
-    signatureCtx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
-}
-
-function draw(e) {
-    if (!isDrawing) return;
-    const rect = signatureCanvas.getBoundingClientRect();
-    signatureCtx.lineWidth = 2;
-    signatureCtx.lineCap = 'round';
-    signatureCtx.strokeStyle = 'black';
-    signatureCtx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
-    signatureCtx.stroke();
-    signatureCtx.beginPath();
-    signatureCtx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
-}
-
-function stopDrawing() {
-    isDrawing = false;
-    signatureCtx.beginPath();
-}
-
-function handleTouchStart(e) {
-    e.preventDefault();
-    const touch = e.touches[0];
-    const rect = signatureCanvas.getBoundingClientRect();
-    isDrawing = true;
-    signatureCtx.beginPath();
-    signatureCtx.moveTo(touch.clientX - rect.left, touch.clientY - rect.top);
-}
-
-function handleTouchMove(e) {
-    e.preventDefault();
-    if (!isDrawing) return;
-    const touch = e.touches[0];
-    const rect = signatureCanvas.getBoundingClientRect();
-    signatureCtx.lineWidth = 2;
-    signatureCtx.lineCap = 'round';
-    signatureCtx.strokeStyle = 'black';
-    signatureCtx.lineTo(touch.clientX - rect.left, touch.clientY - rect.top);
-    signatureCtx.stroke();
-    signatureCtx.beginPath();
-    signatureCtx.moveTo(touch.clientX - rect.left, touch.clientY - rect.top);
-}
-
-function clearSignature() {
-    if (!signatureCanvas) return;
-    signatureCtx.fillStyle = 'white';
-    signatureCtx.fillRect(0, 0, signatureCanvas.width, signatureCanvas.height);
-}
 
 function openSignatureCapture(companyId, type) {
     currentSignatureCompanyId = companyId;
     currentSignatureType = type;
-    
+
     const select = document.getElementById(`${type}-select-${companyId}`);
     const userName = select ? select.options[select.selectedIndex].text : 'User';
-    
-    document.getElementById('signatureUserName').textContent = userName;
-    document.getElementById('signatureModalTitle').textContent = 
-        type === 'verifier' ? 'Capture Verifier Signature' : 'Capture Monitor Signature';
-    
-    const header = document.getElementById('signatureModalHeader');
-    header.style.backgroundColor = type === 'verifier' ? '#0d6efd' : '#dc3545';
-    header.style.color = 'white';
-    
-    clearSignature();
-    new bootstrap.Modal(document.getElementById('signatureModal')).show();
-    setTimeout(initSignatureCanvas, 300);
-}
+    const title = type === 'verifier' ? 'Capture Verifier Signature' : type === 'user' ? 'Your Signature' : 'Capture Monitor Signature';
+    const color = type === 'verifier' ? '#0d6efd' : type === 'user' ? '#198754' : '#dc3545';
 
-function saveSignature() {
-    if (!signatureCanvas) return;
-    
-    const imageData = signatureCtx.getImageData(0, 0, signatureCanvas.width, signatureCanvas.height);
-    let isBlank = true;
-    for (let i = 0; i < imageData.data.length; i += 4) {
-        if (imageData.data[i] < 250 || imageData.data[i+1] < 250 || imageData.data[i+2] < 250) {
-            isBlank = false;
-            break;
-        }
-    }
-    
-    if (isBlank) {
-        alert('Please draw a signature first');
-        return;
-    }
-    
-    const signature = signatureCanvas.toDataURL('image/png');
-    let endpoint;
-    if (currentSignatureType === 'user') {
-        endpoint = '/api/operations/save-user-signature/';
-    } else if (currentSignatureType === 'verifier') {
-        endpoint = '/api/operations/save-verifier-signature/';
-    } else {
-        endpoint = '/api/operations/save-monitor-signature/';
-    }
+    SignatureModal.open({
+        title: title,
+        headerColor: color,
+        onSave: function(signature) {
+            let endpoint;
+            if (type === 'user') endpoint = '/api/operations/save-user-signature/';
+            else if (type === 'verifier') endpoint = '/api/operations/save-verifier-signature/';
+            else endpoint = '/api/operations/save-monitor-signature/';
 
-    fetch(endpoint, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': getCookie('csrftoken')
-        },
-        body: JSON.stringify({ signature: signature })
-    })
-    .then(r => r.json())
-    .then(data => {
-        if (data.success) {
-            bootstrap.Modal.getInstance(document.getElementById('signatureModal')).hide();
-            if (currentSignatureType === 'user') {
-                // Update the preview
-                document.getElementById('mySignatureImg').src = signature;
-                document.getElementById('mySignaturePreview').style.display = '';
-                document.getElementById('noSignatureText').style.display = 'none';
-            } else {
-                const indicatorId = currentSignatureType === 'verifier'
-                    ? `sig-indicator-${currentSignatureCompanyId}`
-                    : `monitor-sig-indicator-${currentSignatureCompanyId}`;
-                const indicator = document.getElementById(indicatorId);
-                if (indicator) indicator.style.display = 'inline';
-            }
-            alert('Signature saved successfully');
-        } else {
-            alert('Error saving signature');
+            fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+                body: JSON.stringify({ signature: signature })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    if (type === 'user') {
+                        document.getElementById('mySignatureImg').src = signature;
+                        document.getElementById('mySignaturePreview').style.display = '';
+                        document.getElementById('noSignatureText').style.display = 'none';
+                    } else {
+                        const indicatorId = type === 'verifier'
+                            ? `sig-indicator-${companyId}`
+                            : `monitor-sig-indicator-${companyId}`;
+                        const indicator = document.getElementById(indicatorId);
+                        if (indicator) indicator.style.display = 'inline';
+                    }
+                    alert('Signature saved successfully');
+                } else {
+                    alert('Error saving signature');
+                }
+            });
         }
     });
 }

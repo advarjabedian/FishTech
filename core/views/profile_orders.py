@@ -2,7 +2,7 @@ from django.shortcuts import render, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse, HttpResponse
 from django.views.decorators.http import require_POST
-from ..models import Customer, CustomerProfile, ProductImage, TenantProduct, SO, SOD, get_current_tenant
+from ..models import Customer, CustomerProfile, ProductImage, Product, SalesOrder, SalesOrderItem, get_current_tenant
 import json
 import logging
 from ..models import Tenant, InboundMessage
@@ -21,13 +21,13 @@ def products_page(request):
     """View tenant product catalog and customer assignments"""
     from django.db.models import Prefetch
     tenant = get_current_tenant()
-    tenant_products = TenantProduct.objects.filter(is_active=True).prefetch_related('images').order_by('sort_order', 'description')
+    products = Product.objects.filter(is_active=True).prefetch_related('images').order_by('sort_order', 'description')
     customers = Customer.objects.prefetch_related(
-        Prefetch('profiles', queryset=CustomerProfile.objects.select_related('tenant_product').prefetch_related('tenant_product__images'))
+        Prefetch('profiles', queryset=CustomerProfile.objects.select_related('product').prefetch_related('product__images'))
     ).order_by('name')
     return render(request, 'core/Orders/products.html', {
         'customers': customers,
-        'tenant_products': tenant_products,
+        'products': products,
     })
 
 
@@ -250,8 +250,8 @@ def import_profiles_confirm(request):
             except (ValueError, TypeError):
                 comp_item_id = None
 
-            # Get or create tenant-level product catalog entry
-            tenant_product, _ = TenantProduct.objects.get_or_create(
+            # Get or create product catalog entry
+            product, _ = Product.objects.get_or_create(
                 tenant=tenant,
                 description=item_desc,
                 defaults={
@@ -264,7 +264,7 @@ def import_profiles_confirm(request):
             CustomerProfile.objects.create(
                 tenant=tenant,
                 customer=customer,
-                tenant_product=tenant_product,
+                product=product,
                 description=item_desc,
                 unit_type=row.get('unit_type', ''),
                 pack_size=pack_size,
@@ -354,8 +354,14 @@ def submit_profile_order(request):
         customer = get_object_or_404(Customer, id=order_data.get('customerId'))
         tenant = customer.tenant
 
-        last_so = SO.all_objects.filter(tenant=tenant).order_by('-soid').first()
-        next_soid = (last_so.soid + 1) if last_so else 1
+        # Generate next order number
+        last_so = SalesOrder.all_objects.filter(tenant=tenant).order_by('-id').first()
+        next_num = 10001
+        if last_so:
+            try:
+                next_num = int(last_so.order_number) + 1
+            except (ValueError, TypeError):
+                next_num = last_so.id + 10001
 
         import datetime
         from django.utils.dateparse import parse_date
@@ -365,43 +371,34 @@ def submit_profile_order(request):
         except ValueError:
             dispatch_date = parse_date(dispatch_date_str)
 
-        so = SO.objects.create(
+        so = SalesOrder.objects.create(
             tenant=tenant,
-            soid=next_soid,
+            order_number=str(next_num),
             customer=customer,
-            customerid=customer.customer_id,
-            dispatchdate=dispatch_date,
-            comments=order_data.get('comments', ''),
-            customerpo=order_data.get('customerPO', ''),
-            billto1=customer.name,
-            billto2=customer.address,
-            billto3=f"{customer.city}, {customer.state} {customer.zipcode}",
-            shipto1=customer.name,
-            shipto2=customer.ship_address or customer.address,
-            shipto3=f"{customer.ship_city or customer.city}, {customer.ship_state or customer.state} {customer.ship_zipcode or customer.zipcode}",
-            totalamount=order_data.get('total', 0),
+            customer_name=customer.name,
+            order_date=dispatch_date,
+            delivery_date=dispatch_date,
+            notes=order_data.get('comments', ''),
+            po_number=order_data.get('customerPO', ''),
+            order_status='open',
         )
 
-        last_sod = SOD.all_objects.filter(tenant=tenant).order_by('-sodid').first()
-        next_sodid = (last_sod.sodid + 1) if last_sod else 1
-
         for item in order_items:
-            SOD.objects.create(
+            qty = item.get('quantity', 0)
+            price = item.get('price', 0)
+            pack = item.get('packSize', 1)
+            SalesOrderItem.objects.create(
                 tenant=tenant,
-                sodid=next_sodid,
-                so=so,
-                soid=so.soid,
-                productid=item.get('id') or None,
-                descriptionmemo=item.get('name', ''),
-                orderedunits=item.get('quantity', 0),
-                unitsize=item.get('packSize', 1),
-                salesprice=item.get('price', 0),
-                specialinstructions=item.get('instructions', ''),
+                sales_order=so,
+                description=item.get('name', ''),
+                quantity=qty,
+                unit_price=price,
+                amount=float(qty or 0) * float(pack or 1) * float(price or 0),
+                notes=item.get('instructions', ''),
             )
-            next_sodid += 1
 
-        return JsonResponse({'success': True, 'order_id': so.soid,
-                             'message': f'Order SO-{so.soid} submitted successfully'})
+        return JsonResponse({'success': True, 'order_id': so.order_number,
+                             'message': f'Order SO-{so.order_number} submitted successfully'})
 
     except Exception as e:
         logger.error(f"Error submitting profile order: {e}")
@@ -711,8 +708,8 @@ def import_confirm(request):
                 except (ValueError, TypeError):
                     price = None
 
-                # Get or create tenant-level product catalog entry
-                tenant_product, _ = TenantProduct.objects.get_or_create(
+                # Get or create product catalog entry
+                product, _ = Product.objects.get_or_create(
                     tenant=tenant,
                     description=item['description'],
                     defaults={
@@ -725,7 +722,7 @@ def import_confirm(request):
                 CustomerProfile.objects.create(
                     tenant=tenant,
                     customer=customer,
-                    tenant_product=tenant_product,
+                    product=product,
                     description=item['description'],
                     unit_type=item['unit_type'] or '',
                     pack_size=item['pack_size'],
@@ -903,12 +900,12 @@ def delete_profile_item_api(request, profile_id):
 @login_required
 @require_POST
 def upload_product_image(request, product_id):
-    """Upload an image (slot 1, 2, or 3) for a tenant product"""
+    """Upload an image (slot 1, 2, or 3) for a product"""
     tenant = get_current_tenant()
     if not tenant:
         return JsonResponse({'error': 'No tenant context'}, status=400)
     try:
-        product = get_object_or_404(TenantProduct, id=product_id)
+        product = get_object_or_404(Product, id=product_id)
         slot = int(request.POST.get('slot', 1))
         if slot not in (1, 2, 3):
             return JsonResponse({'error': 'Slot must be 1, 2, or 3'}, status=400)
@@ -918,10 +915,10 @@ def upload_product_image(request, product_id):
             return JsonResponse({'error': 'No image provided'}, status=400)
 
         # Delete existing image in this slot
-        ProductImage.objects.filter(tenant_product=product, slot=slot).delete()
+        ProductImage.objects.filter(product=product, slot=slot).delete()
 
         img = ProductImage.objects.create(
-            tenant_product=product,
+            product=product,
             slot=slot,
             image=image_file,
         )
@@ -938,8 +935,8 @@ def delete_product_image(request, product_id, slot):
     if not tenant:
         return JsonResponse({'error': 'No tenant context'}, status=400)
     try:
-        product = get_object_or_404(TenantProduct, id=product_id)
-        img = ProductImage.objects.filter(tenant_product=product, slot=slot).first()
+        product = get_object_or_404(Product, id=product_id)
+        img = ProductImage.objects.filter(product=product, slot=slot).first()
         if img:
             img.image.delete(save=False)
             img.delete()
@@ -952,9 +949,9 @@ def delete_product_image(request, product_id, slot):
 def get_product_images(request, product_id):
     """Get all images for a tenant product"""
     try:
-        product = get_object_or_404(TenantProduct, id=product_id)
+        product = get_object_or_404(Product, id=product_id)
         images = []
-        for img in ProductImage.objects.filter(tenant_product=product).order_by('slot'):
+        for img in ProductImage.objects.filter(product=product).order_by('slot'):
             images.append({'slot': img.slot, 'url': img.image.url})
         return JsonResponse({'success': True, 'images': images})
     except Exception as e:
@@ -967,11 +964,11 @@ def get_product_images(request, product_id):
 
 @login_required
 def get_tenant_products_api(request):
-    """List all tenant products"""
+    """List all products in the catalog"""
     tenant = get_current_tenant()
     if not tenant:
         return JsonResponse({'error': 'No tenant context'}, status=400)
-    products = TenantProduct.objects.order_by('sort_order', 'description')
+    products = Product.objects.order_by('sort_order', 'description')
     data = [{
         'id': p.id,
         'description': p.description,
@@ -986,7 +983,7 @@ def get_tenant_products_api(request):
 @login_required
 @require_POST
 def add_tenant_product_api(request):
-    """Add a product to the tenant catalog"""
+    """Add a product to the catalog"""
     tenant = get_current_tenant()
     if not tenant:
         return JsonResponse({'error': 'No tenant context'}, status=400)
@@ -995,9 +992,9 @@ def add_tenant_product_api(request):
         description = data.get('description', '').strip()
         if not description:
             return JsonResponse({'error': 'Description is required'}, status=400)
-        if TenantProduct.objects.filter(description=description).exists():
+        if Product.objects.filter(description=description).exists():
             return JsonResponse({'error': 'A product with this description already exists'}, status=400)
-        product = TenantProduct.objects.create(
+        product = Product.objects.create(
             tenant=tenant,
             description=description,
             unit_type=data.get('unit_type', ''),
@@ -1020,17 +1017,17 @@ def add_tenant_product_api(request):
 @login_required
 @require_POST
 def update_tenant_product_api(request, product_id):
-    """Update a tenant product"""
+    """Update a product"""
     tenant = get_current_tenant()
     if not tenant:
         return JsonResponse({'error': 'No tenant context'}, status=400)
     try:
-        product = get_object_or_404(TenantProduct, id=product_id)
+        product = get_object_or_404(Product, id=product_id)
         data = json.loads(request.body)
         description = data.get('description', '').strip()
         if not description:
             return JsonResponse({'error': 'Description is required'}, status=400)
-        dup = TenantProduct.objects.filter(description=description).exclude(id=product_id).exists()
+        dup = Product.objects.filter(description=description).exclude(id=product_id).exists()
         if dup:
             return JsonResponse({'error': 'A product with this description already exists'}, status=400)
         product.description = description
@@ -1053,12 +1050,12 @@ def update_tenant_product_api(request, product_id):
 @login_required
 @require_POST
 def delete_tenant_product_api(request, product_id):
-    """Delete a tenant product (and unlink from customer assignments)"""
+    """Delete a product (and unlink from customer assignments)"""
     tenant = get_current_tenant()
     if not tenant:
         return JsonResponse({'error': 'No tenant context'}, status=400)
     try:
-        product = get_object_or_404(TenantProduct, id=product_id)
+        product = get_object_or_404(Product, id=product_id)
         product.delete()
         return JsonResponse({'success': True})
     except Exception as e:
@@ -1079,18 +1076,18 @@ def assign_product_to_customer_api(request):
         if not product_id or not customer_id:
             return JsonResponse({'error': 'product_id and customer_id are required'}, status=400)
 
-        product = get_object_or_404(TenantProduct, id=product_id)
+        product = get_object_or_404(Product, id=product_id)
         customer = get_object_or_404(Customer, id=customer_id)
 
         # Check if already assigned
-        existing = CustomerProfile.objects.filter(customer=customer, tenant_product=product).first()
+        existing = CustomerProfile.objects.filter(customer=customer, product=product).first()
         if existing:
             return JsonResponse({'error': f'"{product.description}" is already assigned to this customer'}, status=400)
 
         profile = CustomerProfile.objects.create(
             tenant=tenant,
             customer=customer,
-            tenant_product=product,
+            product=product,
             description=product.description,
             unit_type=product.unit_type,
             pack_size=product.pack_size,
@@ -1105,7 +1102,7 @@ def assign_product_to_customer_api(request):
         return JsonResponse({
             'success': True,
             'id': profile.id,
-            'tenant_product_id': product.id,
+            'product_id': product.id,
             'description': profile.description,
             'unit_type': profile.unit_type,
             'pack_size': str(profile.pack_size) if profile.pack_size else '',
@@ -1151,19 +1148,21 @@ def get_profile_orders_api(request):
         return JsonResponse({'error': 'No tenant context'}, status=400)
 
     completed = request.GET.get('completed', 'false') == 'true'
-    orders = SO.objects.filter(is_completed=completed).select_related(
+    orders = SalesOrder.objects.filter(is_completed=completed).select_related(
         'customer', 'assigned_to', 'completed_by'
-    ).order_by('-soid')
+    ).prefetch_related('items').order_by('-id')
 
     data = []
     for o in orders:
+        total = sum(float(item.amount or 0) for item in o.items.all())
         data.append({
-            'soid': o.soid,
-            'customer': o.billto1 or '',
-            'dispatch_date': o.dispatchdate.strftime('%m/%d/%Y') if o.dispatchdate else '',
-            'total': float(o.totalamount or 0),
-            'customerpo': o.customerpo or '',
-            'comments': o.comments or '',
+            'soid': o.id,
+            'order_number': o.order_number,
+            'customer': o.customer_name or '',
+            'dispatch_date': o.order_date.strftime('%m/%d/%Y') if o.order_date else '',
+            'total': total,
+            'customerpo': o.po_number or '',
+            'comments': o.notes or '',
             'assigned_to_id': o.assigned_to_id,
             'assigned_to_name': o.assigned_to.username if o.assigned_to else '',
             'completed_at': o.completed_at.strftime('%m/%d/%Y %I:%M %p') if o.completed_at else '',
@@ -1179,19 +1178,15 @@ def get_profile_order_items_api(request, soid):
     if not tenant:
         return JsonResponse({'error': 'No tenant context'}, status=400)
 
-    so = get_object_or_404(SO, soid=soid)
-    items = SOD.objects.filter(so=so).order_by('sodid')
-    if not items.exists():
-        # Fallback for records where FK wasn't set (legacy/migrated data)
-        from django.db.models import Q
-        items = SOD.all_objects.filter(tenant=so.tenant, soid=so.soid).order_by('sodid')
+    so = get_object_or_404(SalesOrder, id=soid)
+    items = SalesOrderItem.objects.filter(sales_order=so).order_by('sort_order', 'id')
     data = [{
-        'description': i.descriptionmemo or '',
-        'qty': float(i.orderedunits or 0),
-        'pack': float(i.unitsize or 1),
-        'price': float(i.salesprice or 0),
-        'total': float((i.orderedunits or 0) * (i.unitsize or 1) * (i.salesprice or 0)),
-        'instructions': i.specialinstructions or '',
+        'description': i.description or '',
+        'qty': float(i.quantity or 0),
+        'pack': 1,
+        'price': float(i.unit_price or 0),
+        'total': float(i.amount or 0),
+        'instructions': i.notes or '',
     } for i in items]
 
     return JsonResponse({'items': data})
@@ -1204,7 +1199,7 @@ def assign_profile_order_api(request, soid):
     if not tenant:
         return JsonResponse({'error': 'No tenant context'}, status=400)
     try:
-        so = get_object_or_404(SO, soid=soid)
+        so = get_object_or_404(SalesOrder, id=soid)
         data = json.loads(request.body)
         user_id = data.get('user_id')
 
@@ -1227,7 +1222,7 @@ def complete_profile_order_api(request, soid):
         return JsonResponse({'error': 'No tenant context'}, status=400)
     try:
         from django.utils import timezone
-        so = get_object_or_404(SO, soid=soid)
+        so = get_object_or_404(SalesOrder, id=soid)
         so.is_completed = True
         so.completed_at = timezone.now()
         so.completed_by = request.user
@@ -1244,7 +1239,7 @@ def uncomplete_profile_order_api(request, soid):
     if not tenant:
         return JsonResponse({'error': 'No tenant context'}, status=400)
     try:
-        so = get_object_or_404(SO, soid=soid)
+        so = get_object_or_404(SalesOrder, id=soid)
         so.is_completed = False
         so.completed_at = None
         so.completed_by = None

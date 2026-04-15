@@ -1,7 +1,8 @@
 {% extends 'core/base.html' %}
 {% block title %}Orders - FishTeck{% endblock %}
 {% block content %}
-<div class="container mt-4">
+{% include 'core/includes/sidebar.html' with active='orders' %}
+<div class="container mt-4" style="margin-left:72px;">
     <h2 class="mb-4"><i class="bi bi-bag me-2"></i>Orders</h2>
     <div class="row justify-content-center">
 

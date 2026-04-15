@@ -91,7 +91,8 @@
 {% endblock %}
 
 {% block content %}
-<div class="container-fluid px-4 mt-4">
+{% include 'core/includes/sidebar.html' with active='orders' %}
+<div class="container-fluid px-4 mt-4" style="margin-left:72px;">
     <div class="d-flex align-items-center gap-2 mb-3">
         <a href="{% url 'orders_landing' %}" class="btn btn-sm btn-outline-secondary">
             <i class="bi bi-arrow-left me-1"></i>Orders
@@ -113,7 +114,7 @@
                     <input type="text" class="form-control form-control-sm" id="catalogSearch" placeholder="Search catalog..." oninput="filterCatalog()">
                 </div>
                 <div class="catalog-list" id="catalogList">
-                    {% for product in tenant_products %}
+                    {% for product in products %}
                     <div class="catalog-item" draggable="true" data-product-id="{{ product.id }}" data-description="{{ product.description }}"
                          ondragstart="onDragStart(event, {{ product.id }}, '{{ product.description|escapejs }}')"
                          ondragend="onDragEnd(event)">
@@ -218,11 +219,11 @@
                                     </td>
                                     <td>
                                         <div class="d-flex gap-1 align-items-center">
-                                            {% if item.tenant_product %}
-                                            {% for img in item.tenant_product.images.all %}
-                                            <img src="{{ img.image.url }}" style="width:28px;height:28px;object-fit:cover;border-radius:3px;cursor:pointer;" onclick="event.stopPropagation(); openImageManager({{ item.tenant_product.id }})" title="Slot {{ img.slot }}">
+                                            {% if item.product %}
+                                            {% for img in item.product.images.all %}
+                                            <img src="{{ img.image.url }}" style="width:28px;height:28px;object-fit:cover;border-radius:3px;cursor:pointer;" onclick="event.stopPropagation(); openImageManager({{ item.product.id }})" title="Slot {{ img.slot }}">
                                             {% endfor %}
-                                            <button class="btn btn-sm btn-outline-secondary" style="width:28px;height:28px;padding:0;font-size:0.65rem;" onclick="event.stopPropagation(); openImageManager({{ item.tenant_product.id }})" title="Manage images">
+                                            <button class="btn btn-sm btn-outline-secondary" style="width:28px;height:28px;padding:0;font-size:0.65rem;" onclick="event.stopPropagation(); openImageManager({{ item.product.id }})" title="Manage images">
                                                 <i class="bi bi-camera"></i>
                                             </button>
                                             {% endif %}
@@ -535,7 +536,7 @@ function addRowToCustomer(customerId, data) {
     const emptyRow = tbody.querySelector('.empty-row');
     if (emptyRow) emptyRow.remove();
 
-    const tpId = data.tenant_product_id;
+    const tpId = data.product_id;
     let imagesHtml = '';
     if (data.images) {
         data.images.forEach(img => {

@@ -1,0 +1,146 @@
+{% extends 'core/base.html' %}
+{% block title %}Shipping Log - FishTeck{% endblock %}
+
+{% block extra_css %}
+<style>
+.inv-main { margin-left: 72px; padding: 1.5rem 2rem; background: #f8fafc; min-height: calc(100vh - 56px); }
+.inv-header { margin-bottom: 1.25rem; display: flex; align-items: center; justify-content: space-between; }
+.inv-header h2 { font-size: 1.4rem; font-weight: 700; margin: 0; }
+.inv-header .sub { font-size: 0.8rem; color: #64748b; }
+.inv-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin-bottom: 1rem; flex-wrap: wrap; }
+.inv-toolbar-left { display: flex; align-items: center; gap: 0.5rem; }
+.filter-select { border: 1px solid #d1d5db; border-radius: 8px; padding: 6px 12px; font-size: 0.85rem; background: #fff; }
+.search-box { border: 1px solid #d1d5db; border-radius: 8px; padding: 6px 12px; font-size: 0.85rem; width: 220px; background: #fff; }
+.search-box:focus { border-color: #2563eb; box-shadow: 0 0 0 2px rgba(37,99,235,0.15); outline: none; }
+.btn-inv-outline { background: #fff; color: #374151; border: 1px solid #d1d5db; border-radius: 8px; padding: 7px 14px; font-size: 0.85rem; font-weight: 600; cursor: pointer; }
+.btn-inv-outline:hover { border-color: #2563eb; color: #2563eb; }
+.btn-pdf { background: #dc2626; color: #fff; border: none; border-radius: 8px; padding: 8px 20px; font-size: 0.85rem; font-weight: 600; cursor: pointer; }
+
+.inv-table-card { background: #fff; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); overflow: hidden; }
+.inv-table { width: 100%; border-collapse: collapse; font-size: 0.83rem; }
+.inv-table thead th { background: #f1f5f9; color: #64748b; font-weight: 600; font-size: 0.73rem; text-transform: uppercase; padding: 10px 12px; border-bottom: 1px solid #e2e8f0; white-space: nowrap; }
+.inv-table tbody tr { border-bottom: 1px solid #f1f5f9; cursor: pointer; transition: background 0.1s; }
+.inv-table tbody tr:hover { background: #f0f7ff; }
+.inv-table tbody td { padding: 9px 12px; vertical-align: middle; color: #334155; }
+.badge-packed { background: #dcfce7; color: #16a34a; padding: 3px 10px; border-radius: 999px; font-size: 0.72rem; font-weight: 600; }
+.badge-not_packed { background: #f1f5f9; color: #64748b; padding: 3px 10px; border-radius: 999px; font-size: 0.72rem; font-weight: 600; }
+.badge-need_to_send { background: #e0e7ff; color: #4f46e5; padding: 3px 10px; border-radius: 999px; font-size: 0.72rem; font-weight: 600; }
+.inv-pagination { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; font-size: 0.8rem; color: #64748b; border-top: 1px solid #f1f5f9; }
+.inv-pagination .page-btns { display: flex; gap: 4px; }
+.inv-pagination .page-btn { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border: 1px solid #d1d5db; border-radius: 6px; background: #fff; color: #374151; cursor: pointer; font-size: 0.8rem; }
+.inv-pagination .page-btn:hover { border-color: #2563eb; color: #2563eb; }
+.inv-pagination .page-btn.active { background: #2563eb; color: #fff; border-color: #2563eb; }
+
+/* Ship sub-nav */
+.ship-subnav { display: flex; gap: 0.5rem; margin-bottom: 1.25rem; }
+.ship-subnav a { padding: 8px 16px; border-radius: 8px; font-size: 0.82rem; font-weight: 600; color: #64748b; text-decoration: none; border: 1px solid transparent; transition: all 0.15s; }
+.ship-subnav a:hover { background: #eff6ff; color: #2563eb; }
+.ship-subnav a.active { background: #2563eb; color: #fff; }
+</style>
+{% endblock %}
+
+{% block content %}
+{% include 'core/includes/sidebar.html' with active='ship' %}
+
+<div class="inv-main">
+    <div class="inv-header">
+        <div>
+            <h2><i class="bi bi-truck me-2" style="color:#2563eb;"></i>Shipping Log</h2>
+            <span class="sub" id="totalCount">0 Shipments</span>
+        </div>
+        <button class="btn-pdf" onclick="window.print()"><i class="bi bi-file-earmark-pdf me-1"></i>Save As PDF</button>
+    </div>
+
+    <div class="ship-subnav">
+        <a href="{% url 'shipping_hub' %}" class="active"><i class="bi bi-truck me-1"></i>Shipping Log</a>
+        <a href="{% url 'shipping_picking' %}"><i class="bi bi-grid-3x3-gap me-1"></i>Picking</a>
+        <a href="{% url 'shipping_packing' %}"><i class="bi bi-box me-1"></i>Packing</a>
+        <a href="{% url 'shipping_loading' %}"><i class="bi bi-boxes me-1"></i>Loading</a>
+    </div>
+
+    <div class="inv-toolbar">
+        <div class="inv-toolbar-left">
+            <input type="date" class="filter-select" id="dateFrom" onchange="loadData()">
+            <span style="color:#64748b;">—</span>
+            <input type="date" class="filter-select" id="dateTo" onchange="loadData()">
+            <input type="text" class="search-box" id="searchBox" placeholder="Search..." oninput="debounceSearch()">
+            <button class="btn-inv-outline" onclick="clearFilters()"><i class="bi bi-x-circle me-1"></i>Clear</button>
+        </div>
+    </div>
+
+    <div class="inv-table-card">
+        <div style="overflow-x:auto;">
+            <table class="inv-table">
+                <thead><tr>
+                    <th>Order #</th><th>Customer</th><th>Ship Date</th>
+                    <th>Shipper</th><th>Route</th><th>Packed</th>
+                    <th style="text-align:right;">Total</th>
+                </tr></thead>
+                <tbody id="logTbody"><tr><td colspan="7" class="text-center text-muted py-4">Loading...</td></tr></tbody>
+            </table>
+        </div>
+        <div class="inv-pagination">
+            <span id="paginationInfo">Showing 0 items</span>
+            <div class="page-btns" id="paginationBtns"></div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentPage = 1;
+let searchTimeout;
+function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+
+document.addEventListener('DOMContentLoaded', loadData);
+
+function debounceSearch() { clearTimeout(searchTimeout); searchTimeout = setTimeout(() => { currentPage = 1; loadData(); }, 300); }
+function clearFilters() { document.getElementById('searchBox').value = ''; document.getElementById('dateFrom').value = ''; document.getElementById('dateTo').value = ''; currentPage = 1; loadData(); }
+
+async function loadData() {
+    const search = document.getElementById('searchBox').value.trim();
+    const dateFrom = document.getElementById('dateFrom').value;
+    const dateTo = document.getElementById('dateTo').value;
+
+    let url = `/api/shipping/log/?page=${currentPage}`;
+    if (search) url += `&search=${encodeURIComponent(search)}`;
+    if (dateFrom) url += `&date_from=${dateFrom}`;
+    if (dateTo) url += `&date_to=${dateTo}`;
+
+    const res = await fetch(url);
+    const data = await res.json();
+    const orders = data.orders || [];
+    const total = data.total || 0;
+    const tbody = document.getElementById('logTbody');
+
+    document.getElementById('totalCount').textContent = `${total} Shipments`;
+
+    if (!orders.length) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">No shipments found.</td></tr>';
+        document.getElementById('paginationInfo').textContent = '0 items';
+        document.getElementById('paginationBtns').innerHTML = '';
+        return;
+    }
+
+    tbody.innerHTML = orders.map(o => `
+        <tr onclick="window.location='/sales/${o.id}/'">
+            <td style="font-weight:600; color:#2563eb;">${esc(o.order_number)}</td>
+            <td>${esc(o.customer)}</td>
+            <td>${esc(o.ship_date)}</td>
+            <td>${esc(o.shipper)}</td>
+            <td>${esc(o.shipping_route)}</td>
+            <td><span class="badge-${o.packed_status}">${esc(o.packed_status_display)}</span></td>
+            <td style="text-align:right;">$${Number(o.total).toFixed(2)}</td>
+        </tr>
+    `).join('');
+
+    const totalPages = Math.ceil(total / 100);
+    document.getElementById('paginationInfo').textContent = `Showing ${(currentPage-1)*100+1} to ${Math.min(currentPage*100, total)} of ${total}`;
+    let btns = '';
+    for (let p = 1; p <= Math.min(totalPages, 5); p++)
+        btns += `<button class="page-btn ${p===currentPage?'active':''}" onclick="currentPage=${p}; loadData();">${p}</button>`;
+    document.getElementById('paginationBtns').innerHTML = btns;
+}
+</script>
+{% endblock %}

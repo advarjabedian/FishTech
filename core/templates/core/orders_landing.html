@@ -38,7 +38,8 @@
 {% endblock %}
 
 {% block content %}
-<div class="container mt-4">
+{% include 'core/includes/sidebar.html' with active='orders' %}
+<div class="container mt-4" style="margin-left: 72px;">
     <div class="d-flex align-items-center gap-2 mb-4">
         <a href="{% url 'operations_hub' %}" class="btn btn-sm btn-outline-secondary">
             <i class="bi bi-arrow-left me-1"></i>Home

@@ -1,0 +1,435 @@
+{% extends 'core/base.html' %}
+{% block title %}SO {{ so.order_number }} - {{ so.customer_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+.inv-main { margin-left: 72px; padding: 1.5rem 2rem; background: #f8fafc; min-height: calc(100vh - 56px); }
+
+.so-header { display: flex; align-items: start; justify-content: space-between; margin-bottom: 0.25rem; }
+.so-header h2 { font-size: 1.4rem; font-weight: 700; margin: 0; }
+.so-header .meta { font-size: 0.8rem; color: #64748b; }
+.badge-status { display: inline-block; padding: 4px 12px; border-radius: 999px; font-size: 0.75rem; font-weight: 600; }
+.badge-draft { background: #f1f5f9; color: #64748b; }
+.badge-open { background: #dbeafe; color: #2563eb; }
+.badge-needs_review { background: #fee2e2; color: #dc2626; }
+.badge-closed { background: #dcfce7; color: #16a34a; }
+
+/* Tabs */
+.so-tabs { display: flex; gap: 0; border-bottom: 2px solid #e2e8f0; margin-bottom: 1.5rem; }
+.so-tab {
+    padding: 12px 24px; font-size: 0.9rem; font-weight: 600; color: #64748b;
+    cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -2px; transition: all 0.15s;
+}
+.so-tab:hover { color: #2563eb; }
+.so-tab.active { color: #2563eb; border-bottom-color: #2563eb; }
+
+.so-card { background: #fff; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); padding: 1.5rem; margin-bottom: 1.25rem; max-width: 1100px; }
+.so-card h5 { font-weight: 700; font-size: 0.95rem; margin-bottom: 1rem; }
+
+.info-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 1rem; }
+.info-item label { font-size: 0.73rem; font-weight: 600; color: #64748b; text-transform: uppercase; display: block; margin-bottom: 4px; }
+.info-item input, .info-item select {
+    width: 100%; border: 1px solid #d1d5db; border-radius: 8px; padding: 8px 12px; font-size: 0.85rem;
+}
+.info-item input:focus, .info-item select:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.12); outline: none; }
+
+.contact-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px 18px; margin-bottom: 0.75rem; }
+.contact-card .cc-label { font-size: 0.72rem; font-weight: 600; color: #64748b; text-transform: uppercase; margin-bottom: 4px; }
+.contact-card .cc-name { font-weight: 600; color: #1e293b; font-size: 0.85rem; }
+.contact-card .cc-detail { font-size: 0.8rem; color: #64748b; }
+.contact-card a { color: #2563eb; text-decoration: none; font-size: 0.8rem; }
+
+/* Items table */
+.items-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+.items-table th { text-align: left; color: #64748b; font-weight: 600; font-size: 0.73rem; text-transform: uppercase; padding: 8px 10px; border-bottom: 1px solid #e2e8f0; }
+.items-table td { padding: 8px 10px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+.items-table .item-select { width: 100%; border: 1px solid #d1d5db; border-radius: 6px; padding: 6px 8px; font-size: 0.85rem; }
+.items-table input { border: 1px solid #d1d5db; border-radius: 6px; padding: 6px 8px; font-size: 0.85rem; width: 100%; }
+.items-table .del-btn { background: none; border: 1px solid #e5e7eb; border-radius: 6px; color: #94a3b8; cursor: pointer; padding: 4px 8px; }
+.items-table .del-btn:hover { color: #dc2626; border-color: #dc2626; }
+
+.add-links { display: flex; gap: 1rem; margin-top: 0.75rem; font-size: 0.82rem; }
+.add-links a { color: #2563eb; text-decoration: none; font-weight: 600; cursor: pointer; }
+.add-links a:hover { text-decoration: underline; }
+
+.totals-row { display: flex; justify-content: flex-end; gap: 2rem; font-size: 0.85rem; margin-top: 0.75rem; padding-top: 0.5rem; border-top: 1px solid #e5e7eb; }
+.totals-row .t-label { color: #64748b; font-weight: 600; }
+.totals-row .t-val { color: #1e293b; font-weight: 700; min-width: 80px; text-align: right; }
+
+.notes-area { width: 100%; border: 1px solid #d1d5db; border-radius: 8px; padding: 10px 12px; font-size: 0.85rem; resize: vertical; }
+.notes-area:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.12); outline: none; }
+
+.btn-inv-primary { background: #2563eb; color: #fff; border: none; border-radius: 8px; padding: 8px 20px; font-size: 0.85rem; font-weight: 600; cursor: pointer; }
+.btn-inv-primary:hover { background: #1d4ed8; color: #fff; }
+.btn-inv-outline { background: #fff; color: #374151; border: 1px solid #d1d5db; border-radius: 8px; padding: 8px 20px; font-size: 0.85rem; font-weight: 600; cursor: pointer; }
+.btn-inv-outline:hover { border-color: #2563eb; color: #2563eb; }
+.btn-publish { background: #0ea5e9; color: #fff; border: none; border-radius: 8px; padding: 8px 20px; font-size: 0.85rem; font-weight: 600; cursor: pointer; }
+.btn-publish:hover { background: #0284c7; }
+
+/* Packed Lots tab */
+.shipping-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
+.shipping-item .s-label { font-size: 0.73rem; font-weight: 600; color: #64748b; text-transform: uppercase; }
+.shipping-item .s-val { font-size: 0.9rem; font-weight: 600; color: #1e293b; margin-top: 2px; }
+
+.packed-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+.packed-table th { text-align: left; color: #64748b; font-weight: 600; font-size: 0.73rem; text-transform: uppercase; padding: 10px 12px; border-bottom: 1px solid #e2e8f0; }
+.packed-table td { padding: 10px 12px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+.packed-table a { color: #2563eb; text-decoration: none; font-weight: 500; }
+.packed-table a:hover { text-decoration: underline; }
+
+.status-match { background: #dcfce7; color: #16a34a; padding: 3px 10px; border-radius: 999px; font-size: 0.72rem; font-weight: 600; }
+.status-short { background: #fee2e2; color: #dc2626; padding: 3px 10px; border-radius: 999px; font-size: 0.72rem; font-weight: 600; }
+.status-unexpected { background: #fef3c7; color: #d97706; padding: 3px 10px; border-radius: 999px; font-size: 0.72rem; font-weight: 600; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+{% include 'core/includes/sidebar.html' with active='sales' %}
+
+<div class="inv-main">
+    <div style="margin-bottom:1rem;">
+        <a href="{% url 'sales_orders_page' %}" style="font-size:0.85rem; color:#2563eb; text-decoration:none;">
+            <i class="bi bi-arrow-left me-1"></i> Back to Sales Orders
+        </a>
+    </div>
+
+    <div class="so-header">
+        <div>
+            <h2>{{ so.customer_name }}</h2>
+            <div class="meta">Sales Order {{ so.order_number }} &middot;
+                <span class="badge-status badge-{{ so.order_status }}">{{ so.get_order_status_display }}</span>
+            </div>
+        </div>
+        <div style="display:flex; gap:0.5rem;">
+            <button class="btn-inv-outline" onclick="saveDraft()">Save Draft</button>
+            <button class="btn-publish" onclick="publishSO()">Publish</button>
+        </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="so-tabs">
+        <div class="so-tab active" onclick="showTab('order')">Order Form</div>
+        <div class="so-tab" onclick="showTab('packed')">Packed Lots</div>
+    </div>
+
+    <!-- ORDER FORM TAB -->
+    <div id="tab-order">
+        <!-- Shipping note banner -->
+        {% if so.notes %}
+        <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:10px; padding:10px 16px; margin-bottom:1.25rem; max-width:1100px; font-size:0.85rem; color:#1e40af;">
+            <i class="bi bi-info-circle me-1"></i> {{ so.notes }}
+        </div>
+        {% endif %}
+
+        <div style="display:flex; gap:1.5rem; flex-wrap:wrap; max-width:1100px;">
+            <!-- Left: Order info -->
+            <div style="flex:1; min-width:500px;">
+                <div class="so-card">
+                    <h5>Sales Order Info</h5>
+                    <div class="info-grid">
+                        <div class="info-item"><label>Sales Rep</label><input type="text" id="so-sales-rep" value="{{ so.sales_rep }}"></div>
+                        <div class="info-item"><label>P.O. Number</label><input type="text" id="so-po" value="{{ so.po_number }}"></div>
+                        <div class="info-item"><label>Air Bill Number</label><input type="text" id="so-airbill" value="{{ so.air_bill_number }}"></div>
+                    </div>
+                    <div class="info-grid" style="margin-top:1rem;">
+                        <div class="info-item"><label>Order Date</label><input type="date" id="so-order-date" value="{{ so.order_date|date:'Y-m-d' }}"></div>
+                        <div class="info-item"><label>Pack Date</label><input type="date" id="so-pack-date" value="{{ so.pack_date|date:'Y-m-d' }}"></div>
+                        <div class="info-item"><label>Delivery Date</label><input type="date" id="so-delivery-date" value="{{ so.delivery_date|date:'Y-m-d' }}"></div>
+                    </div>
+                    <div class="info-grid" style="margin-top:1rem;">
+                        <div class="info-item"><label>Ship Date</label><input type="date" id="so-ship-date" value="{{ so.ship_date|date:'Y-m-d' }}"></div>
+                        <div class="info-item"><label>Shippers</label><input type="text" id="so-shipper" value="{{ so.shipper }}"></div>
+                        <div class="info-item"><label>Shipping Route</label><input type="text" id="so-route" value="{{ so.shipping_route }}"></div>
+                    </div>
+                    <div class="info-grid" style="margin-top:1rem;">
+                        <div class="info-item"><label>Order Weight (Lbs)</label><input type="number" step="0.01" id="so-weight" value="{{ so.order_weight }}"></div>
+                        <div class="info-item"><label>QB Invoice #</label><input type="text" id="so-qb" value="{{ so.qb_invoice_number }}"></div>
+                    </div>
+                </div>
+
+                <!-- Items -->
+                <div class="so-card">
+                    <h5>Items</h5>
+                    <table class="items-table">
+                        <thead><tr>
+                            <th style="width:35%;">Item</th><th style="width:30px;"></th>
+                            <th>Notes</th><th style="width:80px;">Quantity</th>
+                            <th style="width:90px;">Unit Price</th><th style="width:80px;">Margin</th>
+                            <th style="width:90px; text-align:right;">Amount</th>
+                        </tr></thead>
+                        <tbody id="itemsTbody"></tbody>
+                    </table>
+                    <div class="add-links">
+                        <a onclick="addItemRow('item')"><i class="bi bi-plus me-1"></i>Add Item</a>
+                        <a onclick="addItemRow('fee')"><i class="bi bi-plus me-1"></i>Add Fee</a>
+                    </div>
+                    <div style="margin-top:1.5rem;">
+                        <textarea class="notes-area" id="so-notes" rows="2" placeholder="Enter receiving note (Internal)">{{ so.notes }}</textarea>
+                    </div>
+                    <div class="totals-row"><span class="t-label">Item Subtotal</span><span class="t-val" id="itemSubtotal">$0.00</span></div>
+                    <div class="totals-row" style="border:none;margin-top:0;padding-top:0.25rem;"><span class="t-label">Fee Subtotal</span><span class="t-val" id="feeSubtotal">$0.00</span></div>
+                    <div class="totals-row" style="border:none;margin-top:0;padding-top:0.25rem;"><span class="t-label" style="color:#1e293b;font-size:0.95rem;">Total</span><span class="t-val" id="grandTotal" style="color:#dc2626;font-size:0.95rem;">$0.00</span></div>
+                </div>
+            </div>
+
+            <!-- Right: Contact & Address cards -->
+            <div style="width:260px; flex-shrink:0;">
+                <div class="contact-card">
+                    <div class="cc-label">Contact Info</div>
+                    <div class="cc-name" id="cc-name">--</div>
+                    <div class="cc-detail" id="cc-phone"></div>
+                    <div id="cc-email"></div>
+                </div>
+                <div class="contact-card">
+                    <div class="cc-label">Delivery Address</div>
+                    <div id="del-addr" class="cc-detail">--</div>
+                </div>
+                <div class="contact-card">
+                    <div class="cc-label">Mailing Address</div>
+                    <div id="mail-addr" class="cc-detail">--</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PACKED LOTS TAB -->
+    <div id="tab-packed" style="display:none; max-width:1100px;">
+        <div style="display:flex; gap:0.5rem; margin-bottom:1.25rem;">
+            <button class="btn-inv-outline" style="padding:6px 14px; font-size:0.8rem;"><i class="bi bi-file-earmark-pdf me-1"></i>Save Bill Of Lading PDF</button>
+            <button class="btn-inv-outline" style="padding:6px 14px; font-size:0.8rem;"><i class="bi bi-eye me-1"></i>View Shipment Details</button>
+            <div style="flex:1;"></div>
+            <span style="font-size:0.8rem; color:#64748b; align-self:center;" id="packed-meta"></span>
+        </div>
+
+        <div class="so-card">
+            <h5>Shipping Info</h5>
+            <div class="shipping-grid">
+                <div class="shipping-item"><div class="s-label">Shippers</div><div class="s-val" id="pk-shipper">--</div></div>
+                <div class="shipping-item"><div class="s-label">Shipping Date</div><div class="s-val" id="pk-ship-date">--</div></div>
+                <div class="shipping-item"><div class="s-label">Truck Temp</div><div class="s-val" id="pk-temp">--</div></div>
+                <div class="shipping-item"><div class="s-label">Packed By</div><div class="s-val" id="pk-packed-by">--</div></div>
+                <div class="shipping-item"><div class="s-label">Printed Manifest</div><div class="s-val" id="pk-manifest">No</div></div>
+                <div class="shipping-item"><div class="s-label">Printed Prop 65</div><div class="s-val" id="pk-prop65">No</div></div>
+            </div>
+        </div>
+
+        <div class="so-card">
+            <h5>Packed Items</h5>
+            <table class="packed-table">
+                <thead><tr>
+                    <th>Item</th>
+                    <th>Traceability Lot Code</th>
+                    <th>Ordered Quantity</th>
+                    <th>Packed Quantity</th>
+                    <th>Status</th>
+                </tr></thead>
+                <tbody id="packedTbody">
+                    <tr><td colspan="5" class="text-center text-muted py-4">No packed items yet.</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const SO_ID = {{ so.id }};
+let soData = null;
+let allProducts = [];
+let lineItems = [];
+
+function getCookie(name) { const m = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)')); return m ? decodeURIComponent(m[2]) : ''; }
+function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+
+document.addEventListener('DOMContentLoaded', async () => {
+    await loadProducts();
+    await loadSODetail();
+});
+
+// ── Tabs ────────────────────────────────────────────────────────
+
+function showTab(tab) {
+    document.getElementById('tab-order').style.display = tab === 'order' ? '' : 'none';
+    document.getElementById('tab-packed').style.display = tab === 'packed' ? '' : 'none';
+    document.querySelectorAll('.so-tab').forEach((el, i) => {
+        el.classList.toggle('active', (i === 0 && tab === 'order') || (i === 1 && tab === 'packed'));
+    });
+    if (tab === 'packed') loadPackedLots();
+}
+
+// ── Data ────────────────────────────────────────────────────────
+
+async function loadProducts() {
+    const res = await fetch('/api/processing/products/');
+    const data = await res.json();
+    allProducts = data.products || [];
+}
+
+async function loadSODetail() {
+    const res = await fetch(`/api/sales/orders/${SO_ID}/detail/`);
+    soData = await res.json();
+    lineItems = soData.items || [];
+
+    // Contact info
+    if (soData.contact_info && soData.contact_info.name) {
+        document.getElementById('cc-name').textContent = soData.contact_info.name;
+        document.getElementById('cc-phone').textContent = soData.contact_info.phone || '';
+        document.getElementById('cc-email').innerHTML = soData.contact_info.email
+            ? `<a href="mailto:${esc(soData.contact_info.email)}">${esc(soData.contact_info.email)}</a>` : '';
+    }
+
+    // Addresses
+    const fmtAddr = (a) => a ? [a.address, [a.city, a.state].filter(Boolean).join(', '), a.zip].filter(Boolean).join('<br>') + '<br>USA' : '--';
+    document.getElementById('del-addr').innerHTML = fmtAddr(soData.delivery_address);
+    document.getElementById('mail-addr').innerHTML = fmtAddr(soData.mailing_address);
+
+    // Populate shipping info on packed tab
+    document.getElementById('pk-shipper').textContent = soData.shipper || '--';
+    document.getElementById('pk-ship-date').textContent = soData.ship_date ? new Date(soData.ship_date).toLocaleDateString('en-GB', {day:'numeric',month:'short',year:'numeric'}) : '--';
+
+    renderItems();
+}
+
+function renderItems() {
+    const tbody = document.getElementById('itemsTbody');
+    const productOpts = allProducts.map(p => `<option value="${esc(p.product_id)}">${esc(p.item_name)}</option>`).join('');
+
+    tbody.innerHTML = lineItems.map((item, i) => {
+        const isFee = item.item_type === 'fee';
+        return `<tr>
+            <td>${isFee
+                ? `<input type="text" value="${esc(item.description)}" placeholder="Fee description" onchange="lineItems[${i}].description=this.value; recalc();">`
+                : `<select class="item-select" onchange="onItemSelect(${i}, this.value)"><option value="">Choose Item</option>${productOpts}</select>`
+            }</td>
+            <td><button class="del-btn" onclick="removeItem(${i})"><i class="bi bi-trash"></i></button></td>
+            <td><input type="text" value="${esc(item.notes)}" placeholder="Enter note" onchange="lineItems[${i}].notes=this.value;"></td>
+            <td>${isFee ? '' : `<input type="number" step="0.01" value="${item.quantity||''}" onchange="lineItems[${i}].quantity=parseFloat(this.value)||0; recalc();">`}</td>
+            <td><input type="number" step="0.01" value="${item.unit_price||''}" placeholder="$" onchange="lineItems[${i}].unit_price=parseFloat(this.value)||0; recalc();"></td>
+            <td>${isFee ? '' : `<span style="font-size:0.8rem;color:#64748b;">${esc(item.margin || 'No Data')}</span>`}</td>
+            <td style="text-align:right; font-weight:600;">$${(item.amount||0).toFixed(2)}</td>
+        </tr>`;
+    }).join('');
+
+    // Set select values after render
+    lineItems.forEach((item, i) => {
+        if (item.item_type !== 'fee' && item.product_id) {
+            const selects = tbody.querySelectorAll('.item-select');
+            if (selects[i]) selects[i].value = item.product_id;
+        }
+    });
+
+    recalc();
+}
+
+function onItemSelect(idx, productId) {
+    const p = allProducts.find(x => x.product_id === productId);
+    if (p) { lineItems[idx].product_id = productId; lineItems[idx].description = p.item_name; lineItems[idx].unit_type = p.unit_type; }
+}
+
+function addItemRow(type) {
+    lineItems.push({ id: null, item_type: type, product_id: '', description: type === 'fee' ? 'Fee' : '', notes: '', quantity: null, unit_type: '', unit_price: null, margin: '', amount: 0 });
+    renderItems();
+}
+
+function removeItem(idx) {
+    const item = lineItems[idx];
+    if (item.id) fetch(`/api/sales/orders/${SO_ID}/items/${item.id}/delete/`, { method: 'POST', headers: { 'X-CSRFToken': getCookie('csrftoken') } });
+    lineItems.splice(idx, 1);
+    renderItems();
+}
+
+function recalc() {
+    let itemSub = 0, feeSub = 0;
+    lineItems.forEach(item => {
+        if (item.item_type === 'fee') { item.amount = parseFloat(item.unit_price) || 0; feeSub += item.amount; }
+        else { item.amount = (parseFloat(item.quantity) || 0) * (parseFloat(item.unit_price) || 0); itemSub += item.amount; }
+    });
+    document.getElementById('itemSubtotal').textContent = '$' + itemSub.toFixed(2);
+    document.getElementById('feeSubtotal').textContent = '$' + feeSub.toFixed(2);
+    document.getElementById('grandTotal').textContent = '$' + (itemSub + feeSub).toFixed(2);
+}
+
+// ── Packed Lots ─────────────────────────────────────────────────
+
+async function loadPackedLots() {
+    // Build packed items from order line items matched against inventory
+    const tbody = document.getElementById('packedTbody');
+
+    if (!lineItems.length || lineItems.every(i => i.item_type === 'fee')) {
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">No packed items yet. Add items on the Order Form tab first.</td></tr>';
+        return;
+    }
+
+    // For each item line, show the packed status
+    tbody.innerHTML = lineItems.filter(i => i.item_type === 'item').map(item => {
+        const orderedQty = item.quantity || 0;
+        const packedQty = orderedQty; // Placeholder - would come from actual packing data
+        let statusHtml = '<span class="status-match">Match</span>';
+        if (packedQty < orderedQty) {
+            const diff = orderedQty - packedQty;
+            statusHtml = `<span class="status-short">&darr; ${diff} ${esc(item.unit_type)}</span>`;
+        }
+
+        return `<tr>
+            <td><a href="#">${esc(item.description)}</a></td>
+            <td><a href="#">--</a></td>
+            <td>${orderedQty} ${esc(item.unit_type)}</td>
+            <td>${packedQty} ${esc(item.unit_type)}</td>
+            <td>${statusHtml}</td>
+        </tr>`;
+    }).join('');
+
+    document.getElementById('packed-meta').innerHTML = `<span style="color:#94a3b8;">Invoice ${esc(soData.qb_invoice_number || 'BT-' + soData.order_number)}</span>`;
+}
+
+// ── Save ────────────────────────────────────────────────────────
+
+async function saveDraft() {
+    await fetch(`/api/sales/orders/${SO_ID}/update/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+        body: JSON.stringify({
+            sales_rep: document.getElementById('so-sales-rep').value,
+            po_number: document.getElementById('so-po').value,
+            air_bill_number: document.getElementById('so-airbill').value,
+            order_date: document.getElementById('so-order-date').value || null,
+            pack_date: document.getElementById('so-pack-date').value || null,
+            delivery_date: document.getElementById('so-delivery-date').value || null,
+            ship_date: document.getElementById('so-ship-date').value || null,
+            shipper: document.getElementById('so-shipper').value,
+            shipping_route: document.getElementById('so-route').value,
+            order_weight: document.getElementById('so-weight').value || null,
+            qb_invoice_number: document.getElementById('so-qb').value,
+            notes: document.getElementById('so-notes').value,
+            order_status: 'draft',
+        }),
+    });
+
+    for (const item of lineItems) {
+        if (item.id) await fetch(`/api/sales/orders/${SO_ID}/items/${item.id}/delete/`, { method: 'POST', headers: { 'X-CSRFToken': getCookie('csrftoken') } });
+    }
+    for (const item of lineItems) {
+        await fetch(`/api/sales/orders/${SO_ID}/items/add/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+            body: JSON.stringify(item),
+        });
+    }
+    alert('Draft saved.');
+    loadSODetail();
+}
+
+async function publishSO() {
+    await saveDraft();
+    await fetch(`/api/sales/orders/${SO_ID}/update/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+        body: JSON.stringify({ order_status: 'open' }),
+    });
+    location.reload();
+}
+</script>
+{% endblock %}

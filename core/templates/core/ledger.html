@@ -18,7 +18,8 @@
 {% endblock %}
 
 {% block content %}
-<div class="container-fluid px-4 mt-4 pb-5">
+{% include 'core/includes/sidebar.html' with active='accounting' %}
+<div class="container-fluid px-4 mt-4 pb-5" style="margin-left:72px;">
 
     <!-- Header -->
     <div class="d-flex align-items-center gap-2 mb-4">

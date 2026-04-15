@@ -4,7 +4,8 @@
 {% block title %}Vehicles - FishTech{% endblock %}
 
 {% block content %}
-<div class="container-fluid mt-4">
+{% include 'core/includes/sidebar.html' with active='documents' %}
+<div class="container-fluid mt-4" style="margin-left: 72px;">
     <div class="row">
         <div class="col-12">
             <h2>Vehicle Fleet</h2>

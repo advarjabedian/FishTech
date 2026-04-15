@@ -1,0 +1,310 @@
+{% extends 'core/base.html' %}
+{% block title %}Sales Orders - FishTeck{% endblock %}
+
+{% block extra_css %}
+<style>
+.inv-main { margin-left: 72px; padding: 1.5rem 2rem; background: #f8fafc; min-height: calc(100vh - 56px); }
+.inv-header { margin-bottom: 1.25rem; display: flex; align-items: center; justify-content: space-between; }
+.inv-header h2 { font-size: 1.4rem; font-weight: 700; margin: 0; }
+.inv-header .sub { font-size: 0.8rem; color: #64748b; }
+.inv-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin-bottom: 1rem; flex-wrap: wrap; }
+.inv-toolbar-left { display: flex; align-items: center; gap: 0.5rem; }
+.search-box { border: 1px solid #d1d5db; border-radius: 8px; padding: 6px 12px; font-size: 0.85rem; width: 240px; background: #fff; }
+.search-box:focus { border-color: #2563eb; box-shadow: 0 0 0 2px rgba(37,99,235,0.15); outline: none; }
+.btn-inv-primary { background: #2563eb; color: #fff; border: none; border-radius: 8px; padding: 7px 16px; font-size: 0.85rem; font-weight: 600; cursor: pointer; }
+.btn-inv-primary:hover { background: #1d4ed8; color: #fff; }
+.btn-inv-outline { background: #fff; color: #374151; border: 1px solid #d1d5db; border-radius: 8px; padding: 7px 14px; font-size: 0.85rem; font-weight: 600; cursor: pointer; }
+.btn-inv-outline:hover { border-color: #2563eb; color: #2563eb; }
+
+.inv-table-card { background: #fff; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); overflow: hidden; }
+.inv-table { width: 100%; border-collapse: collapse; font-size: 0.83rem; }
+.inv-table thead th { background: #f1f5f9; color: #64748b; font-weight: 600; font-size: 0.73rem; text-transform: uppercase; letter-spacing: 0.03em; padding: 10px 12px; border-bottom: 1px solid #e2e8f0; white-space: nowrap; position: sticky; top: 0; }
+.inv-table tbody tr { border-bottom: 1px solid #f1f5f9; transition: background 0.1s; cursor: pointer; }
+.inv-table tbody tr:hover { background: #f0f7ff; }
+.inv-table tbody td { padding: 9px 12px; vertical-align: middle; color: #334155; }
+
+.badge-status { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 0.72rem; font-weight: 600; }
+.badge-draft { background: #f1f5f9; color: #64748b; }
+.badge-open { background: #dbeafe; color: #2563eb; }
+.badge-needs_review { background: #fee2e2; color: #dc2626; }
+.badge-closed { background: #dcfce7; color: #16a34a; }
+.badge-cancelled { background: #f1f5f9; color: #94a3b8; }
+.badge-packed { background: #dcfce7; color: #16a34a; }
+.badge-not_packed { background: #fef3c7; color: #d97706; }
+.badge-need_to_send { background: #e0e7ff; color: #4f46e5; }
+
+.inv-pagination { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; font-size: 0.8rem; color: #64748b; border-top: 1px solid #f1f5f9; }
+.inv-pagination .page-btns { display: flex; gap: 4px; }
+.inv-pagination .page-btn { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border: 1px solid #d1d5db; border-radius: 6px; background: #fff; color: #374151; cursor: pointer; font-size: 0.8rem; }
+.inv-pagination .page-btn:hover { border-color: #2563eb; color: #2563eb; }
+.inv-pagination .page-btn.active { background: #2563eb; color: #fff; border-color: #2563eb; }
+
+/* Filter panel */
+.filter-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.25); z-index: 1040; display: none; }
+.filter-overlay.open { display: block; }
+.filter-panel { position: fixed; top: 0; right: -460px; width: 440px; max-width: 90vw; height: 100vh; background: #fff; box-shadow: -4px 0 24px rgba(0,0,0,0.12); z-index: 1050; transition: right 0.3s ease; display: flex; flex-direction: column; }
+.filter-panel.open { right: 0; }
+.filter-panel-header { background: #2563eb; color: #fff; padding: 18px 24px; display: flex; align-items: center; justify-content: space-between; }
+.filter-panel-header h4 { margin: 0; font-size: 1.1rem; font-weight: 600; }
+.filter-panel-header .close-btn { background: rgba(255,255,255,0.2); border: none; color: #fff; width: 32px; height: 32px; border-radius: 50%; font-size: 1.1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.filter-panel-body { flex: 1; overflow-y: auto; padding: 24px; }
+.filter-panel-footer { padding: 16px 24px; border-top: 1px solid #e5e7eb; display: flex; gap: 10px; }
+.fg { margin-bottom: 1.25rem; }
+.fg label { font-weight: 600; font-size: 0.85rem; color: #1e293b; display: block; margin-bottom: 6px; }
+.fg select, .fg input { width: 100%; border: 1px solid #d1d5db; border-radius: 8px; padding: 9px 12px; font-size: 0.85rem; }
+.fg select:focus, .fg input:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.12); outline: none; }
+.fg .date-row { display: flex; gap: 0.5rem; }
+.fg .date-row input { flex: 1; }
+
+/* New SO modal */
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.3); z-index: 1060; display: none; }
+.modal-overlay.open { display: flex; align-items: center; justify-content: center; }
+.modal-box { background: #fff; border-radius: 16px; width: 420px; max-width: 95vw; box-shadow: 0 8px 32px rgba(0,0,0,0.15); overflow: hidden; }
+.modal-box-header { text-align: center; padding: 2rem 1.5rem 1rem; }
+.modal-box-header .icon { width: 56px; height: 56px; border-radius: 50%; background: #ecfdf5; display: inline-flex; align-items: center; justify-content: center; font-size: 1.4rem; color: #10b981; margin-bottom: 0.75rem; }
+.modal-box-header h5 { font-weight: 700; margin: 0; }
+.modal-box-body { padding: 0 1.5rem 1.5rem; }
+.modal-box-footer { padding: 1rem 1.5rem; display: flex; gap: 0.75rem; }
+.modal-box-footer .btn-go { flex: 1; background: #10b981; color: #fff; border: none; border-radius: 8px; padding: 10px; font-size: 0.9rem; font-weight: 600; cursor: pointer; }
+.modal-box-footer .btn-go:hover { background: #059669; }
+.modal-box-footer .btn-cancel { flex: 1; background: #fff; color: #374151; border: 1px solid #d1d5db; border-radius: 8px; padding: 10px; font-size: 0.9rem; font-weight: 600; cursor: pointer; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+{% include 'core/includes/sidebar.html' with active='sales' %}
+
+<div class="inv-main">
+    <div class="inv-header">
+        <div>
+            <h2><i class="bi bi-receipt me-2" style="color:#2563eb;"></i>Sales Orders</h2>
+            <span class="sub" id="totalCount">0 Sales Orders</span>
+        </div>
+        <div style="display:flex; gap:0.5rem;">
+            <button class="btn-inv-outline"><i class="bi bi-download me-1"></i>Export Orders</button>
+            <button class="btn-inv-primary" onclick="openNewSO()"><i class="bi bi-plus me-1"></i>New Order</button>
+        </div>
+    </div>
+
+    <div class="inv-toolbar">
+        <div class="inv-toolbar-left">
+            <input type="text" class="search-box" id="searchBox" placeholder="Search..." oninput="debounceSearch()">
+            <button class="btn-inv-outline" onclick="clearAllFilters()"><i class="bi bi-x-circle me-1"></i>Clear Filters</button>
+            <button class="btn-inv-outline" onclick="openFilterPanel()"><i class="bi bi-funnel me-1"></i>Filter</button>
+        </div>
+    </div>
+
+    <div class="inv-table-card">
+        <div style="overflow-x:auto;">
+            <table class="inv-table">
+                <thead>
+                    <tr>
+                        <th style="width:30px;"><input type="checkbox"></th>
+                        <th>Order Number</th>
+                        <th>Order Status</th>
+                        <th>Packed Status</th>
+                        <th>QB Invoice #</th>
+                        <th>Customer</th>
+                        <th style="text-align:right;">Total $</th>
+                        <th>Order Date</th>
+                        <th>Route</th>
+                    </tr>
+                </thead>
+                <tbody id="soTbody">
+                    <tr><td colspan="9" class="text-center text-muted py-4">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="inv-pagination">
+            <span id="paginationInfo">Showing 0 items</span>
+            <div class="page-btns" id="paginationBtns"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Filter panel -->
+<div class="filter-overlay" id="filterOverlay" onclick="closeFilterPanel()"></div>
+<div class="filter-panel" id="filterPanel">
+    <div class="filter-panel-header">
+        <h4>Filter Sales Orders</h4>
+        <button class="close-btn" onclick="closeFilterPanel()"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <div class="filter-panel-body">
+        <div class="fg"><label>Customer</label><select id="ff-customer"><option value="">Choose Customer</option></select></div>
+        <div class="fg"><label>Sales Rep</label><select id="ff-sales-rep"><option value="">Choose Sales Rep</option></select></div>
+        <div class="fg">
+            <label>Order Date</label>
+            <div class="date-row"><input type="date" id="ff-date-from"><input type="date" id="ff-date-to"></div>
+        </div>
+        <div class="fg">
+            <label>Order Status</label>
+            <select id="ff-order-status">
+                <option value="">Choose Order Status</option>
+                <option value="draft">Draft</option>
+                <option value="open">Open</option>
+                <option value="needs_review">Needs Review</option>
+                <option value="closed">Closed</option>
+                <option value="cancelled">Cancelled</option>
+            </select>
+        </div>
+        <div class="fg">
+            <label>Packed Status</label>
+            <select id="ff-packed-status">
+                <option value="">Choose Packed Status</option>
+                <option value="not_packed">Not Packed</option>
+                <option value="packed">Packed</option>
+                <option value="need_to_send">Need To Send</option>
+            </select>
+        </div>
+        <div class="fg"><label>Shipping Route</label><select id="ff-route"><option value="">Choose Route</option></select></div>
+        <div class="fg"><label>Shipper</label><select id="ff-shipper"><option value="">Choose Shipper</option></select></div>
+    </div>
+    <div class="filter-panel-footer">
+        <button class="btn-inv-primary" onclick="applyFilters()" style="flex:1;">Filter Orders</button>
+        <button class="btn-inv-outline" onclick="closeFilterPanel()">Cancel</button>
+    </div>
+</div>
+
+<!-- New SO modal -->
+<div class="modal-overlay" id="newSOOverlay" onclick="closeNewSO()">
+    <div class="modal-box" onclick="event.stopPropagation()">
+        <div class="modal-box-header">
+            <div class="icon"><i class="bi bi-clipboard-plus"></i></div>
+            <h5>Create New Order</h5>
+        </div>
+        <div class="modal-box-body">
+            <div class="fg"><label>Customer Name</label>
+                <select id="new-customer" class="form-control" style="border-radius:8px;"><option value="">Choose Customer Name</option></select>
+            </div>
+        </div>
+        <div class="modal-box-footer">
+            <button class="btn-go" onclick="createSO()">Next</button>
+            <button class="btn-cancel" onclick="closeNewSO()">Cancel</button>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let allOrders = [];
+let currentPage = 1;
+let totalItems = 0;
+const PAGE_SIZE = 100;
+let searchTimeout;
+let activeFilters = {};
+
+function getCookie(name) { const m = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)')); return m ? decodeURIComponent(m[2]) : ''; }
+function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+
+document.addEventListener('DOMContentLoaded', () => { loadOrders(); loadCustomers(); });
+
+async function loadOrders() {
+    const search = document.getElementById('searchBox').value.trim();
+    let url = `/api/sales/orders/?page=${currentPage}&page_size=${PAGE_SIZE}`;
+    if (search) url += `&search=${encodeURIComponent(search)}`;
+    for (const [k,v] of Object.entries(activeFilters)) { if (v) url += `&${k}=${encodeURIComponent(v)}`; }
+    const res = await fetch(url);
+    const data = await res.json();
+    allOrders = data.orders || [];
+    totalItems = data.total || 0;
+    renderTable();
+}
+
+async function loadCustomers() {
+    const res = await fetch('/api/sales/customers/');
+    const data = await res.json();
+    const customers = data.customers || [];
+    const opts = customers.map(c => `<option value="${esc(c.name)}">${esc(c.name)}</option>`).join('');
+    document.getElementById('ff-customer').innerHTML = '<option value="">Choose Customer</option>' + opts;
+    document.getElementById('new-customer').innerHTML = '<option value="">Choose Customer Name</option>' + opts;
+}
+
+function debounceSearch() { clearTimeout(searchTimeout); searchTimeout = setTimeout(() => { currentPage = 1; loadOrders(); }, 300); }
+
+function renderTable() {
+    const tbody = document.getElementById('soTbody');
+    document.getElementById('totalCount').textContent = `${totalItems} Sales Orders`;
+
+    if (!allOrders.length) {
+        tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted py-4">No sales orders found.</td></tr>';
+        document.getElementById('paginationInfo').textContent = '0 items';
+        document.getElementById('paginationBtns').innerHTML = '';
+        return;
+    }
+
+    tbody.innerHTML = allOrders.map(so => `
+        <tr onclick="window.location='/sales/${so.id}/'">
+            <td onclick="event.stopPropagation();"><input type="checkbox"></td>
+            <td style="font-weight:600; color:#2563eb;">${esc(so.order_number)}</td>
+            <td><span class="badge-status badge-${so.order_status}">${esc(so.order_status_display)}</span></td>
+            <td><span class="badge-status badge-${so.packed_status}">${esc(so.packed_status_display)}</span></td>
+            <td>${esc(so.qb_invoice_number || '')}</td>
+            <td>${esc(so.customer_name)}</td>
+            <td style="text-align:right;">$${Number(so.total).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
+            <td>${esc(so.order_date)}</td>
+            <td>${esc(so.shipping_route || '')}</td>
+        </tr>
+    `).join('');
+
+    const totalPages = Math.ceil(totalItems / PAGE_SIZE);
+    const start = (currentPage - 1) * PAGE_SIZE + 1;
+    const end = Math.min(currentPage * PAGE_SIZE, totalItems);
+    document.getElementById('paginationInfo').textContent = `Showing ${start} to ${end} of ${totalItems}`;
+    let btns = '';
+    if (currentPage > 1) btns += `<button class="page-btn" onclick="goPage(${currentPage-1})">&lt;</button>`;
+    for (let p = Math.max(1,currentPage-2); p <= Math.min(totalPages,currentPage+2); p++)
+        btns += `<button class="page-btn ${p===currentPage?'active':''}" onclick="goPage(${p})">${p}</button>`;
+    if (currentPage < totalPages) btns += `<button class="page-btn" onclick="goPage(${currentPage+1})">&gt;</button>`;
+    document.getElementById('paginationBtns').innerHTML = btns;
+}
+
+function goPage(p) { currentPage = p; loadOrders(); }
+
+function openFilterPanel() {
+    document.getElementById('filterOverlay').classList.add('open');
+    document.getElementById('filterPanel').classList.add('open');
+    // Populate dynamic filters
+    const reps = [...new Set(allOrders.map(o => o.sales_rep).filter(Boolean))].sort();
+    const routes = [...new Set(allOrders.map(o => o.shipping_route).filter(Boolean))].sort();
+    populateSelect('ff-sales-rep', 'Choose Sales Rep', reps);
+    populateSelect('ff-route', 'Choose Route', routes);
+}
+function closeFilterPanel() { document.getElementById('filterOverlay').classList.remove('open'); document.getElementById('filterPanel').classList.remove('open'); }
+function populateSelect(id, ph, opts) { document.getElementById(id).innerHTML = `<option value="">${ph}</option>` + opts.map(o => `<option value="${esc(o)}">${esc(o)}</option>`).join(''); }
+
+function applyFilters() {
+    activeFilters = {};
+    [['ff-customer','customer'],['ff-sales-rep','sales_rep'],['ff-order-status','order_status'],
+     ['ff-packed-status','packed_status'],['ff-route','shipping_route'],['ff-shipper','shipper'],
+     ['ff-date-from','date_from'],['ff-date-to','date_to']].forEach(([id,key]) => {
+        const v = document.getElementById(id).value; if (v) activeFilters[key] = v;
+    });
+    closeFilterPanel(); currentPage = 1; loadOrders();
+}
+
+function clearAllFilters() {
+    document.getElementById('searchBox').value = '';
+    activeFilters = {};
+    ['ff-customer','ff-sales-rep','ff-order-status','ff-packed-status','ff-route','ff-shipper','ff-date-from','ff-date-to'].forEach(id => document.getElementById(id).value = '');
+    currentPage = 1; loadOrders();
+}
+
+function openNewSO() { document.getElementById('newSOOverlay').classList.add('open'); }
+function closeNewSO() { document.getElementById('newSOOverlay').classList.remove('open'); }
+
+async function createSO() {
+    const customer = document.getElementById('new-customer').value;
+    if (!customer) { alert('Please select a customer.'); return; }
+    const res = await fetch('/api/sales/orders/create/', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+        body: JSON.stringify({ customer_name: customer }),
+    });
+    const data = await res.json();
+    if (data.error) { alert(data.error); return; }
+    window.location.href = '/sales/' + data.id + '/';
+}
+</script>
+{% endblock %}

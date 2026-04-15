@@ -1,4 +1,5 @@
 {% extends 'core/base.html' %}
+{% load static %}
 
 {% block title %}Operations Admin - FishTech{% endblock %}
 
@@ -27,6 +28,7 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="{% static 'core/js/signature.js' %}"></script>
 {% include 'core/DailyInspections/operations_admin_scripts.html' %}
 <script>
 // Pass Django template variables to JS

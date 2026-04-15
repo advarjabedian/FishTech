@@ -4,12 +4,23 @@ from django.views.decorators.http import require_POST
 from django.contrib.auth.decorators import login_required
 from django.db.models import Sum
 from django.db.models.functions import TruncMonth
-from ..models import APExpense, ARInvoice, FishOrder, Vendor, get_current_tenant
+from ..models import APExpense, ARInvoice, FishOrder, Vendor, get_current_tenant, set_current_tenant
 import json
 import logging
 from collections import defaultdict
 
 logger = logging.getLogger(__name__)
+
+
+def ensure_tenant(view_func):
+    """Decorator that sets the current tenant from request."""
+    from functools import wraps
+    @wraps(view_func)
+    def wrapper(request, *args, **kwargs):
+        if hasattr(request, 'tenant') and request.tenant:
+            set_current_tenant(request.tenant)
+        return view_func(request, *args, **kwargs)
+    return wrapper
 
 
 # ── Hub Pages ─────────────────────────────────────────────────────────────────
@@ -59,12 +70,13 @@ def ledger(request):
 # ── AR Invoices API ───────────────────────────────────────────────────────────
 
 @login_required
+@ensure_tenant
 def ar_list(request):
     tenant = get_current_tenant()
     if not tenant:
         return JsonResponse({'error': 'No tenant'}, status=400)
 
-    invoices = ARInvoice.objects.all().order_by('-invoice_date', '-created_at')
+    invoices = ARInvoice.objects.filter(tenant=tenant).order_by('-invoice_date', '-created_at')
     data = []
     for inv in invoices:
         data.append({
@@ -184,7 +196,7 @@ def ar_customer_balances(request):
     if not tenant:
         return JsonResponse({'error': 'No tenant'}, status=400)
 
-    invoices = ARInvoice.objects.all()
+    invoices = ARInvoice.objects.filter(tenant=tenant)
     customer_map = {}
     for inv in invoices:
         name = inv.customer
@@ -209,7 +221,7 @@ def ap_list(request):
     if not tenant:
         return JsonResponse({'error': 'No tenant'}, status=400)
 
-    expenses = APExpense.objects.all().order_by('-created_at')
+    expenses = APExpense.objects.filter(tenant=tenant).order_by('-created_at')
     data = []
     for e in expenses:
         data.append({
@@ -300,7 +312,7 @@ def ledger_data(request):
         return JsonResponse({'error': 'No tenant'}, status=400)
 
     # Income: AR invoices marked Paid + fish market orders
-    ar_paid = ARInvoice.objects.filter(status='Paid')
+    ar_paid = ARInvoice.objects.filter(tenant=tenant, status='Paid')
     income_rows = []
     total_income = 0
 

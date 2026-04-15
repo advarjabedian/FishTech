@@ -51,7 +51,8 @@
 {% endblock %}
 
 {% block content %}
-<div class="container-fluid mt-3">
+{% include 'core/includes/sidebar.html' with active='orders' %}
+<div class="container-fluid mt-3" style="margin-left:72px;">
 
     <!-- Back + Header -->
     <div class="d-flex align-items-center gap-2 mb-3">
