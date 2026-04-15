@@ -8,7 +8,7 @@ from core.models import TenantUser, Tenant
 def login_view(request):
     """Login page for all tenants"""
     if request.user.is_authenticated:
-        return redirect('haccp')
+        return redirect('operations_hub')
     
     if request.method == 'POST':
         username = request.POST.get('username')
@@ -63,22 +63,6 @@ def operations_hub(request):
 
 
 @login_required
-def licenses_view(request):
-    """Licenses page"""
-    if not request.tenant:
-        return redirect('home')
-    return render(request, 'core/documents/licenses.html')
-
-
-@login_required
-def vehicles_view(request):
-    """Vehicles page"""
-    if not request.tenant:
-        return redirect('home')
-    return render(request, 'core/documents/vehicles.html')
-
-
-@login_required
 def platform_admin_redirect(request):
     """Redirect superusers to Django admin"""
     if not request.user.is_superuser:
@@ -89,7 +73,7 @@ def platform_admin_redirect(request):
 def register_view(request):
     """Public registration page for new tenants"""
     if request.user.is_authenticated:
-        return redirect('haccp')
+        return redirect('operations_hub')
     
     if request.method == 'POST':
         # Tenant info
@@ -169,7 +153,7 @@ def register_view(request):
             login(request, user)
             
             messages.success(request, f'Welcome to FishTech! Your account has been created.')
-            return redirect('haccp')
+            return redirect('operations_hub')
             
         except Exception as e:
             messages.error(request, f'Registration failed: {str(e)}')

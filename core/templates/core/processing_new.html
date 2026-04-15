@@ -252,13 +252,13 @@ function renderLots() {
         <div class="lot-card ${selectedLots[lot.id] ? 'selected' : ''}" onclick="toggleLot(${lot.id})">
             <div class="lot-check">${selectedLots[lot.id] ? '<i class="bi bi-check"></i>' : ''}</div>
             <div class="lot-info">
-                <div class="lot-name">${esc(lot.item_name)}</div>
+                <div class="lot-name">${esc(lot.item_name || lot.product || 'Unknown Product')}</div>
                 <div class="lot-meta">
-                    ${esc(lot.vendor || '')}${lot.vendor && lot.vendor_lot ? ' / ' : ''}${esc(lot.vendor_lot || '')}
-                    ${lot.receive_date ? ' &middot; Recv: ' + esc(lot.receive_date) : ''}
-                    ${lot.origin ? ' &middot; ' + esc(lot.origin) : ''}
+                    <span style="font-weight:600; color:#0ea5e9;">${esc(lot.lot_id || lot.trace_lot)}</span>
+                    &middot; ${esc(lot.vendor || '--')}
+                    ${lot.receive_date ? ' &middot; ' + esc(lot.receive_date) : ''}
                 </div>
-                <div class="lot-meta">${esc(lot.lot_id)} &middot; ${esc(lot.product_id)}</div>
+                ${lot.location || lot.origin ? `<div class="lot-meta">${lot.location ? 'Loc: ' + esc(lot.location) : ''}${lot.location && lot.origin ? ' &middot; ' : ''}${lot.origin ? 'Origin: ' + esc(lot.origin) : ''}</div>` : ''}
             </div>
             <div class="lot-qty">
                 <div class="qty-val">${fmt(lot.on_hand)}</div>
@@ -613,7 +613,7 @@ async function submitBatch() {
             nextBtn.innerHTML = '<i class="bi bi-check-circle me-1"></i> Start Processing';
             return;
         }
-        window.location.href = '/processing/' + data.id + '/';
+        window.location.href = '/operations/processing/' + data.id + '/';
     } catch {
         alert('Failed to create batch.');
         nextBtn.disabled = false;

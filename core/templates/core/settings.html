@@ -171,7 +171,7 @@ async function renderProfile(el) {
                 </div>
             </div>
         </div>
-        <button class="btn-submit" onclick="saveProfile()">Submit</button>
+        <button class="btn-submit" onclick="withSpinner(this, () => saveProfile())">Submit</button>
     `;
 }
 
@@ -207,7 +207,7 @@ async function renderAccountInfo(el) {
                 <div class="s-field"><label>Phone</label><input type="text" id="a-phone" value="${esc(data.phone)}"></div>
             </div>
         </div>
-        <button class="btn-submit" onclick="saveAccount()">Save</button>
+        <button class="btn-submit" onclick="withSpinner(this, () => saveAccount())">Save</button>
     `;
 }
 

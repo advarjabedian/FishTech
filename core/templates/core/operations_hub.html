@@ -102,8 +102,8 @@
                 <a href="{% url 'sales_orders_page' %}">View All</a>
             </div>
             <table class="activity-table">
-                <thead><tr><th>Order</th><th>Customer</th><th>Status</th><th style="text-align:right;">Total</th></tr></thead>
-                <tbody id="recentSales"><tr><td colspan="4" class="text-center text-muted py-3">Loading...</td></tr></tbody>
+                <thead><tr><th>Order</th><th>Customer</th><th>Product</th><th>Status</th><th style="text-align:right;">Total</th></tr></thead>
+                <tbody id="recentSales"><tr><td colspan="5" class="text-center text-muted py-3">Loading...</td></tr></tbody>
             </table>
         </div>
 
@@ -114,8 +114,8 @@
                 <a href="{% url 'purchases_page' %}">View All</a>
             </div>
             <table class="activity-table">
-                <thead><tr><th>PO #</th><th>Vendor</th><th>Status</th><th style="text-align:right;">Total</th></tr></thead>
-                <tbody id="recentPOs"><tr><td colspan="4" class="text-center text-muted py-3">Loading...</td></tr></tbody>
+                <thead><tr><th>PO #</th><th>Vendor</th><th>Product</th><th>Status</th><th style="text-align:right;">Total</th></tr></thead>
+                <tbody id="recentPOs"><tr><td colspan="5" class="text-center text-muted py-3">Loading...</td></tr></tbody>
             </table>
         </div>
     </div>
@@ -128,8 +128,8 @@
                 <a href="{% url 'receiving_page' %}">View All</a>
             </div>
             <table class="activity-table">
-                <thead><tr><th>Lot</th><th>Vendor</th><th>Date</th><th style="text-align:right;">Qty</th></tr></thead>
-                <tbody id="recentRecv"><tr><td colspan="4" class="text-center text-muted py-3">Loading...</td></tr></tbody>
+                <thead><tr><th>Lot</th><th>Vendor</th><th>Product</th><th>Date</th><th style="text-align:right;">Qty</th></tr></thead>
+                <tbody id="recentRecv"><tr><td colspan="5" class="text-center text-muted py-3">Loading...</td></tr></tbody>
             </table>
         </div>
 
@@ -140,8 +140,8 @@
                 <a href="{% url 'processing_hub' %}">View All</a>
             </div>
             <table class="activity-table">
-                <thead><tr><th>Batch</th><th>Type</th><th>Status</th><th>Date</th></tr></thead>
-                <tbody id="recentProc"><tr><td colspan="4" class="text-center text-muted py-3">Loading...</td></tr></tbody>
+                <thead><tr><th>Batch</th><th>Product</th><th>Type</th><th>Status</th><th>Date</th></tr></thead>
+                <tbody id="recentProc"><tr><td colspan="5" class="text-center text-muted py-3">Loading...</td></tr></tbody>
             </table>
         </div>
     </div>
@@ -161,21 +161,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
 async function loadStats() {
     try {
-        const [sales, po, inv] = await Promise.all([
-            fetch('/api/sales/orders/?page_size=1000').then(r => r.json()),
-            fetch('/api/purchasing/orders/?page_size=1000').then(r => r.json()),
-            fetch('/api/inventory/items/?show=active').then(r => r.json()),
-        ]);
-        const openSales = (sales.orders || []).filter(o => o.order_status === 'open' || o.order_status === 'needs_review').length;
-        const openPOs = (po.orders || []).filter(o => o.order_status === 'open' || o.order_status === 'draft').length;
-        const inStock = (inv.items || []).filter(i => i.on_hand > 0).length;
-        const pendingShip = (sales.orders || []).filter(o => o.packed_status !== 'packed' && o.order_status !== 'closed' && o.order_status !== 'cancelled').length;
-
-        document.getElementById('stat-sales').textContent = openSales;
-        document.getElementById('stat-inventory').textContent = inStock;
-        document.getElementById('stat-ship').textContent = pendingShip;
-        document.getElementById('stat-po').textContent = openPOs;
-    } catch {}
+        const r = await fetch('/api/operations/summary/');
+        if (!r.ok) { console.error('loadStats HTTP', r.status); return; }
+        const data = await r.json();
+        document.getElementById('stat-sales').textContent = data.open_sales_orders ?? '--';
+        document.getElementById('stat-inventory').textContent = data.items_in_stock ?? '--';
+        document.getElementById('stat-ship').textContent = data.pending_shipments ?? '--';
+        document.getElementById('stat-po').textContent = data.open_purchase_orders ?? '--';
+    } catch (e) { console.error('loadStats error', e); }
 }
 
 async function loadRecentSales() {
@@ -186,10 +179,11 @@ async function loadRecentSales() {
             <tr style="cursor:pointer;" onclick="window.location='/sales/${o.id}/'">
                 <td style="font-weight:600;color:#2563eb;">${esc(o.order_number)}</td>
                 <td>${esc(o.customer_name)}</td>
+                <td>${esc(o.products || '')}</td>
                 <td><span class="badge-sm badge-blue">${esc(o.order_status_display)}</span></td>
                 <td style="text-align:right;">$${Number(o.total).toFixed(2)}</td>
             </tr>
-        `).join('') : '<tr><td colspan="4" class="text-center text-muted py-3">No orders yet.</td></tr>';
+        `).join('') : '<tr><td colspan="5" class="text-center text-muted py-3">No orders yet.</td></tr>';
     } catch {}
 }
 
@@ -198,13 +192,14 @@ async function loadRecentPOs() {
         const data = await fetch('/api/purchasing/orders/?page_size=5').then(r => r.json());
         const orders = data.orders || [];
         document.getElementById('recentPOs').innerHTML = orders.length ? orders.map(o => `
-            <tr style="cursor:pointer;" onclick="window.location='/purchasing/${o.id}/'">
+            <tr style="cursor:pointer;" onclick="window.location='/operations/purchases/${o.id}/'">
                 <td style="font-weight:600;color:#2563eb;">${esc(o.po_number)}</td>
                 <td>${esc(o.vendor_name)}</td>
+                <td>${esc(o.products || '')}</td>
                 <td><span class="badge-sm badge-green">${esc(o.order_status_display)}</span></td>
                 <td style="text-align:right;">$${Number(o.total).toFixed(2)}</td>
             </tr>
-        `).join('') : '<tr><td colspan="4" class="text-center text-muted py-3">No POs yet.</td></tr>';
+        `).join('') : '<tr><td colspan="5" class="text-center text-muted py-3">No POs yet.</td></tr>';
     } catch {}
 }
 
@@ -216,10 +211,11 @@ async function loadRecentRecv() {
             <tr style="cursor:pointer;" onclick="/* open detail */">
                 <td style="font-weight:600;">${esc(l.trace_lot)}</td>
                 <td>${esc(l.vendor)}</td>
+                <td>${esc(l.product_name || '')}</td>
                 <td>${esc(l.receive_date)}</td>
                 <td style="text-align:right;">${l.on_hand} ${esc(l.unit_type)}</td>
             </tr>
-        `).join('') : '<tr><td colspan="4" class="text-center text-muted py-3">No received lots yet.</td></tr>';
+        `).join('') : '<tr><td colspan="5" class="text-center text-muted py-3">No received lots yet.</td></tr>';
     } catch {}
 }
 
@@ -231,11 +227,12 @@ async function loadRecentProc() {
         document.getElementById('recentProc').innerHTML = batches.length ? batches.map(b => `
             <tr style="cursor:pointer;" onclick="window.location='/processing/${b.id}/'">
                 <td style="font-weight:600;">${esc(b.batch_number)}</td>
+                <td>${esc(b.products || '')}</td>
                 <td>${esc(types[b.process_type] || b.process_type)}</td>
                 <td><span class="badge-sm badge-amber">${esc(b.status_display)}</span></td>
                 <td>${esc(b.started_at)}</td>
             </tr>
-        `).join('') : '<tr><td colspan="4" class="text-center text-muted py-3">No batches yet.</td></tr>';
+        `).join('') : '<tr><td colspan="5" class="text-center text-muted py-3">No batches yet.</td></tr>';
     } catch {}
 }
 </script>

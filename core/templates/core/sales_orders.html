@@ -55,7 +55,8 @@
             <span class="sub" id="totalCount">0 Sales Orders</span>
         </div>
         <div style="display:flex; gap:0.5rem;">
-            <button class="btn-inv-outline"><i class="bi bi-download me-1"></i>Export Orders</button>
+            <a href="/api/sales/orders/export/" class="btn-inv-outline"><i class="bi bi-download me-1"></i>Export</a>
+            <button class="btn-inv-outline" onclick="openImportCSV('/api/sales/orders/import/', () => loadOrders(), ['order_number','customer_name','order_status','packed_status','qb_invoice_number','sales_rep','po_number','order_date','delivery_date','ship_date','shipper','shipping_route','notes'])"><i class="bi bi-upload me-1"></i>Import</button>
             <button class="btn-inv-primary" onclick="openNewSO()"><i class="bi bi-plus me-1"></i>New Order</button>
         </div>
     </div>
@@ -82,10 +83,11 @@
                         <th style="text-align:right;">Total $</th>
                         <th>Order Date</th>
                         <th>Route</th>
+                        <th style="width:40px;"></th>
                     </tr>
                 </thead>
                 <tbody id="soTbody">
-                    <tr><td colspan="9" class="text-center text-muted py-4">Loading...</td></tr>
+                    <tr><td colspan="10" class="text-center text-muted py-4">Loading...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -171,6 +173,23 @@ let activeFilters = {};
 
 document.addEventListener('DOMContentLoaded', () => { loadOrders(); loadCustomers(); });
 
+async function updateSOStatus(soId, field, value, selectEl) {
+    const payload = {};
+    payload[field] = value;
+    const res = await fetch(`/api/sales/orders/${soId}/update/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+        body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+        alert('Failed to update status.');
+        loadOrders();
+        return;
+    }
+    // Update badge class
+    selectEl.className = 'inline-status-select badge-' + value;
+}
+
 async function loadOrders() {
     const search = document.getElementById('searchBox').value.trim();
     let url = `/api/sales/orders/?page=${currentPage}&page_size=${PAGE_SIZE}`;
@@ -205,17 +224,33 @@ function renderTable() {
         return;
     }
 
+    const orderStatusOpts = [
+        ['draft','Draft'],['open','Open'],['needs_review','Needs Review'],['closed','Closed'],['cancelled','Cancelled']
+    ];
+    const packedStatusOpts = [
+        ['not_packed','Not Packed'],['packed','Packed'],['need_to_send','Need To Send']
+    ];
+
     tbody.innerHTML = allOrders.map(so => `
         <tr onclick="window.location='/sales/${so.id}/'">
             <td onclick="event.stopPropagation();"><input type="checkbox"></td>
             <td style="font-weight:600; color:#2563eb;">${esc(so.order_number)}</td>
-            <td><span class="badge-status badge-${so.order_status}">${esc(so.order_status_display)}</span></td>
-            <td><span class="badge-status badge-${so.packed_status}">${esc(so.packed_status_display)}</span></td>
+            <td onclick="event.stopPropagation();">
+                <select class="inline-status-select badge-${so.order_status}" onchange="updateSOStatus(${so.id}, 'order_status', this.value, this)" style="font-size:0.75rem; padding:2px 6px; border-radius:999px; border:1px solid #e2e8f0; cursor:pointer; font-weight:600;">
+                    ${orderStatusOpts.map(([v,l]) => `<option value="${v}" ${so.order_status===v?'selected':''}>${l}</option>`).join('')}
+                </select>
+            </td>
+            <td onclick="event.stopPropagation();">
+                <select class="inline-status-select badge-${so.packed_status}" onchange="updateSOStatus(${so.id}, 'packed_status', this.value, this)" style="font-size:0.75rem; padding:2px 6px; border-radius:999px; border:1px solid #e2e8f0; cursor:pointer; font-weight:600;">
+                    ${packedStatusOpts.map(([v,l]) => `<option value="${v}" ${so.packed_status===v?'selected':''}>${l}</option>`).join('')}
+                </select>
+            </td>
             <td>${esc(so.qb_invoice_number || '')}</td>
             <td>${esc(so.customer_name)}</td>
             <td style="text-align:right;">$${Number(so.total).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
             <td>${esc(so.order_date)}</td>
             <td>${esc(so.shipping_route || '')}</td>
+            <td onclick="event.stopPropagation();"><button class="del-btn" title="Delete" onclick="deleteRecord('/api/sales/orders/${so.id}/delete/', 'Delete order ${esc(so.order_number)}? This cannot be undone.', () => loadOrders())"><i class="bi bi-trash"></i></button></td>
         </tr>
     `).join('');
 

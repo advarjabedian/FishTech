@@ -84,7 +84,8 @@
             <span class="sub" id="totalCount">0 Purchases</span>
         </div>
         <div style="display:flex; gap:0.5rem;">
-            <button class="btn-inv-outline" onclick="exportPurchases()"><i class="bi bi-download me-1"></i>Export Purchases</button>
+            <a href="/api/purchasing/orders/export/" class="btn-inv-outline"><i class="bi bi-download me-1"></i>Export</a>
+            <button class="btn-inv-outline" onclick="openImportCSV('/api/purchasing/orders/import/', () => loadOrders(), ['po_number','vendor_name','order_status','receive_status','qb_po_number','buyer','vendor_invoice_number','order_date','expected_date','notes'])"><i class="bi bi-upload me-1"></i>Import</button>
             <button class="btn-inv-primary" onclick="openNewPO()"><i class="bi bi-plus me-1"></i>New Purchase</button>
         </div>
     </div>
@@ -114,6 +115,7 @@
                         <th style="text-align:right;">Expected</th>
                         <th>Order Date</th>
                         <th>Vendor Type</th>
+                        <th style="width:40px;"></th>
                     </tr>
                 </thead>
                 <tbody id="poTbody">
@@ -234,6 +236,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // ── Data ────────────────────────────────────────────────────────
 
+async function updatePOStatus(poId, value, selectEl) {
+    const res = await fetch(`/api/purchasing/orders/${poId}/update/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+        body: JSON.stringify({ order_status: value }),
+    });
+    if (!res.ok) {
+        alert('Failed to update status.');
+        loadOrders();
+        return;
+    }
+    selectEl.className = 'inline-status-select badge-' + value;
+}
+
 async function loadOrders() {
     const search = document.getElementById('searchBox').value.trim();
     let url = `/api/purchasing/orders/?page=${currentPage}&page_size=${PAGE_SIZE}`;
@@ -279,11 +295,17 @@ function renderTable() {
         return;
     }
 
+    const poStatusOpts = [['draft','Draft'],['open','Open'],['closed','Closed'],['cancelled','Cancelled']];
+
     tbody.innerHTML = allOrders.map(po => `
-        <tr onclick="window.location='/purchasing/${po.id}/'">
+        <tr onclick="window.location='/operations/purchases/${po.id}/'">
             <td onclick="event.stopPropagation();"><input type="checkbox" data-id="${po.id}"></td>
             <td style="font-weight:600; color:#2563eb;">${esc(po.po_number)}</td>
-            <td><span class="badge-status badge-${po.order_status}">${esc(po.order_status_display)}</span></td>
+            <td onclick="event.stopPropagation();">
+                <select class="inline-status-select badge-${po.order_status}" onchange="updatePOStatus(${po.id}, this.value, this)" style="font-size:0.75rem; padding:2px 6px; border-radius:999px; border:1px solid #e2e8f0; cursor:pointer; font-weight:600;">
+                    ${poStatusOpts.map(([v,l]) => `<option value="${v}" ${po.order_status===v?'selected':''}>${l}</option>`).join('')}
+                </select>
+            </td>
             <td><span class="badge-status badge-${po.receive_status}">${esc(po.receive_status_display)}</span></td>
             <td>${esc(po.qb_po_number || '')}</td>
             <td>${esc(po.vendor_name)}</td>
@@ -291,6 +313,7 @@ function renderTable() {
             <td style="text-align:right;">${po.expected ? Number(po.expected).toLocaleString(undefined, {maximumFractionDigits:2}) : ''}</td>
             <td>${esc(po.order_date)}</td>
             <td>${esc(po.vendor_type)}</td>
+            <td onclick="event.stopPropagation();"><button class="del-btn" title="Delete" onclick="deleteRecord('/api/purchasing/orders/${po.id}/delete/', 'Delete PO ${esc(po.po_number)}? This cannot be undone.', () => loadOrders())"><i class="bi bi-trash"></i></button></td>
         </tr>
     `).join('');
 
@@ -375,11 +398,8 @@ async function createPO() {
     });
     const data = await res.json();
     if (data.error) { alert(data.error); return; }
-    window.location.href = '/purchasing/' + data.id + '/';
+    window.location.href = '/operations/purchases/' + data.id + '/';
 }
 
-function exportPurchases() {
-    alert('Export coming soon.');
-}
 </script>
 {% endblock %}

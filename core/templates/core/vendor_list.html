@@ -245,7 +245,8 @@
             </button>
         </div>
         <div class="vnd-toolbar-right">
-            <button class="btn-vnd-outline"><i class="bi bi-upload me-1"></i>Import</button>
+            <a href="/api/vendors/export/" class="btn-vnd-outline"><i class="bi bi-download me-1"></i>Export</a>
+            <button class="btn-vnd-outline" onclick="openImportCSV('/api/vendors/import/', () => loadVendors(), ['name','vendor_type','contact_name','email','phone','address','city','state','zipcode','cert','fax','billing_email'])"><i class="bi bi-upload me-1"></i>Import</button>
             <button class="btn-vnd-primary" onclick="openPanel()"><i class="bi bi-plus me-1"></i>Add Vendor</button>
         </div>
     </div>
@@ -262,10 +263,11 @@
                         <th>Phone</th>
                         <th>Mailing Address</th>
                         <th>Billing Email</th>
+                        <th style="width:40px;"></th>
                     </tr>
                 </thead>
                 <tbody id="vendorTbody">
-                    <tr><td colspan="6" class="text-center text-muted py-4">Loading...</td></tr>
+                    <tr><td colspan="7" class="text-center text-muted py-4">Loading...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -403,7 +405,7 @@
     </div>
 
     <div class="slide-panel-footer">
-        <button class="btn-vnd-primary" onclick="saveVendor()" style="flex:1;">Save Vendor</button>
+        <button class="btn-vnd-primary" onclick="withSpinner(this, () => saveVendor())" style="flex:1;">Save Vendor</button>
         <button class="btn-vnd-outline" onclick="closePanel()">Cancel</button>
     </div>
 </div>
@@ -500,7 +502,7 @@ function renderTable() {
     document.getElementById('vendorCount').textContent = filteredVendors.length + ' Vendors';
 
     if (!page.length) {
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">No vendors found.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">No vendors found.</td></tr>';
         document.getElementById('paginationInfo').textContent = 'No vendors';
         document.getElementById('paginationBtns').innerHTML = '';
         return;
@@ -523,6 +525,7 @@ function renderTable() {
             <td>${esc(v.phone || '--')}${v.phone_extension ? ' x' + esc(v.phone_extension) : ''}</td>
             <td style="max-width:250px;">${esc(addr || '--')}</td>
             <td>${esc(email || '--')}</td>
+            <td onclick="event.stopPropagation();"><button class="del-btn" title="Delete" onclick="deleteRecord('/api/vendors/${v.id}/delete/', 'Delete vendor ${esc(v.name)}? This cannot be undone.', () => loadVendors())"><i class="bi bi-trash"></i></button></td>
         </tr>`;
     }).join('');
 

@@ -1,10 +1,26 @@
 {% extends 'core/base.html' %}
-{% block title %}Item Library - FishTeck{% endblock %}
+{% block title %}Products - FishTeck{% endblock %}
 
 {% block extra_css %}
 <style>
 /* ── Page-specific header ──────────────────────────────────────── */
 .inv-header .item-count { font-size: 0.8rem; color: #64748b; }
+
+/* Tabs */
+.inv-tab {
+    background: none; border: none; padding: 10px 20px; font-size: 0.85rem;
+    font-weight: 600; color: #64748b; cursor: pointer; border-bottom: 2px solid transparent;
+    margin-bottom: -2px; transition: all 0.15s;
+}
+.inv-tab:hover { color: #2563eb; }
+.inv-tab.active { color: #2563eb; border-bottom-color: #2563eb; }
+.rejected-count {
+    background: #fee2e2; color: #991b1b; font-size: 0.7rem; font-weight: 700;
+    padding: 1px 7px; border-radius: 10px; margin-left: 6px;
+}
+.qc-badge-sm { display: inline-flex; align-items: center; font-size: 0.73rem; font-weight: 600; padding: 3px 8px; border-radius: 20px; }
+.qc-hold { background: #fef3c7; color: #92400e; }
+.qc-reject { background: #fee2e2; color: #991b1b; }
 
 /* ── Page-specific table styles ───────────────────────────────── */
 .inv-table tbody td.item-name {
@@ -137,25 +153,6 @@
 }
 .form-group-inv { margin-bottom: 1.1rem; }
 
-/* ── Create Item top bar button ─────────────────────────────────── */
-.btn-create-top {
-    background: #fff;
-    color: #374151;
-    border: 1px solid #d1d5db;
-    border-radius: 8px;
-    padding: 7px 18px;
-    font-size: 0.85rem;
-    font-weight: 600;
-    cursor: pointer;
-    position: fixed;
-    top: 12px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 200;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
-}
-.btn-create-top:hover { background: #f9fafb; border-color: #2563eb; color: #2563eb; }
-
 /* ── Filter panel (right-side modal) ────────────────────────────── */
 .filter-overlay {
     position: fixed;
@@ -232,25 +229,33 @@
 
 {% include 'core/includes/sidebar.html' with active='inventory' %}
 
-<!-- Create Item button (top center like BlueTrace) -->
-<button class="btn-create-top" onclick="openPanel()">
-    <i class="bi bi-plus-circle me-1"></i> Create Item
-</button>
-
 <!-- Main content -->
 <div class="inv-main">
     <div class="inv-header">
-        <h2><i class="bi bi-box-seam me-2" style="color:#2563eb;"></i>Item Library</h2>
+        <h2><i class="bi bi-box-seam me-2" style="color:#2563eb;"></i>Products</h2>
         <span class="item-count" id="itemCount">0 items</span>
     </div>
 
+    <!-- Tabs -->
+    <div class="inv-tabs" style="display:flex; gap:0; margin-bottom:1rem; border-bottom:2px solid #e5e7eb;">
+        <button class="inv-tab active" id="tab-inventory" onclick="switchTab('inventory')">
+            <i class="bi bi-box-seam me-1"></i>Inventory
+        </button>
+        <button class="inv-tab" id="tab-rejected" onclick="switchTab('rejected')">
+            <i class="bi bi-exclamation-triangle me-1"></i>Rejected / Hold
+            <span class="rejected-count" id="rejectedCount" style="display:none;"></span>
+        </button>
+    </div>
+
+    <!-- INVENTORY TAB -->
+    <div id="panel-inventory">
     <!-- Toolbar -->
     <div class="inv-toolbar">
         <div class="inv-toolbar-left">
-            <select class="filter-select" id="showFilter" onchange="loadItems()">
-                <option value="active">Show Active Items</option>
-                <option value="inactive">Show Inactive Items</option>
-                <option value="all">Show All Items</option>
+            <select class="filter-select" id="showFilter" onchange="onShowFilterChange()">
+                <option value="active">In Stock</option>
+                <option value="active_all">All Active Items</option>
+                <option value="inactive">Inactive Items</option>
             </select>
             <input type="text" class="search-box" id="searchBox" placeholder="Search..." oninput="debounceSearch()">
             <button class="btn btn-sm btn-link text-muted" onclick="clearFilters()" style="font-size:0.8rem;">
@@ -262,7 +267,7 @@
         </div>
         <div class="inv-toolbar-right">
             <a href="/api/inventory/export/" class="btn-inv-outline"><i class="bi bi-download me-1"></i>Export</a>
-            <button class="btn-inv-outline"><i class="bi bi-upload me-1"></i>Import</button>
+            <button class="btn-inv-outline" onclick="openImportCSV('/api/inventory/import/', () => loadItems(), ['qb_item_name','friendly_name','description','species','size_cull','sku','quantity_description','country_of_origin','brand','department','inventory_unit_of_measure','list_price','wholesale_price','upc'])"><i class="bi bi-upload me-1"></i>Import</button>
             <button class="btn-inv-primary" onclick="openPanel()"><i class="bi bi-plus me-1"></i>Add Item</button>
         </div>
     </div>
@@ -292,6 +297,32 @@
         <div class="inv-pagination">
             <span id="paginationInfo">Showing 0 items</span>
             <div class="page-btns" id="paginationBtns"></div>
+        </div>
+    </div>
+    </div><!-- /panel-inventory -->
+
+    <!-- REJECTED TAB -->
+    <div id="panel-rejected" style="display:none;">
+        <div class="inv-table-card">
+            <div style="overflow-x:auto;">
+                <table class="inv-table">
+                    <thead>
+                        <tr>
+                            <th>Trace Lot</th>
+                            <th>Product</th>
+                            <th>Vendor</th>
+                            <th>Receive Date</th>
+                            <th>QC Status</th>
+                            <th>QC Notes</th>
+                            <th>Checked At</th>
+                            <th style="text-align:right;">On Hand</th>
+                        </tr>
+                    </thead>
+                    <tbody id="rejectedTbody">
+                        <tr><td colspan="8" class="text-center text-muted py-4">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 </div>
@@ -578,7 +609,7 @@
     </div>
 
     <div class="slide-panel-footer">
-        <button class="btn-inv-primary" onclick="saveItem()" style="flex:1;">Save</button>
+        <button class="btn-inv-primary" onclick="withSpinner(this, () => saveItem())" style="flex:1;">Save</button>
         <button class="btn-inv-outline" onclick="closePanel()">Cancel</button>
     </div>
 </div>
@@ -600,7 +631,65 @@ let activeFilters = {};
 document.addEventListener('DOMContentLoaded', () => {
     loadGroups();
     loadItems();
+    loadRejectedCount();
 });
+
+let currentTab = 'inventory';
+
+function switchTab(tab) {
+    currentTab = tab;
+    document.getElementById('tab-inventory').classList.toggle('active', tab === 'inventory');
+    document.getElementById('tab-rejected').classList.toggle('active', tab === 'rejected');
+    document.getElementById('panel-inventory').style.display = tab === 'inventory' ? '' : 'none';
+    document.getElementById('panel-rejected').style.display = tab === 'rejected' ? '' : 'none';
+    if (tab === 'rejected') loadRejectedLots();
+}
+
+async function loadRejectedCount() {
+    try {
+        const res = await fetch('/api/inventory/rejected/');
+        const data = await res.json();
+        const count = (data.lots || []).length;
+        const el = document.getElementById('rejectedCount');
+        if (count > 0) { el.textContent = count; el.style.display = ''; }
+        else { el.style.display = 'none'; }
+    } catch {}
+}
+
+async function loadRejectedLots() {
+    const res = await fetch('/api/inventory/rejected/');
+    const data = await res.json();
+    const lots = data.lots || [];
+    const tbody = document.getElementById('rejectedTbody');
+    if (!lots.length) {
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">No rejected or held lots.</td></tr>';
+        return;
+    }
+    tbody.innerHTML = lots.map(lot => `
+        <tr>
+            <td style="font-weight:600;">${esc(lot.trace_lot)}</td>
+            <td>${esc(lot.product)}</td>
+            <td>${esc(lot.vendor)}</td>
+            <td>${esc(lot.receive_date)}</td>
+            <td><span class="qc-badge-sm qc-${lot.qc_status}">${lot.qc_status === 'hold' ? '<i class="bi bi-pause-circle-fill me-1"></i>Hold' : '<i class="bi bi-x-circle-fill me-1"></i>Reject'}</span></td>
+            <td style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${esc(lot.qc_notes || '--')}</td>
+            <td>${esc(lot.checked_at)}</td>
+            <td style="text-align:right;">${lot.on_hand} ${esc(lot.unit_type)}</td>
+        </tr>
+    `).join('');
+}
+
+function onShowFilterChange() {
+    const val = document.getElementById('showFilter').value;
+    if (val === 'active_all') {
+        activeFilters.showAll = true;
+        document.getElementById('showFilter').dataset.apiValue = 'active';
+    } else {
+        activeFilters.showAll = false;
+        document.getElementById('showFilter').dataset.apiValue = val;
+    }
+    loadItems();
+}
 
 async function loadGroups() {
     const res = await fetch('/api/inventory/groups/');
@@ -616,7 +705,8 @@ async function loadGroups() {
 }
 
 async function loadItems() {
-    const show = document.getElementById('showFilter').value;
+    const showEl = document.getElementById('showFilter');
+    const show = showEl.dataset.apiValue || (showEl.value === 'active_all' ? 'active' : showEl.value);
     const search = document.getElementById('searchBox').value.trim();
     let url = `/api/inventory/items/?show=${show}`;
     if (search) url += `&search=${encodeURIComponent(search)}`;
@@ -630,6 +720,9 @@ async function loadItems() {
 
 function applyClientFilters() {
     filteredItems = allItems.filter(item => {
+        // Hide items with no inventory unless "In Stock" filter is explicitly off
+        const hasInventory = item.expected > 0 || item.allocated > 0 || item.on_hand > 0;
+        if (!hasInventory && !activeFilters.showAll) return false;
         if (activeFilters.instock && item.on_hand <= 0) return false;
         if (activeFilters.group && item.item_group !== activeFilters.group) return false;
         if (activeFilters.department && item.department !== activeFilters.department) return false;
@@ -747,7 +840,7 @@ function renderTable() {
                         <i class="bi bi-three-dots-vertical"></i>
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end">
-                        <li><a class="dropdown-item" href="/inventory/${item.id}/"><i class="bi bi-eye me-2"></i>View Details</a></li>
+                        <li><a class="dropdown-item" href="/operations/inventory/${item.id}/"><i class="bi bi-eye me-2"></i>View Details</a></li>
                         <li><a class="dropdown-item" href="#" onclick="openEditPanel(${item.id}); return false;"><i class="bi bi-pencil me-2"></i>Edit</a></li>
                         <li><a class="dropdown-item" href="#" onclick="toggleActive(${item.id}); return false;"><i class="bi bi-toggle-on me-2"></i>${item.is_active ? 'Deactivate' : 'Activate'}</a></li>
                         <li><hr class="dropdown-divider"></li>
@@ -773,7 +866,7 @@ function renderTable() {
 }
 
 function goPage(p) { currentPage = p; renderTable(); }
-function goToItem(id) { window.location.href = '/inventory/' + id + '/'; }
+function goToItem(id) { window.location.href = '/operations/inventory/' + id + '/'; }
 // ── Panel ───────────────────────────────────────────────────────
 
 function openPanel() {

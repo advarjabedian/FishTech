@@ -161,7 +161,7 @@
         {% if not is_read_only %}
         <div class="d-flex justify-content-between mt-4 no-print">
             <div>
-                <button type="button" class="btn btn-secondary" onclick="saveDraft()">
+                <button type="button" class="btn btn-secondary" onclick="withSpinner(this, () => saveDraft())">
                     <i class="bi bi-save me-2"></i>Save Draft
                 </button>
             </div>

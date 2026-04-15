@@ -1,0 +1,201 @@
+{% extends 'core/base.html' %}
+{% block title %}Trace - FishTeck{% endblock %}
+
+{% block extra_css %}
+<style>
+.trace-search {
+    max-width: 600px; margin: 0 auto 2rem;
+}
+.trace-search input {
+    width: 100%; border: 2px solid #e2e8f0; border-radius: 10px;
+    padding: 12px 16px 12px 44px; font-size: 1rem;
+    background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%2394a3b8' viewBox='0 0 16 16'%3E%3Cpath d='M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85zm-5.242.656a5 5 0 1 1 0-10 5 5 0 0 1 0 10z'/%3E%3C/svg%3E") 14px center no-repeat;
+}
+.trace-search input:focus { border-color: #2563eb; outline: none; box-shadow: 0 0 0 3px rgba(37,99,235,0.12); }
+
+.trace-flow { display: flex; gap: 0; align-items: flex-start; overflow-x: auto; padding-bottom: 1rem; }
+.trace-stage {
+    flex: 1; min-width: 220px; max-width: 320px;
+}
+.trace-stage-header {
+    display: flex; align-items: center; gap: 0.5rem;
+    padding: 10px 14px; font-weight: 700; font-size: 0.82rem;
+    text-transform: uppercase; letter-spacing: 0.03em; color: #fff;
+    border-radius: 10px 10px 0 0;
+}
+.trace-stage-header .stage-num {
+    background: rgba(255,255,255,0.25); border-radius: 999px;
+    width: 22px; height: 22px; display: flex; align-items: center;
+    justify-content: center; font-size: 0.7rem;
+}
+.stage-purchase .trace-stage-header { background: #2563eb; }
+.stage-receiving .trace-stage-header { background: #0ea5e9; }
+.stage-processing .trace-stage-header { background: #f59e0b; }
+.stage-sales .trace-stage-header { background: #10b981; }
+
+.trace-arrow {
+    display: flex; align-items: center; padding-top: 14px;
+    color: #cbd5e1; font-size: 1.5rem; flex-shrink: 0;
+}
+
+.trace-stage-body {
+    background: #fff; border: 1px solid #e2e8f0; border-top: none;
+    border-radius: 0 0 10px 10px; padding: 10px;
+    min-height: 80px;
+}
+.trace-card {
+    background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;
+    padding: 10px 12px; margin-bottom: 8px; cursor: pointer;
+    transition: border-color 0.15s;
+}
+.trace-card:last-child { margin-bottom: 0; }
+.trace-card:hover { border-color: #2563eb; }
+.trace-card .tc-id { font-weight: 700; color: #2563eb; font-size: 0.82rem; }
+.trace-card .tc-product { font-size: 0.8rem; color: #1e293b; margin-top: 2px; }
+.trace-card .tc-meta { font-size: 0.73rem; color: #64748b; margin-top: 2px; }
+.trace-card .tc-status {
+    display: inline-block; padding: 1px 6px; border-radius: 999px;
+    font-size: 0.65rem; font-weight: 600; margin-top: 4px;
+}
+.tc-status-open { background: #dbeafe; color: #2563eb; }
+.tc-status-closed { background: #dcfce7; color: #16a34a; }
+.tc-status-draft { background: #fef3c7; color: #d97706; }
+
+.trace-empty { color: #94a3b8; font-size: 0.82rem; text-align: center; padding: 1.5rem 0; }
+
+.trace-hint {
+    text-align: center; color: #94a3b8; font-size: 0.9rem; margin-top: 3rem;
+}
+.trace-hint i { font-size: 2.5rem; display: block; margin-bottom: 0.75rem; color: #cbd5e1; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+{% include 'core/includes/sidebar.html' with active='trace' %}
+
+<div class="inv-main">
+    <div style="max-width: 1200px; margin: 0 auto;">
+        <h2 style="font-size:1.4rem; font-weight:700; margin-bottom:0.25rem;">Product Trace</h2>
+        <p style="font-size:0.82rem; color:#64748b; margin-bottom:1.5rem;">Track product through the full workflow. Search by PO number, lot code, batch number, product name, or sales order number.</p>
+
+        <div class="trace-search">
+            <input type="text" id="traceInput" placeholder="Search by PO #, lot code, batch #, product, or SO #..." autofocus>
+        </div>
+
+        <div id="traceResults" style="display:none;">
+            <div class="trace-flow">
+                <div class="trace-stage stage-purchase">
+                    <div class="trace-stage-header"><span class="stage-num">1</span> Purchase</div>
+                    <div class="trace-stage-body" id="tracePO"></div>
+                </div>
+                <div class="trace-arrow"><i class="bi bi-chevron-right"></i></div>
+                <div class="trace-stage stage-receiving">
+                    <div class="trace-stage-header"><span class="stage-num">2</span> Receiving</div>
+                    <div class="trace-stage-body" id="traceRecv"></div>
+                </div>
+                <div class="trace-arrow"><i class="bi bi-chevron-right"></i></div>
+                <div class="trace-stage stage-processing">
+                    <div class="trace-stage-header"><span class="stage-num">3</span> Processing</div>
+                    <div class="trace-stage-body" id="traceProc"></div>
+                </div>
+                <div class="trace-arrow"><i class="bi bi-chevron-right"></i></div>
+                <div class="trace-stage stage-sales">
+                    <div class="trace-stage-header"><span class="stage-num">4</span> Sales</div>
+                    <div class="trace-stage-body" id="traceSales"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="traceHint" class="trace-hint">
+            <i class="bi bi-diagram-3"></i>
+            Enter a search term above to trace product through the workflow.
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const traceInput = document.getElementById('traceInput');
+const traceDebounced = debounce(runTrace, 400);
+
+traceInput.addEventListener('input', traceDebounced);
+traceInput.addEventListener('keydown', e => { if (e.key === 'Enter') runTrace(); });
+
+async function runTrace() {
+    const q = traceInput.value.trim();
+    if (!q) {
+        document.getElementById('traceResults').style.display = 'none';
+        document.getElementById('traceHint').style.display = '';
+        return;
+    }
+    document.getElementById('traceHint').style.display = 'none';
+    document.getElementById('traceResults').style.display = '';
+
+    try {
+        const res = await fetch(`/api/trace/?q=${encodeURIComponent(q)}`);
+        if (!res.ok) { console.error('trace error', res.status); return; }
+        const data = await res.json();
+        renderTrace(data);
+    } catch (e) { console.error('trace error', e); }
+}
+
+function statusClass(s) {
+    s = (s || '').toLowerCase();
+    if (s.includes('closed') || s.includes('completed') || s.includes('pass')) return 'tc-status-closed';
+    if (s.includes('draft')) return 'tc-status-draft';
+    return 'tc-status-open';
+}
+
+function renderTrace(data) {
+    // Purchase Orders
+    document.getElementById('tracePO').innerHTML = data.purchase_orders.length
+        ? data.purchase_orders.map(po => `
+            <div class="trace-card" onclick="window.location='/operations/purchases/${po.id}/'">
+                <div class="tc-id">${esc(po.po_number)}</div>
+                <div class="tc-product">${esc(po.products)}</div>
+                <div class="tc-meta">${esc(po.vendor_name)} &middot; ${esc(po.order_date)}</div>
+                <span class="tc-status ${statusClass(po.order_status)}">${esc(po.order_status)}</span>
+            </div>
+        `).join('') : '<div class="trace-empty">No purchase orders found</div>';
+
+    // Receiving Lots
+    document.getElementById('traceRecv').innerHTML = data.receiving_lots.length
+        ? data.receiving_lots.map(lot => `
+            <div class="trace-card">
+                <div class="tc-id">${esc(lot.trace_lot)}</div>
+                <div class="tc-product">${esc(lot.product_name)}</div>
+                <div class="tc-meta">${esc(lot.vendor)} &middot; ${esc(lot.receive_date)}</div>
+                <div class="tc-meta">${lot.on_hand} ${esc(lot.unit_type)} on hand</div>
+                ${lot.po_number ? `<div class="tc-meta">From: ${esc(lot.po_number)}</div>` : ''}
+            </div>
+        `).join('') : '<div class="trace-empty">No received lots found</div>';
+
+    // Processing Batches
+    document.getElementById('traceProc').innerHTML = data.processing_batches.length
+        ? data.processing_batches.map(b => `
+            <div class="trace-card" onclick="window.location='/operations/processing/${b.id}/'">
+                <div class="tc-id">${esc(b.batch_number)}</div>
+                <div class="tc-product">${esc(b.products)}</div>
+                <div class="tc-meta">${esc(b.process_type)} &middot; ${esc(b.started_at)}</div>
+                <span class="tc-status ${statusClass(b.status)}">${esc(b.status)}</span>
+                ${b.source_lots.length ? `<div class="tc-meta">From: ${b.source_lots.map(l => esc(l.trace_lot)).join(', ')}</div>` : ''}
+            </div>
+        `).join('') : '<div class="trace-empty">No processing batches found</div>';
+
+    // Sales Orders
+    document.getElementById('traceSales').innerHTML = data.sales_orders.length
+        ? data.sales_orders.map(so => `
+            <div class="trace-card" onclick="window.location='/sales/${so.id}/'">
+                <div class="tc-id">${esc(so.order_number)}</div>
+                <div class="tc-product">${esc(so.customer_name)}</div>
+                <div class="tc-meta">${esc(so.order_date)} &middot; $${Number(so.total).toFixed(2)}</div>
+                <span class="tc-status ${statusClass(so.order_status)}">${esc(so.order_status)}</span>
+                ${so.allocated_lots.length ? `<div class="tc-meta">Lots: ${so.allocated_lots.map(l => esc(l)).join(', ')}</div>` : ''}
+            </div>
+        `).join('') : '<div class="trace-empty">No sales orders found</div>';
+}
+</script>
+{% endblock %}

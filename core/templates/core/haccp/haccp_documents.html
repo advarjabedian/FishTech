@@ -198,7 +198,7 @@ function showAllVersionHistory() {
     selectedYear = {{ current_year }};
     
     // Load set-level version history
-    fetch(`/api/haccp-version-history/{{ request.tenant.id }}/{{ product_type_slug }}/product_description/`)
+    fetch(`/api/haccp/version-history/{{ request.tenant.id }}/{{ product_type_slug }}/product_description/`)
         .then(r => r.json())
         .then(data => {
             allYears = data.years;
@@ -241,7 +241,7 @@ function loadVersionsForYear(year) {
     const contentDiv = document.getElementById('versionTableContent');
     contentDiv.innerHTML = '<div class="text-center"><div class="spinner-border text-primary" role="status"></div></div>';
     
-    fetch(`/api/haccp-version-history/{{ request.tenant.id }}/{{ product_type_slug }}/product_description/?year=${year}`)
+    fetch(`/api/haccp/version-history/{{ request.tenant.id }}/{{ product_type_slug }}/product_description/?year=${year}`)
         .then(r => r.json())
         .then(data => {
             renderVersionTable(data.versions);
@@ -337,7 +337,7 @@ function createNewVersion() {
         return;
     }
     
-    fetch('/api/haccp-generate-version/{{ request.tenant.id }}/{{ product_type_slug }}/product_description/', {
+    fetch('/api/haccp/generate-version/{{ request.tenant.id }}/{{ product_type_slug }}/product_description/', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -361,7 +361,7 @@ function createNewVersion() {
 function deleteVersionSet(year, version) {
     if (!confirm(`Delete version ${version} for year ${year}? This will delete all 4 documents in this version and cannot be undone.`)) return;
     
-    fetch(`/api/haccp-delete-version-set/{{ request.tenant.id }}/{{ product_type_slug }}/`, {
+    fetch(`/api/haccp/delete-version-set/{{ request.tenant.id }}/{{ product_type_slug }}/`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',

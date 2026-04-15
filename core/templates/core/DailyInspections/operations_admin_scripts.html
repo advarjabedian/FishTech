@@ -54,7 +54,7 @@ function saveDays() {
         sunday: document.getElementById('modal-sun').checked
     };
     
-    fetch('/api/operations/update-config/', {
+    return fetch('/api/operations/update-config/', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -460,7 +460,7 @@ function saveNewSOP() {
     
     const startDateEl = document.getElementById('new-sop-start-date');
     
-    fetch('/api/operations/sop-create/', {
+    return fetch('/api/operations/sop-create/', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',

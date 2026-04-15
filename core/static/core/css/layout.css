@@ -227,3 +227,87 @@
     font-weight: 600;
 }
 .inv-table a:hover { text-decoration: underline; }
+
+/* ── CSV Import Modal ─────────────────────────────────────────── */
+.csv-import-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 2000;
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; transition: opacity 0.2s ease;
+}
+.csv-import-overlay.open { opacity: 1; }
+.csv-import-modal {
+    background: #fff; border-radius: 16px; width: 720px; max-width: 95vw;
+    max-height: 85vh; display: flex; flex-direction: column;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+    transform: translateY(20px); transition: transform 0.2s ease;
+}
+.csv-import-overlay.open .csv-import-modal { transform: translateY(0); }
+.csv-import-header {
+    padding: 1.25rem 1.5rem; border-bottom: 1px solid #e5e7eb;
+    display: flex; align-items: center; justify-content: space-between;
+}
+.csv-import-header h4 { margin: 0; font-size: 1.1rem; font-weight: 700; }
+.csv-close-btn {
+    background: none; border: none; font-size: 1.1rem; color: #94a3b8;
+    cursor: pointer; width: 32px; height: 32px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+}
+.csv-close-btn:hover { background: #f1f5f9; color: #1e293b; }
+.csv-import-body { padding: 1.5rem; overflow-y: auto; flex: 1; }
+.csv-import-info {
+    display: flex; gap: 1.5rem; padding: 0.75rem 1rem; background: #f0f6ff;
+    border-radius: 8px; font-size: 0.85rem; color: #2563eb; font-weight: 600;
+}
+.csv-mapping-table { display: flex; flex-direction: column; gap: 2px; }
+.csv-mapping-row {
+    display: grid; grid-template-columns: 1fr 30px 1fr 110px;
+    align-items: center; gap: 8px; padding: 8px 10px; border-radius: 6px;
+}
+.csv-mapping-row:nth-child(even) { background: #f8fafc; }
+.csv-mapping-header {
+    font-size: 0.73rem; font-weight: 600; color: #64748b; text-transform: uppercase;
+    border-bottom: 1px solid #e5e7eb; border-radius: 0;
+}
+.csv-field-name { font-weight: 600; font-size: 0.85rem; color: #1e293b; }
+.csv-map-select {
+    width: 100%; border: 1px solid #d1d5db; border-radius: 6px;
+    padding: 6px 8px; font-size: 0.82rem;
+}
+.csv-map-select:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.12); outline: none; }
+.csv-badge-match {
+    display: inline-flex; align-items: center; font-size: 0.75rem;
+    color: #059669; font-weight: 600;
+}
+.csv-badge-skip {
+    display: inline-flex; align-items: center; font-size: 0.75rem;
+    color: #94a3b8; font-weight: 600;
+}
+.csv-preview-table {
+    width: 100%; border-collapse: collapse; font-size: 0.78rem;
+}
+.csv-preview-table th {
+    background: #f8fafc; font-weight: 600; color: #64748b; text-transform: uppercase;
+    font-size: 0.7rem; padding: 6px 10px; border-bottom: 1px solid #e2e8f0;
+    white-space: nowrap;
+}
+.csv-preview-table td {
+    padding: 5px 10px; border-bottom: 1px solid #f1f5f9; max-width: 180px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #374151;
+}
+.csv-import-footer {
+    padding: 1rem 1.5rem; border-top: 1px solid #e5e7eb;
+    display: flex; align-items: center; justify-content: space-between;
+}
+.csv-import-btn {
+    background: #2563eb; color: #fff; border: none; border-radius: 8px;
+    padding: 9px 20px; font-size: 0.85rem; font-weight: 600; cursor: pointer;
+}
+.csv-import-btn:hover { background: #1d4ed8; }
+.csv-import-btn:disabled { background: #94a3b8; cursor: not-allowed; }
+
+/* Inline status select */
+.inline-status-select { appearance: none; -webkit-appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' fill='%2364748b' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 6px center; padding-right: 18px !important; }
+
+/* Delete button */
+.del-btn { background: none; border: 1px solid #e5e7eb; border-radius: 6px; color: #94a3b8; cursor: pointer; padding: 4px 8px; }
+.del-btn:hover { color: #dc2626; border-color: #dc2626; }

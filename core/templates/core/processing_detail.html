@@ -47,6 +47,24 @@
         <span class="badge-status badge-{{ batch.status }}">{{ batch.get_status_display }}</span>
     </div>
 
+    {% if source_pos or source_lots_trace %}
+    <div style="background:#f0f6ff; border:1px solid #e2e8f0; border-radius:10px; padding:10px 16px; margin-bottom:1.25rem; display:flex; flex-wrap:wrap; gap:0.5rem; align-items:center; font-size:0.78rem;">
+        <span style="color:#64748b; font-weight:600;">Trace:</span>
+        {% for po in source_pos %}
+        <a href="{% url 'purchase_detail_page' po.id %}" style="color:#2563eb; text-decoration:none; font-weight:600;">
+            <i class="bi bi-cart me-1"></i>{{ po.po_number }}
+        </a>
+        <i class="bi bi-chevron-right" style="color:#cbd5e1; font-size:0.65rem;"></i>
+        {% endfor %}
+        {% for lot in source_lots_trace %}
+        <span style="color:#0ea5e9; font-weight:600;"><i class="bi bi-box-arrow-in-down me-1"></i>{{ lot.trace_lot }}</span>
+        {% if not forloop.last %}<span style="color:#cbd5e1;">,</span>{% endif %}
+        {% endfor %}
+        <i class="bi bi-chevron-right" style="color:#cbd5e1; font-size:0.65rem;"></i>
+        <span style="color:#f59e0b; font-weight:600;"><i class="bi bi-gear me-1"></i>{{ batch.batch_number }}</span>
+    </div>
+    {% endif %}
+
     <!-- Batch info -->
     <div class="detail-card">
         <h5>Batch Details</h5>

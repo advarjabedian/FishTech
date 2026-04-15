@@ -78,11 +78,30 @@
 {% include 'core/includes/sidebar.html' with active='sales' %}
 
 <div class="inv-main">
+    <div style="max-width:900px; margin:0 auto;">
     <div style="margin-bottom:1rem;">
         <a href="{% url 'sales_orders_page' %}" style="font-size:0.85rem; color:#2563eb; text-decoration:none;">
             <i class="bi bi-arrow-left me-1"></i> Back to Sales Orders
         </a>
     </div>
+
+    {% if trace_pos or trace_lots %}
+    <div style="background:#f0f6ff; border:1px solid #e2e8f0; border-radius:10px; padding:10px 16px; margin-bottom:1.25rem; display:flex; flex-wrap:wrap; gap:0.5rem; align-items:center; font-size:0.78rem;">
+        <span style="color:#64748b; font-weight:600;">Trace:</span>
+        {% for po in trace_pos %}
+        <a href="{% url 'purchase_detail_page' po.id %}" style="color:#2563eb; text-decoration:none; font-weight:600;">
+            <i class="bi bi-cart me-1"></i>{{ po.po_number }}
+        </a>
+        <i class="bi bi-chevron-right" style="color:#cbd5e1; font-size:0.65rem;"></i>
+        {% endfor %}
+        {% for lot in trace_lots %}
+        <span style="color:#0ea5e9; font-weight:600;"><i class="bi bi-box-arrow-in-down me-1"></i>{{ lot.trace_lot }}</span>
+        {% if not forloop.last %}<span style="color:#cbd5e1;">,</span>{% endif %}
+        {% endfor %}
+        <i class="bi bi-chevron-right" style="color:#cbd5e1; font-size:0.65rem;"></i>
+        <span style="color:#10b981; font-weight:600;"><i class="bi bi-receipt me-1"></i>{{ so.order_number }}</span>
+    </div>
+    {% endif %}
 
     <div class="so-header">
         <div>
@@ -92,8 +111,8 @@
             </div>
         </div>
         <div style="display:flex; gap:0.5rem;">
-            <button class="btn-inv-outline" onclick="saveDraft()">Save Draft</button>
-            <button class="btn-publish" onclick="publishSO()">Publish</button>
+            <button class="btn-inv-outline" onclick="withSpinner(this, () => saveDraft())">Save Draft</button>
+            <button class="btn-publish" onclick="withSpinner(this, () => publishSO())">Publish</button>
         </div>
     </div>
 
@@ -225,6 +244,7 @@
             </table>
         </div>
     </div>
+    </div>
 </div>
 
 {% endblock %}
@@ -295,7 +315,7 @@ function renderItems() {
         return `<tr>
             <td>${isFee
                 ? `<input type="text" value="${esc(item.description)}" placeholder="Fee description" onchange="lineItems[${i}].description=this.value; recalc();">`
-                : `<select class="item-select" onchange="onItemSelect(${i}, this.value)"><option value="">Choose Item</option>${productOpts}</select>`
+                : `<select class="item-select" data-product-id="${esc(item.product_id)}" onchange="onItemSelect(${i}, this.value)"><option value="">Choose Item</option>${productOpts}</select>`
             }</td>
             <td><button class="del-btn" onclick="removeItem(${i})"><i class="bi bi-trash"></i></button></td>
             <td><input type="text" value="${esc(item.notes)}" placeholder="Enter note" onchange="lineItems[${i}].notes=this.value;"></td>
@@ -307,11 +327,8 @@ function renderItems() {
     }).join('');
 
     // Set select values after render
-    lineItems.forEach((item, i) => {
-        if (item.item_type !== 'fee' && item.product_id) {
-            const selects = tbody.querySelectorAll('.item-select');
-            if (selects[i]) selects[i].value = item.product_id;
-        }
+    tbody.querySelectorAll('.item-select[data-product-id]').forEach(sel => {
+        if (sel.dataset.productId) sel.value = sel.dataset.productId;
     });
 
     recalc();

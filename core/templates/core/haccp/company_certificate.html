@@ -170,8 +170,8 @@
             </div>
             
             <div class="mt-4">
-                <button type="button" class="btn btn-primary" onclick="saveCertificate(false)">Save Draft</button>
-                <button type="button" class="btn btn-success" onclick="saveCertificate(true)">Mark Complete</button>
+                <button type="button" class="btn btn-primary" onclick="withSpinner(this, () => saveCertificate(false))">Save Draft</button>
+                <button type="button" class="btn btn-success" onclick="withSpinner(this, () => saveCertificate(true))">Mark Complete</button>
             </div>
         </div>
     </div>

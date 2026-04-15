@@ -501,7 +501,7 @@
                 <textarea class="inline-edit-input" id="e-tasting-notes" rows="2">{{ product.tasting_notes }}</textarea>
             </div>
             <div class="d-flex gap-2 mt-3">
-                <button class="btn btn-sm btn-primary" onclick="saveProperties()" style="border-radius:8px;">Save</button>
+                <button class="btn btn-sm btn-primary" onclick="withSpinner(this, () => saveProperties())" style="border-radius:8px;">Save</button>
                 <button class="btn btn-sm btn-outline-secondary" onclick="cancelEditMode()" style="border-radius:8px;">Cancel</button>
             </div>
         </div>
@@ -642,7 +642,7 @@
                     </div>
                 </div>
                 <div class="d-flex gap-2 mt-3">
-                    <button class="btn btn-sm btn-primary" onclick="saveAdjustment()" style="border-radius:8px;">Save Adjustment</button>
+                    <button class="btn btn-sm btn-primary" onclick="withSpinner(this, () => saveAdjustment())" style="border-radius:8px;">Save Adjustment</button>
                     <button class="btn btn-sm btn-outline-secondary" onclick="resetAdjustmentForm()" style="border-radius:8px;">Reset</button>
                 </div>
             </div>
@@ -772,7 +772,7 @@
                         <input type="number" step="0.01" class="inline-edit-input" id="ep-margin" value="{{ product.profit_margin_target|default:'' }}">
                     </div>
                     <div class="d-flex gap-2 mt-3">
-                        <button class="btn btn-sm btn-primary" onclick="savePricing()" style="border-radius:8px;">Save</button>
+                        <button class="btn btn-sm btn-primary" onclick="withSpinner(this, () => savePricing())" style="border-radius:8px;">Save</button>
                         <button class="btn btn-sm btn-outline-secondary" onclick="cancelPricingEdit()" style="border-radius:8px;">Cancel</button>
                     </div>
                 </div>
@@ -809,11 +809,77 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // ── Tabs ────────────────────────────────────────────────────────
 
+let productOrdersLoaded = false;
+
 function switchTab(tab) {
     document.querySelectorAll('.tab-content-pane').forEach(el => el.style.display = 'none');
     document.querySelectorAll('.detail-tab').forEach(el => el.classList.remove('active'));
     document.getElementById('tab-' + tab).style.display = '';
     document.querySelector(`.detail-tab[data-tab="${tab}"]`).classList.add('active');
+
+    if ((tab === 'sales' || tab === 'purchases') && !productOrdersLoaded) {
+        productOrdersLoaded = true;
+        loadProductOrders();
+    }
+}
+
+async function loadProductOrders() {
+    try {
+        const res = await fetch(`/api/inventory/items/${PRODUCT_ID}/orders/`);
+        const data = await res.json();
+
+        // Sales Orders tab
+        const salesEl = document.getElementById('tab-sales');
+        if (data.sales_orders && data.sales_orders.length) {
+            salesEl.innerHTML = `
+                <table class="inv-table" style="font-size:0.85rem;">
+                    <thead><tr>
+                        <th>Order #</th><th>Customer</th><th>Status</th>
+                        <th style="text-align:right;">Qty</th><th>Date</th>
+                        <th style="text-align:right;">Amount</th>
+                    </tr></thead>
+                    <tbody>${data.sales_orders.map(so => `
+                        <tr style="cursor:pointer;" onclick="window.location='/sales/${so.id}/'">
+                            <td style="font-weight:600; color:#2563eb;">${esc(so.order_number)}</td>
+                            <td>${esc(so.customer_name)}</td>
+                            <td><span class="badge-status">${esc(so.order_status)}</span></td>
+                            <td style="text-align:right;">${so.quantity} ${esc(so.unit_type)}</td>
+                            <td>${esc(so.order_date)}</td>
+                            <td style="text-align:right;">$${Number(so.total).toFixed(2)}</td>
+                        </tr>
+                    `).join('')}</tbody>
+                </table>`;
+        } else {
+            salesEl.innerHTML = '<div class="empty-tab"><i class="bi bi-receipt"></i><h5>No Sales Orders</h5><p class="text-muted">No sales orders contain this product yet.</p></div>';
+        }
+
+        // Purchase Orders tab
+        const poEl = document.getElementById('tab-purchases');
+        if (data.purchase_orders && data.purchase_orders.length) {
+            poEl.innerHTML = `
+                <table class="inv-table" style="font-size:0.85rem;">
+                    <thead><tr>
+                        <th>PO #</th><th>Vendor</th><th>Status</th>
+                        <th style="text-align:right;">Qty</th><th>Date</th>
+                        <th style="text-align:right;">Amount</th>
+                    </tr></thead>
+                    <tbody>${data.purchase_orders.map(po => `
+                        <tr style="cursor:pointer;" onclick="window.location='/operations/purchases/${po.id}/'">
+                            <td style="font-weight:600; color:#2563eb;">${esc(po.po_number)}</td>
+                            <td>${esc(po.vendor_name)}</td>
+                            <td><span class="badge-status">${esc(po.order_status)}</span></td>
+                            <td style="text-align:right;">${po.quantity} ${esc(po.unit_type)}</td>
+                            <td>${esc(po.order_date)}</td>
+                            <td style="text-align:right;">$${Number(po.total).toFixed(2)}</td>
+                        </tr>
+                    `).join('')}</tbody>
+                </table>`;
+        } else {
+            poEl.innerHTML = '<div class="empty-tab"><i class="bi bi-cart"></i><h5>No Purchase Orders</h5><p class="text-muted">No purchase orders contain this product yet.</p></div>';
+        }
+    } catch(e) {
+        console.error('loadProductOrders error', e);
+    }
 }
 
 function switchLotTab(tab) {

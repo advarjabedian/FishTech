@@ -37,6 +37,39 @@ function debounce(fn, ms) {
     };
 }
 
+/**
+ * withSpinner(btn, asyncFn) — show a spinner on a button while an async operation runs.
+ * Usage: onclick="withSpinner(this, () => saveChanges())"
+ */
+async function withSpinner(btn, fn) {
+    const orig = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span>Saving...';
+    try {
+        await fn();
+    } finally {
+        btn.innerHTML = orig;
+        btn.disabled = false;
+    }
+}
+
+/**
+ * deleteRecord(url, confirmMsg, onSuccess) — confirm and delete a record via POST.
+ */
+async function deleteRecord(url, confirmMsg, onSuccess) {
+    if (!confirm(confirmMsg || 'Are you sure you want to delete this?')) return;
+    const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCookie('csrftoken') },
+    });
+    if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        alert(data.error || 'Failed to delete.');
+        return;
+    }
+    if (onSuccess) onSuccess();
+}
+
 function formatDate(dateStr) {
     if (!dateStr) return '';
     const d = new Date(dateStr + 'T00:00:00');

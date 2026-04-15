@@ -15,7 +15,7 @@ function initCCPSummary() {
 function syncCCPsFromHazardAnalysis() {
     if (!confirm('Sync CCPs from Hazard Analysis? This will add new CCPs but keep existing data.')) return;
     
-    fetch('/api/haccp-hazard-analysis-data/{{ request.tenant.id }}/{{ product_type_slug }}/')
+    fetch('/api/haccp/hazard-analysis-data/{{ request.tenant.id }}/{{ product_type_slug }}/')
         .then(r => r.json())
         .then(data => {
             if (!data.success) {

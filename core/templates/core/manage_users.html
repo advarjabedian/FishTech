@@ -161,7 +161,7 @@
             </div>
             <div class="modal-footer">
                 <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button class="btn btn-primary" onclick="submitEditUser()">Save Changes</button>
+                <button class="btn btn-primary" onclick="withSpinner(this, () => submitEditUser())">Save Changes</button>
             </div>
         </div>
     </div>
@@ -202,7 +202,7 @@
             </div>
             <div class="modal-footer">
                 <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button class="btn btn-primary" onclick="submitEditCompany()">Save Changes</button>
+                <button class="btn btn-primary" onclick="withSpinner(this, () => submitEditCompany())">Save Changes</button>
             </div>
         </div>
     </div>
@@ -233,7 +233,7 @@ function submitEditUser() {
     const pw = document.getElementById('edit_password').value;
     const pw2 = document.getElementById('edit_password2').value;
     if (pw || pw2) { if (pw !== pw2) { alert('Passwords do not match'); return; } if (pw.length < 8) { alert('Password must be at least 8 characters'); return; } }
-    fetch(`/api/edit-user/${document.getElementById('edit_user_id').value}/`, {
+    return fetch(`/api/edit-user/${document.getElementById('edit_user_id').value}/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
         body: JSON.stringify({ name: document.getElementById('edit_name').value, email: document.getElementById('edit_email').value, password: pw || null })
@@ -258,7 +258,7 @@ function editCompany(id, name, address, city, state, zipcode) {
 }
 
 function submitEditCompany() {
-    fetch(`/api/edit-company/${document.getElementById('edit_company_id').value}/`, {
+    return fetch(`/api/edit-company/${document.getElementById('edit_company_id').value}/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
         body: JSON.stringify({
