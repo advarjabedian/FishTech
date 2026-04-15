@@ -53,8 +53,8 @@
 
     <div class="inv-table-card">
         <table class="pick-table">
-            <thead><tr><th style="width:30px;"><input type="checkbox"></th><th>Item Name</th><th>Order Number</th><th style="text-align:right;">Quantity</th></tr></thead>
-            <tbody id="pickTbody"><tr><td colspan="4" class="text-center text-muted py-4">Loading...</td></tr></tbody>
+            <thead><tr><th style="width:30px;"><input type="checkbox"></th><th>Item Name</th><th>Order Number</th><th>FIFO Lots</th><th style="text-align:right;">Quantity</th></tr></thead>
+            <tbody id="pickTbody"><tr><td colspan="5" class="text-center text-muted py-4">Loading...</td></tr></tbody>
         </table>
         <div class="inv-pagination"><span id="paginationInfo">Showing 0 items</span></div>
     </div>
@@ -91,7 +91,7 @@ async function loadData() {
     document.getElementById('totalCount').textContent = `${data.total_departments || 0} Departments`;
 
     if (!depts.length) {
-        tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-4">No items for this date range.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">No items for this date range.</td></tr>';
         document.getElementById('paginationInfo').textContent = '0 items';
         return;
     }
@@ -99,14 +99,18 @@ async function loadData() {
     let html = '';
     let total = 0;
     depts.forEach(dept => {
-        html += `<tr class="dept-row"><td></td><td colspan="3">${esc(dept.department)}</td></tr>`;
+        html += `<tr class="dept-row"><td></td><td colspan="4">${esc(dept.department)}</td></tr>`;
         dept.items.forEach(item => {
             total++;
             const orders = item.order_number;
+            const fifoLots = item.fifo_lots && item.fifo_lots.length
+                ? item.fifo_lots.map(lot => `<div>${esc(lot)}</div>`).join('')
+                : '<span style="color:#94a3b8;">Not allocated</span>';
             html += `<tr>
                 <td><input type="checkbox"></td>
                 <td><a href="#">${esc(item.item_name)}</a></td>
                 <td><a href="/sales/${item.so_id}/">${esc(orders)}</a></td>
+                <td>${fifoLots}</td>
                 <td style="text-align:right;">${item.quantity} ${esc(item.unit_type)}</td>
             </tr>`;
         });

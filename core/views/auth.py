@@ -26,8 +26,8 @@ def login_view(request):
                 
                 login(request, user)
                 
-                # Redirect to next or operations hub
-                next_url = request.GET.get('next', 'operations_hub')
+                # Redirect to next or HACCP dashboard
+                next_url = request.GET.get('next', 'haccp')
                 return redirect(next_url)
             except TenantUser.DoesNotExist:
                 messages.error(request, 'User not associated with any tenant.')
@@ -62,10 +62,34 @@ def operations_hub(request):
     })
 
 
+@login_required
+def licenses_view(request):
+    """Licenses page"""
+    if not request.tenant:
+        return redirect('home')
+    return render(request, 'core/documents/licenses.html')
+
+
+@login_required
+def vehicles_view(request):
+    """Vehicles page"""
+    if not request.tenant:
+        return redirect('home')
+    return render(request, 'core/documents/vehicles.html')
+
+
+@login_required
+def platform_admin_redirect(request):
+    """Redirect superusers to Django admin"""
+    if not request.user.is_superuser:
+        return redirect('home')
+    return redirect('admin:index')
+
+
 def register_view(request):
     """Public registration page for new tenants"""
     if request.user.is_authenticated:
-        return redirect('operations_hub')
+        return redirect('haccp')
     
     if request.method == 'POST':
         # Tenant info
@@ -145,7 +169,7 @@ def register_view(request):
             login(request, user)
             
             messages.success(request, f'Welcome to FishTech! Your account has been created.')
-            return redirect('operations_hub')
+            return redirect('haccp')
             
         except Exception as e:
             messages.error(request, f'Registration failed: {str(e)}')

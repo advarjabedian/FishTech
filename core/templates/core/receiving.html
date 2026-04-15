@@ -98,6 +98,16 @@
 .form-control-r:focus { border-color: #0ea5e9; box-shadow: 0 0 0 3px rgba(14,165,233,0.12); outline: none; }
 .form-row-r { display: flex; gap: 1rem; }
 .form-row-r .form-group-r { flex: 1; }
+.quality-check-grid {
+    display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:0.5rem 1rem; margin-top:0.5rem;
+}
+.quality-check-item { display:flex; align-items:center; gap:0.45rem; font-size:0.82rem; color:#334155; }
+.quality-pill {
+    display:inline-block; padding:3px 10px; border-radius:999px; font-size:0.72rem; font-weight:700;
+}
+.quality-pass { background:#dcfce7; color:#166534; }
+.quality-hold { background:#fef3c7; color:#92400e; }
+.quality-reject { background:#fee2e2; color:#991b1b; }
 </style>
 {% endblock %}
 
@@ -295,6 +305,36 @@
                     <input type="text" class="form-control-r" id="r-origin" placeholder="e.g. Wellfleet, MA">
                 </div>
             </div>
+
+            <div style="margin-top:1rem; border-top:1px solid #e5e7eb; padding-top:1rem;">
+                <div style="font-weight:700; color:#0f172a; margin-bottom:0.25rem;">Quality Checklist</div>
+                <div style="font-size:0.8rem; color:#64748b; margin-bottom:0.75rem;">Optional at receive, but designed for freshness scoring and dock decisions.</div>
+                <div class="form-row-r">
+                    <div class="form-group-r">
+                        <label>Freshness Score</label>
+                        <input type="number" min="0" max="10" step="1" class="form-control-r" id="q-score" placeholder="0-10">
+                    </div>
+                    <div class="form-group-r">
+                        <label>Status</label>
+                        <select class="form-control-r" id="q-status">
+                            <option value="pass">Pass</option>
+                            <option value="hold">Hold</option>
+                            <option value="reject">Reject</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="quality-check-grid">
+                    <label class="quality-check-item"><input type="checkbox" id="q-appearance"> Appearance OK</label>
+                    <label class="quality-check-item"><input type="checkbox" id="q-odor"> Odor OK</label>
+                    <label class="quality-check-item"><input type="checkbox" id="q-texture"> Texture OK</label>
+                    <label class="quality-check-item"><input type="checkbox" id="q-packaging"> Packaging OK</label>
+                    <label class="quality-check-item"><input type="checkbox" id="q-temp"> Temp Compliant</label>
+                </div>
+                <div class="form-group-r" style="margin-top:0.75rem; margin-bottom:0;">
+                    <label>Quality Notes</label>
+                    <input type="text" class="form-control-r" id="q-notes" placeholder="Freshness notes, damage, exceptions, hold reason...">
+                </div>
+            </div>
         </div>
         <div class="recv-modal-footer">
             <button class="btn-inv-primary" onclick="submitReceive()" style="flex:1;">Receive</button>
@@ -312,6 +352,7 @@ let currentPage = 1;
 let totalItems = 0;
 const PAGE_SIZE = 100;
 let searchTimeout;
+let currentDetailLotId = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     loadLots();
@@ -454,12 +495,20 @@ function goPage(p) { currentPage = p; loadLots(); }
 // ── Lot detail slide-over ───────────────────────────────────────
 
 async function openDetail(id) {
+    currentDetailLotId = id;
     document.getElementById('detailOverlay').classList.add('open');
     document.getElementById('detailPanel').classList.add('open');
     document.getElementById('detailBody').innerHTML = '<div class="text-center text-muted py-5">Loading...</div>';
 
     const res = await fetch(`/api/receiving/lots/${id}/`);
     const lot = await res.json();
+    const qc = lot.quality_check || null;
+    const statusOptions = (lot.quality_status_choices || []).map(opt =>
+        `<option value="${opt.value}" ${qc && qc.status === opt.value ? 'selected' : ''}>${esc(opt.label)}</option>`
+    ).join('');
+    const statusBadge = qc
+        ? `<span class="quality-pill quality-${qc.status}">${esc(qc.status_display)}</span>`
+        : '<span style="color:#94a3b8;">No checklist logged</span>';
 
     document.getElementById('detailBody').innerHTML = `
         <div class="lot-detail-header">
@@ -483,6 +532,38 @@ async function openDetail(id) {
                     <div class="stat-val">${lot.lot_age || '--'}</div>
                     <div class="stat-label">Lot Age<br>Days</div>
                 </div>
+            </div>
+        </div>
+
+        <div class="lot-detail-section" style="border-bottom:1px solid #f1f5f9;">
+            <h6>Receiving Quality</h6>
+            <div class="lot-detail-row"><span class="label">Checklist Status</span><span class="value">${statusBadge}</span></div>
+            <div class="lot-detail-row"><span class="label">Freshness Score</span><span class="value">${qc ? esc(String(qc.freshness_score)) + ' / 10' : '--'}</span></div>
+            <div class="lot-detail-row"><span class="label">Checked By</span><span class="value">${qc ? esc(qc.checked_by || '--') : '--'}</span></div>
+            <div class="lot-detail-row"><span class="label">Checked At</span><span class="value">${qc ? esc(qc.checked_at || '--') : '--'}</span></div>
+            <div style="margin-top:0.75rem; padding:12px; background:#f8fafc; border-radius:10px; border:1px solid #e2e8f0;">
+                <div class="form-row-r">
+                    <div class="form-group-r">
+                        <label>Freshness Score</label>
+                        <input type="number" min="0" max="10" step="1" class="form-control-r" id="d-q-score" value="${qc ? esc(String(qc.freshness_score)) : ''}">
+                    </div>
+                    <div class="form-group-r">
+                        <label>Status</label>
+                        <select class="form-control-r" id="d-q-status">${statusOptions}</select>
+                    </div>
+                </div>
+                <div class="quality-check-grid">
+                    <label class="quality-check-item"><input type="checkbox" id="d-q-appearance" ${qc && qc.appearance_ok ? 'checked' : ''}> Appearance OK</label>
+                    <label class="quality-check-item"><input type="checkbox" id="d-q-odor" ${qc && qc.odor_ok ? 'checked' : ''}> Odor OK</label>
+                    <label class="quality-check-item"><input type="checkbox" id="d-q-texture" ${qc && qc.texture_ok ? 'checked' : ''}> Texture OK</label>
+                    <label class="quality-check-item"><input type="checkbox" id="d-q-packaging" ${qc && qc.packaging_ok ? 'checked' : ''}> Packaging OK</label>
+                    <label class="quality-check-item"><input type="checkbox" id="d-q-temp" ${qc && qc.temp_ok ? 'checked' : ''}> Temp Compliant</label>
+                </div>
+                <div class="form-group-r" style="margin-top:0.75rem; margin-bottom:0.75rem;">
+                    <label>Quality Notes</label>
+                    <input type="text" class="form-control-r" id="d-q-notes" value="${qc ? esc(qc.notes || '') : ''}" placeholder="Freshness notes, exceptions, hold reason...">
+                </div>
+                <button class="btn-inv-primary" onclick="saveQualityCheck()">Save Quality Check</button>
             </div>
         </div>
 
@@ -547,8 +628,52 @@ async function openDetail(id) {
 }
 
 function closeDetail() {
+    currentDetailLotId = null;
     document.getElementById('detailOverlay').classList.remove('open');
     document.getElementById('detailPanel').classList.remove('open');
+}
+
+function buildQualityPayload(prefix) {
+    return {
+        freshness_score: document.getElementById(`${prefix}-score`).value || 0,
+        status: document.getElementById(`${prefix}-status`).value,
+        appearance_ok: document.getElementById(`${prefix}-appearance`).checked,
+        odor_ok: document.getElementById(`${prefix}-odor`).checked,
+        texture_ok: document.getElementById(`${prefix}-texture`).checked,
+        packaging_ok: document.getElementById(`${prefix}-packaging`).checked,
+        temp_ok: document.getElementById(`${prefix}-temp`).checked,
+        notes: document.getElementById(`${prefix}-notes`).value.trim(),
+    };
+}
+
+function hasMeaningfulQualityInput(payload) {
+    return Boolean(
+        Number(payload.freshness_score || 0) > 0 ||
+        payload.appearance_ok ||
+        payload.odor_ok ||
+        payload.texture_ok ||
+        payload.packaging_ok ||
+        payload.temp_ok ||
+        (payload.notes || '').trim() ||
+        payload.status === 'hold' ||
+        payload.status === 'reject'
+    );
+}
+
+async function saveQualityCheck() {
+    if (!currentDetailLotId) return;
+    const res = await fetch(`/api/receiving/lots/${currentDetailLotId}/quality/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+        body: JSON.stringify(buildQualityPayload('d-q')),
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) {
+        alert(data.error || 'Unable to save quality checklist.');
+        return;
+    }
+    await openDetail(currentDetailLotId);
+    await loadLots();
 }
 
 // ── Receive modal ───────────────────────────────────────────────
@@ -648,6 +773,7 @@ async function submitReceive() {
     const poSelect = document.getElementById('r-po');
     const poNumber = poSelect.value;
 
+    const qualityPayload = buildQualityPayload('q');
     const payload = {
         product_id: product,
         quantity: parseFloat(qty),
@@ -662,6 +788,7 @@ async function submitReceive() {
         cost: document.getElementById('r-cost').value || null,
         origin: document.getElementById('r-origin').value.trim(),
     };
+    if (hasMeaningfulQualityInput(qualityPayload)) payload.quality_check = qualityPayload;
 
     try {
         const res = await fetch('/api/receiving/lots/create/', {

@@ -192,3 +192,57 @@ FINANCIAL_STATUS_CHOICES = [
     ('Paid', 'Paid'),
     ('Overdue', 'Overdue'),
 ]
+
+
+# =============================================================================
+# INVENTORY ADJUSTMENTS
+# =============================================================================
+
+INVENTORY_ADJUSTMENT_TYPE_CHOICES = [
+    ('increase', 'Increase'),
+    ('decrease', 'Decrease'),
+    ('set_count', 'Set Count'),
+]
+
+INVENTORY_ADJUSTMENT_REASON_CHOICES = [
+    ('count_correction', 'Count Correction'),
+    ('damage', 'Damage'),
+    ('shrinkage', 'Shrinkage'),
+    ('spoilage', 'Spoilage'),
+    ('waste', 'Waste'),
+    ('sample', 'Sample / QA Pull'),
+    ('return', 'Return / Restock'),
+    ('other', 'Other'),
+]
+
+
+# =============================================================================
+# PROCESSING WASTE / BYPRODUCT
+# =============================================================================
+
+PROCESS_WASTE_TYPE_CHOICES = [
+    ('waste', 'Waste'),
+    ('byproduct', 'Byproduct'),
+]
+
+PROCESS_WASTE_CATEGORY_CHOICES = [
+    ('trim', 'Trim'),
+    ('shell', 'Shell'),
+    ('spoilage', 'Spoilage'),
+    ('damage', 'Damage'),
+    ('sample', 'QA Sample'),
+    ('rework', 'Rework'),
+    ('donation', 'Donation'),
+    ('other', 'Other'),
+]
+
+
+# =============================================================================
+# RECEIVING QUALITY
+# =============================================================================
+
+RECEIVING_QUALITY_STATUS_CHOICES = [
+    ('pass', 'Pass'),
+    ('hold', 'Hold'),
+    ('reject', 'Reject'),
+]

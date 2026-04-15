@@ -69,6 +69,7 @@
 .status-match { background: #dcfce7; color: #16a34a; padding: 3px 10px; border-radius: 999px; font-size: 0.72rem; font-weight: 600; }
 .status-short { background: #fee2e2; color: #dc2626; padding: 3px 10px; border-radius: 999px; font-size: 0.72rem; font-weight: 600; }
 .status-unexpected { background: #fef3c7; color: #d97706; padding: 3px 10px; border-radius: 999px; font-size: 0.72rem; font-weight: 600; }
+.fifo-note { font-size: 0.78rem; color: #64748b; margin-top: 4px; }
 </style>
 {% endblock %}
 
@@ -185,11 +186,16 @@
     <!-- PACKED LOTS TAB -->
     <div id="tab-packed" style="display:none; max-width:1100px;">
         <div style="display:flex; gap:0.5rem; margin-bottom:1.25rem;">
+            <button class="btn-publish" style="padding:6px 14px; font-size:0.8rem;" onclick="allocateFIFO()">
+                <i class="bi bi-arrow-down-up me-1"></i>Auto-Allocate FIFO
+            </button>
             <button class="btn-inv-outline" style="padding:6px 14px; font-size:0.8rem;"><i class="bi bi-file-earmark-pdf me-1"></i>Save Bill Of Lading PDF</button>
             <button class="btn-inv-outline" style="padding:6px 14px; font-size:0.8rem;"><i class="bi bi-eye me-1"></i>View Shipment Details</button>
             <div style="flex:1;"></div>
             <span style="font-size:0.8rem; color:#64748b; align-self:center;" id="packed-meta"></span>
         </div>
+
+        <div id="fifoAlert" style="display:none; background:#eff6ff; border:1px solid #bfdbfe; border-radius:10px; padding:10px 16px; margin-bottom:1rem; font-size:0.84rem; color:#1e40af;"></div>
 
         <div class="so-card">
             <h5>Shipping Info</h5>
@@ -229,6 +235,7 @@ const SO_ID = {{ so.id }};
 let soData = null;
 let allProducts = [];
 let lineItems = [];
+let allocationData = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
     await loadProducts();
@@ -341,27 +348,46 @@ function recalc() {
 // ── Packed Lots ─────────────────────────────────────────────────
 
 async function loadPackedLots() {
-    // Build packed items from order line items matched against inventory
     const tbody = document.getElementById('packedTbody');
+    const res = await fetch(`/api/sales/orders/${SO_ID}/allocations/`);
+    allocationData = await res.json();
+    const allocatedItems = allocationData.items || [];
+    const shortages = allocationData.shortages || [];
 
     if (!lineItems.length || lineItems.every(i => i.item_type === 'fee')) {
         tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">No packed items yet. Add items on the Order Form tab first.</td></tr>';
         return;
     }
 
-    // For each item line, show the packed status
-    tbody.innerHTML = lineItems.filter(i => i.item_type === 'item').map(item => {
-        const orderedQty = item.quantity || 0;
-        const packedQty = orderedQty; // Placeholder - would come from actual packing data
+    const alertEl = document.getElementById('fifoAlert');
+    if (shortages.length) {
+        alertEl.style.display = '';
+        alertEl.innerHTML = '<i class="bi bi-exclamation-triangle me-1"></i>' + shortages.map(s =>
+            `${esc(s.item_name)} short by ${Number(s.short_qty).toLocaleString(undefined, {maximumFractionDigits:2})}`
+        ).join(' | ');
+    } else if (allocatedItems.some(item => (item.lots || []).length)) {
+        alertEl.style.display = '';
+        alertEl.innerHTML = '<i class="bi bi-check-circle me-1"></i>FIFO allocation is current. Oldest available lots are reserved first for this order.';
+    } else {
+        alertEl.style.display = 'none';
+        alertEl.textContent = '';
+    }
+
+    tbody.innerHTML = allocatedItems.map(item => {
+        const orderedQty = item.ordered_qty || 0;
+        const packedQty = item.allocated_qty || 0;
         let statusHtml = '<span class="status-match">Match</span>';
         if (packedQty < orderedQty) {
             const diff = orderedQty - packedQty;
             statusHtml = `<span class="status-short">&darr; ${diff} ${esc(item.unit_type)}</span>`;
         }
+        const lotText = (item.lots || []).length
+            ? item.lots.map(lot => `${esc(lot.lot_id)} (${Number(lot.quantity).toLocaleString(undefined, {maximumFractionDigits:2})} ${esc(lot.unit_type)})`).join('<br>')
+            : '--';
 
         return `<tr>
-            <td><a href="#">${esc(item.description)}</a></td>
-            <td><a href="#">--</a></td>
+            <td><a href="#">${esc(item.item_name)}</a><div class="fifo-note">${(item.lots || []).length ? `${item.lots.length} lot allocation(s)` : 'Not allocated yet'}</div></td>
+            <td>${lotText}</td>
             <td>${orderedQty} ${esc(item.unit_type)}</td>
             <td>${packedQty} ${esc(item.unit_type)}</td>
             <td>${statusHtml}</td>
@@ -369,6 +395,25 @@ async function loadPackedLots() {
     }).join('');
 
     document.getElementById('packed-meta').innerHTML = `<span style="color:#94a3b8;">Invoice ${esc(soData.qb_invoice_number || 'BT-' + soData.order_number)}</span>`;
+}
+
+async function allocateFIFO() {
+    const res = await fetch(`/api/sales/orders/${SO_ID}/allocate-fifo/`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCookie('csrftoken') },
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) {
+        alert(data.error || 'Unable to allocate FIFO lots.');
+        return;
+    }
+
+    if (data.shortages && data.shortages.length) {
+        alert('FIFO allocation completed with shortages: ' + data.shortages.map(s => `${s.item_name} short ${s.short_qty}`).join(', '));
+    } else {
+        alert('FIFO allocation completed.');
+    }
+    await loadPackedLots();
 }
 
 // ── Save ────────────────────────────────────────────────────────

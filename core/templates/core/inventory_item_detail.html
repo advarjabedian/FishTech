@@ -558,6 +558,15 @@
             </div>
 
             <div class="lot-table-card">
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:1rem; padding:16px 18px 0;">
+                    <div>
+                        <div style="font-weight:700; color:#0f172a;">Lot Inventory</div>
+                        <div style="font-size:0.82rem; color:#64748b;">Track on-hand quantity by lot and apply audited adjustments.</div>
+                    </div>
+                    <button class="btn btn-sm btn-primary" onclick="openAdjustmentPanel()" style="border-radius:8px;">
+                        <i class="bi bi-journal-plus me-1"></i>Log Adjustment
+                    </button>
+                </div>
                 <table class="lot-table">
                     <thead>
                         <tr>
@@ -572,6 +581,70 @@
                     </tbody>
                 </table>
                 <div class="lot-pagination" id="lotPagination"></div>
+            </div>
+
+            <div class="pricing-card" style="margin-top:1rem;">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                        <h6 class="fw-bold mb-1">Adjustment History</h6>
+                        <div class="text-muted" style="font-size:0.8rem;">Every change keeps the reason, delta, and before/after counts.</div>
+                    </div>
+                </div>
+                <div style="overflow-x:auto;">
+                    <table class="lot-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Lot</th>
+                                <th>Type</th>
+                                <th>Reason</th>
+                                <th>Delta</th>
+                                <th>After</th>
+                                <th>User</th>
+                            </tr>
+                        </thead>
+                        <tbody id="adjustmentTbody">
+                            <tr><td colspan="7" class="text-center text-muted py-4">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="adjustmentPanel" class="pricing-card" style="margin-top:1rem; display:none;">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                        <h6 class="fw-bold mb-1">Log Inventory Adjustment</h6>
+                        <div class="text-muted" style="font-size:0.8rem;">Use this for count corrections, damage, spoilage, shrinkage, and other audited changes.</div>
+                    </div>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="closeAdjustmentPanel()" style="border-radius:8px;">Close</button>
+                </div>
+                <div id="adjustmentError" class="alert alert-danger" style="display:none;"></div>
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="prop-label">Lot</label>
+                        <select class="inline-edit-input" id="adj-lot"></select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="prop-label">Adjustment Type</label>
+                        <select class="inline-edit-input" id="adj-type"></select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="prop-label">Reason Code</label>
+                        <select class="inline-edit-input" id="adj-reason"></select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="prop-label">Quantity</label>
+                        <input type="number" step="0.01" min="0" class="inline-edit-input" id="adj-qty" placeholder="0.00">
+                    </div>
+                    <div class="col-md-8">
+                        <label class="prop-label">Notes</label>
+                        <input type="text" class="inline-edit-input" id="adj-notes" placeholder="What happened?">
+                    </div>
+                </div>
+                <div class="d-flex gap-2 mt-3">
+                    <button class="btn btn-sm btn-primary" onclick="saveAdjustment()" style="border-radius:8px;">Save Adjustment</button>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="resetAdjustmentForm()" style="border-radius:8px;">Reset</button>
+                </div>
             </div>
         </div>
 
@@ -724,10 +797,14 @@
 const PRODUCT_ID = {{ product.id }};
 const PRODUCT_PID = "{{ product.product_id|escapejs }}";
 let lots = [];
+let adjustments = [];
+let adjustmentTypes = [];
+let adjustmentReasons = [];
 let activeLotTab = 'all';
 
 document.addEventListener('DOMContentLoaded', () => {
     loadInventoryData();
+    loadAdjustmentData();
 });
 
 // ── Tabs ────────────────────────────────────────────────────────
@@ -771,6 +848,7 @@ async function loadInventoryData() {
     {% endif %}
 
     renderLots();
+    populateLotDropdown();
 }
 
 function renderLots() {
@@ -800,6 +878,105 @@ function renderLots() {
     }).join('');
 
     document.getElementById('lotPagination').textContent = `Showing 1 to ${filtered.length} of ${filtered.length}`;
+}
+
+async function loadAdjustmentData() {
+    const res = await fetch(`/api/inventory/items/${PRODUCT_ID}/adjustments/`);
+    const data = await res.json();
+    adjustments = data.adjustments || [];
+    adjustmentTypes = data.adjustment_types || [];
+    adjustmentReasons = data.reason_codes || [];
+    populateAdjustmentOptions();
+    renderAdjustments();
+}
+
+function populateLotDropdown() {
+    const select = document.getElementById('adj-lot');
+    if (!select) return;
+    const activeLots = lots.filter(lot => Number(lot.on_hand || 0) > 0);
+    const sourceLots = activeLots.length ? activeLots : lots;
+    select.innerHTML = sourceLots.length
+        ? sourceLots.map(lot => `<option value="${lot.id}">${esc(lot.lot_id)} • ${fmt(lot.on_hand)} ${esc(lot.unit_type || '')}</option>`).join('')
+        : '<option value="">No lots available</option>';
+}
+
+function populateAdjustmentOptions() {
+    const typeSelect = document.getElementById('adj-type');
+    const reasonSelect = document.getElementById('adj-reason');
+    typeSelect.innerHTML = adjustmentTypes.map(opt => `<option value="${opt.value}">${esc(opt.label)}</option>`).join('');
+    reasonSelect.innerHTML = adjustmentReasons.map(opt => `<option value="${opt.value}">${esc(opt.label)}</option>`).join('');
+}
+
+function renderAdjustments() {
+    const tbody = document.getElementById('adjustmentTbody');
+    if (!adjustments.length) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">No adjustments logged yet.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = adjustments.map(adj => {
+        const deltaClass = adj.quantity_delta < 0 ? 'text-danger' : 'text-success';
+        const deltaPrefix = adj.quantity_delta > 0 ? '+' : '';
+        return `<tr>
+            <td>${esc(adj.created_at)}</td>
+            <td class="lot-id">${esc(adj.lot_id)}</td>
+            <td>${esc(adj.adjustment_type_display)}</td>
+            <td>${esc(adj.reason_display)}</td>
+            <td class="${deltaClass} fw-semibold">${deltaPrefix}${fmt(adj.quantity_delta)}</td>
+            <td>${fmt(adj.quantity_after)}</td>
+            <td>${esc(adj.created_by || '--')}</td>
+        </tr>`;
+    }).join('');
+}
+
+function openAdjustmentPanel() {
+    document.getElementById('adjustmentPanel').style.display = '';
+}
+
+function closeAdjustmentPanel() {
+    document.getElementById('adjustmentPanel').style.display = 'none';
+    hideAdjustmentError();
+}
+
+function resetAdjustmentForm() {
+    document.getElementById('adj-qty').value = '';
+    document.getElementById('adj-notes').value = '';
+    hideAdjustmentError();
+}
+
+function hideAdjustmentError() {
+    const el = document.getElementById('adjustmentError');
+    el.style.display = 'none';
+    el.textContent = '';
+}
+
+async function saveAdjustment() {
+    hideAdjustmentError();
+
+    const payload = {
+        inventory_id: document.getElementById('adj-lot').value,
+        adjustment_type: document.getElementById('adj-type').value,
+        reason_code: document.getElementById('adj-reason').value,
+        quantity: document.getElementById('adj-qty').value,
+        notes: document.getElementById('adj-notes').value.trim(),
+    };
+
+    const res = await fetch(`/api/inventory/items/${PRODUCT_ID}/adjustments/create/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+        body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) {
+        const el = document.getElementById('adjustmentError');
+        el.style.display = '';
+        el.textContent = data.error || 'Unable to save adjustment.';
+        return;
+    }
+
+    resetAdjustmentForm();
+    await loadInventoryData();
+    await loadAdjustmentData();
 }
 
 // ── Inline property editing ─────────────────────────────────────

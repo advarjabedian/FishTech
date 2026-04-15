@@ -802,6 +802,62 @@ class Inventory(TenantModel):
         return f"{self.productid} - {self.desc}"
 
 
+class InventoryAdjustment(TenantModel):
+    """Audit log for inventory quantity adjustments."""
+    ADJUSTMENT_TYPE_CHOICES = C.INVENTORY_ADJUSTMENT_TYPE_CHOICES
+    REASON_CHOICES = C.INVENTORY_ADJUSTMENT_REASON_CHOICES
+
+    inventory = models.ForeignKey('Inventory', on_delete=models.CASCADE, related_name='adjustments')
+    product = models.ForeignKey('Product', on_delete=models.SET_NULL, null=True, blank=True)
+    adjustment_type = models.CharField(max_length=20, choices=ADJUSTMENT_TYPE_CHOICES)
+    reason_code = models.CharField(max_length=30, choices=REASON_CHOICES)
+    quantity_before = models.DecimalField(max_digits=12, decimal_places=4)
+    quantity_delta = models.DecimalField(max_digits=12, decimal_places=4)
+    quantity_after = models.DecimalField(max_digits=12, decimal_places=4)
+    notes = models.TextField(blank=True)
+    created_by = models.ForeignKey(
+        'auth.User', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='inventory_adjustments',
+    )
+    created_by_name = models.CharField(max_length=100, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'inventory_adjustment'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.inventory_id} {self.adjustment_type} {self.quantity_delta}"
+
+
+class ReceivingQualityCheck(TenantModel):
+    """Freshness and receiving quality checklist for a received lot."""
+    STATUS_CHOICES = C.RECEIVING_QUALITY_STATUS_CHOICES
+
+    inventory = models.OneToOneField(Inventory, on_delete=models.CASCADE, related_name='quality_check')
+    freshness_score = models.PositiveSmallIntegerField(default=0)
+    appearance_ok = models.BooleanField(default=False)
+    odor_ok = models.BooleanField(default=False)
+    texture_ok = models.BooleanField(default=False)
+    packaging_ok = models.BooleanField(default=False)
+    temp_ok = models.BooleanField(default=False)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pass')
+    notes = models.TextField(blank=True)
+    checked_by = models.ForeignKey(
+        'auth.User', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='receiving_quality_checks',
+    )
+    checked_by_name = models.CharField(max_length=100, blank=True)
+    checked_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'receiving_quality_check'
+
+    def __str__(self):
+        return f"{self.inventory_id} quality {self.status}"
+
+
 # =============================================================================
 # SALES ORDER MODULE MODELS
 # =============================================================================
@@ -895,6 +951,27 @@ class SalesOrderItem(TenantModel):
 
     def __str__(self):
         return f"{self.description} x {self.quantity}"
+
+
+class SalesOrderAllocation(TenantModel):
+    """Inventory lot allocations reserved against sales order items."""
+    sales_order_item = models.ForeignKey(SalesOrderItem, on_delete=models.CASCADE, related_name='allocations')
+    inventory = models.ForeignKey(Inventory, on_delete=models.CASCADE, related_name='sales_allocations')
+    quantity = models.DecimalField(max_digits=12, decimal_places=4)
+    unit_type = models.CharField(max_length=50, blank=True)
+    allocated_by = models.ForeignKey(
+        'auth.User', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='sales_order_allocations',
+    )
+    allocated_by_name = models.CharField(max_length=100, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'sales_order_allocation'
+        ordering = ['created_at', 'id']
+
+    def __str__(self):
+        return f"SO item {self.sales_order_item_id} <- inventory {self.inventory_id}"
 
 
 # =============================================================================
@@ -1064,6 +1141,34 @@ class ProcessBatchOutput(TenantModel):
 
     def __str__(self):
         return f"{self.batch.batch_number} -> {self.lot_id}"
+
+
+class ProcessBatchWaste(TenantModel):
+    """Waste and byproduct entries recorded during processing."""
+    ENTRY_TYPE_CHOICES = C.PROCESS_WASTE_TYPE_CHOICES
+    CATEGORY_CHOICES = C.PROCESS_WASTE_CATEGORY_CHOICES
+
+    batch = models.ForeignKey(ProcessBatch, on_delete=models.CASCADE, related_name='waste_entries')
+    source_inventory = models.ForeignKey(Inventory, on_delete=models.SET_NULL, null=True, blank=True)
+    entry_type = models.CharField(max_length=20, choices=ENTRY_TYPE_CHOICES)
+    category = models.CharField(max_length=30, choices=CATEGORY_CHOICES)
+    quantity = models.DecimalField(max_digits=12, decimal_places=4)
+    unit_type = models.CharField(max_length=50, blank=True)
+    estimated_value = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    notes = models.TextField(blank=True)
+    created_by = models.ForeignKey(
+        'auth.User', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='process_batch_waste_entries',
+    )
+    created_by_name = models.CharField(max_length=100, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'processing_batch_waste'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.batch.batch_number} {self.entry_type} {self.quantity}"
 
 
 # =============================================================================
