@@ -770,7 +770,20 @@ class Inventory(TenantModel):
     critical = models.CharField(max_length=100, blank=True)
     packdate = models.CharField(max_length=50, blank=True)
     poid = models.CharField(max_length=100, blank=True)
+    purchase_order = models.ForeignKey('PurchaseOrder', on_delete=models.SET_NULL, null=True, blank=True,
+                                      related_name='received_lots', help_text="Linked purchase order")
+    po_item = models.ForeignKey('PurchaseOrderItem', on_delete=models.SET_NULL, null=True, blank=True,
+                                related_name='received_lots', help_text="Specific PO line item received against")
     podid = models.CharField(max_length=100, blank=True)
+    # Weight variance fields (populated when receiving against a PO)
+    expected_weight = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True,
+                                         help_text="Expected weight from PO line item")
+    weight_variance = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True,
+                                          help_text="Received weight minus expected weight (negative = short)")
+    quantity_variance = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True,
+                                           help_text="Received qty minus expected qty")
+    variance_flagged = models.BooleanField(default=False,
+                                           help_text="True if variance exceeds threshold")
     category = models.IntegerField(null=True, blank=True)
     storageid = models.IntegerField(null=True, blank=True)
     flagged = models.IntegerField(default=0)
@@ -829,6 +842,25 @@ class SalesOrder(TenantModel):
         'auth.User', null=True, blank=True, on_delete=models.SET_NULL,
         related_name='completed_orders',
     )
+
+    # Delivery / Proof of Delivery
+    DELIVERY_STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('in_transit', 'In Transit'),
+        ('delivered', 'Delivered'),
+        ('confirmed', 'Confirmed'),
+        ('exception', 'Exception'),
+    ]
+    delivery_status = models.CharField(max_length=20, choices=DELIVERY_STATUS_CHOICES, default='pending')
+    actual_delivery_date = models.DateTimeField(null=True, blank=True)
+    driver_name = models.CharField(max_length=100, blank=True)
+    delivery_notes = models.TextField(blank=True)
+    recipient_name = models.CharField(max_length=100, blank=True, help_text="Person who received the delivery")
+    pod_signature = models.TextField(blank=True, help_text="Base64 signature from recipient")
+    pod_photo = models.CharField(max_length=500, blank=True, help_text="Path to delivery photo")
+    delivery_temperature = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True,
+                                               help_text="Product temperature at delivery (°F)")
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -920,12 +952,26 @@ class PurchaseOrderItem(TenantModel):
     amount = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
     sort_order = models.IntegerField(default=0)
 
+    # Receiving tracking
+    received_quantity = models.DecimalField(max_digits=12, decimal_places=4, default=0,
+                                           help_text="Total quantity received against this line")
+    received_weight = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True,
+                                         help_text="Total weight received against this line")
+
     class Meta:
         db_table = 'purchasing_order_item'
         ordering = ['sort_order', 'id']
 
     def __str__(self):
         return f"{self.description} x {self.quantity}"
+
+    @property
+    def remaining_quantity(self):
+        return (self.quantity or 0) - (self.received_quantity or 0)
+
+    @property
+    def is_fully_received(self):
+        return self.quantity and self.received_quantity >= self.quantity
 
 
 # =============================================================================
@@ -948,12 +994,44 @@ class ProcessBatch(TenantModel):
         related_name='process_batches',
     )
 
+    # Yield tracking (calculated on batch completion)
+    total_input_weight = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True,
+                                             help_text="Sum of all source lot quantities")
+    total_output_weight = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True,
+                                              help_text="Sum of all output quantities")
+    actual_yield_pct = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True,
+                                           help_text="Actual yield: output/input * 100")
+    expected_yield_pct = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True,
+                                             help_text="Expected yield from product catalog")
+    yield_variance_pct = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True,
+                                             help_text="Actual minus expected yield")
+    yield_flagged = models.BooleanField(default=False,
+                                        help_text="True if yield is significantly below expected")
+
     class Meta:
         db_table = 'processing_batch'
         ordering = ['-started_at']
 
     def __str__(self):
         return f"{self.batch_number} ({self.get_process_type_display()})"
+
+    def calculate_yield(self):
+        """Calculate yield from sources and outputs. Call after outputs are finalized."""
+        from django.db.models import Sum
+        input_total = self.sources.aggregate(total=Sum('quantity'))['total'] or 0
+        output_total = self.outputs.aggregate(total=Sum('quantity'))['total'] or 0
+
+        self.total_input_weight = input_total
+        self.total_output_weight = output_total
+        self.actual_yield_pct = (output_total / input_total * 100) if input_total else None
+
+        # Get expected yield from first output's product
+        first_output = self.outputs.select_related('product').first()
+        if first_output and first_output.product and first_output.product.yield_pct:
+            self.expected_yield_pct = first_output.product.yield_pct * 100  # stored as 0.45 -> 45%
+            if self.actual_yield_pct is not None:
+                self.yield_variance_pct = self.actual_yield_pct - self.expected_yield_pct
+                self.yield_flagged = self.yield_variance_pct < -5  # Flag if >5% below expected
 
 
 class ProcessBatchSource(TenantModel):
@@ -986,6 +1064,80 @@ class ProcessBatchOutput(TenantModel):
 
     def __str__(self):
         return f"{self.batch.batch_number} -> {self.lot_id}"
+
+
+# =============================================================================
+# CCP MONITORING LOG
+# =============================================================================
+
+class CCPLog(TenantModel):
+    """Timestamped CCP (Critical Control Point) monitoring reading.
+    Individual readings tied to lots/batches for full traceability.
+    """
+    CCP_TYPE_CHOICES = [
+        ('receiving_temp', 'Receiving Temperature'),
+        ('processing_temp', 'Processing Room Temperature'),
+        ('product_temp', 'Internal Product Temperature'),
+        ('cooler_temp', 'Cooler/Storage Temperature'),
+        ('sanitation', 'Sanitation Check'),
+        ('other', 'Other'),
+    ]
+
+    RESULT_CHOICES = [
+        ('pass', 'Pass'),
+        ('fail', 'Fail'),
+        ('corrective', 'Corrective Action Taken'),
+    ]
+
+    ccp_type = models.CharField(max_length=30, choices=CCP_TYPE_CHOICES)
+    reading_value = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True,
+                                        help_text="Numeric reading (e.g. temperature in °F)")
+    unit = models.CharField(max_length=10, default='°F', blank=True)
+    critical_limit_min = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True,
+                                             help_text="Lower acceptable limit")
+    critical_limit_max = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True,
+                                             help_text="Upper acceptable limit (e.g. 40°F for receiving)")
+    result = models.CharField(max_length=15, choices=RESULT_CHOICES, default='pass')
+    out_of_range = models.BooleanField(default=False, help_text="Auto-set if reading exceeds limits")
+
+    # What was being monitored
+    location = models.CharField(max_length=100, blank=True, help_text="e.g. Dock, Processing Room, Cooler A")
+    description = models.CharField(max_length=255, blank=True, help_text="What was checked")
+
+    # Traceability links
+    inventory = models.ForeignKey('Inventory', on_delete=models.SET_NULL, null=True, blank=True,
+                                  related_name='ccp_logs', help_text="Lot this reading applies to")
+    process_batch = models.ForeignKey('ProcessBatch', on_delete=models.SET_NULL, null=True, blank=True,
+                                      related_name='ccp_logs', help_text="Processing batch this reading applies to")
+
+    # Corrective action (required when out of range)
+    corrective_action = models.TextField(blank=True)
+    corrective_action_by = models.CharField(max_length=100, blank=True)
+
+    # Who and when
+    recorded_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True)
+    recorded_by_name = models.CharField(max_length=100, blank=True)
+    recorded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'ccp_monitoring_log'
+        ordering = ['-recorded_at']
+
+    def __str__(self):
+        return f"{self.get_ccp_type_display()} — {self.reading_value}{self.unit} ({self.result})"
+
+    def save(self, *args, **kwargs):
+        # Auto-flag if reading is out of range
+        if self.reading_value is not None:
+            if self.critical_limit_max and self.reading_value > self.critical_limit_max:
+                self.out_of_range = True
+            elif self.critical_limit_min and self.reading_value < self.critical_limit_min:
+                self.out_of_range = True
+            else:
+                self.out_of_range = False
+            if self.out_of_range and self.result == 'pass':
+                self.result = 'fail'
+        super().save(*args, **kwargs)
 
 
 # =============================================================================

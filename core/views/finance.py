@@ -2,9 +2,10 @@ from django.shortcuts import render
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 from django.contrib.auth.decorators import login_required
-from django.db.models import Sum
+from django.db.models import Sum, Count, F, Q, Avg
 from django.db.models.functions import TruncMonth
-from ..models import APExpense, ARInvoice, FishOrder, Vendor, get_current_tenant, set_current_tenant
+from ..models import APExpense, ARInvoice, FishOrder, Vendor, SalesOrder, SalesOrderItem, get_current_tenant, set_current_tenant
+from datetime import date, timedelta
 import json
 import logging
 from collections import defaultdict
@@ -551,6 +552,87 @@ def accounting_reports_api(request):
     # Expense categories
     categories = [{'category': c['category'], 'total': float(c['total'])} for c in ap_all.exclude(category='').values('category').annotate(total=Sum('amount')).order_by('-total')]
 
+    # ── Aging Buckets (AR) ──
+    today = date.today()
+    aging_buckets = {'current': 0, 'days_1_15': 0, 'days_16_30': 0, 'days_31_plus': 0}
+    aging_details = []
+    for inv in ar_all.filter(status='Unpaid', due_date__isnull=False):
+        days_past = (today - inv.due_date).days
+        amt = float(inv.amount or 0)
+        if days_past <= 0:
+            aging_buckets['current'] += amt
+            bucket = 'Current'
+        elif days_past <= 15:
+            aging_buckets['days_1_15'] += amt
+            bucket = '1-15 Days'
+        elif days_past <= 30:
+            aging_buckets['days_16_30'] += amt
+            bucket = '16-30 Days'
+        else:
+            aging_buckets['days_31_plus'] += amt
+            bucket = '31+ Days'
+        aging_details.append({
+            'customer': inv.customer,
+            'amount': amt,
+            'due_date': inv.due_date.strftime('%Y-%m-%d'),
+            'days_past_due': max(days_past, 0),
+            'bucket': bucket,
+        })
+    aging_buckets = {k: round(v, 2) for k, v in aging_buckets.items()}
+
+    # ── Aging Buckets (AP) ──
+    ap_aging = {'current': 0, 'days_1_15': 0, 'days_16_30': 0, 'days_31_plus': 0}
+    for exp in ap_all.filter(status='Unpaid', due_date__isnull=False):
+        days_past = (today - exp.due_date).days
+        amt = float(exp.amount or 0)
+        if days_past <= 0:
+            ap_aging['current'] += amt
+        elif days_past <= 15:
+            ap_aging['days_1_15'] += amt
+        elif days_past <= 30:
+            ap_aging['days_16_30'] += amt
+        else:
+            ap_aging['days_31_plus'] += amt
+    ap_aging = {k: round(v, 2) for k, v in ap_aging.items()}
+
+    # ── DSO (Days Sales Outstanding) ──
+    # Average time between invoice_date and paid_date for paid invoices in last 90 days
+    paid_recent = ar_all.filter(
+        status='Paid',
+        paid_date__isnull=False,
+        invoice_date__isnull=False,
+        paid_date__gte=today - timedelta(days=90),
+    )
+    dso_values = []
+    for inv in paid_recent:
+        if inv.paid_date and inv.invoice_date:
+            dso_values.append((inv.paid_date - inv.invoice_date).days)
+    avg_dso = round(sum(dso_values) / len(dso_values), 1) if dso_values else None
+
+    # ── Collection Rate (last 90 days) ──
+    invoiced_90d = float(ar_all.filter(
+        invoice_date__gte=today - timedelta(days=90)
+    ).aggregate(t=Sum('amount'))['t'] or 0)
+    collected_90d = float(ar_all.filter(
+        invoice_date__gte=today - timedelta(days=90),
+        status='Paid'
+    ).aggregate(t=Sum('amount'))['t'] or 0)
+    collection_rate = round(collected_90d / invoiced_90d * 100, 1) if invoiced_90d else None
+
+    # ── Sales Order Revenue by Customer (margin proxy) ──
+    so_revenue = []
+    for row in SalesOrder.objects.filter(
+        order_status__in=['open', 'closed']
+    ).values('customer_name').annotate(
+        order_count=Count('id'),
+        total_revenue=Sum('items__amount'),
+    ).order_by('-total_revenue')[:10]:
+        so_revenue.append({
+            'customer': row['customer_name'],
+            'orders': row['order_count'],
+            'revenue': float(row['total_revenue'] or 0),
+        })
+
     return JsonResponse({
         'summary': {
             'total_income': round(total_income, 2),
@@ -561,9 +643,15 @@ def accounting_reports_api(request):
             'expenses_paid': round(ap_paid, 2),
             'expenses_unpaid': round(ap_unpaid, 2),
             'net': round(net, 2),
+            'avg_dso': avg_dso,
+            'collection_rate_90d': collection_rate,
         },
+        'ar_aging': aging_buckets,
+        'ap_aging': ap_aging,
+        'ar_aging_details': sorted(aging_details, key=lambda x: -x['days_past_due'])[:50],
         'monthly': monthly,
         'top_customers': top_customers,
         'top_vendors': top_vendors,
         'categories': categories,
+        'so_revenue_by_customer': so_revenue,
     })

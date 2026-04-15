@@ -2,7 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 from django.contrib.auth.decorators import login_required
-from core.models import Inventory, Product, Vendor, set_current_tenant
+from core.models import Inventory, Product, Vendor, PurchaseOrder, PurchaseOrderItem, set_current_tenant
 import json
 import uuid
 from datetime import datetime
@@ -123,6 +123,8 @@ def receiving_list_api(request):
             'lot_age': lot_age,
             'origin': inv.origin or '',
             'vendor_lot': inv.vendorlot or '',
+            'variance_flagged': inv.variance_flagged,
+            'quantity_variance': float(inv.quantity_variance) if inv.quantity_variance else None,
         })
 
     return JsonResponse({
@@ -210,14 +212,26 @@ def receiving_lot_detail_api(request, lot_id):
         'cost': float(inv.actualcost) if inv.actualcost else None,
         'origin': inv.origin or '',
         'activities': activities,
+        # Variance data
+        'purchase_order_id': inv.purchase_order_id,
+        'po_item_id': inv.po_item_id,
+        'expected_weight': float(inv.expected_weight) if inv.expected_weight else None,
+        'weight_variance': float(inv.weight_variance) if inv.weight_variance else None,
+        'quantity_variance': float(inv.quantity_variance) if inv.quantity_variance else None,
+        'variance_flagged': inv.variance_flagged,
+        'weightin': float(inv.weightin) if inv.weightin else None,
+        'billedweight': float(inv.billedweight) if inv.billedweight else None,
     })
+
+
+VARIANCE_THRESHOLD_PCT = Decimal('5')  # Flag if variance exceeds 5%
 
 
 @login_required
 @ensure_tenant
 @require_POST
 def receiving_create_api(request):
-    """Create a new received lot."""
+    """Create a new received lot, optionally linked to a PO line item."""
     data = json.loads(request.body)
 
     product_id = data.get('product_id', '').strip()
@@ -229,6 +243,7 @@ def receiving_create_api(request):
         return JsonResponse({'error': 'Quantity must be greater than 0.'}, status=400)
 
     qty = Decimal(str(qty))
+    weight = Decimal(str(data['weight'])) if data.get('weight') else None
 
     # Look up product
     product = Product.objects.filter(tenant=request.tenant, product_id=product_id).first()
@@ -240,6 +255,39 @@ def receiving_create_api(request):
     unit_type = data.get('unit_type', '').strip()
     if not unit_type and product:
         unit_type = product.inventory_unit_of_measure or product.quantity_description or ''
+
+    # PO linking
+    po = None
+    po_item = None
+    po_item_id = data.get('po_item_id')
+    po_number = data.get('purchase_order', '').strip()
+
+    if po_item_id:
+        po_item = PurchaseOrderItem.objects.filter(
+            id=po_item_id, purchase_order__tenant=request.tenant
+        ).select_related('purchase_order').first()
+        if po_item:
+            po = po_item.purchase_order
+            po_number = po.po_number
+            # Auto-fill from PO item if not provided
+            if not product_id and po_item.product:
+                product_id = po_item.product.product_id
+            if not unit_type:
+                unit_type = po_item.unit_type
+    elif po_number:
+        po = PurchaseOrder.objects.filter(tenant=request.tenant, po_number=po_number).first()
+
+    # Calculate variance if receiving against a PO item
+    expected_qty = Decimal(str(po_item.quantity)) if po_item and po_item.quantity else None
+    expected_wt = None  # PO items track quantity, weight comes from billed weight
+    qty_variance = None
+    wt_variance = None
+    flagged = False
+
+    if expected_qty is not None:
+        qty_variance = qty - expected_qty
+        variance_pct = abs(qty_variance) / expected_qty * 100 if expected_qty else 0
+        flagged = variance_pct > VARIANCE_THRESHOLD_PCT
 
     inv = Inventory.objects.create(
         tenant=request.tenant,
@@ -256,14 +304,58 @@ def receiving_create_api(request):
         unitsonhand=qty,
         unitsavailable=qty,
         unitsin=qty,
+        weightin=weight,
+        availableweight=weight,
         origin=data.get('origin', '').strip(),
-        poid=data.get('purchase_order', '').strip(),
+        poid=po_number,
+        purchase_order=po,
+        po_item=po_item,
+        expected_weight=expected_wt,
+        weight_variance=wt_variance,
+        quantity_variance=qty_variance,
+        variance_flagged=flagged,
     )
 
-    return JsonResponse({
+    # Update PO item received quantity
+    if po_item:
+        po_item.received_quantity = (po_item.received_quantity or 0) + qty
+        if weight:
+            po_item.received_weight = (po_item.received_weight or 0) + weight
+        po_item.save()
+
+    # Auto-update PO receive_status
+    if po:
+        _update_po_receive_status(po)
+
+    response = {
         'id': inv.id,
         'trace_lot': trace_lot,
-    })
+    }
+    if flagged:
+        response['variance_warning'] = (
+            f"Quantity variance of {float(qty_variance):+.2f} {unit_type} "
+            f"(expected {float(expected_qty)}, received {float(qty)})"
+        )
+
+    return JsonResponse(response)
+
+
+def _update_po_receive_status(po):
+    """Update PO receive_status based on how much has been received across all items."""
+    items = po.items.filter(item_type='item')
+    if not items.exists():
+        return
+
+    all_received = all(item.is_fully_received for item in items)
+    any_received = any((item.received_quantity or 0) > 0 for item in items)
+
+    if all_received:
+        po.receive_status = 'received'
+    elif any_received:
+        po.receive_status = 'partial'
+    else:
+        po.receive_status = 'not_received'
+    po.save(update_fields=['receive_status'])
 
 
 @login_required
@@ -309,3 +401,48 @@ def receiving_vendors_api(request):
         'id', 'name', 'vendor_type'
     ).order_by('name')
     return JsonResponse({'vendors': list(vendors)})
+
+
+@login_required
+@ensure_tenant
+def receiving_open_pos_api(request):
+    """Return open POs with their unreceived line items for the receive-against-PO workflow."""
+    vendor = request.GET.get('vendor', '').strip()
+
+    qs = PurchaseOrder.objects.filter(
+        tenant=request.tenant,
+        receive_status__in=['not_received', 'partial'],
+        order_status__in=['open', 'draft'],
+    ).select_related('vendor').prefetch_related('items').order_by('-order_date')
+
+    if vendor:
+        qs = qs.filter(vendor_name__icontains=vendor)
+
+    pos = []
+    for po in qs[:50]:
+        items = []
+        for item in po.items.filter(item_type='item'):
+            remaining = float(item.remaining_quantity)
+            if remaining <= 0:
+                continue
+            items.append({
+                'id': item.id,
+                'description': item.description,
+                'product_id': item.product.product_id if item.product else '',
+                'ordered_qty': float(item.quantity or 0),
+                'received_qty': float(item.received_quantity or 0),
+                'remaining_qty': remaining,
+                'unit_type': item.unit_type,
+                'unit_price': float(item.unit_price or 0),
+            })
+        if items:
+            pos.append({
+                'id': po.id,
+                'po_number': po.po_number,
+                'vendor_name': po.vendor_name,
+                'expected_date': po.expected_date.strftime('%Y-%m-%d') if po.expected_date else '',
+                'receive_status': po.receive_status,
+                'items': items,
+            })
+
+    return JsonResponse({'purchase_orders': pos})

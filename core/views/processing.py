@@ -89,6 +89,9 @@ def processing_batches_api(request):
             'completed_at': b.completed_at.strftime('%d %b %Y %H:%M') if b.completed_at else '',
             'created_by': b.created_by.get_full_name() or b.created_by.username if b.created_by else '',
             'notes': b.notes,
+            'actual_yield_pct': float(b.actual_yield_pct) if b.actual_yield_pct else None,
+            'expected_yield_pct': float(b.expected_yield_pct) if b.expected_yield_pct else None,
+            'yield_flagged': b.yield_flagged,
         })
 
     return JsonResponse({'batches': batches})
@@ -271,8 +274,22 @@ def processing_batch_complete_api(request, batch_id):
         return JsonResponse({'error': 'Batch is not in progress.'}, status=400)
     batch.status = 'completed'
     batch.completed_at = datetime.now()
-    batch.save(update_fields=['status', 'completed_at'])
-    return JsonResponse({'ok': True})
+
+    # Calculate yield on completion
+    batch.calculate_yield()
+    batch.save()
+
+    response = {'ok': True}
+    if batch.actual_yield_pct is not None:
+        response['yield'] = {
+            'actual': float(batch.actual_yield_pct),
+            'expected': float(batch.expected_yield_pct) if batch.expected_yield_pct else None,
+            'variance': float(batch.yield_variance_pct) if batch.yield_variance_pct else None,
+            'flagged': batch.yield_flagged,
+            'input_weight': float(batch.total_input_weight),
+            'output_weight': float(batch.total_output_weight),
+        }
+    return JsonResponse(response)
 
 
 @login_required

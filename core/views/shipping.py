@@ -1,8 +1,11 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_POST
 from core.models import SalesOrder, SalesOrderItem, Product, set_current_tenant
 from datetime import date, timedelta
+from django.utils import timezone
+import json
 
 import logging
 logger = logging.getLogger(__name__)
@@ -247,3 +250,107 @@ def shipping_log_api(request):
         })
 
     return JsonResponse({'orders': orders, 'total': total, 'page': page})
+
+
+# =============================================================================
+# DELIVERY / PROOF OF DELIVERY
+# =============================================================================
+
+@login_required
+@ensure_tenant
+@require_POST
+def delivery_confirm_api(request, so_id):
+    """Record delivery confirmation / proof of delivery for a sales order."""
+    so = get_object_or_404(SalesOrder, tenant=request.tenant, id=so_id)
+    data = json.loads(request.body)
+
+    so.delivery_status = 'delivered'
+    so.actual_delivery_date = timezone.now()
+    so.driver_name = data.get('driver_name', so.driver_name or '')
+    so.recipient_name = data.get('recipient_name', '')
+    so.delivery_notes = data.get('delivery_notes', '')
+
+    if data.get('pod_signature'):
+        so.pod_signature = data['pod_signature']
+    if data.get('pod_photo'):
+        so.pod_photo = data['pod_photo']
+    if data.get('delivery_temperature') is not None:
+        from decimal import Decimal
+        so.delivery_temperature = Decimal(str(data['delivery_temperature']))
+
+    so.save()
+
+    return JsonResponse({
+        'success': True,
+        'delivery_status': so.delivery_status,
+        'actual_delivery_date': so.actual_delivery_date.strftime('%Y-%m-%d %H:%M'),
+    })
+
+
+@login_required
+@ensure_tenant
+@require_POST
+def delivery_update_status_api(request, so_id):
+    """Update delivery status (pending, in_transit, delivered, confirmed, exception)."""
+    so = get_object_or_404(SalesOrder, tenant=request.tenant, id=so_id)
+    data = json.loads(request.body)
+
+    new_status = data.get('delivery_status', '').strip()
+    valid_statuses = [c[0] for c in SalesOrder.DELIVERY_STATUS_CHOICES]
+    if new_status not in valid_statuses:
+        return JsonResponse({'error': f'Invalid status. Must be one of: {", ".join(valid_statuses)}'}, status=400)
+
+    so.delivery_status = new_status
+
+    if new_status == 'in_transit':
+        so.driver_name = data.get('driver_name', so.driver_name or '')
+    elif new_status == 'delivered':
+        so.actual_delivery_date = timezone.now()
+    elif new_status == 'exception':
+        so.delivery_notes = data.get('delivery_notes', '')
+
+    so.save()
+
+    return JsonResponse({'success': True, 'delivery_status': so.delivery_status})
+
+
+@login_required
+@ensure_tenant
+def delivery_list_api(request):
+    """List orders with delivery status tracking."""
+    status = request.GET.get('status', '').strip()
+    date_from = request.GET.get('date_from', '')
+    date_to = request.GET.get('date_to', '')
+
+    qs = SalesOrder.objects.filter(
+        tenant=request.tenant,
+        ship_date__isnull=False,
+    ).select_related('customer')
+
+    if status:
+        qs = qs.filter(delivery_status=status)
+    if date_from:
+        qs = qs.filter(ship_date__gte=date_from)
+    if date_to:
+        qs = qs.filter(ship_date__lte=date_to)
+
+    deliveries = []
+    for so in qs.order_by('-ship_date')[:200]:
+        deliveries.append({
+            'id': so.id,
+            'order_number': so.order_number,
+            'customer': so.customer_name,
+            'ship_date': so.ship_date.strftime('%Y-%m-%d') if so.ship_date else '',
+            'delivery_date': so.delivery_date.strftime('%Y-%m-%d') if so.delivery_date else '',
+            'actual_delivery_date': so.actual_delivery_date.strftime('%Y-%m-%d %H:%M') if so.actual_delivery_date else '',
+            'delivery_status': so.delivery_status,
+            'driver_name': so.driver_name,
+            'recipient_name': so.recipient_name,
+            'has_pod_signature': bool(so.pod_signature),
+            'has_pod_photo': bool(so.pod_photo),
+            'delivery_temperature': float(so.delivery_temperature) if so.delivery_temperature else None,
+            'shipper': so.shipper,
+            'shipping_route': so.shipping_route,
+        })
+
+    return JsonResponse({'deliveries': deliveries})

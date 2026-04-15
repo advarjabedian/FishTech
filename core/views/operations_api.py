@@ -4,8 +4,8 @@ from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required
 from django.db.models import Max
 from core.models import (
-    SOP, SOPParent, SOPChild, CompanyOperationConfig, 
-    CompanyHoliday, Zone
+    SOP, SOPParent, SOPChild, CompanyOperationConfig,
+    CompanyHoliday, Zone, CCPLog
 )
 
 from datetime import date, datetime
@@ -685,3 +685,118 @@ def get_companies(request):
         return JsonResponse({'success': True, 'companies': company_list})
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)})
+
+
+# =============================================================================
+# CCP MONITORING LOG
+# =============================================================================
+
+@require_http_methods(["POST"])
+@login_required
+def log_ccp_reading(request):
+    """Log a CCP monitoring reading (temperature, sanitation, etc.)."""
+    from decimal import Decimal
+    data = json.loads(request.body)
+    tenant = request.tenant
+    if not tenant:
+        return JsonResponse({'error': 'No tenant context'}, status=400)
+
+    ccp_type = data.get('ccp_type', '').strip()
+    if not ccp_type:
+        return JsonResponse({'error': 'CCP type is required'}, status=400)
+
+    reading_value = None
+    if data.get('reading_value') is not None and data['reading_value'] != '':
+        reading_value = Decimal(str(data['reading_value']))
+
+    log = CCPLog.objects.create(
+        tenant=tenant,
+        ccp_type=ccp_type,
+        reading_value=reading_value,
+        unit=data.get('unit', '°F'),
+        critical_limit_min=Decimal(str(data['critical_limit_min'])) if data.get('critical_limit_min') else None,
+        critical_limit_max=Decimal(str(data['critical_limit_max'])) if data.get('critical_limit_max') else None,
+        result=data.get('result', 'pass'),
+        location=data.get('location', ''),
+        description=data.get('description', ''),
+        inventory_id=data.get('inventory_id'),
+        process_batch_id=data.get('process_batch_id'),
+        corrective_action=data.get('corrective_action', ''),
+        corrective_action_by=data.get('corrective_action_by', ''),
+        recorded_by=request.user,
+        recorded_by_name=request.user.get_full_name() or request.user.username,
+    )
+
+    response = {
+        'success': True,
+        'id': log.id,
+        'out_of_range': log.out_of_range,
+        'result': log.result,
+    }
+    if log.out_of_range:
+        response['warning'] = (
+            f"{log.get_ccp_type_display()} reading of {log.reading_value}{log.unit} "
+            f"is out of range (limit: {log.critical_limit_max}{log.unit}). "
+            f"Corrective action required."
+        )
+    return JsonResponse(response)
+
+
+@login_required
+def get_ccp_logs(request):
+    """List CCP monitoring logs with filtering."""
+    tenant = request.tenant
+    if not tenant:
+        return JsonResponse({'error': 'No tenant context'}, status=400)
+
+    qs = CCPLog.objects.filter(tenant=tenant)
+
+    ccp_type = request.GET.get('ccp_type', '')
+    if ccp_type:
+        qs = qs.filter(ccp_type=ccp_type)
+
+    result_filter = request.GET.get('result', '')
+    if result_filter:
+        qs = qs.filter(result=result_filter)
+
+    out_of_range = request.GET.get('out_of_range', '')
+    if out_of_range == 'true':
+        qs = qs.filter(out_of_range=True)
+
+    date_from = request.GET.get('date_from', '')
+    if date_from:
+        qs = qs.filter(recorded_at__date__gte=date_from)
+
+    date_to = request.GET.get('date_to', '')
+    if date_to:
+        qs = qs.filter(recorded_at__date__lte=date_to)
+
+    inventory_id = request.GET.get('inventory_id', '')
+    if inventory_id:
+        qs = qs.filter(inventory_id=inventory_id)
+
+    batch_id = request.GET.get('batch_id', '')
+    if batch_id:
+        qs = qs.filter(process_batch_id=batch_id)
+
+    logs = []
+    for log in qs.order_by('-recorded_at')[:200]:
+        logs.append({
+            'id': log.id,
+            'ccp_type': log.ccp_type,
+            'ccp_type_display': log.get_ccp_type_display(),
+            'reading_value': float(log.reading_value) if log.reading_value is not None else None,
+            'unit': log.unit,
+            'critical_limit_max': float(log.critical_limit_max) if log.critical_limit_max else None,
+            'result': log.result,
+            'out_of_range': log.out_of_range,
+            'location': log.location,
+            'description': log.description,
+            'corrective_action': log.corrective_action,
+            'recorded_by': log.recorded_by_name,
+            'recorded_at': log.recorded_at.strftime('%Y-%m-%d %H:%M'),
+            'inventory_id': log.inventory_id,
+            'process_batch_id': log.process_batch_id,
+        })
+
+    return JsonResponse({'logs': logs})

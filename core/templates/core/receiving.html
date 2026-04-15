@@ -265,9 +265,24 @@
                     <input type="text" class="form-control-r" id="r-location" placeholder="e.g. Cooler A">
                 </div>
                 <div class="form-group-r">
-                    <label>Purchase Order #</label>
-                    <input type="text" class="form-control-r" id="r-po">
+                    <label>Purchase Order</label>
+                    <select class="form-control-r" id="r-po" onchange="onPOSelect(this.value)">
+                        <option value="">-- None (no PO) --</option>
+                    </select>
+                    <input type="hidden" id="r-po-item-id">
                 </div>
+            </div>
+
+            <!-- PO Items (shown when a PO is selected) -->
+            <div id="po-items-section" style="display:none; margin-bottom:12px;">
+                <label style="font-weight:600; font-size:0.85rem;">PO Line Items</label>
+                <div id="po-items-list" style="max-height:180px; overflow-y:auto; border:1px solid #dee2e6; border-radius:6px; padding:4px;"></div>
+            </div>
+
+            <!-- Variance alert (shown after receive if flagged) -->
+            <div id="variance-alert" class="alert alert-warning" style="display:none; margin-bottom:12px; font-size:0.85rem;">
+                <i class="bi bi-exclamation-triangle me-1"></i>
+                <span id="variance-alert-text"></span>
             </div>
 
             <div class="form-row-r">
@@ -538,13 +553,79 @@ function closeDetail() {
 
 // ── Receive modal ───────────────────────────────────────────────
 
-function openReceiveModal() {
+let openPOsCache = [];
+
+async function openReceiveModal() {
     document.getElementById('recvOverlay').classList.add('open');
     document.getElementById('recvError').style.display = 'none';
+    document.getElementById('variance-alert').style.display = 'none';
+    document.getElementById('po-items-section').style.display = 'none';
+    document.getElementById('r-po-item-id').value = '';
+    await loadOpenPOs();
 }
 
 function closeReceiveModal() {
     document.getElementById('recvOverlay').classList.remove('open');
+}
+
+async function loadOpenPOs() {
+    try {
+        const res = await fetch('/api/receiving/open-pos/');
+        const data = await res.json();
+        openPOsCache = data.purchase_orders || [];
+        const sel = document.getElementById('r-po');
+        sel.innerHTML = '<option value="">-- None (no PO) --</option>' +
+            openPOsCache.map(po =>
+                `<option value="${po.po_number}">PO-${esc(po.po_number)} — ${esc(po.vendor_name)} (${po.items.length} items)</option>`
+            ).join('');
+    } catch { /* silently fail — PO selector just stays empty */ }
+}
+
+function onPOSelect(poNumber) {
+    const section = document.getElementById('po-items-section');
+    const list = document.getElementById('po-items-list');
+    document.getElementById('r-po-item-id').value = '';
+
+    if (!poNumber) {
+        section.style.display = 'none';
+        return;
+    }
+
+    const po = openPOsCache.find(p => p.po_number === poNumber);
+    if (!po || !po.items.length) {
+        section.style.display = 'none';
+        return;
+    }
+
+    list.innerHTML = po.items.map(item => `
+        <div class="po-item-row" style="display:flex; justify-content:space-between; align-items:center; padding:6px 8px; border-bottom:1px solid #eee; cursor:pointer;"
+             onclick="selectPOItem(${item.id}, '${esc(item.product_id)}', ${item.remaining_qty}, '${esc(item.unit_type)}', ${item.unit_price})">
+            <div>
+                <strong style="font-size:0.85rem;">${esc(item.description)}</strong><br>
+                <small class="text-muted">Ordered: ${item.ordered_qty} ${esc(item.unit_type)} | Received: ${item.received_qty} | Remaining: <strong>${item.remaining_qty}</strong></small>
+            </div>
+            <button class="btn btn-sm btn-outline-primary" type="button">Select</button>
+        </div>
+    `).join('');
+    section.style.display = 'block';
+}
+
+function selectPOItem(itemId, productId, remainingQty, unitType, unitPrice) {
+    document.getElementById('r-po-item-id').value = itemId;
+    // Auto-fill product, quantity, unit from PO item
+    if (productId) {
+        const prodSelect = document.getElementById('r-product');
+        for (let opt of prodSelect.options) {
+            if (opt.value === productId) { prodSelect.value = productId; break; }
+        }
+    }
+    document.getElementById('r-qty').value = remainingQty;
+    if (unitType) document.getElementById('r-unit').value = unitType;
+    if (unitPrice) document.getElementById('r-cost').value = unitPrice;
+
+    // Highlight selected row
+    document.querySelectorAll('.po-item-row').forEach(row => row.style.background = '');
+    event.currentTarget.closest('.po-item-row').style.background = '#e8f4fd';
 }
 
 async function submitReceive() {
@@ -563,6 +644,10 @@ async function submitReceive() {
         receiveTime = `${hr > 12 ? hr - 12 : hr || 12}:${m} ${hr >= 12 ? 'pm' : 'am'}`;
     }
 
+    const poItemId = document.getElementById('r-po-item-id').value;
+    const poSelect = document.getElementById('r-po');
+    const poNumber = poSelect.value;
+
     const payload = {
         product_id: product,
         quantity: parseFloat(qty),
@@ -572,7 +657,8 @@ async function submitReceive() {
         receive_date: document.getElementById('r-date').value,
         receive_time: receiveTime,
         location: document.getElementById('r-location').value.trim(),
-        purchase_order: document.getElementById('r-po').value.trim(),
+        purchase_order: poNumber,
+        po_item_id: poItemId ? parseInt(poItemId) : null,
         cost: document.getElementById('r-cost').value || null,
         origin: document.getElementById('r-origin').value.trim(),
     };
@@ -585,11 +671,27 @@ async function submitReceive() {
         });
         const data = await res.json();
         if (data.error) { showRecvError(data.error); return; }
-        closeReceiveModal();
+
+        // Show variance warning if flagged
+        if (data.variance_warning) {
+            document.getElementById('variance-alert-text').textContent = data.variance_warning;
+            document.getElementById('variance-alert').style.display = 'block';
+            // Don't close modal yet — let user see the warning
+            setTimeout(() => {
+                closeReceiveModal();
+                document.getElementById('variance-alert').style.display = 'none';
+            }, 3000);
+        } else {
+            closeReceiveModal();
+        }
+
         // Clear form
-        ['r-product','r-qty','r-unit','r-vendor','r-vendor-type','r-location','r-po','r-cost','r-origin'].forEach(id => {
+        ['r-product','r-qty','r-unit','r-vendor','r-vendor-type','r-location','r-cost','r-origin'].forEach(id => {
             document.getElementById(id).value = '';
         });
+        document.getElementById('r-po').value = '';
+        document.getElementById('r-po-item-id').value = '';
+        document.getElementById('po-items-section').style.display = 'none';
         document.getElementById('r-date').value = new Date().toISOString().split('T')[0];
         document.getElementById('r-time').value = '';
         loadLots();

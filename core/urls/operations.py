@@ -46,4 +46,7 @@ api_urlpatterns = [
     path('upload-inspection-image/', upload_inspection_image, name='upload_inspection_image'),
     path('inspection-image/<int:parent_id>/<str:filename>/', view_inspection_image, name='view_inspection_image'),
     path('get-companies/', get_companies, name='get_companies'),
+    # CCP Monitoring
+    path('ccp/log/', log_ccp_reading, name='log_ccp_reading'),
+    path('ccp/logs/', get_ccp_logs, name='get_ccp_logs'),
 ]

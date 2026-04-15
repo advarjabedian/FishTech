@@ -378,3 +378,98 @@ def inventory_item_lots_api(request, product_id):
         'allocated': total_allocated,
         'expected': total_expected,
     })
+
+
+# =============================================================================
+# SHELF LIFE & EXPIRY MANAGEMENT
+# =============================================================================
+
+@login_required
+def inventory_expiry_alerts_api(request):
+    """Return inventory lots approaching expiry or already expired.
+
+    Uses receivedate + shelflife (days) to calculate expiry date.
+    Returns lots in 3 buckets: expired, expiring_soon (<=3 days), expiring (<=7 days).
+    """
+    if not request.tenant:
+        return JsonResponse({'error': 'No tenant'}, status=400)
+    set_current_tenant(request.tenant)
+
+    from datetime import datetime, timedelta
+
+    today = datetime.now().date()
+
+    # Only lots with both a receive date and shelf life set, and stock on hand
+    lots = Inventory.objects.filter(
+        tenant=request.tenant,
+        shelflife__isnull=False,
+        unitsonhand__gt=0,
+    ).exclude(receivedate='').exclude(receivedate__isnull=True)
+
+    expired = []
+    expiring_soon = []  # <=3 days
+    expiring = []       # 4-7 days
+
+    for inv in lots:
+        try:
+            if '-' in (inv.receivedate or ''):
+                rd = datetime.strptime(inv.receivedate, '%Y-%m-%d').date()
+            elif '/' in (inv.receivedate or ''):
+                rd = datetime.strptime(inv.receivedate, '%m/%d/%Y').date()
+            else:
+                continue
+        except (ValueError, TypeError):
+            continue
+
+        shelf_days = int(inv.shelflife or 0)
+        if shelf_days <= 0:
+            continue
+
+        expiry_date = rd + timedelta(days=shelf_days)
+        days_remaining = (expiry_date - today).days
+
+        product = None
+        if inv.productid:
+            product = Product.objects.filter(tenant=request.tenant, product_id=inv.productid).first()
+
+        lot_data = {
+            'id': inv.id,
+            'trace_lot': inv.vendorlot or f"BT-{inv.id}",
+            'item_name': product.item_name if product else inv.desc or inv.productid or '',
+            'on_hand': float(inv.unitsonhand or 0),
+            'unit_type': inv.unittype or '',
+            'receive_date': inv.receivedate,
+            'shelf_life_days': shelf_days,
+            'expiry_date': expiry_date.strftime('%Y-%m-%d'),
+            'days_remaining': days_remaining,
+            'location': inv.location or '',
+            'vendor': inv.vendorid or '',
+        }
+
+        if days_remaining < 0:
+            lot_data['status'] = 'expired'
+            expired.append(lot_data)
+        elif days_remaining <= 3:
+            lot_data['status'] = 'critical'
+            expiring_soon.append(lot_data)
+        elif days_remaining <= 7:
+            lot_data['status'] = 'warning'
+            expiring.append(lot_data)
+
+    # Sort by urgency
+    expired.sort(key=lambda x: x['days_remaining'])
+    expiring_soon.sort(key=lambda x: x['days_remaining'])
+    expiring.sort(key=lambda x: x['days_remaining'])
+
+    return JsonResponse({
+        'expired': expired,
+        'expiring_soon': expiring_soon,
+        'expiring': expiring,
+        'summary': {
+            'expired_count': len(expired),
+            'expired_value': sum(lot.get('on_hand', 0) for lot in expired),
+            'critical_count': len(expiring_soon),
+            'warning_count': len(expiring),
+            'total_at_risk': len(expired) + len(expiring_soon) + len(expiring),
+        }
+    })

@@ -26,7 +26,7 @@ from .inventory import (
     inventory_items_api, inventory_item_create_api,
     inventory_item_update_api, inventory_item_delete_api,
     inventory_item_toggle_active_api, inventory_export_api,
-    inventory_item_lots_api,
+    inventory_item_lots_api, inventory_expiry_alerts_api,
 )
 
 

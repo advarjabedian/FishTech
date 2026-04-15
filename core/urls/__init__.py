@@ -11,10 +11,12 @@ from ..views.settings_page import (
 from ..views.shipping import (
     shipping_hub, shipping_picking, shipping_packing, shipping_loading,
     shipping_log_api, shipping_picking_api, shipping_packing_api, shipping_loading_api,
+    delivery_confirm_api, delivery_update_status_api, delivery_list_api,
 )
 from ..views.receiving import (
     receiving_page, receiving_list_api, receiving_lot_detail_api,
     receiving_create_api, receiving_update_api, receiving_vendors_api,
+    receiving_open_pos_api,
 )
 from ..views.processing import (
     processing_hub, processing_new, processing_detail,
@@ -128,6 +130,9 @@ urlpatterns = [
     path('api/shipping/picking/', shipping_picking_api, name='shipping_picking_api'),
     path('api/shipping/packing/', shipping_packing_api, name='shipping_packing_api'),
     path('api/shipping/loading/', shipping_loading_api, name='shipping_loading_api'),
+    path('api/shipping/deliveries/', delivery_list_api, name='delivery_list_api'),
+    path('api/shipping/delivery/<int:so_id>/confirm/', delivery_confirm_api, name='delivery_confirm_api'),
+    path('api/shipping/delivery/<int:so_id>/status/', delivery_update_status_api, name='delivery_update_status_api'),
 
     # ── Receiving ──
     path('receiving/', receiving_page, name='receiving_page'),
@@ -136,6 +141,7 @@ urlpatterns = [
     path('api/receiving/lots/create/', receiving_create_api, name='receiving_create_api'),
     path('api/receiving/lots/<int:lot_id>/update/', receiving_update_api, name='receiving_update_api'),
     path('api/receiving/vendors/', receiving_vendors_api, name='receiving_vendors_api'),
+    path('api/receiving/open-pos/', receiving_open_pos_api, name='receiving_open_pos_api'),
 
     # ── Processing ──
     path('processing/', processing_hub, name='processing_hub'),
@@ -162,6 +168,7 @@ urlpatterns = [
     path('api/inventory/items/<int:product_id>/toggle-active/', inventory_item_toggle_active_api, name='inventory_item_toggle_active_api'),
     path('api/inventory/items/<int:product_id>/lots/', inventory_item_lots_api, name='inventory_item_lots_api'),
     path('api/inventory/export/', inventory_export_api, name='inventory_export_api'),
+    path('api/inventory/expiry-alerts/', inventory_expiry_alerts_api, name='inventory_expiry_alerts_api'),
 
     # ── Vendors ──
     path('vendors/', vendor_list_page, name='vendor_list_page'),
