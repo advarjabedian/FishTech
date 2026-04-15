@@ -1,0 +1,971 @@
+{% extends 'core/base.html' %}
+{% block title %}{{ product.item_name|default:product.description }} - FishTeck{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ── Layout ─────────────────────────────────────────────────────── */
+.inv-sidebar {
+    width: 72px;
+    min-height: calc(100vh - 56px);
+    background: #f0f6ff;
+    border-right: 1px solid #d6e4f0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 1rem;
+    gap: 0.25rem;
+    position: fixed;
+    left: 0;
+    top: 56px;
+    z-index: 100;
+}
+.inv-sidebar a {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 56px;
+    padding: 10px 0;
+    border-radius: 10px;
+    color: #5a7ba6;
+    text-decoration: none;
+    font-size: 0.65rem;
+    font-weight: 500;
+    transition: all 0.15s;
+}
+.inv-sidebar a i { font-size: 1.3rem; margin-bottom: 2px; }
+.inv-sidebar a:hover { background: #dbe8f7; color: #2563eb; }
+.inv-sidebar a.active { background: #2563eb; color: #fff; }
+
+.detail-main {
+    margin-left: 72px;
+    display: flex;
+    min-height: calc(100vh - 56px);
+}
+
+/* ── Left properties panel ──────────────────────────────────────── */
+.props-panel {
+    width: 280px;
+    min-width: 280px;
+    background: #fff;
+    border-right: 1px solid #e5e7eb;
+    padding: 1.5rem;
+    overflow-y: auto;
+    max-height: calc(100vh - 56px);
+}
+.item-avatar {
+    width: 64px;
+    height: 64px;
+    border-radius: 14px;
+    background: #2563eb;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3rem;
+    font-weight: 700;
+    margin-bottom: 0.75rem;
+}
+.item-full-name {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #1e293b;
+    line-height: 1.3;
+    margin-bottom: 0.5rem;
+    word-break: break-word;
+}
+.item-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 1rem; }
+.tag-group {
+    background: #2563eb;
+    color: #fff;
+    font-size: 0.7rem;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-weight: 600;
+}
+.tag-synced {
+    background: #d1fae5;
+    color: #065f46;
+    font-size: 0.7rem;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-weight: 600;
+}
+.tag-active {
+    background: #d1fae5;
+    color: #065f46;
+    font-size: 0.7rem;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-weight: 600;
+}
+.tag-inactive {
+    background: #fef2f2;
+    color: #991b1b;
+    font-size: 0.7rem;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-weight: 600;
+}
+
+.props-section-title {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+.props-section-title .edit-link {
+    font-size: 0.75rem;
+    color: #2563eb;
+    cursor: pointer;
+    font-weight: 600;
+}
+.props-section-title .edit-link:hover { text-decoration: underline; }
+
+.prop-row {
+    margin-bottom: 0.65rem;
+}
+.prop-label {
+    font-size: 0.7rem;
+    color: #94a3b8;
+    font-weight: 500;
+    margin-bottom: 1px;
+}
+.prop-value {
+    font-size: 0.82rem;
+    color: #1e293b;
+    font-weight: 500;
+}
+
+/* ── Right content area ─────────────────────────────────────────── */
+.detail-content {
+    flex: 1;
+    background: #f8fafc;
+    padding: 1.5rem 2rem;
+    overflow-y: auto;
+    max-height: calc(100vh - 56px);
+}
+
+/* ── Tabs ────────────────────────────────────────────────────────── */
+.detail-tabs {
+    display: flex;
+    gap: 0;
+    border-bottom: 2px solid #e5e7eb;
+    margin-bottom: 1.5rem;
+}
+.detail-tab {
+    padding: 10px 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #64748b;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    transition: all 0.15s;
+    background: none;
+    border-top: none;
+    border-left: none;
+    border-right: none;
+}
+.detail-tab:hover { color: #2563eb; }
+.detail-tab.active { color: #2563eb; border-bottom-color: #2563eb; }
+
+/* ── Summary cards ──────────────────────────────────────────────── */
+.summary-row {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+}
+.summary-card {
+    background: #fff;
+    border-radius: 10px;
+    padding: 16px 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    flex: 1;
+    min-width: 140px;
+}
+.summary-card .label {
+    font-size: 0.72rem;
+    color: #94a3b8;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+.summary-card .value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin-top: 2px;
+}
+.summary-card .unit {
+    font-size: 0.75rem;
+    color: #64748b;
+    font-weight: 500;
+}
+
+/* ── Lot table ──────────────────────────────────────────────────── */
+.lot-sub-tabs {
+    display: flex;
+    gap: 0;
+    margin-bottom: 1rem;
+}
+.lot-sub-tab {
+    padding: 6px 16px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #64748b;
+    cursor: pointer;
+    border: 1px solid #e5e7eb;
+    background: #fff;
+    transition: all 0.15s;
+}
+.lot-sub-tab:first-child { border-radius: 8px 0 0 8px; }
+.lot-sub-tab:last-child { border-radius: 0 8px 8px 0; }
+.lot-sub-tab.active { background: #2563eb; color: #fff; border-color: #2563eb; }
+
+.lot-table-card {
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    overflow: hidden;
+}
+.lot-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.83rem;
+}
+.lot-table thead th {
+    background: #f1f5f9;
+    color: #64748b;
+    font-weight: 600;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    padding: 10px 14px;
+    border-bottom: 1px solid #e2e8f0;
+    white-space: nowrap;
+}
+.lot-table tbody tr { border-bottom: 1px solid #f1f5f9; }
+.lot-table tbody tr:hover { background: #f8fafc; }
+.lot-table tbody td { padding: 10px 14px; color: #334155; vertical-align: middle; }
+.lot-id { font-weight: 600; color: #1e293b; font-family: monospace; font-size: 0.8rem; }
+
+.status-badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 10px;
+    font-size: 0.72rem;
+    font-weight: 600;
+}
+.status-received { background: #dbeafe; color: #1e40af; }
+.status-sold-out { background: #fef3c7; color: #92400e; }
+.status-processed { background: #ede9fe; color: #5b21b6; }
+
+/* ── Quantity tab tables ────────────────────────────────────────── */
+.uom-section {
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    margin-bottom: 1.5rem;
+    overflow: hidden;
+}
+.uom-header {
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid #f1f5f9;
+}
+.uom-header h6 { margin: 0; font-weight: 700; font-size: 0.9rem; }
+.uom-header .edit-link { font-size: 0.8rem; color: #2563eb; cursor: pointer; font-weight: 600; }
+.uom-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+.uom-table tr { border-bottom: 1px solid #f1f5f9; }
+.uom-table td {
+    padding: 10px 20px;
+    font-size: 0.85rem;
+    color: #334155;
+}
+.uom-table td:first-child { color: #64748b; width: 60%; }
+.uom-table td:last-child { text-align: right; font-weight: 500; color: #1e293b; }
+
+/* ── Pricing tab ────────────────────────────────────────────────── */
+.pricing-card {
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    padding: 24px;
+}
+.pricing-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid #f1f5f9;
+}
+.pricing-row:last-child { border: none; }
+.pricing-label { color: #64748b; font-size: 0.85rem; }
+.pricing-value { font-weight: 600; font-size: 0.9rem; color: #1e293b; }
+
+/* ── Inline edit ────────────────────────────────────────────────── */
+.inline-edit-input {
+    border: 1px solid #2563eb;
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-size: 0.82rem;
+    width: 100%;
+    box-shadow: 0 0 0 2px rgba(37,99,235,0.12);
+}
+.inline-edit-input:focus { outline: none; }
+
+/* ── Top bar ────────────────────────────────────────────────────── */
+.detail-topbar {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+.back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.82rem;
+    color: #10b981;
+    font-weight: 600;
+    text-decoration: none;
+    background: #ecfdf5;
+    padding: 5px 12px;
+    border-radius: 8px;
+}
+.back-link:hover { background: #d1fae5; color: #059669; }
+
+.actions-dropdown .btn {
+    font-size: 0.82rem;
+    padding: 5px 14px;
+    border-radius: 8px;
+}
+
+/* ── Empty state ────────────────────────────────────────────────── */
+.empty-tab {
+    text-align: center;
+    padding: 3rem;
+    color: #94a3b8;
+}
+.empty-tab i { font-size: 2.5rem; margin-bottom: 0.5rem; display: block; }
+
+.lot-pagination {
+    padding: 10px 14px;
+    font-size: 0.78rem;
+    color: #64748b;
+    border-top: 1px solid #f1f5f9;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- Sidebar -->
+<div class="inv-sidebar">
+    <a href="{% url 'operations_hub' %}" title="Dashboard">
+        <i class="bi bi-grid-1x2"></i><span>Dashboard</span>
+    </a>
+    <a href="{% url 'purchases_page' %}" title="Purchase"><i class="bi bi-cart"></i><span>Purchase</span></a>
+    <a href="{% url 'receiving_page' %}" title="Receive"><i class="bi bi-box-arrow-in-down"></i><span>Receive</span></a>
+    <a href="{% url 'inventory_item_library' %}" class="active" title="Inventory">
+        <i class="bi bi-box-seam"></i><span>Inventory</span>
+    </a>
+    <a href="{% url 'processing_hub' %}" title="Process"><i class="bi bi-gear"></i><span>Process</span></a>
+    <a href="#" title="Sales"><i class="bi bi-receipt"></i><span>Sales</span></a>
+    <a href="#" title="Ship"><i class="bi bi-truck"></i><span>Ship</span></a>
+</div>
+
+<div class="detail-main">
+    <!-- Left: Item Properties -->
+    <div class="props-panel">
+        <div class="detail-topbar">
+            <a href="{% url 'inventory_item_library' %}" class="back-link">
+                <i class="bi bi-arrow-left"></i> Item Library
+            </a>
+            <div class="dropdown actions-dropdown">
+                <button class="btn btn-outline-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown">Actions</button>
+                <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="#" onclick="enableEditMode(); return false;"><i class="bi bi-pencil me-2"></i>Edit Properties</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="toggleItemActive(); return false;"><i class="bi bi-toggle-on me-2"></i>{{ product.is_active|yesno:"Deactivate,Activate" }}</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item text-danger" href="#" onclick="deleteItem(); return false;"><i class="bi bi-trash me-2"></i>Delete Item</a></li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Item avatar & name -->
+        <div class="item-avatar" id="itemAvatar">{{ initials }}</div>
+        <div class="item-full-name" id="itemFullName">{{ product.item_name|default:product.description }}</div>
+
+        <div class="item-tags">
+            {% if product.item_group %}
+            <span class="tag-group">{{ product.item_group.name }}</span>
+            {% endif %}
+            {% if product.is_active %}
+            <span class="tag-active"><i class="bi bi-check-circle me-1"></i>Active</span>
+            {% else %}
+            <span class="tag-inactive"><i class="bi bi-x-circle me-1"></i>Inactive</span>
+            {% endif %}
+        </div>
+
+        <div class="props-section-title">
+            Item Properties
+            <span class="edit-link" onclick="enableEditMode()">Edit</span>
+        </div>
+
+        <div id="propsDisplay">
+            <div class="prop-row">
+                <div class="prop-label">QuickBooks Item Name</div>
+                <div class="prop-value">{{ product.qb_item_name|default:"--" }}</div>
+            </div>
+            <div class="prop-row">
+                <div class="prop-label">Item Friendly Name</div>
+                <div class="prop-value">{{ product.friendly_name|default:"--" }}</div>
+            </div>
+            <div class="prop-row">
+                <div class="prop-label">Item Description</div>
+                <div class="prop-value">{{ product.description|default:"--" }}</div>
+            </div>
+            <div class="prop-row">
+                <div class="prop-label">Size/Cull</div>
+                <div class="prop-value">{{ product.size_cull|default:"--" }}</div>
+            </div>
+            <div class="prop-row">
+                <div class="prop-label">SKU or Internal Code</div>
+                <div class="prop-value">{{ product.sku|default:product.item_number|default:"--" }}</div>
+            </div>
+            <div class="prop-row">
+                <div class="prop-label">Habitat/Production Method</div>
+                <div class="prop-value">{{ product.habitat_production_method|default:"--" }}</div>
+            </div>
+            <div class="prop-row">
+                <div class="prop-label">Species</div>
+                <div class="prop-value">{{ product.species|default:"--" }}</div>
+            </div>
+            <div class="prop-row">
+                <div class="prop-label">Department</div>
+                <div class="prop-value">{{ product.department|default:"--" }}</div>
+            </div>
+            <div class="prop-row">
+                <div class="prop-label">Quantity Description</div>
+                <div class="prop-value">{{ product.quantity_description|default:"--" }}</div>
+            </div>
+            <div class="prop-row">
+                <div class="prop-label">Country of Origin</div>
+                <div class="prop-value">{{ product.country_of_origin|default:product.origin|default:"--" }}</div>
+            </div>
+            <div class="prop-row">
+                <div class="prop-label">Brand</div>
+                <div class="prop-value">{{ product.brand|default:"--" }}</div>
+            </div>
+            <div class="prop-row">
+                <div class="prop-label">UPC</div>
+                <div class="prop-value">{{ product.upc|default:"--" }}</div>
+            </div>
+            <div class="prop-row">
+                <div class="prop-label">Tasting Notes</div>
+                <div class="prop-value">{{ product.tasting_notes|default:"--" }}</div>
+            </div>
+        </div>
+
+        <!-- Inline edit form (hidden by default) -->
+        <div id="propsEdit" style="display:none;">
+            <div class="form-group mb-2">
+                <label class="prop-label">QuickBooks Item Name</label>
+                <input type="text" class="inline-edit-input" id="e-qb-name" value="{{ product.qb_item_name }}">
+            </div>
+            <div class="form-group mb-2">
+                <label class="prop-label">Item Friendly Name</label>
+                <input type="text" class="inline-edit-input" id="e-friendly-name" value="{{ product.friendly_name }}">
+            </div>
+            <div class="form-group mb-2">
+                <label class="prop-label">Item Description</label>
+                <input type="text" class="inline-edit-input" id="e-description" value="{{ product.description }}">
+            </div>
+            <div class="form-group mb-2">
+                <label class="prop-label">Size/Cull</label>
+                <select class="inline-edit-input" id="e-size-cull">
+                    <option value="">--</option>
+                    {% for sc in size_cull_choices %}
+                    <option value="{{ sc }}" {% if product.size_cull == sc %}selected{% endif %}>{{ sc }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group mb-2">
+                <label class="prop-label">SKU or Internal Code</label>
+                <input type="text" class="inline-edit-input" id="e-sku" value="{{ product.sku|default:product.item_number }}">
+            </div>
+            <div class="form-group mb-2">
+                <label class="prop-label">Habitat/Production Method</label>
+                <select class="inline-edit-input" id="e-habitat">
+                    <option value="">--</option>
+                    {% for h in habitat_choices %}
+                    <option value="{{ h }}" {% if product.habitat_production_method == h %}selected{% endif %}>{{ h }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group mb-2">
+                <label class="prop-label">Species</label>
+                <input type="text" class="inline-edit-input" id="e-species" value="{{ product.species }}">
+            </div>
+            <div class="form-group mb-2">
+                <label class="prop-label">Department</label>
+                <input type="text" class="inline-edit-input" id="e-department" value="{{ product.department }}">
+            </div>
+            <div class="form-group mb-2">
+                <label class="prop-label">Quantity Description</label>
+                <input type="text" class="inline-edit-input" id="e-qty-desc" value="{{ product.quantity_description }}">
+            </div>
+            <div class="form-group mb-2">
+                <label class="prop-label">Country of Origin</label>
+                <select class="inline-edit-input" id="e-origin">
+                    <option value="">--</option>
+                    {% for c in country_choices %}
+                    <option value="{{ c }}" {% if product.country_of_origin == c or product.origin == c %}selected{% endif %}>{{ c }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group mb-2">
+                <label class="prop-label">Brand</label>
+                <input type="text" class="inline-edit-input" id="e-brand" value="{{ product.brand }}">
+            </div>
+            <div class="form-group mb-2">
+                <label class="prop-label">UPC</label>
+                <input type="text" class="inline-edit-input" id="e-upc" value="{{ product.upc }}">
+            </div>
+            <div class="form-group mb-2">
+                <label class="prop-label">Tasting Notes</label>
+                <textarea class="inline-edit-input" id="e-tasting-notes" rows="2">{{ product.tasting_notes }}</textarea>
+            </div>
+            <div class="d-flex gap-2 mt-3">
+                <button class="btn btn-sm btn-primary" onclick="saveProperties()" style="border-radius:8px;">Save</button>
+                <button class="btn btn-sm btn-outline-secondary" onclick="cancelEditMode()" style="border-radius:8px;">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right: Tabbed content -->
+    <div class="detail-content">
+        <!-- Tabs -->
+        <div class="detail-tabs">
+            <button class="detail-tab active" data-tab="inventory" onclick="switchTab('inventory')">Inventory</button>
+            <button class="detail-tab" data-tab="sales" onclick="switchTab('sales')">Sales Orders</button>
+            <button class="detail-tab" data-tab="purchases" onclick="switchTab('purchases')">Purchases</button>
+            <button class="detail-tab" data-tab="quantity" onclick="switchTab('quantity')">Quantity</button>
+            <button class="detail-tab" data-tab="pricing" onclick="switchTab('pricing')">Pricing</button>
+            <button class="detail-tab" data-tab="preferences" onclick="switchTab('preferences')">Item Preferences</button>
+        </div>
+
+        <!-- ═══ INVENTORY TAB ═══ -->
+        <div class="tab-content-pane" id="tab-inventory">
+            <div class="summary-row">
+                <div class="summary-card">
+                    <div class="label">Expected</div>
+                    <div class="value" id="sum-expected">0</div>
+                    <div class="unit" id="sum-expected-unit"></div>
+                </div>
+                <div class="summary-card">
+                    <div class="label">Allocated</div>
+                    <div class="value" id="sum-allocated">0</div>
+                    <div class="unit" id="sum-allocated-unit"></div>
+                </div>
+                <div class="summary-card">
+                    <div class="label">On Hand</div>
+                    <div class="value" id="sum-onhand">0</div>
+                    <div class="unit" id="sum-onhand-unit"></div>
+                </div>
+                <div class="summary-card">
+                    <div class="label">Potential Rev</div>
+                    <div class="value" id="sum-revenue">$0</div>
+                    <div class="unit">On Hand</div>
+                </div>
+                <div class="summary-card">
+                    <div class="label">Profit Margin</div>
+                    <div class="value" id="sum-margin">--</div>
+                    <div class="unit">Avg</div>
+                </div>
+            </div>
+
+            <!-- Lot sub-tabs -->
+            <div class="lot-sub-tabs">
+                <button class="lot-sub-tab active" data-lot="all" onclick="switchLotTab('all')">All Lots</button>
+                <button class="lot-sub-tab" data-lot="received" onclick="switchLotTab('received')">Received Lots</button>
+                <button class="lot-sub-tab" data-lot="processed" onclick="switchLotTab('processed')">Processed Lots</button>
+                <button class="lot-sub-tab" data-lot="soldout" onclick="switchLotTab('soldout')">Sold Out Lots</button>
+            </div>
+
+            <div class="lot-table-card">
+                <table class="lot-table">
+                    <thead>
+                        <tr>
+                            <th>Lot</th>
+                            <th>Status</th>
+                            <th>Receive/Process Date</th>
+                            <th>On Hand</th>
+                        </tr>
+                    </thead>
+                    <tbody id="lotTbody">
+                        <tr><td colspan="4" class="text-center text-muted py-4">Loading...</td></tr>
+                    </tbody>
+                </table>
+                <div class="lot-pagination" id="lotPagination"></div>
+            </div>
+        </div>
+
+        <!-- ═══ SALES ORDERS TAB ═══ -->
+        <div class="tab-content-pane" id="tab-sales" style="display:none;">
+            <div class="empty-tab">
+                <i class="bi bi-receipt"></i>
+                <h5>Sales Orders</h5>
+                <p class="text-muted">Sales orders for this item will appear here.</p>
+            </div>
+        </div>
+
+        <!-- ═══ PURCHASES TAB ═══ -->
+        <div class="tab-content-pane" id="tab-purchases" style="display:none;">
+            <div class="empty-tab">
+                <i class="bi bi-cart"></i>
+                <h5>Purchase Orders</h5>
+                <p class="text-muted">Purchase orders for this item will appear here.</p>
+            </div>
+        </div>
+
+        <!-- ═══ QUANTITY TAB ═══ -->
+        <div class="tab-content-pane" id="tab-quantity" style="display:none;">
+            <!-- Selling UOM -->
+            <div class="uom-section">
+                <div class="uom-header">
+                    <h6>Selling Unit of Measure</h6>
+                    <span class="edit-link" onclick="editUOM('selling')">Edit</span>
+                </div>
+                <table class="uom-table" id="sellingUomTable">
+                    <tr>
+                        <td>Unit of Measure</td>
+                        <td id="uom-sell-unit">{{ product.selling_unit_of_measure|default:"--" }}</td>
+                    </tr>
+                    <tr>
+                        <td>Weight</td>
+                        <td id="uom-sell-weight">{{ product.selling_weight|default:"--" }}</td>
+                    </tr>
+                    <tr>
+                        <td>Volume</td>
+                        <td id="uom-sell-volume">{{ product.selling_volume|default:"--" }}</td>
+                    </tr>
+                    <tr>
+                        <td>Piece Count</td>
+                        <td id="uom-sell-pieces">{{ product.selling_piece_count|default:"--" }}</td>
+                    </tr>
+                    <tr>
+                        <td>Inventory Conversion</td>
+                        <td id="uom-sell-conv">{{ product.inventory_conversion|default:"--" }}</td>
+                    </tr>
+                </table>
+            </div>
+
+            <!-- Buying UOM -->
+            <div class="uom-section">
+                <div class="uom-header">
+                    <h6>Buying Unit of Measure</h6>
+                    <span class="edit-link" onclick="editUOM('buying')">Edit</span>
+                </div>
+                <table class="uom-table" id="buyingUomTable">
+                    <tr>
+                        <td>Unit of Measure</td>
+                        <td id="uom-buy-unit">{{ product.buying_unit_of_measure|default:"--" }}</td>
+                    </tr>
+                    <tr>
+                        <td>Weight</td>
+                        <td id="uom-buy-weight">{{ product.buying_weight|default:"--" }}</td>
+                    </tr>
+                    <tr>
+                        <td>Volume</td>
+                        <td id="uom-buy-volume">{{ product.buying_volume|default:"--" }}</td>
+                    </tr>
+                    <tr>
+                        <td>Piece Count</td>
+                        <td id="uom-buy-pieces">{{ product.buying_piece_count|default:"--" }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <!-- ═══ PRICING TAB ═══ -->
+        <div class="tab-content-pane" id="tab-pricing" style="display:none;">
+            <div class="pricing-card">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6 class="fw-bold mb-0">Item Pricing</h6>
+                    <span class="edit-link" style="font-size:0.8rem; color:#2563eb; cursor:pointer; font-weight:600;" onclick="editPricing()">Edit</span>
+                </div>
+                <div id="pricingDisplay">
+                    <div class="pricing-row">
+                        <span class="pricing-label">List Price</span>
+                        <span class="pricing-value" id="price-list">{{ product.list_price|default:"--" }}</span>
+                    </div>
+                    <div class="pricing-row">
+                        <span class="pricing-label">Wholesale Price</span>
+                        <span class="pricing-value" id="price-wholesale">{{ product.wholesale_price|default:"--" }}</span>
+                    </div>
+                    <div class="pricing-row">
+                        <span class="pricing-label">Raw Cost</span>
+                        <span class="pricing-value">{{ product.raw_cost|default:"--" }}</span>
+                    </div>
+                    <div class="pricing-row">
+                        <span class="pricing-label">Labor/Pack Cost</span>
+                        <span class="pricing-value">{{ product.labor_pack_cost|default:"--" }}</span>
+                    </div>
+                    <div class="pricing-row">
+                        <span class="pricing-label">Yield %</span>
+                        <span class="pricing-value">{% if product.yield_pct %}{{ product.yield_pct }}%{% else %}--{% endif %}</span>
+                    </div>
+                    <div class="pricing-row">
+                        <span class="pricing-label">Target Profit Margin</span>
+                        <span class="pricing-value">{% if product.profit_margin_target %}{{ product.profit_margin_target }}%{% else %}--{% endif %}</span>
+                    </div>
+                </div>
+                <div id="pricingEdit" style="display:none;">
+                    <div class="mb-2">
+                        <label class="prop-label">List Price (USD)</label>
+                        <input type="number" step="0.01" class="inline-edit-input" id="ep-list-price" value="{{ product.list_price|default:'' }}">
+                    </div>
+                    <div class="mb-2">
+                        <label class="prop-label">Wholesale Price (USD)</label>
+                        <input type="number" step="0.01" class="inline-edit-input" id="ep-wholesale-price" value="{{ product.wholesale_price|default:'' }}">
+                    </div>
+                    <div class="mb-2">
+                        <label class="prop-label">Target Profit Margin (%)</label>
+                        <input type="number" step="0.01" class="inline-edit-input" id="ep-margin" value="{{ product.profit_margin_target|default:'' }}">
+                    </div>
+                    <div class="d-flex gap-2 mt-3">
+                        <button class="btn btn-sm btn-primary" onclick="savePricing()" style="border-radius:8px;">Save</button>
+                        <button class="btn btn-sm btn-outline-secondary" onclick="cancelPricingEdit()" style="border-radius:8px;">Cancel</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ PREFERENCES TAB ═══ -->
+        <div class="tab-content-pane" id="tab-preferences" style="display:none;">
+            <div class="empty-tab">
+                <i class="bi bi-sliders"></i>
+                <h5>Item Preferences</h5>
+                <p class="text-muted">Item preferences and configuration will appear here.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const PRODUCT_ID = {{ product.id }};
+const PRODUCT_PID = "{{ product.product_id|escapejs }}";
+let lots = [];
+let activeLotTab = 'all';
+
+function getCookie(name) {
+    const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+    return match ? decodeURIComponent(match[2]) : '';
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    loadInventoryData();
+});
+
+// ── Tabs ────────────────────────────────────────────────────────
+
+function switchTab(tab) {
+    document.querySelectorAll('.tab-content-pane').forEach(el => el.style.display = 'none');
+    document.querySelectorAll('.detail-tab').forEach(el => el.classList.remove('active'));
+    document.getElementById('tab-' + tab).style.display = '';
+    document.querySelector(`.detail-tab[data-tab="${tab}"]`).classList.add('active');
+}
+
+function switchLotTab(tab) {
+    activeLotTab = tab;
+    document.querySelectorAll('.lot-sub-tab').forEach(el => el.classList.remove('active'));
+    document.querySelector(`.lot-sub-tab[data-lot="${tab}"]`).classList.add('active');
+    renderLots();
+}
+
+// ── Inventory data ──────────────────────────────────────────────
+
+async function loadInventoryData() {
+    const res = await fetch(`/api/inventory/items/${PRODUCT_ID}/lots/`);
+    const data = await res.json();
+    lots = data.lots || [];
+
+    const unit = "{{ product.inventory_unit_of_measure|default:product.quantity_description|escapejs }}";
+    document.getElementById('sum-expected').textContent = fmt(data.expected);
+    document.getElementById('sum-expected-unit').textContent = unit;
+    document.getElementById('sum-allocated').textContent = fmt(data.allocated);
+    document.getElementById('sum-allocated-unit').textContent = unit;
+    document.getElementById('sum-onhand').textContent = fmt(data.on_hand);
+    document.getElementById('sum-onhand-unit').textContent = unit;
+
+    const listPrice = {{ product.list_price|default:"0" }};
+    const onHand = data.on_hand || 0;
+    if (listPrice && onHand) {
+        document.getElementById('sum-revenue').textContent = '$' + (listPrice * onHand).toLocaleString(undefined, {maximumFractionDigits:0});
+    }
+    {% if product.profit_margin_target %}
+    document.getElementById('sum-margin').textContent = '{{ product.profit_margin_target }}%';
+    {% endif %}
+
+    renderLots();
+}
+
+function renderLots() {
+    let filtered = lots;
+    if (activeLotTab === 'received') filtered = lots.filter(l => l.status === 'Received');
+    else if (activeLotTab === 'processed') filtered = lots.filter(l => l.status === 'Processed');
+    else if (activeLotTab === 'soldout') filtered = lots.filter(l => l.status === 'Sold Out');
+
+    const tbody = document.getElementById('lotTbody');
+    if (!filtered.length) {
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-4">No lots found.</td></tr>';
+        document.getElementById('lotPagination').textContent = '';
+        return;
+    }
+
+    tbody.innerHTML = filtered.map(lot => {
+        let statusClass = 'status-received';
+        if (lot.status === 'Sold Out') statusClass = 'status-sold-out';
+        else if (lot.status === 'Processed') statusClass = 'status-processed';
+
+        return `<tr>
+            <td class="lot-id">${esc(lot.lot_id)}</td>
+            <td><span class="status-badge ${statusClass}">${esc(lot.status)}</span></td>
+            <td>${esc(lot.date)}</td>
+            <td>${fmt(lot.on_hand)} ${esc(lot.unit_type)}</td>
+        </tr>`;
+    }).join('');
+
+    document.getElementById('lotPagination').textContent = `Showing 1 to ${filtered.length} of ${filtered.length}`;
+}
+
+function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+function fmt(n) { return n ? Number(n).toLocaleString(undefined, {maximumFractionDigits: 2}) : '0'; }
+
+// ── Inline property editing ─────────────────────────────────────
+
+function enableEditMode() {
+    document.getElementById('propsDisplay').style.display = 'none';
+    document.getElementById('propsEdit').style.display = '';
+}
+
+function cancelEditMode() {
+    document.getElementById('propsDisplay').style.display = '';
+    document.getElementById('propsEdit').style.display = 'none';
+}
+
+async function saveProperties() {
+    const payload = {
+        qb_item_name: document.getElementById('e-qb-name').value.trim(),
+        friendly_name: document.getElementById('e-friendly-name').value.trim(),
+        description: document.getElementById('e-description').value.trim(),
+        size_cull: document.getElementById('e-size-cull').value,
+        sku: document.getElementById('e-sku').value.trim(),
+        habitat_production_method: document.getElementById('e-habitat').value,
+        species: document.getElementById('e-species').value.trim(),
+        department: document.getElementById('e-department').value.trim(),
+        quantity_description: document.getElementById('e-qty-desc').value.trim(),
+        country_of_origin: document.getElementById('e-origin').value,
+        brand: document.getElementById('e-brand').value.trim(),
+        upc: document.getElementById('e-upc').value.trim(),
+        tasting_notes: document.getElementById('e-tasting-notes').value.trim(),
+    };
+
+    const res = await fetch(`/api/inventory/items/${PRODUCT_ID}/update/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+        body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (data.error) { alert(data.error); return; }
+    location.reload();
+}
+
+// ── Pricing editing ─────────────────────────────────────────────
+
+function editPricing() {
+    document.getElementById('pricingDisplay').style.display = 'none';
+    document.getElementById('pricingEdit').style.display = '';
+}
+
+function cancelPricingEdit() {
+    document.getElementById('pricingDisplay').style.display = '';
+    document.getElementById('pricingEdit').style.display = 'none';
+}
+
+async function savePricing() {
+    const payload = {
+        list_price: document.getElementById('ep-list-price').value || null,
+        wholesale_price: document.getElementById('ep-wholesale-price').value || null,
+        profit_margin_target: document.getElementById('ep-margin').value || null,
+    };
+    const res = await fetch(`/api/inventory/items/${PRODUCT_ID}/update/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+        body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (data.error) { alert(data.error); return; }
+    location.reload();
+}
+
+// ── UOM editing ─────────────────────────────────────────────────
+
+function editUOM(type) {
+    // Simple prompt-based editing for now
+    const fields = type === 'selling'
+        ? [['Unit of Measure','selling_unit_of_measure'],['Weight','selling_weight'],['Volume','selling_volume'],['Piece Count','selling_piece_count'],['Inventory Conversion','inventory_conversion']]
+        : [['Unit of Measure','buying_unit_of_measure'],['Weight','buying_weight'],['Volume','buying_volume'],['Piece Count','buying_piece_count']];
+
+    const payload = {};
+    for (const [label, key] of fields) {
+        const el = type === 'selling'
+            ? document.getElementById('uom-sell-' + label.toLowerCase().replace(/[^a-z]/g,'').substring(0,6))
+            : document.getElementById('uom-buy-' + label.toLowerCase().replace(/[^a-z]/g,'').substring(0,6));
+        const current = el ? el.textContent.trim() : '';
+        const val = prompt(label + ':', current === '--' ? '' : current);
+        if (val === null) return; // cancelled
+        payload[key] = val;
+    }
+
+    fetch(`/api/inventory/items/${PRODUCT_ID}/update/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+        body: JSON.stringify(payload),
+    }).then(() => location.reload());
+}
+
+// ── Actions ─────────────────────────────────────────────────────
+
+async function toggleItemActive() {
+    await fetch(`/api/inventory/items/${PRODUCT_ID}/toggle-active/`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCookie('csrftoken') },
+    });
+    location.reload();
+}
+
+async function deleteItem() {
+    if (!confirm('Delete this item? This cannot be undone.')) return;
+    await fetch(`/api/inventory/items/${PRODUCT_ID}/delete/`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCookie('csrftoken') },
+    });
+    window.location.href = '{% url "inventory_item_library" %}';
+}
+</script>
+{% endblock %}

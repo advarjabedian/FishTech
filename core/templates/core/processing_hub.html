@@ -1,0 +1,369 @@
+{% extends 'core/base.html' %}
+{% block title %}Processing - FishTeck{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ── Layout (same sidebar as item library) ─────────────────────── */
+.inv-sidebar {
+    width: 72px;
+    min-height: calc(100vh - 56px);
+    background: #f0f6ff;
+    border-right: 1px solid #d6e4f0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 1rem;
+    gap: 0.25rem;
+    position: fixed;
+    left: 0;
+    top: 56px;
+    z-index: 100;
+}
+.inv-sidebar a {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 56px;
+    padding: 10px 0;
+    border-radius: 10px;
+    color: #5a7ba6;
+    text-decoration: none;
+    font-size: 0.65rem;
+    font-weight: 500;
+    transition: all 0.15s;
+}
+.inv-sidebar a i { font-size: 1.3rem; margin-bottom: 2px; }
+.inv-sidebar a:hover { background: #dbe8f7; color: #2563eb; }
+.inv-sidebar a.active { background: #2563eb; color: #fff; }
+
+.inv-main {
+    margin-left: 72px;
+    padding: 1.5rem 2rem;
+    background: #f8fafc;
+    min-height: calc(100vh - 56px);
+}
+
+/* ── Header ────────────────────────────────────────────────────── */
+.inv-header { margin-bottom: 1.5rem; }
+.inv-header h2 { font-size: 1.4rem; font-weight: 700; margin: 0; }
+.inv-header .sub { font-size: 0.8rem; color: #64748b; margin-top: 2px; }
+
+/* ── Process type grid ─────────────────────────────────────────── */
+.proc-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 1.25rem;
+    max-width: 900px;
+}
+.proc-card {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 2rem 1.25rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-decoration: none;
+    color: inherit;
+}
+.proc-card:hover {
+    border-color: #2563eb;
+    box-shadow: 0 4px 16px rgba(37,99,235,0.12);
+    transform: translateY(-2px);
+}
+.proc-card .icon-circle {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.6rem;
+    color: #fff;
+    margin-bottom: 0.75rem;
+}
+.proc-card .proc-label {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #1e293b;
+}
+
+/* icon colors matching mobile app */
+.ic-cutting   { background: #3b82f6; }
+.ic-commingle { background: #22d3ee; }
+.ic-renaming  { background: #a78bfa; }
+.ic-freeze    { background: #38bdf8; }
+.ic-breaking  { background: #f59e0b; }
+.ic-shucking  { background: #34d399; }
+.ic-wetstore  { background: #60a5fa; }
+
+/* ── Recent batches table ──────────────────────────────────────── */
+.inv-table-card {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    overflow: hidden;
+    margin-top: 2rem;
+}
+.inv-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+}
+.inv-table thead th {
+    background: #f1f5f9;
+    color: #64748b;
+    font-weight: 600;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    padding: 10px 14px;
+    border-bottom: 1px solid #e2e8f0;
+    white-space: nowrap;
+}
+.inv-table tbody tr { border-bottom: 1px solid #f1f5f9; transition: background 0.1s; }
+.inv-table tbody tr:hover { background: #f8fafc; }
+.inv-table tbody td { padding: 10px 14px; vertical-align: middle; color: #334155; }
+
+.badge-status {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 600;
+}
+.badge-draft      { background: #f1f5f9; color: #64748b; }
+.badge-in_progress { background: #dbeafe; color: #2563eb; }
+.badge-completed  { background: #dcfce7; color: #16a34a; }
+.badge-cancelled  { background: #fee2e2; color: #dc2626; }
+
+/* ── Toolbar ───────────────────────────────────────────────────── */
+.inv-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+}
+.inv-toolbar-left { display: flex; align-items: center; gap: 0.5rem; }
+.filter-select {
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-size: 0.85rem;
+    background: #fff;
+    color: #374151;
+}
+.search-box {
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-size: 0.85rem;
+    width: 220px;
+    background: #fff;
+}
+.search-box:focus { border-color: #2563eb; box-shadow: 0 0 0 2px rgba(37,99,235,0.15); outline: none; }
+
+/* ── Pagination ────────────────────────────────────────────────── */
+.inv-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 14px;
+    font-size: 0.8rem;
+    color: #64748b;
+    border-top: 1px solid #f1f5f9;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- Sidebar -->
+<div class="inv-sidebar">
+    <a href="{% url 'operations_hub' %}" title="Dashboard">
+        <i class="bi bi-grid-1x2"></i>
+        <span>Dashboard</span>
+    </a>
+    <a href="{% url 'purchases_page' %}" title="Purchase">
+        <i class="bi bi-cart"></i>
+        <span>Purchase</span>
+    </a>
+    <a href="{% url 'receiving_page' %}" title="Receive">
+        <i class="bi bi-box-arrow-in-down"></i>
+        <span>Receive</span>
+    </a>
+    <a href="{% url 'inventory_item_library' %}" title="Inventory">
+        <i class="bi bi-box-seam"></i>
+        <span>Inventory</span>
+    </a>
+    <a href="{% url 'processing_hub' %}" class="active" title="Process">
+        <i class="bi bi-gear"></i>
+        <span>Process</span>
+    </a>
+    <a href="#" title="Sales">
+        <i class="bi bi-receipt"></i>
+        <span>Sales</span>
+    </a>
+    <a href="#" title="Ship">
+        <i class="bi bi-truck"></i>
+        <span>Ship</span>
+    </a>
+</div>
+
+<!-- Main content -->
+<div class="inv-main">
+    <div class="inv-header">
+        <h2><i class="bi bi-gear me-2" style="color:#2563eb;"></i>Processing</h2>
+        <div class="sub">Choose a process type to start a new batch, or view recent batches below.</div>
+    </div>
+
+    <!-- Process type cards -->
+    <div class="proc-grid">
+        <a class="proc-card" href="{% url 'processing_new' %}?type=fish_cutting">
+            <div class="icon-circle ic-cutting"><i class="bi bi-scissors"></i></div>
+            <div class="proc-label">Fish Cutting</div>
+        </a>
+        <a class="proc-card" href="{% url 'processing_new' %}?type=commingle">
+            <div class="icon-circle ic-commingle"><i class="bi bi-arrow-left-right"></i></div>
+            <div class="proc-label">Commingle</div>
+        </a>
+        <a class="proc-card" href="{% url 'processing_new' %}?type=renaming">
+            <div class="icon-circle ic-renaming"><i class="bi bi-pencil-square"></i></div>
+            <div class="proc-label">Renaming</div>
+        </a>
+        <a class="proc-card" href="{% url 'processing_new' %}?type=freeze">
+            <div class="icon-circle ic-freeze"><i class="bi bi-snow"></i></div>
+            <div class="proc-label">Freeze</div>
+        </a>
+        <a class="proc-card" href="{% url 'processing_new' %}?type=lot_breaking">
+            <div class="icon-circle ic-breaking"><i class="bi bi-share"></i></div>
+            <div class="proc-label">Bag or Lot Breaking</div>
+        </a>
+        <a class="proc-card" href="{% url 'processing_new' %}?type=shucking">
+            <div class="icon-circle ic-shucking"><i class="bi bi-box-arrow-right"></i></div>
+            <div class="proc-label">Shucking</div>
+        </a>
+        <a class="proc-card" href="{% url 'processing_new' %}?type=wet_store">
+            <div class="icon-circle ic-wetstore"><i class="bi bi-droplet-half"></i></div>
+            <div class="proc-label">Wet Store</div>
+        </a>
+    </div>
+
+    <!-- Recent batches -->
+    <div class="inv-table-card">
+        <div style="padding: 14px 18px; border-bottom: 1px solid #f1f5f9;">
+            <h6 style="margin:0; font-weight:700; font-size:0.95rem;">Recent Batches</h6>
+        </div>
+        <div class="inv-toolbar" style="padding: 8px 14px 0;">
+            <div class="inv-toolbar-left">
+                <select class="filter-select" id="statusFilter" onchange="loadBatches()">
+                    <option value="">All Statuses</option>
+                    <option value="draft">Draft</option>
+                    <option value="in_progress">In Progress</option>
+                    <option value="completed">Completed</option>
+                    <option value="cancelled">Cancelled</option>
+                </select>
+                <input type="text" class="search-box" id="batchSearch" placeholder="Search batches..." oninput="debounceSearch()">
+            </div>
+        </div>
+        <div style="overflow-x: auto;">
+            <table class="inv-table">
+                <thead>
+                    <tr>
+                        <th>Batch #</th>
+                        <th>Process Type</th>
+                        <th>Status</th>
+                        <th>Started</th>
+                        <th>Completed</th>
+                        <th>Created By</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody id="batchTbody">
+                    <tr><td colspan="7" class="text-center text-muted py-4">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="inv-pagination">
+            <span id="paginationInfo">Showing 0 batches</span>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let allBatches = [];
+let searchTimeout;
+
+function getCookie(name) {
+    const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+    return match ? decodeURIComponent(match[2]) : '';
+}
+
+document.addEventListener('DOMContentLoaded', loadBatches);
+
+async function loadBatches() {
+    const status = document.getElementById('statusFilter').value;
+    const search = document.getElementById('batchSearch').value.trim();
+    let url = '/api/processing/batches/?';
+    if (status) url += `status=${status}&`;
+    if (search) url += `search=${encodeURIComponent(search)}&`;
+
+    try {
+        const res = await fetch(url);
+        const data = await res.json();
+        allBatches = data.batches || [];
+        renderBatches();
+    } catch {
+        document.getElementById('batchTbody').innerHTML =
+            '<tr><td colspan="7" class="text-center text-muted py-4">Failed to load batches.</td></tr>';
+    }
+}
+
+function renderBatches() {
+    const tbody = document.getElementById('batchTbody');
+
+    if (!allBatches.length) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">No batches yet. Start a new process above.</td></tr>';
+        document.getElementById('paginationInfo').textContent = '0 batches';
+        return;
+    }
+
+    const typeLabels = {
+        fish_cutting: 'Fish Cutting', commingle: 'Commingle', renaming: 'Renaming',
+        freeze: 'Freeze', lot_breaking: 'Bag or Lot Breaking', shucking: 'Shucking',
+        wet_store: 'Wet Store',
+    };
+
+    tbody.innerHTML = allBatches.map(b => `
+        <tr style="cursor:pointer;" onclick="window.location='/processing/${b.id}/'">
+            <td style="font-weight:600;">${esc(b.batch_number)}</td>
+            <td>${esc(typeLabels[b.process_type] || b.process_type)}</td>
+            <td><span class="badge-status badge-${b.status}">${esc(b.status_display)}</span></td>
+            <td>${b.started_at || '--'}</td>
+            <td>${b.completed_at || '--'}</td>
+            <td>${esc(b.created_by || '--')}</td>
+            <td>
+                <button class="btn btn-sm" style="background:none;border:none;color:#94a3b8;" onclick="event.stopPropagation();">
+                    <i class="bi bi-three-dots-vertical"></i>
+                </button>
+            </td>
+        </tr>
+    `).join('');
+
+    document.getElementById('paginationInfo').textContent = `${allBatches.length} batch${allBatches.length !== 1 ? 'es' : ''}`;
+}
+
+function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+
+function debounceSearch() {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(loadBatches, 300);
+}
+</script>
+{% endblock %}

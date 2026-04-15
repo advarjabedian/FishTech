@@ -1,0 +1,680 @@
+{% extends 'core/base.html' %}
+{% block title %}{{ process_type_label }} - New Batch{% endblock %}
+
+{% block extra_css %}
+<style>
+.inv-sidebar {
+    width: 72px; min-height: calc(100vh - 56px); background: #f0f6ff;
+    border-right: 1px solid #d6e4f0; display: flex; flex-direction: column;
+    align-items: center; padding-top: 1rem; gap: 0.25rem;
+    position: fixed; left: 0; top: 56px; z-index: 100;
+}
+.inv-sidebar a {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    width: 56px; padding: 10px 0; border-radius: 10px; color: #5a7ba6;
+    text-decoration: none; font-size: 0.65rem; font-weight: 500; transition: all 0.15s;
+}
+.inv-sidebar a i { font-size: 1.3rem; margin-bottom: 2px; }
+.inv-sidebar a:hover { background: #dbe8f7; color: #2563eb; }
+.inv-sidebar a.active { background: #2563eb; color: #fff; }
+
+.inv-main { margin-left: 72px; padding: 1.5rem 2rem; background: #f8fafc; min-height: calc(100vh - 56px); }
+.inv-header { margin-bottom: 1.25rem; }
+.inv-header h2 { font-size: 1.4rem; font-weight: 700; margin: 0; }
+.inv-header .sub { font-size: 0.8rem; color: #64748b; margin-top: 2px; }
+
+/* Steps */
+.steps-bar {
+    display: flex; gap: 0; margin-bottom: 1.5rem; background: #fff;
+    border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+.step {
+    flex: 1; padding: 14px 16px; text-align: center; font-size: 0.82rem;
+    font-weight: 600; color: #94a3b8; background: #fff;
+    border-bottom: 3px solid transparent; transition: all 0.2s;
+}
+.step.active { color: #2563eb; border-bottom-color: #2563eb; background: #eff6ff; }
+.step.done { color: #16a34a; border-bottom-color: #16a34a; }
+.step .step-num {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 24px; height: 24px; border-radius: 50%; background: #e2e8f0;
+    color: #64748b; font-size: 0.75rem; margin-right: 6px;
+}
+.step.active .step-num { background: #2563eb; color: #fff; }
+.step.done .step-num { background: #16a34a; color: #fff; }
+
+/* Lot cards */
+.lot-list { display: flex; flex-direction: column; gap: 0.75rem; max-width: 800px; }
+.lot-card {
+    background: #fff; border: 1px solid #e2e8f0; border-radius: 12px;
+    padding: 1rem 1.25rem; display: flex; align-items: center; gap: 1rem;
+    cursor: pointer; transition: all 0.15s;
+}
+.lot-card:hover { border-color: #2563eb; box-shadow: 0 2px 8px rgba(37,99,235,0.08); }
+.lot-card.selected { border-color: #2563eb; background: #eff6ff; }
+.lot-card .lot-check {
+    width: 22px; height: 22px; border: 2px solid #d1d5db; border-radius: 6px;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    transition: all 0.15s;
+}
+.lot-card.selected .lot-check { background: #2563eb; border-color: #2563eb; color: #fff; }
+.lot-info { flex: 1; min-width: 0; }
+.lot-info .lot-name { font-weight: 600; color: #1e293b; font-size: 0.9rem; }
+.lot-info .lot-meta { font-size: 0.78rem; color: #64748b; margin-top: 2px; }
+.lot-qty { text-align: right; white-space: nowrap; }
+.lot-qty .qty-val { font-weight: 700; color: #2563eb; font-size: 1rem; }
+.lot-qty .qty-unit { font-size: 0.75rem; color: #64748b; }
+
+/* Quantity / Output cards */
+.qty-card {
+    background: #fff; border: 1px solid #e2e8f0; border-radius: 12px;
+    padding: 1.25rem; margin-bottom: 1rem; max-width: 800px;
+}
+.qty-card .lot-label { font-weight: 600; color: #1e293b; margin-bottom: 0.5rem; }
+.qty-card .lot-sub { font-size: 0.78rem; color: #64748b; margin-bottom: 0.75rem; }
+.qty-input-row { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+.qty-input-row input[type="number"] {
+    width: 140px; border: 1px solid #d1d5db; border-radius: 8px;
+    padding: 8px 12px; font-size: 1rem; font-weight: 600;
+}
+.qty-input-row input:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.12); outline: none; }
+.qty-input-row .unit-label { font-size: 0.85rem; color: #64748b; }
+.qty-input-row .max-btn {
+    background: none; border: 1px solid #d1d5db; border-radius: 6px;
+    padding: 4px 10px; font-size: 0.75rem; color: #2563eb; cursor: pointer; font-weight: 600;
+}
+.qty-input-row .max-btn:hover { background: #eff6ff; }
+
+/* Output section */
+.output-card {
+    background: #fff; border: 1px solid #e2e8f0; border-radius: 12px;
+    padding: 1.25rem; margin-bottom: 1rem; max-width: 800px;
+}
+.output-card h6 { font-weight: 700; margin-bottom: 1rem; }
+.form-row { display: flex; gap: 1rem; margin-bottom: 0.75rem; flex-wrap: wrap; }
+.form-row .form-group { flex: 1; min-width: 180px; }
+.form-row label { font-weight: 600; font-size: 0.8rem; color: #1e293b; display: block; margin-bottom: 4px; }
+.form-row input, .form-row select {
+    width: 100%; border: 1px solid #d1d5db; border-radius: 8px;
+    padding: 8px 12px; font-size: 0.85rem;
+}
+.form-row input:focus, .form-row select:focus {
+    border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.12); outline: none;
+}
+
+.yield-badge {
+    display: inline-block; background: #dcfce7; color: #16a34a; padding: 2px 10px;
+    border-radius: 999px; font-size: 0.75rem; font-weight: 600;
+}
+.add-output-btn {
+    background: none; border: 1px dashed #d1d5db; border-radius: 12px; padding: 1rem;
+    width: 100%; max-width: 800px; text-align: center; cursor: pointer;
+    color: #64748b; font-size: 0.85rem; font-weight: 600; transition: all 0.15s;
+}
+.add-output-btn:hover { border-color: #2563eb; color: #2563eb; background: #eff6ff; }
+
+/* Process-type hints */
+.type-hint {
+    background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px;
+    padding: 12px 16px; font-size: 0.82rem; color: #1e40af; margin-bottom: 1.25rem;
+    max-width: 800px;
+}
+.type-hint i { margin-right: 6px; }
+
+/* Search */
+.search-box {
+    border: 1px solid #d1d5db; border-radius: 8px; padding: 8px 14px;
+    font-size: 0.85rem; width: 300px; background: #fff;
+}
+.search-box:focus { border-color: #2563eb; box-shadow: 0 0 0 2px rgba(37,99,235,0.15); outline: none; }
+
+/* Buttons */
+.btn-inv-primary {
+    background: #2563eb; color: #fff; border: none; border-radius: 8px;
+    padding: 10px 28px; font-size: 0.9rem; font-weight: 600; cursor: pointer;
+}
+.btn-inv-primary:hover { background: #1d4ed8; color: #fff; }
+.btn-inv-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-inv-outline {
+    background: #fff; color: #374151; border: 1px solid #d1d5db; border-radius: 8px;
+    padding: 10px 24px; font-size: 0.9rem; font-weight: 600; cursor: pointer;
+}
+.btn-inv-outline:hover { border-color: #2563eb; color: #2563eb; }
+.btn-danger-sm {
+    background: none; border: none; color: #dc2626; cursor: pointer;
+    font-size: 0.8rem; padding: 2px 6px;
+}
+.btn-danger-sm:hover { text-decoration: underline; }
+
+.bottom-bar {
+    position: fixed; bottom: 0; left: 72px; right: 0; background: #fff;
+    border-top: 1px solid #e5e7eb; padding: 14px 2rem;
+    display: flex; justify-content: space-between; align-items: center; z-index: 50;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- Sidebar -->
+<div class="inv-sidebar">
+    <a href="{% url 'operations_hub' %}" title="Dashboard"><i class="bi bi-grid-1x2"></i><span>Dashboard</span></a>
+    <a href="{% url 'purchases_page' %}" title="Purchase"><i class="bi bi-cart"></i><span>Purchase</span></a>
+    <a href="{% url 'receiving_page' %}" title="Receive"><i class="bi bi-box-arrow-in-down"></i><span>Receive</span></a>
+    <a href="{% url 'inventory_item_library' %}" title="Inventory"><i class="bi bi-box-seam"></i><span>Inventory</span></a>
+    <a href="{% url 'processing_hub' %}" class="active" title="Process"><i class="bi bi-gear"></i><span>Process</span></a>
+    <a href="#" title="Sales"><i class="bi bi-receipt"></i><span>Sales</span></a>
+    <a href="#" title="Ship"><i class="bi bi-truck"></i><span>Ship</span></a>
+</div>
+
+<div class="inv-main" style="padding-bottom: 80px;">
+    <div class="inv-header">
+        <h2><i class="bi bi-gear me-2" style="color:#2563eb;"></i>{{ process_type_label }}</h2>
+        <div class="sub">Select source lots, configure output, and start processing.</div>
+    </div>
+
+    <!-- Steps -->
+    <div class="steps-bar">
+        <div class="step active" id="step1-tab">
+            <span class="step-num">1</span> Source Lots
+        </div>
+        <div class="step" id="step2-tab">
+            <span class="step-num">2</span> Quantities
+        </div>
+        <div class="step" id="step3-tab">
+            <span class="step-num">3</span> Output
+        </div>
+        <div class="step" id="step4-tab">
+            <span class="step-num">4</span> Confirm
+        </div>
+    </div>
+
+    <!-- Step 1: Choose source lots -->
+    <div id="step1">
+        <div style="margin-bottom: 1rem; display:flex; gap:0.75rem; align-items:center;">
+            <input type="text" class="search-box" id="lotSearch" placeholder="Search lots..." oninput="debounceLotSearch()">
+            <span id="lotCount" style="font-size:0.8rem; color:#64748b;">0 lots</span>
+        </div>
+        <div class="lot-list" id="lotList">
+            <div class="text-center text-muted py-4">Loading available lots...</div>
+        </div>
+    </div>
+
+    <!-- Step 2: Enter quantities -->
+    <div id="step2" style="display:none;">
+        <div id="qtyCards"></div>
+    </div>
+
+    <!-- Step 3: Configure output -->
+    <div id="step3" style="display:none;">
+        <div class="type-hint" id="typeHint"></div>
+        <div id="outputCards"></div>
+        <button class="add-output-btn" onclick="addOutput()">
+            <i class="bi bi-plus-circle me-1"></i> Add Another Output Lot
+        </button>
+    </div>
+
+    <!-- Step 4: Confirm -->
+    <div id="step4" style="display:none;">
+        <div style="max-width:800px; background:#fff; border-radius:12px; padding:1.5rem; border:1px solid #e2e8f0;">
+            <h5 style="font-weight:700; margin-bottom:1rem;">Batch Summary</h5>
+            <div id="summaryContent"></div>
+            <div style="margin-top:1rem;">
+                <label style="font-weight:600; font-size:0.85rem;">Notes (optional)</label>
+                <textarea id="batchNotes" class="form-control" rows="2" style="border-radius:8px; margin-top:4px;"></textarea>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bottom bar -->
+<div class="bottom-bar">
+    <button class="btn-inv-outline" id="backBtn" onclick="goBack()" style="display:none;">
+        <i class="bi bi-arrow-left me-1"></i> Back
+    </button>
+    <div></div>
+    <button class="btn-inv-primary" id="nextBtn" onclick="goNext()" disabled>
+        Next <i class="bi bi-arrow-right ms-1"></i>
+    </button>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const PROCESS_TYPE = '{{ process_type }}';
+const TOTAL_STEPS = 4;
+let currentStep = 1;
+let allLots = [];
+let selectedLots = {};   // inv.id -> lot data
+let quantities = {};     // inv.id -> number
+let outputItems = [];    // [{product_id, product_name, quantity, unit_type, yield_percent, lot_id}]
+let allProducts = [];
+let searchTimeout;
+
+const TYPE_HINTS = {
+    fish_cutting: '<i class="bi bi-scissors"></i> <strong>Fish Cutting:</strong> Source whole fish will be cut into portions. Define the output product(s) and expected yield %.',
+    commingle: '<i class="bi bi-arrow-left-right"></i> <strong>Commingle:</strong> Combine multiple source lots into a single output lot.',
+    renaming: '<i class="bi bi-pencil-square"></i> <strong>Renaming:</strong> Re-label source lots under a different product. Quantity stays the same.',
+    freeze: '<i class="bi bi-snow"></i> <strong>Freeze:</strong> Move source lots into frozen storage. Output is the same product in frozen form.',
+    lot_breaking: '<i class="bi bi-share"></i> <strong>Bag or Lot Breaking:</strong> Split a source lot into smaller output lots.',
+    shucking: '<i class="bi bi-box-arrow-right"></i> <strong>Shucking:</strong> Shuck shellfish from shell. Define yield % and output product.',
+    wet_store: '<i class="bi bi-droplet-half"></i> <strong>Wet Store:</strong> Move lots into wet storage. Output is the same product.',
+};
+
+function getCookie(name) {
+    const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+    return match ? decodeURIComponent(match[2]) : '';
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    loadLots();
+    loadProducts();
+});
+
+// ── Data loading ────────────────────────────────────────────────
+
+async function loadLots() {
+    const search = document.getElementById('lotSearch').value.trim();
+    let url = '/api/processing/source-lots/?';
+    if (search) url += `search=${encodeURIComponent(search)}&`;
+    const res = await fetch(url);
+    const data = await res.json();
+    allLots = data.lots || [];
+    renderLots();
+}
+
+async function loadProducts() {
+    const res = await fetch('/api/processing/products/');
+    const data = await res.json();
+    allProducts = data.products || [];
+}
+
+function renderLots() {
+    const container = document.getElementById('lotList');
+    document.getElementById('lotCount').textContent = allLots.length + ' lots';
+
+    if (!allLots.length) {
+        container.innerHTML = '<div class="text-center text-muted py-4">No lots with available inventory found.</div>';
+        return;
+    }
+
+    container.innerHTML = allLots.map(lot => `
+        <div class="lot-card ${selectedLots[lot.id] ? 'selected' : ''}" onclick="toggleLot(${lot.id})">
+            <div class="lot-check">${selectedLots[lot.id] ? '<i class="bi bi-check"></i>' : ''}</div>
+            <div class="lot-info">
+                <div class="lot-name">${esc(lot.item_name)}</div>
+                <div class="lot-meta">
+                    ${esc(lot.vendor || '')}${lot.vendor && lot.vendor_lot ? ' / ' : ''}${esc(lot.vendor_lot || '')}
+                    ${lot.receive_date ? ' &middot; Recv: ' + esc(lot.receive_date) : ''}
+                    ${lot.origin ? ' &middot; ' + esc(lot.origin) : ''}
+                </div>
+                <div class="lot-meta">${esc(lot.lot_id)} &middot; ${esc(lot.product_id)}</div>
+            </div>
+            <div class="lot-qty">
+                <div class="qty-val">${fmtNum(lot.on_hand)}</div>
+                <div class="qty-unit">${esc(lot.unit_type)}</div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function toggleLot(id) {
+    if (selectedLots[id]) {
+        delete selectedLots[id];
+        delete quantities[id];
+    } else {
+        const lot = allLots.find(l => l.id === id);
+        if (lot) { selectedLots[id] = lot; quantities[id] = lot.on_hand; }
+    }
+    renderLots();
+    updateButtons();
+}
+
+function debounceLotSearch() {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(loadLots, 300);
+}
+
+// ── Step navigation ─────────────────────────────────────────────
+
+function updateButtons() {
+    const count = Object.keys(selectedLots).length;
+    const nextBtn = document.getElementById('nextBtn');
+    const backBtn = document.getElementById('backBtn');
+
+    backBtn.style.display = currentStep === 1 ? 'none' : '';
+
+    if (currentStep < TOTAL_STEPS) {
+        nextBtn.innerHTML = 'Next <i class="bi bi-arrow-right ms-1"></i>';
+        nextBtn.disabled = (currentStep === 1 && count === 0);
+    } else {
+        nextBtn.innerHTML = '<i class="bi bi-check-circle me-1"></i> Start Processing';
+        nextBtn.disabled = false;
+    }
+}
+
+function goNext() {
+    if (currentStep === 1) {
+        showStep(2);
+        renderQtyCards();
+    } else if (currentStep === 2) {
+        // Validate quantities
+        for (const id of Object.keys(selectedLots)) {
+            const q = parseFloat(quantities[id]) || 0;
+            if (q <= 0) { alert('Please enter a valid quantity for all selected lots.'); return; }
+            if (q > selectedLots[id].on_hand) {
+                alert(`Quantity for "${selectedLots[id].item_name}" exceeds available (${selectedLots[id].on_hand}).`);
+                return;
+            }
+        }
+        showStep(3);
+        initOutputStep();
+    } else if (currentStep === 3) {
+        if (!validateOutputs()) return;
+        showStep(4);
+        renderSummary();
+    } else {
+        submitBatch();
+    }
+}
+
+function goBack() {
+    if (currentStep > 1) showStep(currentStep - 1);
+}
+
+function showStep(n) {
+    currentStep = n;
+    for (let i = 1; i <= TOTAL_STEPS; i++) {
+        document.getElementById('step' + i).style.display = i === n ? '' : 'none';
+    }
+    for (let i = 1; i <= TOTAL_STEPS; i++) {
+        const el = document.getElementById('step' + i + '-tab');
+        el.className = 'step';
+        if (i === n) el.classList.add('active');
+        else if (i < n) el.classList.add('done');
+    }
+    updateButtons();
+}
+
+// ── Step 2: Quantity cards ──────────────────────────────────────
+
+function renderQtyCards() {
+    const container = document.getElementById('qtyCards');
+    const ids = Object.keys(selectedLots);
+
+    container.innerHTML = ids.map((id, i) => {
+        const lot = selectedLots[id];
+        const q = quantities[id] || lot.on_hand;
+        return `
+            <div class="qty-card">
+                <div style="font-size:0.72rem; color:#64748b; text-transform:uppercase; font-weight:600; margin-bottom:4px;">
+                    Source Lot ${i + 1} of ${ids.length}
+                </div>
+                <div class="lot-label">${esc(lot.item_name)}</div>
+                <div class="lot-sub">
+                    ${esc(lot.vendor || '')} / ${esc(lot.lot_id)}
+                    &middot; On hand: <strong>${fmtNum(lot.on_hand)} ${esc(lot.unit_type)}</strong>
+                </div>
+                <div class="qty-input-row">
+                    <label style="font-weight:600; font-size:0.85rem; margin-right:4px;">Quantity</label>
+                    <input type="number" step="0.01" min="0" max="${lot.on_hand}" value="${q}"
+                           onchange="quantities[${id}]=parseFloat(this.value)||0"
+                           oninput="quantities[${id}]=parseFloat(this.value)||0">
+                    <span class="unit-label">${esc(lot.unit_type)}</span>
+                    <button class="max-btn" onclick="this.previousElementSibling.previousElementSibling.value=${lot.on_hand}; quantities[${id}]=${lot.on_hand};">
+                        Use All
+                    </button>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+// ── Step 3: Output configuration ────────────────────────────────
+
+function getTotalSourceQty() {
+    return Object.keys(selectedLots).reduce((sum, id) => sum + (parseFloat(quantities[id]) || 0), 0);
+}
+
+function getSourceUnitType() {
+    const ids = Object.keys(selectedLots);
+    return ids.length ? (selectedLots[ids[0]].unit_type || '') : '';
+}
+
+function initOutputStep() {
+    document.getElementById('typeHint').innerHTML = TYPE_HINTS[PROCESS_TYPE] || '';
+
+    // Auto-generate a default output if empty
+    if (outputItems.length === 0) {
+        const totalQty = getTotalSourceQty();
+        const unitType = getSourceUnitType();
+
+        if (['commingle', 'freeze', 'wet_store', 'renaming'].includes(PROCESS_TYPE)) {
+            // Same product, same quantity (1:1 processes)
+            const firstLot = selectedLots[Object.keys(selectedLots)[0]];
+            outputItems.push({
+                product_id: firstLot ? firstLot.product_id : '',
+                product_name: firstLot ? firstLot.item_name : '',
+                quantity: totalQty,
+                unit_type: unitType,
+                yield_percent: 100,
+                lot_id: '',
+            });
+        } else {
+            // fish_cutting, shucking, lot_breaking — user needs to configure
+            outputItems.push({
+                product_id: '',
+                product_name: '',
+                quantity: totalQty,
+                unit_type: unitType,
+                yield_percent: PROCESS_TYPE === 'shucking' ? 15 : (PROCESS_TYPE === 'fish_cutting' ? 65 : 100),
+                lot_id: '',
+            });
+        }
+    }
+    renderOutputCards();
+}
+
+function renderOutputCards() {
+    const container = document.getElementById('outputCards');
+    const totalQty = getTotalSourceQty();
+    const productOptions = allProducts.map(p =>
+        `<option value="${esc(p.product_id)}">${esc(p.item_name)}</option>`
+    ).join('');
+
+    container.innerHTML = outputItems.map((out, i) => {
+        const showYield = ['fish_cutting', 'shucking', 'lot_breaking'].includes(PROCESS_TYPE);
+        const showProduct = ['fish_cutting', 'shucking', 'renaming'].includes(PROCESS_TYPE);
+        return `
+        <div class="output-card">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
+                <h6 style="margin:0;">Output Lot ${i + 1}</h6>
+                ${outputItems.length > 1 ? `<button class="btn-danger-sm" onclick="removeOutput(${i})"><i class="bi bi-trash me-1"></i>Remove</button>` : ''}
+            </div>
+
+            ${showProduct ? `
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Output Product</label>
+                    <select onchange="outputItems[${i}].product_id=this.value; outputItems[${i}].product_name=this.options[this.selectedIndex].text;">
+                        <option value="">Same as source</option>
+                        ${productOptions}
+                    </select>
+                    <script>document.querySelectorAll('.output-card')[${i}].querySelector('select').value='${esc(out.product_id)}';<\/script>
+                </div>
+            </div>` : ''}
+
+            <div class="form-row">
+                ${showYield ? `
+                <div class="form-group" style="max-width:160px;">
+                    <label>Yield %</label>
+                    <input type="number" step="0.1" min="0" max="100" value="${out.yield_percent || ''}"
+                           oninput="updateOutputYield(${i}, this.value)">
+                </div>` : ''}
+                <div class="form-group" style="max-width:200px;">
+                    <label>Output Quantity</label>
+                    <input type="number" step="0.01" min="0" id="out-qty-${i}" value="${out.quantity || ''}"
+                           oninput="outputItems[${i}].quantity=parseFloat(this.value)||0">
+                </div>
+                <div class="form-group" style="max-width:140px;">
+                    <label>Unit</label>
+                    <input type="text" value="${esc(out.unit_type)}" oninput="outputItems[${i}].unit_type=this.value">
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Output Lot ID (optional)</label>
+                    <input type="text" value="${esc(out.lot_id)}" placeholder="Auto-generated if blank"
+                           oninput="outputItems[${i}].lot_id=this.value">
+                </div>
+            </div>
+
+            ${showYield && out.yield_percent ? `
+            <div style="margin-top:4px;">
+                <span class="yield-badge">${out.yield_percent}% yield &rarr; ${fmtNum(totalQty * out.yield_percent / 100)} from ${fmtNum(totalQty)} input</span>
+            </div>` : ''}
+        </div>`;
+    }).join('');
+}
+
+function updateOutputYield(idx, val) {
+    const pct = parseFloat(val) || 0;
+    outputItems[idx].yield_percent = pct;
+    const totalQty = getTotalSourceQty();
+    outputItems[idx].quantity = Math.round(totalQty * pct / 100 * 100) / 100;
+    const qtyInput = document.getElementById('out-qty-' + idx);
+    if (qtyInput) qtyInput.value = outputItems[idx].quantity;
+    renderOutputCards();
+}
+
+function addOutput() {
+    const unitType = getSourceUnitType();
+    outputItems.push({
+        product_id: '', product_name: '', quantity: 0,
+        unit_type: unitType, yield_percent: '', lot_id: '',
+    });
+    renderOutputCards();
+}
+
+function removeOutput(idx) {
+    outputItems.splice(idx, 1);
+    renderOutputCards();
+}
+
+function validateOutputs() {
+    for (let i = 0; i < outputItems.length; i++) {
+        if (!outputItems[i].quantity || outputItems[i].quantity <= 0) {
+            alert(`Output lot ${i + 1}: please enter a valid quantity.`);
+            return false;
+        }
+    }
+    return true;
+}
+
+// ── Step 4: Summary ─────────────────────────────────────────────
+
+function renderSummary() {
+    const srcIds = Object.keys(selectedLots);
+    const typeLabels = {
+        fish_cutting: 'Fish Cutting', commingle: 'Commingle', renaming: 'Renaming',
+        freeze: 'Freeze', lot_breaking: 'Bag or Lot Breaking', shucking: 'Shucking',
+        wet_store: 'Wet Store',
+    };
+
+    let html = `<div style="margin-bottom:1rem;"><strong>Process Type:</strong> ${esc(typeLabels[PROCESS_TYPE] || PROCESS_TYPE)}</div>`;
+
+    // Sources
+    html += `<div style="margin-bottom:0.5rem; font-weight:600; color:#1e293b;">Source Lots (${srcIds.length})</div>`;
+    html += '<table style="width:100%; font-size:0.85rem; border-collapse:collapse; margin-bottom:1.25rem;">';
+    html += '<tr style="border-bottom:1px solid #e5e7eb;"><th style="text-align:left;padding:6px 8px;">Lot</th><th style="text-align:left;padding:6px 8px;">Item</th><th style="text-align:right;padding:6px 8px;">Qty In</th></tr>';
+    let totalIn = 0;
+    srcIds.forEach(id => {
+        const lot = selectedLots[id];
+        const q = quantities[id] || 0;
+        totalIn += q;
+        html += `<tr style="border-bottom:1px solid #f1f5f9;">
+            <td style="padding:6px 8px;">${esc(lot.lot_id)}</td>
+            <td style="padding:6px 8px;">${esc(lot.item_name)}</td>
+            <td style="padding:6px 8px; text-align:right; font-weight:600;">${fmtNum(q)} ${esc(lot.unit_type)}</td>
+        </tr>`;
+    });
+    html += `<tr><td colspan="2" style="padding:6px 8px; font-weight:700;">Total Input</td><td style="padding:6px 8px; text-align:right; font-weight:700;">${fmtNum(totalIn)}</td></tr>`;
+    html += '</table>';
+
+    // Outputs
+    html += `<div style="margin-bottom:0.5rem; font-weight:600; color:#1e293b;">Output Lots (${outputItems.length})</div>`;
+    html += '<table style="width:100%; font-size:0.85rem; border-collapse:collapse; margin-bottom:1rem;">';
+    html += '<tr style="border-bottom:1px solid #e5e7eb;"><th style="text-align:left;padding:6px 8px;">Product</th><th style="text-align:right;padding:6px 8px;">Qty Out</th><th style="text-align:right;padding:6px 8px;">Yield</th></tr>';
+    let totalOut = 0;
+    outputItems.forEach(out => {
+        totalOut += (out.quantity || 0);
+        html += `<tr style="border-bottom:1px solid #f1f5f9;">
+            <td style="padding:6px 8px;">${esc(out.product_name || 'Same as source')}</td>
+            <td style="padding:6px 8px; text-align:right; font-weight:600;">${fmtNum(out.quantity)} ${esc(out.unit_type)}</td>
+            <td style="padding:6px 8px; text-align:right;">${out.yield_percent ? out.yield_percent + '%' : '--'}</td>
+        </tr>`;
+    });
+    html += `<tr><td style="padding:6px 8px; font-weight:700;">Total Output</td><td style="padding:6px 8px; text-align:right; font-weight:700;">${fmtNum(totalOut)}</td><td style="padding:6px 8px; text-align:right; font-weight:700;">${totalIn > 0 ? Math.round(totalOut / totalIn * 100) + '%' : '--'}</td></tr>`;
+    html += '</table>';
+
+    document.getElementById('summaryContent').innerHTML = html;
+}
+
+// ── Submit ───────────────────────────────────────────────────────
+
+async function submitBatch() {
+    const nextBtn = document.getElementById('nextBtn');
+    nextBtn.disabled = true;
+    nextBtn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i> Creating...';
+
+    const sources = Object.keys(selectedLots).map(id => ({
+        inventory_id: parseInt(id),
+        quantity: quantities[id] || 0,
+        unit_type: selectedLots[id].unit_type,
+        product_id: selectedLots[id].product_id,
+    }));
+
+    const outputs = outputItems.map(out => ({
+        product_id: out.product_id,
+        description: out.product_name,
+        quantity: out.quantity,
+        unit_type: out.unit_type,
+        yield_percent: out.yield_percent || null,
+        lot_id: out.lot_id,
+        origin: '',
+    }));
+
+    try {
+        const res = await fetch('/api/processing/batches/create/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+            body: JSON.stringify({
+                process_type: PROCESS_TYPE,
+                sources,
+                outputs,
+                notes: document.getElementById('batchNotes').value.trim(),
+            }),
+        });
+        const data = await res.json();
+        if (data.error) {
+            alert(data.error);
+            nextBtn.disabled = false;
+            nextBtn.innerHTML = '<i class="bi bi-check-circle me-1"></i> Start Processing';
+            return;
+        }
+        window.location.href = '/processing/' + data.id + '/';
+    } catch {
+        alert('Failed to create batch.');
+        nextBtn.disabled = false;
+        nextBtn.innerHTML = '<i class="bi bi-check-circle me-1"></i> Start Processing';
+    }
+}
+
+function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+function fmtNum(n) { return n ? Number(n).toLocaleString(undefined, {maximumFractionDigits: 2}) : '0'; }
+
+updateButtons();
+</script>
+{% endblock %}

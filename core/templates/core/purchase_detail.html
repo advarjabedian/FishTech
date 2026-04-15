@@ -1,0 +1,363 @@
+{% extends 'core/base.html' %}
+{% block title %}PO {{ po.po_number }} - {{ po.vendor_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+.inv-sidebar {
+    width: 72px; min-height: calc(100vh - 56px); background: #f0f6ff;
+    border-right: 1px solid #d6e4f0; display: flex; flex-direction: column;
+    align-items: center; padding-top: 1rem; gap: 0.25rem;
+    position: fixed; left: 0; top: 56px; z-index: 100;
+}
+.inv-sidebar a {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    width: 56px; padding: 10px 0; border-radius: 10px; color: #5a7ba6;
+    text-decoration: none; font-size: 0.65rem; font-weight: 500; transition: all 0.15s;
+}
+.inv-sidebar a i { font-size: 1.3rem; margin-bottom: 2px; }
+.inv-sidebar a:hover { background: #dbe8f7; color: #2563eb; }
+.inv-sidebar a.active { background: #2563eb; color: #fff; }
+.inv-main { margin-left: 72px; padding: 1.5rem 2rem; background: #f8fafc; min-height: calc(100vh - 56px); }
+
+.po-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; }
+.po-header h2 { font-size: 1.4rem; font-weight: 700; margin: 0; }
+.po-header .meta { font-size: 0.8rem; color: #64748b; }
+
+.badge-status { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 0.72rem; font-weight: 600; }
+.badge-draft { background: #f1f5f9; color: #64748b; }
+.badge-open { background: #dbeafe; color: #2563eb; }
+.badge-closed { background: #dcfce7; color: #16a34a; }
+
+.po-card { background: #fff; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); padding: 1.5rem; margin-bottom: 1.25rem; max-width: 1000px; }
+.po-card h5 { font-weight: 700; font-size: 0.95rem; margin-bottom: 1rem; }
+
+.info-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem; }
+.info-item label { font-size: 0.75rem; font-weight: 600; color: #64748b; text-transform: uppercase; display: block; margin-bottom: 4px; }
+.info-item input, .info-item select {
+    width: 100%; border: 1px solid #d1d5db; border-radius: 8px; padding: 8px 12px; font-size: 0.85rem;
+}
+.info-item input:focus, .info-item select:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.12); outline: none; }
+
+.contact-card {
+    background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px 18px;
+}
+.contact-card .cc-label { font-size: 0.75rem; font-weight: 600; color: #64748b; text-transform: uppercase; margin-bottom: 4px; }
+.contact-card .cc-name { font-weight: 600; color: #1e293b; }
+.contact-card .cc-detail { font-size: 0.82rem; color: #64748b; }
+
+/* Items table */
+.items-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+.items-table th {
+    text-align: left; color: #64748b; font-weight: 600; font-size: 0.73rem;
+    text-transform: uppercase; padding: 8px 10px; border-bottom: 1px solid #e2e8f0;
+}
+.items-table td { padding: 8px 10px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+.items-table .item-select { width: 100%; border: 1px solid #d1d5db; border-radius: 6px; padding: 6px 8px; font-size: 0.85rem; }
+.items-table input { border: 1px solid #d1d5db; border-radius: 6px; padding: 6px 8px; font-size: 0.85rem; width: 100%; }
+.items-table .del-btn { background: none; border: 1px solid #e5e7eb; border-radius: 6px; color: #94a3b8; cursor: pointer; padding: 4px 8px; }
+.items-table .del-btn:hover { color: #dc2626; border-color: #dc2626; }
+
+.add-links { display: flex; gap: 1rem; margin-top: 0.75rem; font-size: 0.82rem; }
+.add-links a { color: #2563eb; text-decoration: none; font-weight: 600; cursor: pointer; }
+.add-links a:hover { text-decoration: underline; }
+
+.totals-row { display: flex; justify-content: flex-end; gap: 2rem; font-size: 0.85rem; margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid #e5e7eb; }
+.totals-row .t-label { color: #64748b; font-weight: 600; }
+.totals-row .t-val { color: #1e293b; font-weight: 700; min-width: 80px; text-align: right; }
+
+.btn-inv-primary { background: #2563eb; color: #fff; border: none; border-radius: 8px; padding: 8px 20px; font-size: 0.85rem; font-weight: 600; cursor: pointer; }
+.btn-inv-primary:hover { background: #1d4ed8; color: #fff; }
+.btn-inv-outline { background: #fff; color: #374151; border: 1px solid #d1d5db; border-radius: 8px; padding: 8px 20px; font-size: 0.85rem; font-weight: 600; cursor: pointer; }
+.btn-inv-outline:hover { border-color: #2563eb; color: #2563eb; }
+.btn-publish { background: #0ea5e9; color: #fff; border: none; border-radius: 8px; padding: 8px 20px; font-size: 0.85rem; font-weight: 600; cursor: pointer; }
+.btn-publish:hover { background: #0284c7; }
+
+.notes-area { width: 100%; border: 1px solid #d1d5db; border-radius: 8px; padding: 10px 12px; font-size: 0.85rem; resize: vertical; }
+.notes-area:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.12); outline: none; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div class="inv-sidebar">
+    <a href="{% url 'purchases_page' %}" class="active" title="Purchase"><i class="bi bi-cart"></i><span>Purchase</span></a>
+    <a href="{% url 'receiving_page' %}" title="Receive"><i class="bi bi-box-arrow-in-down"></i><span>Receive</span></a>
+    <a href="{% url 'inventory_item_library' %}" title="Inventory"><i class="bi bi-box-seam"></i><span>Inventory</span></a>
+    <a href="{% url 'processing_hub' %}" title="Process"><i class="bi bi-gear"></i><span>Process</span></a>
+    <a href="#" title="Sales"><i class="bi bi-receipt"></i><span>Sales</span></a>
+    <a href="#" title="Ship"><i class="bi bi-truck"></i><span>Ship</span></a>
+</div>
+
+<div class="inv-main">
+    <div style="margin-bottom:1rem;">
+        <a href="{% url 'purchases_page' %}" style="font-size:0.85rem; color:#2563eb; text-decoration:none;">
+            <i class="bi bi-arrow-left me-1"></i> Back to Purchases
+        </a>
+    </div>
+
+    <div class="po-header">
+        <div>
+            <h2>{{ po.vendor_name }}</h2>
+            <div class="meta">
+                <i class="bi bi-clipboard me-1"></i> New Purchase &middot;
+                <span class="badge-status badge-{{ po.order_status }}">{{ po.get_order_status_display }}</span>
+            </div>
+        </div>
+        <div style="display:flex; gap:0.5rem;">
+            <button class="btn-inv-outline" onclick="saveDraft()">Save Draft</button>
+            <button class="btn-publish" onclick="publishPO()">Publish</button>
+        </div>
+    </div>
+
+    <!-- Purchase Info -->
+    <div class="po-card">
+        <div style="display:flex; justify-content:space-between; align-items:start; gap:1.5rem; flex-wrap:wrap;">
+            <div style="flex:1;">
+                <h5>Purchase Info</h5>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <label>Buyer</label>
+                        <input type="text" id="po-buyer" value="{{ po.buyer }}">
+                    </div>
+                    <div class="info-item">
+                        <label>Vendor Invoice Number</label>
+                        <input type="text" id="po-invoice" value="{{ po.vendor_invoice_number }}">
+                    </div>
+                    <div class="info-item">
+                        <label>Order Date</label>
+                        <input type="date" id="po-order-date" value="{{ po.order_date|date:'Y-m-d' }}">
+                    </div>
+                </div>
+                <div class="info-grid" style="margin-top:1rem;">
+                    <div class="info-item">
+                        <label>Expected Receipt Date</label>
+                        <input type="date" id="po-expected-date" value="{{ po.expected_date|date:'Y-m-d' }}">
+                    </div>
+                    <div class="info-item">
+                        <label>QB PO #</label>
+                        <input type="text" id="po-qb" value="{{ po.qb_po_number }}">
+                    </div>
+                </div>
+            </div>
+            <div class="contact-card" id="contactCard" style="min-width:220px;">
+                <div class="cc-label">Contact Info</div>
+                <div class="cc-name" id="cc-name">--</div>
+                <div class="cc-detail" id="cc-phone"></div>
+                <div class="cc-detail" id="cc-email"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Items -->
+    <div class="po-card">
+        <h5>Items</h5>
+        <table class="items-table">
+            <thead>
+                <tr>
+                    <th style="width:35%;">Item</th>
+                    <th style="width:30px;"></th>
+                    <th>Notes</th>
+                    <th style="width:100px;">Quantity</th>
+                    <th style="width:100px;">Unit Price</th>
+                    <th style="width:100px; text-align:right;">Amount</th>
+                </tr>
+            </thead>
+            <tbody id="itemsTbody"></tbody>
+        </table>
+
+        <div class="add-links">
+            <a onclick="addItemRow('item')"><i class="bi bi-plus me-1"></i>Add Item</a>
+            <a onclick="addItemRow('fee')"><i class="bi bi-plus me-1"></i>Add Fee</a>
+        </div>
+
+        <div style="margin-top:1.5rem;">
+            <textarea class="notes-area" id="po-notes" rows="2" placeholder="Enter receiving note (Internal)">{{ po.notes }}</textarea>
+        </div>
+
+        <div class="totals-row">
+            <div><span class="t-label">Item Subtotal</span></div>
+            <div><span class="t-val" id="itemSubtotal">$0.00</span></div>
+        </div>
+        <div class="totals-row" style="border:none; margin-top:0; padding-top:0.25rem;">
+            <div><span class="t-label">Fee Subtotal</span></div>
+            <div><span class="t-val" id="feeSubtotal">$0.00</span></div>
+        </div>
+        <div class="totals-row" style="border:none; margin-top:0; padding-top:0.25rem;">
+            <div><span class="t-label" style="color:#1e293b; font-size:0.95rem;">Total</span></div>
+            <div><span class="t-val" id="grandTotal" style="color:#dc2626; font-size:0.95rem;">$0.00</span></div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const PO_ID = {{ po.id }};
+let poData = null;
+let allProducts = [];
+let lineItems = []; // local state
+
+function getCookie(name) {
+    const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+    return match ? decodeURIComponent(match[2]) : '';
+}
+function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+
+document.addEventListener('DOMContentLoaded', async () => {
+    await loadProducts();
+    await loadPODetail();
+});
+
+async function loadProducts() {
+    const res = await fetch('/api/processing/products/');
+    const data = await res.json();
+    allProducts = data.products || [];
+}
+
+async function loadPODetail() {
+    const res = await fetch(`/api/purchasing/orders/${PO_ID}/detail/`);
+    poData = await res.json();
+    lineItems = poData.items || [];
+
+    // Contact info
+    if (poData.vendor_info && poData.vendor_info.name) {
+        document.getElementById('cc-name').textContent = poData.vendor_info.name;
+        document.getElementById('cc-phone').textContent = poData.vendor_info.phone || '';
+        document.getElementById('cc-email').innerHTML = poData.vendor_info.email
+            ? `<a href="mailto:${esc(poData.vendor_info.email)}" style="color:#2563eb;">${esc(poData.vendor_info.email)}</a>` : '';
+    }
+
+    renderItems();
+}
+
+function renderItems() {
+    const tbody = document.getElementById('itemsTbody');
+    const productOpts = allProducts.map(p =>
+        `<option value="${esc(p.product_id)}">${esc(p.item_name)}</option>`
+    ).join('');
+
+    tbody.innerHTML = lineItems.map((item, i) => {
+        const isFee = item.item_type === 'fee';
+        return `
+        <tr>
+            <td>
+                ${isFee
+                    ? `<input type="text" value="${esc(item.description)}" placeholder="Fee description"
+                             onchange="lineItems[${i}].description=this.value; recalc();">`
+                    : `<select class="item-select" onchange="onItemSelect(${i}, this.value)">
+                        <option value="">Choose Item</option>
+                        ${productOpts}
+                       </select>
+                       <script>document.querySelectorAll('.item-select')[document.querySelectorAll('.item-select').length-1].value='${esc(item.product_id)}';<\/script>`
+                }
+            </td>
+            <td><button class="del-btn" onclick="removeItem(${i})"><i class="bi bi-trash"></i></button></td>
+            <td><input type="text" value="${esc(item.notes)}" placeholder="Enter note" onchange="lineItems[${i}].notes=this.value;"></td>
+            <td>${isFee ? '' : `<input type="number" step="0.01" value="${item.quantity||''}" onchange="lineItems[${i}].quantity=parseFloat(this.value)||0; recalc();">`}</td>
+            <td><input type="number" step="0.01" value="${item.unit_price||''}" placeholder="$" onchange="lineItems[${i}].unit_price=parseFloat(this.value)||0; recalc();"></td>
+            <td style="text-align:right; font-weight:600;">$${(item.amount||0).toFixed(2)}</td>
+        </tr>`;
+    }).join('');
+
+    recalc();
+}
+
+function onItemSelect(idx, productId) {
+    const p = allProducts.find(x => x.product_id === productId);
+    if (p) {
+        lineItems[idx].product_id = productId;
+        lineItems[idx].description = p.item_name;
+        lineItems[idx].unit_type = p.unit_type;
+    }
+}
+
+function addItemRow(type) {
+    lineItems.push({
+        id: null, item_type: type, product_id: '', description: type === 'fee' ? 'Fee' : '',
+        notes: '', quantity: null, unit_type: '', unit_price: null, amount: 0,
+    });
+    renderItems();
+}
+
+function removeItem(idx) {
+    const item = lineItems[idx];
+    if (item.id) {
+        // Delete from server
+        fetch(`/api/purchasing/orders/${PO_ID}/items/${item.id}/delete/`, {
+            method: 'POST', headers: { 'X-CSRFToken': getCookie('csrftoken') },
+        });
+    }
+    lineItems.splice(idx, 1);
+    renderItems();
+}
+
+function recalc() {
+    let itemSub = 0, feeSub = 0;
+    lineItems.forEach(item => {
+        if (item.item_type === 'fee') {
+            item.amount = parseFloat(item.unit_price) || 0;
+            feeSub += item.amount;
+        } else {
+            item.amount = (parseFloat(item.quantity) || 0) * (parseFloat(item.unit_price) || 0);
+            itemSub += item.amount;
+        }
+    });
+    document.getElementById('itemSubtotal').textContent = '$' + itemSub.toFixed(2);
+    document.getElementById('feeSubtotal').textContent = '$' + feeSub.toFixed(2);
+    document.getElementById('grandTotal').textContent = '$' + (itemSub + feeSub).toFixed(2);
+
+    // Update amounts in table
+    const amountCells = document.querySelectorAll('.items-table tbody td:last-child');
+    lineItems.forEach((item, i) => {
+        if (amountCells[i]) amountCells[i].textContent = '$' + (item.amount || 0).toFixed(2);
+    });
+}
+
+async function saveDraft() {
+    // Save header
+    await fetch(`/api/purchasing/orders/${PO_ID}/update/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+        body: JSON.stringify({
+            buyer: document.getElementById('po-buyer').value,
+            vendor_invoice_number: document.getElementById('po-invoice').value,
+            order_date: document.getElementById('po-order-date').value || null,
+            expected_date: document.getElementById('po-expected-date').value || null,
+            qb_po_number: document.getElementById('po-qb').value,
+            notes: document.getElementById('po-notes').value,
+            order_status: 'draft',
+        }),
+    });
+
+    // Save items (delete all, re-create)
+    for (const item of lineItems) {
+        if (item.id) {
+            await fetch(`/api/purchasing/orders/${PO_ID}/items/${item.id}/delete/`, {
+                method: 'POST', headers: { 'X-CSRFToken': getCookie('csrftoken') },
+            });
+        }
+    }
+    for (const item of lineItems) {
+        await fetch(`/api/purchasing/orders/${PO_ID}/items/add/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+            body: JSON.stringify(item),
+        });
+    }
+
+    alert('Draft saved.');
+    loadPODetail();
+}
+
+async function publishPO() {
+    await saveDraft();
+    await fetch(`/api/purchasing/orders/${PO_ID}/update/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+        body: JSON.stringify({ order_status: 'open' }),
+    });
+    location.reload();
+}
+</script>
+{% endblock %}

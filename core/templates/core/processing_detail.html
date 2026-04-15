@@ -1,0 +1,239 @@
+{% extends 'core/base.html' %}
+{% block title %}Batch {{ batch.batch_number }}{% endblock %}
+
+{% block extra_css %}
+<style>
+.inv-sidebar {
+    width: 72px; min-height: calc(100vh - 56px); background: #f0f6ff;
+    border-right: 1px solid #d6e4f0; display: flex; flex-direction: column;
+    align-items: center; padding-top: 1rem; gap: 0.25rem;
+    position: fixed; left: 0; top: 56px; z-index: 100;
+}
+.inv-sidebar a {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    width: 56px; padding: 10px 0; border-radius: 10px; color: #5a7ba6;
+    text-decoration: none; font-size: 0.65rem; font-weight: 500; transition: all 0.15s;
+}
+.inv-sidebar a i { font-size: 1.3rem; margin-bottom: 2px; }
+.inv-sidebar a:hover { background: #dbe8f7; color: #2563eb; }
+.inv-sidebar a.active { background: #2563eb; color: #fff; }
+.inv-main { margin-left: 72px; padding: 1.5rem 2rem; background: #f8fafc; min-height: calc(100vh - 56px); }
+
+.detail-card {
+    background: #fff; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    padding: 1.5rem; margin-bottom: 1.25rem; max-width: 900px;
+}
+.detail-card h5 { font-weight: 700; font-size: 1rem; margin-bottom: 1rem; }
+.detail-row { display: flex; gap: 2rem; flex-wrap: wrap; margin-bottom: 0.5rem; font-size: 0.85rem; }
+.detail-row .label { color: #64748b; font-weight: 600; min-width: 120px; }
+.detail-row .value { color: #1e293b; }
+
+.badge-status {
+    display: inline-block; padding: 4px 12px; border-radius: 999px;
+    font-size: 0.75rem; font-weight: 600;
+}
+.badge-draft { background: #f1f5f9; color: #64748b; }
+.badge-in_progress { background: #dbeafe; color: #2563eb; }
+.badge-completed { background: #dcfce7; color: #16a34a; }
+.badge-cancelled { background: #fee2e2; color: #dc2626; }
+
+.source-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+.source-table th {
+    background: #f1f5f9; color: #64748b; font-weight: 600; font-size: 0.75rem;
+    text-transform: uppercase; padding: 8px 12px; border-bottom: 1px solid #e2e8f0;
+}
+.source-table td { padding: 8px 12px; border-bottom: 1px solid #f1f5f9; color: #334155; }
+
+.btn-inv-primary {
+    background: #2563eb; color: #fff; border: none; border-radius: 8px;
+    padding: 8px 20px; font-size: 0.85rem; font-weight: 600; cursor: pointer;
+}
+.btn-inv-primary:hover { background: #1d4ed8; color: #fff; }
+.btn-inv-outline {
+    background: #fff; color: #374151; border: 1px solid #d1d5db; border-radius: 8px;
+    padding: 8px 20px; font-size: 0.85rem; font-weight: 600; cursor: pointer;
+}
+.btn-inv-outline:hover { border-color: #2563eb; color: #2563eb; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div class="inv-sidebar">
+    <a href="{% url 'operations_hub' %}" title="Dashboard"><i class="bi bi-grid-1x2"></i><span>Dashboard</span></a>
+    <a href="{% url 'purchases_page' %}" title="Purchase"><i class="bi bi-cart"></i><span>Purchase</span></a>
+    <a href="{% url 'receiving_page' %}" title="Receive"><i class="bi bi-box-arrow-in-down"></i><span>Receive</span></a>
+    <a href="{% url 'inventory_item_library' %}" title="Inventory"><i class="bi bi-box-seam"></i><span>Inventory</span></a>
+    <a href="{% url 'processing_hub' %}" class="active" title="Process"><i class="bi bi-gear"></i><span>Process</span></a>
+    <a href="#" title="Sales"><i class="bi bi-receipt"></i><span>Sales</span></a>
+    <a href="#" title="Ship"><i class="bi bi-truck"></i><span>Ship</span></a>
+</div>
+
+<div class="inv-main">
+    <div style="margin-bottom: 1rem;">
+        <a href="{% url 'processing_hub' %}" style="font-size:0.85rem; color:#2563eb; text-decoration:none;">
+            <i class="bi bi-arrow-left me-1"></i> Back to Processing
+        </a>
+    </div>
+
+    <div style="display:flex; align-items:center; gap:1rem; margin-bottom:1.5rem;">
+        <h2 style="font-size:1.4rem; font-weight:700; margin:0;">
+            <i class="bi bi-gear me-2" style="color:#2563eb;"></i>{{ batch.batch_number }}
+        </h2>
+        <span class="badge-status badge-{{ batch.status }}">{{ batch.get_status_display }}</span>
+    </div>
+
+    <!-- Batch info -->
+    <div class="detail-card">
+        <h5>Batch Details</h5>
+        <div class="detail-row">
+            <span class="label">Process Type</span>
+            <span class="value">{{ batch.get_process_type_display }}</span>
+        </div>
+        <div class="detail-row">
+            <span class="label">Started</span>
+            <span class="value">{{ batch.started_at|date:"d M Y H:i" }}</span>
+        </div>
+        {% if batch.completed_at %}
+        <div class="detail-row">
+            <span class="label">Completed</span>
+            <span class="value">{{ batch.completed_at|date:"d M Y H:i" }}</span>
+        </div>
+        {% endif %}
+        <div class="detail-row">
+            <span class="label">Created By</span>
+            <span class="value">{{ batch.created_by.get_full_name|default:batch.created_by.username|default:"--" }}</span>
+        </div>
+        {% if batch.notes %}
+        <div class="detail-row">
+            <span class="label">Notes</span>
+            <span class="value">{{ batch.notes }}</span>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Source lots -->
+    <div class="detail-card">
+        <h5>Source Lots</h5>
+        <table class="source-table">
+            <thead>
+                <tr>
+                    <th>Lot ID</th>
+                    <th>Item</th>
+                    <th>Vendor</th>
+                    <th style="text-align:right;">Quantity</th>
+                </tr>
+            </thead>
+            <tbody id="sourceTbody">
+                <tr><td colspan="4" class="text-center text-muted py-3">Loading...</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Output lots -->
+    <div class="detail-card">
+        <h5>Output Lots</h5>
+        <table class="source-table">
+            <thead>
+                <tr>
+                    <th>Lot ID</th>
+                    <th>Product</th>
+                    <th style="text-align:right;">Quantity</th>
+                    <th style="text-align:right;">Yield</th>
+                </tr>
+            </thead>
+            <tbody id="outputTbody">
+                <tr><td colspan="4" class="text-center text-muted py-3">Loading...</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Actions -->
+    {% if batch.status == 'in_progress' %}
+    <div style="display:flex; gap:0.75rem; max-width:900px;">
+        <button class="btn-inv-primary" onclick="completeBatch()">
+            <i class="bi bi-check-circle me-1"></i> Mark Completed
+        </button>
+        <button class="btn-inv-outline" onclick="cancelBatch()">
+            <i class="bi bi-x-circle me-1"></i> Cancel Batch
+        </button>
+    </div>
+    {% endif %}
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const BATCH_ID = {{ batch.id }};
+
+function getCookie(name) {
+    const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+    return match ? decodeURIComponent(match[2]) : '';
+}
+
+document.addEventListener('DOMContentLoaded', () => { loadSources(); loadOutputs(); });
+
+async function loadSources() {
+    const res = await fetch(`/api/processing/batches/${BATCH_ID}/sources/`);
+    const data = await res.json();
+    const sources = data.sources || [];
+    const tbody = document.getElementById('sourceTbody');
+
+    if (!sources.length) {
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-3">No source lots.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = sources.map(s => `
+        <tr>
+            <td style="font-weight:600;">${esc(s.lot_id)}</td>
+            <td>${esc(s.item_name)}</td>
+            <td>${esc(s.vendor)}</td>
+            <td style="text-align:right; font-weight:600;">${Number(s.quantity).toLocaleString(undefined, {maximumFractionDigits:2})} ${esc(s.unit_type)}</td>
+        </tr>
+    `).join('');
+}
+
+async function loadOutputs() {
+    const res = await fetch(`/api/processing/batches/${BATCH_ID}/outputs/`);
+    const data = await res.json();
+    const outputs = data.outputs || [];
+    const tbody = document.getElementById('outputTbody');
+
+    if (!outputs.length) {
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-3">No output lots.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = outputs.map(o => `
+        <tr>
+            <td style="font-weight:600;">${esc(o.lot_id || '--')}</td>
+            <td>${esc(o.product_name || '--')}</td>
+            <td style="text-align:right; font-weight:600;">${Number(o.quantity).toLocaleString(undefined, {maximumFractionDigits:2})} ${esc(o.unit_type)}</td>
+            <td style="text-align:right;">${o.yield_percent ? o.yield_percent + '%' : '--'}</td>
+        </tr>
+    `).join('');
+}
+
+async function completeBatch() {
+    if (!confirm('Mark this batch as completed?')) return;
+    await fetch(`/api/processing/batches/${BATCH_ID}/complete/`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCookie('csrftoken') },
+    });
+    location.reload();
+}
+
+async function cancelBatch() {
+    if (!confirm('Cancel this batch? This cannot be undone.')) return;
+    await fetch(`/api/processing/batches/${BATCH_ID}/cancel/`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCookie('csrftoken') },
+    });
+    location.reload();
+}
+
+function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+</script>
+{% endblock %}

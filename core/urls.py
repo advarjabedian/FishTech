@@ -5,6 +5,22 @@ from .views.profile_orders import *
 from .views import *
 from .views.operations_reports import *
 from .views.stripe_billing import *
+from .views.purchasing import (
+    purchases_page, purchase_detail_page, purchases_list_api,
+    purchase_create_api, purchase_update_api, purchase_delete_api,
+    purchase_detail_api, purchase_item_add_api, purchase_item_delete_api,
+)
+from .views.receiving import (
+    receiving_page, receiving_list_api, receiving_lot_detail_api,
+    receiving_create_api, receiving_update_api, receiving_vendors_api,
+)
+from .views.processing import (
+    processing_hub, processing_new, processing_detail,
+    processing_batches_api, processing_source_lots_api,
+    processing_create_batch_api, processing_batch_sources_api,
+    processing_batch_complete_api, processing_batch_cancel_api,
+    processing_batch_outputs_api, processing_products_api,
+)
 from .views.fish_market import (
     fish_market_redirect, fish_market_page, fish_market_checkout,
     fish_market_order_status,
@@ -263,6 +279,51 @@ path('api/profile-orders/import/template/', download_import_template, name='down
     path('accounting/', accounting_hub, name='accounting_hub'),
     path('compliance/', compliance_hub, name='compliance_hub'),
     path('orders-landing/', orders_landing, name='orders_landing'),
+
+    # Inventory — Item Library
+    path('inventory/', inventory_item_library, name='inventory_item_library'),
+    path('inventory/<int:product_id>/', inventory_item_detail, name='inventory_item_detail'),
+    path('api/inventory/groups/', item_groups_api, name='item_groups_api'),
+    path('api/inventory/groups/create/', item_group_create_api, name='item_group_create_api'),
+    path('api/inventory/items/', inventory_items_api, name='inventory_items_api'),
+    path('api/inventory/items/create/', inventory_item_create_api, name='inventory_item_create_api'),
+    path('api/inventory/items/<int:product_id>/update/', inventory_item_update_api, name='inventory_item_update_api'),
+    path('api/inventory/items/<int:product_id>/delete/', inventory_item_delete_api, name='inventory_item_delete_api'),
+    path('api/inventory/items/<int:product_id>/toggle-active/', inventory_item_toggle_active_api, name='inventory_item_toggle_active_api'),
+    path('api/inventory/items/<int:product_id>/lots/', inventory_item_lots_api, name='inventory_item_lots_api'),
+    path('api/inventory/export/', inventory_export_api, name='inventory_export_api'),
+
+    # Purchasing
+    path('purchasing/', purchases_page, name='purchases_page'),
+    path('purchasing/<int:po_id>/', purchase_detail_page, name='purchase_detail_page'),
+    path('api/purchasing/orders/', purchases_list_api, name='purchases_list_api'),
+    path('api/purchasing/orders/create/', purchase_create_api, name='purchase_create_api'),
+    path('api/purchasing/orders/<int:po_id>/update/', purchase_update_api, name='purchase_update_api'),
+    path('api/purchasing/orders/<int:po_id>/delete/', purchase_delete_api, name='purchase_delete_api'),
+    path('api/purchasing/orders/<int:po_id>/detail/', purchase_detail_api, name='purchase_detail_api'),
+    path('api/purchasing/orders/<int:po_id>/items/add/', purchase_item_add_api, name='purchase_item_add_api'),
+    path('api/purchasing/orders/<int:po_id>/items/<int:item_id>/delete/', purchase_item_delete_api, name='purchase_item_delete_api'),
+
+    # Receiving
+    path('receiving/', receiving_page, name='receiving_page'),
+    path('api/receiving/lots/', receiving_list_api, name='receiving_list_api'),
+    path('api/receiving/lots/<int:lot_id>/', receiving_lot_detail_api, name='receiving_lot_detail_api'),
+    path('api/receiving/lots/create/', receiving_create_api, name='receiving_create_api'),
+    path('api/receiving/lots/<int:lot_id>/update/', receiving_update_api, name='receiving_update_api'),
+    path('api/receiving/vendors/', receiving_vendors_api, name='receiving_vendors_api'),
+
+    # Processing
+    path('processing/', processing_hub, name='processing_hub'),
+    path('processing/new/', processing_new, name='processing_new'),
+    path('processing/<int:batch_id>/', processing_detail, name='processing_detail'),
+    path('api/processing/batches/', processing_batches_api, name='processing_batches_api'),
+    path('api/processing/source-lots/', processing_source_lots_api, name='processing_source_lots_api'),
+    path('api/processing/batches/create/', processing_create_batch_api, name='processing_create_batch_api'),
+    path('api/processing/batches/<int:batch_id>/sources/', processing_batch_sources_api, name='processing_batch_sources_api'),
+    path('api/processing/batches/<int:batch_id>/complete/', processing_batch_complete_api, name='processing_batch_complete_api'),
+    path('api/processing/batches/<int:batch_id>/cancel/', processing_batch_cancel_api, name='processing_batch_cancel_api'),
+    path('api/processing/batches/<int:batch_id>/outputs/', processing_batch_outputs_api, name='processing_batch_outputs_api'),
+    path('api/processing/products/', processing_products_api, name='processing_products_api'),
 
     # Finance — Reports
     path('accounting/reports/', accounting_reports, name='accounting_reports'),

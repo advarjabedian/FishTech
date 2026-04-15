@@ -20,5 +20,13 @@ from .finance import (
     accounting_reports, accounting_reports_api,
     vendor_list_page, vendor_list_api, vendor_create_api, vendor_update_api, vendor_delete_api,
 )
+from .inventory import (
+    inventory_item_library, inventory_item_detail,
+    item_groups_api, item_group_create_api,
+    inventory_items_api, inventory_item_create_api,
+    inventory_item_update_api, inventory_item_delete_api,
+    inventory_item_toggle_active_api, inventory_export_api,
+    inventory_item_lots_api,
+)
 
 

@@ -464,13 +464,36 @@ class Vendor(TenantModel):
     state = models.CharField(max_length=50, blank=True)
     zipcode = models.CharField(max_length=20, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    
+    # BlueTrace fields
+    vendor_type = models.CharField(max_length=50, blank=True, help_text="e.g. Dealer, Exporter, Harvester")
+    cert = models.CharField(max_length=255, blank=True, help_text="Certification number")
+    phone_extension = models.CharField(max_length=20, blank=True)
+    fax = models.CharField(max_length=50, blank=True)
+    billing_email = models.EmailField(blank=True)
+    mailing_address = models.CharField(max_length=255, blank=True)
+    mailing_city = models.CharField(max_length=100, blank=True)
+    mailing_state = models.CharField(max_length=50, blank=True)
+    mailing_zipcode = models.CharField(max_length=20, blank=True)
+    is_active = models.BooleanField(default=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
     class Meta:
         db_table = 'documents_vendor'
         unique_together = [['tenant', 'vendor_id']]
-    
+
     def __str__(self):
         return self.name
+
+    @property
+    def full_mailing_address(self):
+        parts = [self.mailing_address or self.address]
+        city_state = ', '.join(filter(None, [self.mailing_city or self.city, self.mailing_state or self.state]))
+        if city_state:
+            parts.append(city_state)
+        zc = self.mailing_zipcode or self.zipcode
+        if zc:
+            parts[-1] = parts[-1] + ' ' + zc if parts else zc
+        return ', '.join(filter(None, parts))
 
 
 class VendorEmail(TenantModel):
@@ -984,6 +1007,22 @@ class TenantProduct(TenantModel):
 # INVENTORY MODULE MODELS
 # =============================================================================
 
+class ItemGroup(TenantModel):
+    """Item groups for organizing inventory items (e.g. Oysters, Tuna, Clams)"""
+    name = models.CharField(max_length=100)
+    is_active = models.BooleanField(default=True)
+    sort_order = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'inventory_item_group'
+        unique_together = [['tenant', 'name']]
+        ordering = ['sort_order', 'name']
+
+    def __str__(self):
+        return self.name
+
+
 class Product(TenantModel):
     """Product catalog"""
     product_id = models.CharField(max_length=100)
@@ -997,6 +1036,37 @@ class Product(TenantModel):
     labor_pack_cost = models.DecimalField(max_digits=10, decimal_places=4, null=True, blank=True)
     pre_order_hours = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    # BlueTrace fields
+    item_group = models.ForeignKey(ItemGroup, on_delete=models.SET_NULL, null=True, blank=True)
+    item_name = models.CharField(max_length=255, blank=True, help_text="Auto-generated item name")
+    qb_item_name = models.CharField(max_length=255, blank=True, help_text="QuickBooks item name")
+    friendly_name = models.CharField(max_length=255, blank=True)
+    size_cull = models.CharField(max_length=100, blank=True)
+    sku = models.CharField(max_length=100, blank=True)
+    tasting_notes = models.TextField(blank=True)
+    quantity_description = models.CharField(max_length=100, blank=True, help_text="e.g. Bag, Box, Case")
+    country_of_origin = models.CharField(max_length=100, blank=True)
+    brand = models.CharField(max_length=255, blank=True)
+    inventory_unit_of_measure = models.CharField(max_length=50, blank=True, help_text="e.g. Lbs, Each, Bags")
+    list_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    wholesale_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    is_active = models.BooleanField(default=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    # Additional BlueTrace detail fields
+    habitat_production_method = models.CharField(max_length=100, blank=True, help_text="e.g. Wild, Farm Raised, Aquaculture")
+    species = models.CharField(max_length=100, blank=True, help_text="e.g. Eastern Oyster, Atlantic Salmon")
+    department = models.CharField(max_length=100, blank=True, help_text="e.g. US Oysters, Fin Fish")
+    upc = models.CharField(max_length=100, blank=True, help_text="Universal Product Code")
+    selling_unit_of_measure = models.CharField(max_length=50, blank=True, help_text="e.g. Each, Lbs")
+    selling_weight = models.CharField(max_length=50, blank=True)
+    selling_volume = models.CharField(max_length=50, blank=True)
+    selling_piece_count = models.CharField(max_length=50, blank=True)
+    inventory_conversion = models.CharField(max_length=100, blank=True, help_text="e.g. 100 Each = 1 Bag")
+    buying_unit_of_measure = models.CharField(max_length=50, blank=True, help_text="e.g. Bag, Case")
+    buying_weight = models.CharField(max_length=50, blank=True)
+    buying_volume = models.CharField(max_length=50, blank=True)
+    buying_piece_count = models.CharField(max_length=50, blank=True)
+    profit_margin_target = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True, help_text="Target profit margin %")
 
     class Meta:
         db_table = 'inventory_product'
@@ -1004,6 +1074,23 @@ class Product(TenantModel):
 
     def __str__(self):
         return f"{self.item_number} - {self.description}"
+
+    def generate_item_name(self):
+        """Auto-generate item name from component fields like BlueTrace"""
+        parts = []
+        if self.item_group:
+            parts.append(self.item_group.name)
+        if self.friendly_name:
+            parts.append(self.friendly_name)
+        elif self.qb_item_name:
+            parts.append(self.qb_item_name)
+        if self.origin:
+            parts.append(self.origin)
+        if self.size_cull:
+            parts.append(self.size_cull)
+        if self.quantity_description:
+            parts.append(self.quantity_description)
+        return ' · '.join(parts) if parts else self.description
 
 
 
@@ -1043,12 +1130,164 @@ class Inventory(TenantModel):
     fixed = models.IntegerField(default=0)
     hidden = models.IntegerField(default=0)
     updatetime = models.CharField(max_length=50, blank=True)
+    # Receiving fields
+    location = models.CharField(max_length=100, blank=True, help_text="Storage location e.g. Cooler A")
+    receive_time = models.CharField(max_length=20, blank=True, help_text="Time received e.g. 9:21 am")
+    vendor_type = models.CharField(max_length=50, blank=True, help_text="e.g. Dealer, Harvester")
 
     class Meta:
         db_table = 'inventory_inventory'
 
     def __str__(self):
         return f"{self.productid} - {self.desc}"
+
+
+# =============================================================================
+# PURCHASE ORDER MODULE MODELS
+# =============================================================================
+
+class PurchaseOrder(TenantModel):
+    """Purchase orders placed with vendors."""
+    ORDER_STATUS_CHOICES = [
+        ('draft', 'Draft'),
+        ('open', 'Open'),
+        ('closed', 'Closed'),
+        ('cancelled', 'Cancelled'),
+    ]
+    RECEIVE_STATUS_CHOICES = [
+        ('not_received', 'Not Received'),
+        ('partial', 'Partial'),
+        ('received', 'Received'),
+    ]
+
+    po_number = models.CharField(max_length=100)
+    vendor = models.ForeignKey(Vendor, on_delete=models.SET_NULL, null=True, blank=True)
+    vendor_name = models.CharField(max_length=255, blank=True)
+    order_status = models.CharField(max_length=20, choices=ORDER_STATUS_CHOICES, default='draft')
+    receive_status = models.CharField(max_length=20, choices=RECEIVE_STATUS_CHOICES, default='not_received')
+    qb_po_number = models.CharField(max_length=100, blank=True, help_text="QuickBooks PO #")
+    buyer = models.CharField(max_length=100, blank=True)
+    vendor_invoice_number = models.CharField(max_length=100, blank=True)
+    order_date = models.DateField(null=True, blank=True)
+    expected_date = models.DateField(null=True, blank=True)
+    notes = models.TextField(blank=True)
+    created_by = models.ForeignKey(
+        'auth.User', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='purchase_orders',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'purchasing_order'
+        unique_together = [['tenant', 'po_number']]
+        ordering = ['-order_date', '-created_at']
+
+    def __str__(self):
+        return f"PO-{self.po_number} ({self.vendor_name})"
+
+    @property
+    def total(self):
+        return sum(item.amount or 0 for item in self.items.all())
+
+
+class PurchaseOrderItem(TenantModel):
+    """Line items on a purchase order."""
+    ITEM_TYPE_CHOICES = [
+        ('item', 'Item'),
+        ('fee', 'Fee'),
+    ]
+
+    purchase_order = models.ForeignKey(PurchaseOrder, on_delete=models.CASCADE, related_name='items')
+    item_type = models.CharField(max_length=10, choices=ITEM_TYPE_CHOICES, default='item')
+    product = models.ForeignKey(Product, on_delete=models.SET_NULL, null=True, blank=True)
+    description = models.CharField(max_length=255, blank=True)
+    notes = models.CharField(max_length=255, blank=True)
+    quantity = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    unit_type = models.CharField(max_length=50, blank=True)
+    unit_price = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    amount = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    sort_order = models.IntegerField(default=0)
+
+    class Meta:
+        db_table = 'purchasing_order_item'
+        ordering = ['sort_order', 'id']
+
+    def __str__(self):
+        return f"{self.description} x {self.quantity}"
+
+
+# =============================================================================
+# FISH PROCESSING MODULE MODELS
+# =============================================================================
+
+class ProcessBatch(TenantModel):
+    """A processing batch that transforms source lots into output lots."""
+    PROCESS_TYPES = [
+        ('fish_cutting', 'Fish Cutting'),
+        ('commingle', 'Commingle'),
+        ('renaming', 'Renaming'),
+        ('freeze', 'Freeze'),
+        ('lot_breaking', 'Bag or Lot Breaking'),
+        ('shucking', 'Shucking'),
+        ('wet_store', 'Wet Store'),
+    ]
+    STATUS_CHOICES = [
+        ('draft', 'Draft'),
+        ('in_progress', 'In Progress'),
+        ('completed', 'Completed'),
+        ('cancelled', 'Cancelled'),
+    ]
+
+    batch_number = models.CharField(max_length=100, unique=True)
+    process_type = models.CharField(max_length=30, choices=PROCESS_TYPES)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft')
+    started_at = models.DateTimeField(auto_now_add=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    notes = models.TextField(blank=True)
+    created_by = models.ForeignKey(
+        'auth.User', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='process_batches',
+    )
+
+    class Meta:
+        db_table = 'processing_batch'
+        ordering = ['-started_at']
+
+    def __str__(self):
+        return f"{self.batch_number} ({self.get_process_type_display()})"
+
+
+class ProcessBatchSource(TenantModel):
+    """A source lot/inventory record used as input for a process batch."""
+    batch = models.ForeignKey(ProcessBatch, on_delete=models.CASCADE, related_name='sources')
+    inventory = models.ForeignKey(Inventory, on_delete=models.CASCADE)
+    quantity = models.DecimalField(max_digits=12, decimal_places=4)
+    unit_type = models.CharField(max_length=50, blank=True)
+
+    class Meta:
+        db_table = 'processing_batch_source'
+
+    def __str__(self):
+        return f"{self.batch.batch_number} <- {self.inventory}"
+
+
+class ProcessBatchOutput(TenantModel):
+    """Output lot(s) produced by a process batch."""
+    batch = models.ForeignKey(ProcessBatch, on_delete=models.CASCADE, related_name='outputs')
+    inventory = models.ForeignKey(Inventory, on_delete=models.SET_NULL, null=True, blank=True)
+    product = models.ForeignKey(Product, on_delete=models.SET_NULL, null=True, blank=True)
+    quantity = models.DecimalField(max_digits=12, decimal_places=4)
+    unit_type = models.CharField(max_length=50, blank=True)
+    lot_id = models.CharField(max_length=100, blank=True)
+    yield_percent = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True,
+                                        help_text="Yield % for this output")
+
+    class Meta:
+        db_table = 'processing_batch_output'
+
+    def __str__(self):
+        return f"{self.batch.batch_number} -> {self.lot_id}"
 
 
 # =============================================================================

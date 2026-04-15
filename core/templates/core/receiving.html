@@ -1,0 +1,688 @@
+{% extends 'core/base.html' %}
+{% block title %}Receive - FishTeck{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ── Sidebar ───────────────────────────────────────────────────── */
+.inv-sidebar {
+    width: 72px; min-height: calc(100vh - 56px); background: #f0f6ff;
+    border-right: 1px solid #d6e4f0; display: flex; flex-direction: column;
+    align-items: center; padding-top: 1rem; gap: 0.25rem;
+    position: fixed; left: 0; top: 56px; z-index: 100;
+}
+.inv-sidebar a {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    width: 56px; padding: 10px 0; border-radius: 10px; color: #5a7ba6;
+    text-decoration: none; font-size: 0.65rem; font-weight: 500; transition: all 0.15s;
+}
+.inv-sidebar a i { font-size: 1.3rem; margin-bottom: 2px; }
+.inv-sidebar a:hover { background: #dbe8f7; color: #2563eb; }
+.inv-sidebar a.active { background: #2563eb; color: #fff; }
+
+.inv-main { margin-left: 72px; padding: 1.5rem 2rem; background: #f8fafc; min-height: calc(100vh - 56px); }
+
+/* ── Header ────────────────────────────────────────────────────── */
+.inv-header { margin-bottom: 1.25rem; display: flex; align-items: center; justify-content: space-between; }
+.inv-header h2 { font-size: 1.4rem; font-weight: 700; margin: 0; }
+.inv-header .sub { font-size: 0.8rem; color: #64748b; }
+
+/* ── Toolbar ───────────────────────────────────────────────────── */
+.inv-toolbar {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 0.75rem; margin-bottom: 1rem; flex-wrap: wrap;
+}
+.inv-toolbar-left { display: flex; align-items: center; gap: 0.5rem; }
+.inv-toolbar-right { display: flex; align-items: center; gap: 0.5rem; }
+.search-box {
+    border: 1px solid #d1d5db; border-radius: 8px; padding: 6px 12px;
+    font-size: 0.85rem; width: 240px; background: #fff;
+}
+.search-box:focus { border-color: #2563eb; box-shadow: 0 0 0 2px rgba(37,99,235,0.15); outline: none; }
+.btn-inv-primary {
+    background: #2563eb; color: #fff; border: none; border-radius: 8px;
+    padding: 7px 16px; font-size: 0.85rem; font-weight: 600; cursor: pointer;
+}
+.btn-inv-primary:hover { background: #1d4ed8; color: #fff; }
+.btn-inv-outline {
+    background: #fff; color: #374151; border: 1px solid #d1d5db; border-radius: 8px;
+    padding: 7px 14px; font-size: 0.85rem; font-weight: 600; cursor: pointer;
+}
+.btn-inv-outline:hover { border-color: #2563eb; color: #2563eb; }
+.filter-select {
+    border: 1px solid #d1d5db; border-radius: 8px; padding: 6px 12px;
+    font-size: 0.85rem; background: #fff; color: #374151;
+}
+
+/* ── Table ──────────────────────────────────────────────────────── */
+.inv-table-card {
+    background: #fff; border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06); overflow: hidden;
+}
+.inv-table { width: 100%; border-collapse: collapse; font-size: 0.83rem; }
+.inv-table thead th {
+    background: #f1f5f9; color: #64748b; font-weight: 600; font-size: 0.73rem;
+    text-transform: uppercase; letter-spacing: 0.03em; padding: 10px 12px;
+    border-bottom: 1px solid #e2e8f0; white-space: nowrap; position: sticky; top: 0;
+}
+.inv-table tbody tr { border-bottom: 1px solid #f1f5f9; transition: background 0.1s; cursor: pointer; }
+.inv-table tbody tr:hover { background: #f0f7ff; }
+.inv-table tbody td { padding: 9px 12px; vertical-align: middle; color: #334155; }
+.inv-table .lot-code { font-weight: 600; color: #1e293b; white-space: nowrap; }
+
+.inv-pagination {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 14px; font-size: 0.8rem; color: #64748b; border-top: 1px solid #f1f5f9;
+}
+.inv-pagination .page-btns { display: flex; gap: 4px; }
+.inv-pagination .page-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 32px; height: 32px; border: 1px solid #d1d5db; border-radius: 6px;
+    background: #fff; color: #374151; cursor: pointer; font-size: 0.8rem;
+}
+.inv-pagination .page-btn:hover { border-color: #2563eb; color: #2563eb; }
+.inv-pagination .page-btn.active { background: #2563eb; color: #fff; border-color: #2563eb; }
+
+/* ── Slide-over (lot detail) ───────────────────────────────────── */
+.slide-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.25);
+    z-index: 1040; display: none;
+}
+.slide-overlay.open { display: block; }
+.slide-panel {
+    position: fixed; top: 0; right: -620px; width: 600px; max-width: 95vw;
+    height: 100vh; background: #fff; box-shadow: -4px 0 24px rgba(0,0,0,0.12);
+    z-index: 1050; transition: right 0.3s ease; display: flex; flex-direction: column;
+}
+.slide-panel.open { right: 0; }
+.slide-panel-header {
+    background: #0ea5e9; color: #fff; padding: 18px 24px;
+    display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
+}
+.slide-panel-header h4 { margin: 0; font-size: 1.05rem; font-weight: 600; }
+.slide-panel-header .close-btn {
+    background: rgba(255,255,255,0.2); border: none; color: #fff;
+    width: 32px; height: 32px; border-radius: 50%; font-size: 1.1rem;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+}
+.slide-panel-header .close-btn:hover { background: rgba(255,255,255,0.35); }
+.slide-panel-body { flex: 1; overflow-y: auto; padding: 0; }
+
+/* Detail header inside panel */
+.lot-detail-header {
+    background: #f0f9ff; padding: 20px 24px; border-bottom: 1px solid #e0f2fe;
+}
+.lot-detail-header .lot-icon {
+    width: 48px; height: 48px; border-radius: 50%; background: #0ea5e9;
+    color: #fff; display: inline-flex; align-items: center; justify-content: center;
+    font-size: 0.75rem; font-weight: 700; margin-right: 12px; vertical-align: middle;
+}
+.lot-detail-header .lot-title { font-size: 1.1rem; font-weight: 700; color: #0c4a6e; }
+.lot-detail-header .lot-subtitle { font-size: 0.8rem; color: #64748b; margin-top: 2px; }
+.lot-stats {
+    display: flex; gap: 2rem; margin-top: 1rem;
+}
+.lot-stat { text-align: center; }
+.lot-stat .stat-val { font-size: 1.3rem; font-weight: 700; color: #0c4a6e; }
+.lot-stat .stat-label { font-size: 0.7rem; color: #64748b; text-transform: uppercase; font-weight: 600; }
+
+.lot-detail-section { padding: 16px 24px; }
+.lot-detail-section h6 { font-weight: 700; font-size: 0.85rem; color: #1e293b; margin-bottom: 0.75rem; }
+.lot-detail-row { display: flex; font-size: 0.82rem; margin-bottom: 4px; }
+.lot-detail-row .label { color: #64748b; width: 140px; flex-shrink: 0; }
+.lot-detail-row .value { color: #1e293b; font-weight: 500; }
+
+/* Activity table */
+.activity-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+.activity-table th {
+    text-align: left; color: #64748b; font-weight: 600; font-size: 0.72rem;
+    text-transform: uppercase; padding: 6px 0; border-bottom: 1px solid #e5e7eb;
+}
+.activity-table td { padding: 6px 0; border-bottom: 1px solid #f1f5f9; color: #334155; }
+.activity-table a { color: #2563eb; text-decoration: none; }
+.activity-table a:hover { text-decoration: underline; }
+
+/* ── Receive modal ─────────────────────────────────────────────── */
+.recv-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.3); z-index: 1060; display: none; }
+.recv-overlay.open { display: flex; align-items: center; justify-content: center; }
+.recv-modal {
+    background: #fff; border-radius: 16px; width: 520px; max-width: 95vw;
+    max-height: 90vh; overflow-y: auto; box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+}
+.recv-modal-header {
+    background: #0ea5e9; color: #fff; padding: 18px 24px; border-radius: 16px 16px 0 0;
+    display: flex; align-items: center; justify-content: space-between;
+}
+.recv-modal-header h5 { margin: 0; font-weight: 700; }
+.recv-modal-body { padding: 24px; }
+.recv-modal-footer { padding: 16px 24px; border-top: 1px solid #e5e7eb; display: flex; gap: 10px; }
+.form-group-r { margin-bottom: 1rem; }
+.form-group-r label { font-weight: 600; font-size: 0.82rem; color: #1e293b; display: block; margin-bottom: 4px; }
+.form-control-r {
+    width: 100%; border: 1px solid #d1d5db; border-radius: 8px;
+    padding: 8px 12px; font-size: 0.85rem;
+}
+.form-control-r:focus { border-color: #0ea5e9; box-shadow: 0 0 0 3px rgba(14,165,233,0.12); outline: none; }
+.form-row-r { display: flex; gap: 1rem; }
+.form-row-r .form-group-r { flex: 1; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- Sidebar -->
+<div class="inv-sidebar">
+    <a href="{% url 'operations_hub' %}" title="Dashboard"><i class="bi bi-grid-1x2"></i><span>Dashboard</span></a>
+    <a href="#" title="Purchase"><i class="bi bi-cart"></i><span>Purchase</span></a>
+    <a href="{% url 'receiving_page' %}" class="active" title="Receive"><i class="bi bi-box-arrow-in-down"></i><span>Receive</span></a>
+    <a href="{% url 'inventory_item_library' %}" title="Inventory"><i class="bi bi-box-seam"></i><span>Inventory</span></a>
+    <a href="{% url 'processing_hub' %}" title="Process"><i class="bi bi-gear"></i><span>Process</span></a>
+    <a href="#" title="Sales"><i class="bi bi-receipt"></i><span>Sales</span></a>
+    <a href="#" title="Ship"><i class="bi bi-truck"></i><span>Ship</span></a>
+</div>
+
+<!-- Main content -->
+<div class="inv-main">
+    <div class="inv-header">
+        <div>
+            <h2><i class="bi bi-box-arrow-in-down me-2" style="color:#0ea5e9;"></i>Receive</h2>
+            <span class="sub" id="totalCount">0 total items</span>
+        </div>
+        <button class="btn-inv-primary" onclick="openReceiveModal()">
+            <i class="bi bi-plus-circle me-1"></i> Receive
+        </button>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="inv-toolbar">
+        <div class="inv-toolbar-left">
+            <input type="text" class="search-box" id="searchBox" placeholder="Search..." oninput="debounceSearch()">
+            <button class="btn-inv-outline" onclick="clearFilters()"><i class="bi bi-x-circle me-1"></i>Clear Filters</button>
+            <button class="btn-inv-outline" onclick="toggleFilterRow()"><i class="bi bi-funnel me-1"></i>Filter</button>
+        </div>
+    </div>
+
+    <!-- Filter row (hidden by default) -->
+    <div id="filterRow" style="display:none; margin-bottom:1rem; display:none; gap:0.75rem; flex-wrap:wrap; align-items:end;">
+        <div>
+            <label style="font-size:0.75rem; font-weight:600; color:#64748b; display:block;">Vendor</label>
+            <select class="filter-select" id="filterVendor" onchange="loadLots()">
+                <option value="">All Vendors</option>
+            </select>
+        </div>
+        <div>
+            <label style="font-size:0.75rem; font-weight:600; color:#64748b; display:block;">Vendor Type</label>
+            <select class="filter-select" id="filterVendorType" onchange="loadLots()">
+                <option value="">All Types</option>
+                <option value="Dealer">Dealer</option>
+                <option value="Harvester">Harvester</option>
+                <option value="Exporter">Exporter</option>
+                <option value="Distributor">Distributor</option>
+            </select>
+        </div>
+        <div>
+            <label style="font-size:0.75rem; font-weight:600; color:#64748b; display:block;">Date From</label>
+            <input type="date" class="filter-select" id="filterDateFrom" onchange="loadLots()">
+        </div>
+        <div>
+            <label style="font-size:0.75rem; font-weight:600; color:#64748b; display:block;">Date To</label>
+            <input type="date" class="filter-select" id="filterDateTo" onchange="loadLots()">
+        </div>
+    </div>
+
+    <!-- Table -->
+    <div class="inv-table-card">
+        <div style="overflow-x: auto;">
+            <table class="inv-table">
+                <thead>
+                    <tr>
+                        <th>Trace Lot Code</th>
+                        <th>Location</th>
+                        <th>Receive Date</th>
+                        <th>Purchase #</th>
+                        <th>Receive Time</th>
+                        <th>Vendor</th>
+                        <th>Vendor Type</th>
+                        <th style="text-align:right;">Cost</th>
+                    </tr>
+                </thead>
+                <tbody id="lotsTbody">
+                    <tr><td colspan="8" class="text-center text-muted py-4">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="inv-pagination">
+            <span id="paginationInfo">Showing 0 items</span>
+            <div class="page-btns" id="paginationBtns"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Lot detail slide-over -->
+<div class="slide-overlay" id="detailOverlay" onclick="closeDetail()"></div>
+<div class="slide-panel" id="detailPanel">
+    <div class="slide-panel-header">
+        <div style="display:flex; align-items:center; gap:8px;">
+            <a href="#" onclick="closeDetail(); return false;" style="color:#fff; text-decoration:none; font-size:0.85rem;">
+                <i class="bi bi-arrow-left me-1"></i> Back
+            </a>
+        </div>
+        <h4>Receive Lot</h4>
+        <button class="close-btn" onclick="closeDetail()"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <div class="slide-panel-body" id="detailBody">
+        <div class="text-center text-muted py-5">Loading...</div>
+    </div>
+</div>
+
+<!-- Receive new lot modal -->
+<div class="recv-overlay" id="recvOverlay" onclick="closeReceiveModal()">
+    <div class="recv-modal" onclick="event.stopPropagation()">
+        <div class="recv-modal-header">
+            <h5><i class="bi bi-box-arrow-in-down me-2"></i>Receive New Lot</h5>
+            <button class="close-btn" onclick="closeReceiveModal()" style="background:rgba(255,255,255,0.2); border:none; color:#fff; width:32px; height:32px; border-radius:50%; cursor:pointer;">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+        <div class="recv-modal-body">
+            <div id="recvError" class="alert alert-danger" style="display:none;"></div>
+
+            <div class="form-group-r">
+                <label>Product *</label>
+                <select class="form-control-r" id="r-product">
+                    <option value="">Select product...</option>
+                </select>
+            </div>
+
+            <div class="form-row-r">
+                <div class="form-group-r">
+                    <label>Quantity *</label>
+                    <input type="number" step="0.01" min="0" class="form-control-r" id="r-qty">
+                </div>
+                <div class="form-group-r">
+                    <label>Unit</label>
+                    <input type="text" class="form-control-r" id="r-unit" placeholder="e.g. Lbs, Bags">
+                </div>
+            </div>
+
+            <div class="form-row-r">
+                <div class="form-group-r">
+                    <label>Vendor</label>
+                    <select class="form-control-r" id="r-vendor">
+                        <option value="">Select vendor...</option>
+                    </select>
+                </div>
+                <div class="form-group-r">
+                    <label>Vendor Type</label>
+                    <select class="form-control-r" id="r-vendor-type">
+                        <option value="">Select...</option>
+                        <option value="Dealer">Dealer</option>
+                        <option value="Harvester">Harvester</option>
+                        <option value="Exporter">Exporter</option>
+                        <option value="Distributor">Distributor</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-row-r">
+                <div class="form-group-r">
+                    <label>Receive Date</label>
+                    <input type="date" class="form-control-r" id="r-date">
+                </div>
+                <div class="form-group-r">
+                    <label>Receive Time</label>
+                    <input type="time" class="form-control-r" id="r-time">
+                </div>
+            </div>
+
+            <div class="form-row-r">
+                <div class="form-group-r">
+                    <label>Location</label>
+                    <input type="text" class="form-control-r" id="r-location" placeholder="e.g. Cooler A">
+                </div>
+                <div class="form-group-r">
+                    <label>Purchase Order #</label>
+                    <input type="text" class="form-control-r" id="r-po">
+                </div>
+            </div>
+
+            <div class="form-row-r">
+                <div class="form-group-r">
+                    <label>Cost</label>
+                    <input type="number" step="0.01" class="form-control-r" id="r-cost" placeholder="0.00">
+                </div>
+                <div class="form-group-r">
+                    <label>Origin</label>
+                    <input type="text" class="form-control-r" id="r-origin" placeholder="e.g. Wellfleet, MA">
+                </div>
+            </div>
+        </div>
+        <div class="recv-modal-footer">
+            <button class="btn-inv-primary" onclick="submitReceive()" style="flex:1;">Receive</button>
+            <button class="btn-inv-outline" onclick="closeReceiveModal()">Cancel</button>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let allLots = [];
+let currentPage = 1;
+let totalItems = 0;
+const PAGE_SIZE = 100;
+let searchTimeout;
+
+function getCookie(name) {
+    const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+    return match ? decodeURIComponent(match[2]) : '';
+}
+function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+
+document.addEventListener('DOMContentLoaded', () => {
+    loadLots();
+    loadProducts();
+    loadVendors();
+    // Default date to today
+    document.getElementById('r-date').value = new Date().toISOString().split('T')[0];
+});
+
+// ── Data loading ────────────────────────────────────────────────
+
+async function loadLots() {
+    const search = document.getElementById('searchBox').value.trim();
+    const vendor = document.getElementById('filterVendor')?.value || '';
+    const vendorType = document.getElementById('filterVendorType')?.value || '';
+    const dateFrom = document.getElementById('filterDateFrom')?.value || '';
+    const dateTo = document.getElementById('filterDateTo')?.value || '';
+
+    let url = `/api/receiving/lots/?page=${currentPage}&page_size=${PAGE_SIZE}`;
+    if (search) url += `&search=${encodeURIComponent(search)}`;
+    if (vendor) url += `&vendor=${encodeURIComponent(vendor)}`;
+    if (vendorType) url += `&vendor_type=${encodeURIComponent(vendorType)}`;
+    if (dateFrom) url += `&date_from=${dateFrom}`;
+    if (dateTo) url += `&date_to=${dateTo}`;
+
+    const res = await fetch(url);
+    const data = await res.json();
+    allLots = data.lots || [];
+    totalItems = data.total || 0;
+    renderTable();
+}
+
+async function loadProducts() {
+    const res = await fetch('/api/processing/products/');
+    const data = await res.json();
+    const sel = document.getElementById('r-product');
+    sel.innerHTML = '<option value="">Select product...</option>' +
+        (data.products || []).map(p => `<option value="${esc(p.product_id)}" data-unit="${esc(p.unit_type)}">${esc(p.item_name)}</option>`).join('');
+
+    // Auto-fill unit when product changes
+    sel.addEventListener('change', function() {
+        const opt = this.options[this.selectedIndex];
+        const unit = opt?.dataset?.unit || '';
+        if (unit && !document.getElementById('r-unit').value) {
+            document.getElementById('r-unit').value = unit;
+        }
+    });
+}
+
+async function loadVendors() {
+    const res = await fetch('/api/receiving/vendors/');
+    const data = await res.json();
+    const vendors = data.vendors || [];
+
+    // Populate receive modal vendor dropdown
+    const rSel = document.getElementById('r-vendor');
+    rSel.innerHTML = '<option value="">Select vendor...</option>' +
+        vendors.map(v => `<option value="${esc(v.name)}" data-type="${esc(v.vendor_type || '')}">${esc(v.name)}</option>`).join('');
+
+    // Auto-fill vendor type
+    rSel.addEventListener('change', function() {
+        const opt = this.options[this.selectedIndex];
+        const vt = opt?.dataset?.type || '';
+        if (vt) document.getElementById('r-vendor-type').value = vt;
+    });
+
+    // Populate filter dropdown
+    const fSel = document.getElementById('filterVendor');
+    if (fSel) {
+        fSel.innerHTML = '<option value="">All Vendors</option>' +
+            vendors.map(v => `<option value="${esc(v.name)}">${esc(v.name)}</option>`).join('');
+    }
+}
+
+function debounceSearch() {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => { currentPage = 1; loadLots(); }, 300);
+}
+
+function clearFilters() {
+    document.getElementById('searchBox').value = '';
+    if (document.getElementById('filterVendor')) document.getElementById('filterVendor').value = '';
+    if (document.getElementById('filterVendorType')) document.getElementById('filterVendorType').value = '';
+    if (document.getElementById('filterDateFrom')) document.getElementById('filterDateFrom').value = '';
+    if (document.getElementById('filterDateTo')) document.getElementById('filterDateTo').value = '';
+    currentPage = 1;
+    loadLots();
+}
+
+function toggleFilterRow() {
+    const row = document.getElementById('filterRow');
+    row.style.display = row.style.display === 'flex' ? 'none' : 'flex';
+}
+
+// ── Table rendering ─────────────────────────────────────────────
+
+function renderTable() {
+    const tbody = document.getElementById('lotsTbody');
+    document.getElementById('totalCount').textContent = `${totalItems} total items`;
+
+    if (!allLots.length) {
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">No received lots found.</td></tr>';
+        document.getElementById('paginationInfo').textContent = '0 items';
+        document.getElementById('paginationBtns').innerHTML = '';
+        return;
+    }
+
+    tbody.innerHTML = allLots.map(lot => `
+        <tr onclick="openDetail(${lot.id})">
+            <td class="lot-code">${esc(lot.trace_lot)}</td>
+            <td>${esc(lot.location || '--')}</td>
+            <td>${esc(lot.receive_date)}</td>
+            <td>${esc(lot.purchase_order || '--')}</td>
+            <td>${esc(lot.receive_time || '--')}</td>
+            <td>${esc(lot.vendor || '--')}</td>
+            <td>${esc(lot.vendor_type || '--')}</td>
+            <td style="text-align:right;">${lot.cost != null ? '$' + Number(lot.cost).toFixed(2) : '--'}</td>
+        </tr>
+    `).join('');
+
+    // Pagination
+    const totalPages = Math.ceil(totalItems / PAGE_SIZE);
+    const start = (currentPage - 1) * PAGE_SIZE + 1;
+    const end = Math.min(currentPage * PAGE_SIZE, totalItems);
+    document.getElementById('paginationInfo').textContent = `Showing ${start} to ${end} of ${totalItems}`;
+
+    let btns = '';
+    if (currentPage > 1) btns += `<button class="page-btn" onclick="goPage(${currentPage - 1})">&lt;</button>`;
+    const maxPages = Math.min(totalPages, 5);
+    let startP = Math.max(1, currentPage - 2);
+    for (let p = startP; p < startP + maxPages && p <= totalPages; p++) {
+        btns += `<button class="page-btn ${p === currentPage ? 'active' : ''}" onclick="goPage(${p})">${p}</button>`;
+    }
+    if (currentPage < totalPages) btns += `<button class="page-btn" onclick="goPage(${currentPage + 1})">&gt;</button>`;
+    document.getElementById('paginationBtns').innerHTML = btns;
+}
+
+function goPage(p) { currentPage = p; loadLots(); }
+
+// ── Lot detail slide-over ───────────────────────────────────────
+
+async function openDetail(id) {
+    document.getElementById('detailOverlay').classList.add('open');
+    document.getElementById('detailPanel').classList.add('open');
+    document.getElementById('detailBody').innerHTML = '<div class="text-center text-muted py-5">Loading...</div>';
+
+    const res = await fetch(`/api/receiving/lots/${id}/`);
+    const lot = await res.json();
+
+    document.getElementById('detailBody').innerHTML = `
+        <div class="lot-detail-header">
+            <div style="display:flex; align-items:center;">
+                <div class="lot-icon">LOT</div>
+                <div>
+                    <div class="lot-title">${esc(lot.trace_lot)}</div>
+                    <div class="lot-subtitle">${esc(lot.item_name)}</div>
+                </div>
+            </div>
+            <div class="lot-stats">
+                <div class="lot-stat">
+                    <div class="stat-val">${Number(lot.initial_qty).toLocaleString(undefined, {maximumFractionDigits:2})}</div>
+                    <div class="stat-label">Initial Quantity<br>${esc(lot.unit_type)}</div>
+                </div>
+                <div class="lot-stat">
+                    <div class="stat-val">${Number(lot.on_hand).toLocaleString(undefined, {maximumFractionDigits:2})}</div>
+                    <div class="stat-label">On Hand<br>${esc(lot.unit_type)}</div>
+                </div>
+                <div class="lot-stat">
+                    <div class="stat-val">${lot.lot_age || '--'}</div>
+                    <div class="stat-label">Lot Age<br>Days</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="lot-detail-section" style="border-bottom:1px solid #f1f5f9;">
+            <div style="display:flex; gap:0.5rem; margin-bottom:1rem;">
+                <button class="btn-inv-outline" style="padding:5px 12px; font-size:0.78rem;">
+                    <i class="bi bi-pencil me-1"></i> Adjust
+                </button>
+                <button class="btn-inv-outline" style="padding:5px 12px; font-size:0.78rem;">
+                    <i class="bi bi-download me-1"></i> Export
+                </button>
+            </div>
+
+            ${lot.vendor_info && lot.vendor_info.name ? `
+            <div class="lot-detail-row"><span class="label">Vendor</span><span class="value">${esc(lot.vendor_info.name)}</span></div>
+            <div class="lot-detail-row"><span class="label">Vendor Type</span><span class="value">${esc(lot.vendor_info.type || lot.vendor_type)}</span></div>
+            ${lot.vendor_info.cert ? `<div class="lot-detail-row"><span class="label">Certification</span><span class="value">${esc(lot.vendor_info.cert)}</span></div>` : ''}
+            ` : `
+            <div class="lot-detail-row"><span class="label">Vendor</span><span class="value">${esc(lot.vendor)}</span></div>
+            <div class="lot-detail-row"><span class="label">Vendor Type</span><span class="value">${esc(lot.vendor_type)}</span></div>
+            `}
+        </div>
+
+        <div class="lot-detail-section" style="border-bottom:1px solid #f1f5f9;">
+            <h6>Activity</h6>
+            <table class="activity-table">
+                <thead>
+                    <tr>
+                        <th>Activity</th>
+                        <th>Order</th>
+                        <th>Customer/Vendor</th>
+                        <th>Date</th>
+                        <th style="text-align:right;">Quantity</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${lot.activities.map(a => `
+                    <tr>
+                        <td>${esc(a.type)}</td>
+                        <td><a href="#">${esc(a.order)}</a></td>
+                        <td>${esc(a.customer_vendor)}</td>
+                        <td>${esc(a.date)}</td>
+                        <td style="text-align:right;">${esc(a.quantity)}</td>
+                    </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+            <div style="font-size:0.75rem; color:#94a3b8; margin-top:6px;">Showing 1 to ${lot.activities.length} of ${lot.activities.length}</div>
+        </div>
+
+        <div class="lot-detail-section">
+            <h6>Lot Info</h6>
+            <div class="lot-detail-row"><span class="label">Item</span><span class="value">${esc(lot.item_name)}</span></div>
+            <div class="lot-detail-row"><span class="label">Quantity</span><span class="value">${Number(lot.on_hand).toLocaleString(undefined, {maximumFractionDigits:2})} ${esc(lot.unit_type)}</span></div>
+            <div class="lot-detail-row"><span class="label">Traceability Lot Code</span><span class="value">${esc(lot.trace_lot)}</span></div>
+            <div class="lot-detail-row"><span class="label">Receive Date</span><span class="value">${esc(lot.receive_date)}</span></div>
+            ${lot.location ? `<div class="lot-detail-row"><span class="label">Location</span><span class="value">${esc(lot.location)}</span></div>` : ''}
+            ${lot.origin ? `<div class="lot-detail-row"><span class="label">Origin</span><span class="value">${esc(lot.origin)}</span></div>` : ''}
+            ${lot.cost != null ? `<div class="lot-detail-row"><span class="label">Cost</span><span class="value">$${Number(lot.cost).toFixed(2)}</span></div>` : ''}
+        </div>
+    `;
+}
+
+function closeDetail() {
+    document.getElementById('detailOverlay').classList.remove('open');
+    document.getElementById('detailPanel').classList.remove('open');
+}
+
+// ── Receive modal ───────────────────────────────────────────────
+
+function openReceiveModal() {
+    document.getElementById('recvOverlay').classList.add('open');
+    document.getElementById('recvError').style.display = 'none';
+}
+
+function closeReceiveModal() {
+    document.getElementById('recvOverlay').classList.remove('open');
+}
+
+async function submitReceive() {
+    const product = document.getElementById('r-product').value;
+    const qty = document.getElementById('r-qty').value;
+
+    if (!product) { showRecvError('Please select a product.'); return; }
+    if (!qty || parseFloat(qty) <= 0) { showRecvError('Please enter a valid quantity.'); return; }
+
+    // Format time
+    const timeInput = document.getElementById('r-time').value;
+    let receiveTime = '';
+    if (timeInput) {
+        const [h, m] = timeInput.split(':');
+        const hr = parseInt(h);
+        receiveTime = `${hr > 12 ? hr - 12 : hr || 12}:${m} ${hr >= 12 ? 'pm' : 'am'}`;
+    }
+
+    const payload = {
+        product_id: product,
+        quantity: parseFloat(qty),
+        unit_type: document.getElementById('r-unit').value.trim(),
+        vendor: document.getElementById('r-vendor').value,
+        vendor_type: document.getElementById('r-vendor-type').value,
+        receive_date: document.getElementById('r-date').value,
+        receive_time: receiveTime,
+        location: document.getElementById('r-location').value.trim(),
+        purchase_order: document.getElementById('r-po').value.trim(),
+        cost: document.getElementById('r-cost').value || null,
+        origin: document.getElementById('r-origin').value.trim(),
+    };
+
+    try {
+        const res = await fetch('/api/receiving/lots/create/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+            body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        if (data.error) { showRecvError(data.error); return; }
+        closeReceiveModal();
+        // Clear form
+        ['r-product','r-qty','r-unit','r-vendor','r-vendor-type','r-location','r-po','r-cost','r-origin'].forEach(id => {
+            document.getElementById(id).value = '';
+        });
+        document.getElementById('r-date').value = new Date().toISOString().split('T')[0];
+        document.getElementById('r-time').value = '';
+        loadLots();
+    } catch {
+        showRecvError('Failed to create lot.');
+    }
+}
+
+function showRecvError(msg) {
+    const el = document.getElementById('recvError');
+    el.textContent = msg;
+    el.style.display = '';
+}
+</script>
+{% endblock %}

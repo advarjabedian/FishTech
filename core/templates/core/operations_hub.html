@@ -89,6 +89,18 @@
             </div>
         </div>
 
+        <!-- Inventory -->
+        <div class="col-md-4 mb-3">
+            <div class="card card-dashboard" style="border-color: #2563eb !important; background: rgba(37,99,235,0.06);" onclick="window.location.href='{% url 'inventory_item_library' %}'">
+                <div class="card-body text-center">
+                    <i class="bi bi-box-seam card-icon" style="color: #2563eb;"></i>
+                    <h3>Inventory</h3>
+                    <p class="text-muted">Item library and stock tracking</p>
+                    <a href="{% url 'inventory_item_library' %}" class="btn mt-2" style="background-color: #2563eb; color: white;">View Inventory</a>
+                </div>
+            </div>
+        </div>
+
         <!-- Administration -->
         <div class="col-md-4 mb-3">
             <div class="card card-dashboard bg-secondary bg-opacity-10" style="border-color: #6c757d !important;" onclick="window.location.href='{% url 'manage_users' %}'">

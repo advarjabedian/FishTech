@@ -1,0 +1,475 @@
+{% extends 'core/base.html' %}
+{% block title %}Purchases - FishTeck{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ── Sidebar ───────────────────────────────────────────────────── */
+.inv-sidebar {
+    width: 72px; min-height: calc(100vh - 56px); background: #f0f6ff;
+    border-right: 1px solid #d6e4f0; display: flex; flex-direction: column;
+    align-items: center; padding-top: 1rem; gap: 0.25rem;
+    position: fixed; left: 0; top: 56px; z-index: 100;
+}
+.inv-sidebar a {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    width: 56px; padding: 10px 0; border-radius: 10px; color: #5a7ba6;
+    text-decoration: none; font-size: 0.65rem; font-weight: 500; transition: all 0.15s;
+}
+.inv-sidebar a i { font-size: 1.3rem; margin-bottom: 2px; }
+.inv-sidebar a:hover { background: #dbe8f7; color: #2563eb; }
+.inv-sidebar a.active { background: #2563eb; color: #fff; }
+
+.inv-main { margin-left: 72px; padding: 1.5rem 2rem; background: #f8fafc; min-height: calc(100vh - 56px); }
+
+/* ── Header ────────────────────────────────────────────────────── */
+.inv-header { margin-bottom: 1.25rem; display: flex; align-items: center; justify-content: space-between; }
+.inv-header h2 { font-size: 1.4rem; font-weight: 700; margin: 0; }
+.inv-header .sub { font-size: 0.8rem; color: #64748b; }
+
+/* ── Toolbar ───────────────────────────────────────────────────── */
+.inv-toolbar {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 0.75rem; margin-bottom: 1rem; flex-wrap: wrap;
+}
+.inv-toolbar-left { display: flex; align-items: center; gap: 0.5rem; }
+.inv-toolbar-right { display: flex; align-items: center; gap: 0.5rem; }
+.search-box {
+    border: 1px solid #d1d5db; border-radius: 8px; padding: 6px 12px;
+    font-size: 0.85rem; width: 240px; background: #fff;
+}
+.search-box:focus { border-color: #2563eb; box-shadow: 0 0 0 2px rgba(37,99,235,0.15); outline: none; }
+.btn-inv-primary {
+    background: #2563eb; color: #fff; border: none; border-radius: 8px;
+    padding: 7px 16px; font-size: 0.85rem; font-weight: 600; cursor: pointer;
+}
+.btn-inv-primary:hover { background: #1d4ed8; color: #fff; }
+.btn-inv-outline {
+    background: #fff; color: #374151; border: 1px solid #d1d5db; border-radius: 8px;
+    padding: 7px 14px; font-size: 0.85rem; font-weight: 600; cursor: pointer;
+}
+.btn-inv-outline:hover { border-color: #2563eb; color: #2563eb; }
+
+/* ── Table ──────────────────────────────────────────────────────── */
+.inv-table-card {
+    background: #fff; border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06); overflow: hidden;
+}
+.inv-table { width: 100%; border-collapse: collapse; font-size: 0.83rem; }
+.inv-table thead th {
+    background: #f1f5f9; color: #64748b; font-weight: 600; font-size: 0.73rem;
+    text-transform: uppercase; letter-spacing: 0.03em; padding: 10px 12px;
+    border-bottom: 1px solid #e2e8f0; white-space: nowrap; position: sticky; top: 0;
+}
+.inv-table tbody tr { border-bottom: 1px solid #f1f5f9; transition: background 0.1s; cursor: pointer; }
+.inv-table tbody tr:hover { background: #f0f7ff; }
+.inv-table tbody td { padding: 9px 12px; vertical-align: middle; color: #334155; }
+
+.badge-status {
+    display: inline-block; padding: 3px 10px; border-radius: 999px;
+    font-size: 0.72rem; font-weight: 600;
+}
+.badge-draft { background: #f1f5f9; color: #64748b; }
+.badge-open { background: #dbeafe; color: #2563eb; }
+.badge-closed { background: #dcfce7; color: #16a34a; }
+.badge-cancelled { background: #fee2e2; color: #dc2626; }
+.badge-received { background: #d1fae5; color: #059669; }
+.badge-not_received { background: #fef3c7; color: #d97706; }
+.badge-partial { background: #e0e7ff; color: #4f46e5; }
+
+.inv-pagination {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 14px; font-size: 0.8rem; color: #64748b; border-top: 1px solid #f1f5f9;
+}
+.inv-pagination .page-btns { display: flex; gap: 4px; }
+.inv-pagination .page-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 32px; height: 32px; border: 1px solid #d1d5db; border-radius: 6px;
+    background: #fff; color: #374151; cursor: pointer; font-size: 0.8rem;
+}
+.inv-pagination .page-btn:hover { border-color: #2563eb; color: #2563eb; }
+.inv-pagination .page-btn.active { background: #2563eb; color: #fff; border-color: #2563eb; }
+
+/* ── Filter slide-over ─────────────────────────────────────────── */
+.filter-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.25); z-index: 1040; display: none; }
+.filter-overlay.open { display: block; }
+.filter-panel {
+    position: fixed; top: 0; right: -460px; width: 440px; max-width: 90vw;
+    height: 100vh; background: #fff; box-shadow: -4px 0 24px rgba(0,0,0,0.12);
+    z-index: 1050; transition: right 0.3s ease; display: flex; flex-direction: column;
+}
+.filter-panel.open { right: 0; }
+.filter-panel-header {
+    background: #2563eb; color: #fff; padding: 18px 24px;
+    display: flex; align-items: center; justify-content: space-between;
+}
+.filter-panel-header h4 { margin: 0; font-size: 1.1rem; font-weight: 600; }
+.filter-panel-header .close-btn {
+    background: rgba(255,255,255,0.2); border: none; color: #fff; width: 32px; height: 32px;
+    border-radius: 50%; font-size: 1.1rem; cursor: pointer; display: flex; align-items: center; justify-content: center;
+}
+.filter-panel-body { flex: 1; overflow-y: auto; padding: 24px; }
+.filter-panel-footer { padding: 16px 24px; border-top: 1px solid #e5e7eb; display: flex; gap: 10px; }
+.fg { margin-bottom: 1.25rem; }
+.fg label { font-weight: 600; font-size: 0.85rem; color: #1e293b; display: block; margin-bottom: 6px; }
+.fg select, .fg input {
+    width: 100%; border: 1px solid #d1d5db; border-radius: 8px; padding: 9px 12px; font-size: 0.85rem;
+}
+.fg select:focus, .fg input:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.12); outline: none; }
+.fg .date-row { display: flex; gap: 0.5rem; }
+.fg .date-row input { flex: 1; }
+
+/* ── New PO modal ──────────────────────────────────────────────── */
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.3); z-index: 1060; display: none; }
+.modal-overlay.open { display: flex; align-items: center; justify-content: center; }
+.modal-box {
+    background: #fff; border-radius: 16px; width: 420px; max-width: 95vw;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.15); overflow: hidden;
+}
+.modal-box-header {
+    text-align: center; padding: 2rem 1.5rem 1rem;
+}
+.modal-box-header .icon {
+    width: 56px; height: 56px; border-radius: 50%; background: #ecfdf5;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 1.4rem; color: #10b981; margin-bottom: 0.75rem;
+}
+.modal-box-header h5 { font-weight: 700; margin: 0; }
+.modal-box-body { padding: 0 1.5rem 1.5rem; }
+.modal-box-footer { padding: 1rem 1.5rem; display: flex; gap: 0.75rem; }
+.modal-box-footer .btn-go {
+    flex: 1; background: #10b981; color: #fff; border: none; border-radius: 8px;
+    padding: 10px; font-size: 0.9rem; font-weight: 600; cursor: pointer;
+}
+.modal-box-footer .btn-go:hover { background: #059669; }
+.modal-box-footer .btn-cancel {
+    flex: 1; background: #fff; color: #374151; border: 1px solid #d1d5db; border-radius: 8px;
+    padding: 10px; font-size: 0.9rem; font-weight: 600; cursor: pointer;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- Sidebar -->
+<div class="inv-sidebar">
+    <a href="{% url 'purchases_page' %}" class="active" title="Purchase"><i class="bi bi-cart"></i><span>Purchase</span></a>
+    <a href="{% url 'receiving_page' %}" title="Receive"><i class="bi bi-box-arrow-in-down"></i><span>Receive</span></a>
+    <a href="{% url 'inventory_item_library' %}" title="Inventory"><i class="bi bi-box-seam"></i><span>Inventory</span></a>
+    <a href="{% url 'processing_hub' %}" title="Process"><i class="bi bi-gear"></i><span>Process</span></a>
+    <a href="#" title="Sales"><i class="bi bi-receipt"></i><span>Sales</span></a>
+    <a href="#" title="Ship"><i class="bi bi-truck"></i><span>Ship</span></a>
+</div>
+
+<!-- Main -->
+<div class="inv-main">
+    <div class="inv-header">
+        <div>
+            <h2><i class="bi bi-cart me-2" style="color:#2563eb;"></i>Purchases</h2>
+            <span class="sub" id="totalCount">0 Purchases</span>
+        </div>
+        <div style="display:flex; gap:0.5rem;">
+            <button class="btn-inv-outline" onclick="exportPurchases()"><i class="bi bi-download me-1"></i>Export Purchases</button>
+            <button class="btn-inv-primary" onclick="openNewPO()"><i class="bi bi-plus me-1"></i>New Purchase</button>
+        </div>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="inv-toolbar">
+        <div class="inv-toolbar-left">
+            <input type="text" class="search-box" id="searchBox" placeholder="Search..." oninput="debounceSearch()">
+            <button class="btn-inv-outline" onclick="clearAllFilters()"><i class="bi bi-x-circle me-1"></i>Clear Filters</button>
+            <button class="btn-inv-outline" onclick="openFilterPanel()"><i class="bi bi-funnel me-1"></i>Filter</button>
+        </div>
+    </div>
+
+    <!-- Table -->
+    <div class="inv-table-card">
+        <div style="overflow-x:auto;">
+            <table class="inv-table">
+                <thead>
+                    <tr>
+                        <th style="width:30px;"><input type="checkbox" id="selectAll"></th>
+                        <th>Purchase Number</th>
+                        <th>Order Status</th>
+                        <th>Receive Status</th>
+                        <th>QB PO #</th>
+                        <th>Vendor</th>
+                        <th style="text-align:right;">Total $</th>
+                        <th style="text-align:right;">Expected</th>
+                        <th>Order Date</th>
+                        <th>Vendor Type</th>
+                    </tr>
+                </thead>
+                <tbody id="poTbody">
+                    <tr><td colspan="10" class="text-center text-muted py-4">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="inv-pagination">
+            <span id="paginationInfo">Showing 0 items</span>
+            <div class="page-btns" id="paginationBtns"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Filter panel -->
+<div class="filter-overlay" id="filterOverlay" onclick="closeFilterPanel()"></div>
+<div class="filter-panel" id="filterPanel">
+    <div class="filter-panel-header">
+        <h4>Filter Purchases</h4>
+        <button class="close-btn" onclick="closeFilterPanel()"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <div class="filter-panel-body">
+        <div class="fg">
+            <label>Vendor</label>
+            <select id="ff-vendor"><option value="">Choose Vendor</option></select>
+        </div>
+        <div class="fg">
+            <label>Vendor Type</label>
+            <select id="ff-vendor-type">
+                <option value="">Choose Vendor Type</option>
+                <option value="Dealer">Dealer</option>
+                <option value="Harvester">Harvester</option>
+                <option value="Exporter">Exporter</option>
+                <option value="Distributor">Distributor</option>
+            </select>
+        </div>
+        <div class="fg">
+            <label>Buyer</label>
+            <select id="ff-buyer"><option value="">Choose Buyer</option></select>
+        </div>
+        <div class="fg">
+            <label>Order Date</label>
+            <div class="date-row">
+                <input type="date" id="ff-date-from" placeholder="From">
+                <input type="date" id="ff-date-to" placeholder="To">
+            </div>
+        </div>
+        <div class="fg">
+            <label>Expected Receipt Date</label>
+            <div class="date-row">
+                <input type="date" id="ff-expected-from">
+                <input type="date" id="ff-expected-to">
+            </div>
+        </div>
+        <div class="fg">
+            <label>Order Status</label>
+            <select id="ff-order-status">
+                <option value="">Choose Order Status</option>
+                <option value="draft">Draft</option>
+                <option value="open">Open</option>
+                <option value="closed">Closed</option>
+                <option value="cancelled">Cancelled</option>
+            </select>
+        </div>
+        <div class="fg">
+            <label>Receive Status</label>
+            <select id="ff-receive-status">
+                <option value="">Choose Receive Status</option>
+                <option value="not_received">Not Received</option>
+                <option value="partial">Partial</option>
+                <option value="received">Received</option>
+            </select>
+        </div>
+    </div>
+    <div class="filter-panel-footer">
+        <button class="btn-inv-primary" onclick="applyFilters()" style="flex:1;">Filter Purchases</button>
+        <button class="btn-inv-outline" onclick="closeFilterPanel()">Cancel</button>
+    </div>
+</div>
+
+<!-- New PO modal -->
+<div class="modal-overlay" id="newPOOverlay" onclick="closeNewPO()">
+    <div class="modal-box" onclick="event.stopPropagation()">
+        <div class="modal-box-header">
+            <div class="icon"><i class="bi bi-clipboard-plus"></i></div>
+            <h5>Create New Purchase</h5>
+        </div>
+        <div class="modal-box-body">
+            <div class="fg">
+                <label>Vendor Name</label>
+                <select id="new-vendor" class="form-control" style="border-radius:8px;">
+                    <option value="">Choose Vendor Name</option>
+                </select>
+            </div>
+        </div>
+        <div class="modal-box-footer">
+            <button class="btn-go" onclick="createPO()">Next</button>
+            <button class="btn-cancel" onclick="closeNewPO()">Cancel</button>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let allOrders = [];
+let currentPage = 1;
+let totalItems = 0;
+const PAGE_SIZE = 100;
+let searchTimeout;
+let activeFilters = {};
+
+function getCookie(name) {
+    const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+    return match ? decodeURIComponent(match[2]) : '';
+}
+function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+
+document.addEventListener('DOMContentLoaded', () => {
+    loadOrders();
+    loadVendors();
+});
+
+// ── Data ────────────────────────────────────────────────────────
+
+async function loadOrders() {
+    const search = document.getElementById('searchBox').value.trim();
+    let url = `/api/purchasing/orders/?page=${currentPage}&page_size=${PAGE_SIZE}`;
+    if (search) url += `&search=${encodeURIComponent(search)}`;
+
+    // Apply active filters
+    for (const [key, val] of Object.entries(activeFilters)) {
+        if (val) url += `&${key}=${encodeURIComponent(val)}`;
+    }
+
+    const res = await fetch(url);
+    const data = await res.json();
+    allOrders = data.orders || [];
+    totalItems = data.total || 0;
+    renderTable();
+}
+
+async function loadVendors() {
+    const res = await fetch('/api/receiving/vendors/');
+    const data = await res.json();
+    const vendors = data.vendors || [];
+    const opts = vendors.map(v => `<option value="${esc(v.name)}">${esc(v.name)}</option>`).join('');
+
+    document.getElementById('ff-vendor').innerHTML = '<option value="">Choose Vendor</option>' + opts;
+    document.getElementById('new-vendor').innerHTML = '<option value="">Choose Vendor Name</option>' + opts;
+}
+
+function debounceSearch() {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => { currentPage = 1; loadOrders(); }, 300);
+}
+
+// ── Table ───────────────────────────────────────────────────────
+
+function renderTable() {
+    const tbody = document.getElementById('poTbody');
+    document.getElementById('totalCount').textContent = `${totalItems} Purchases`;
+
+    if (!allOrders.length) {
+        tbody.innerHTML = '<tr><td colspan="10" class="text-center text-muted py-4">No purchases found.</td></tr>';
+        document.getElementById('paginationInfo').textContent = '0 items';
+        document.getElementById('paginationBtns').innerHTML = '';
+        return;
+    }
+
+    tbody.innerHTML = allOrders.map(po => `
+        <tr onclick="window.location='/purchasing/${po.id}/'">
+            <td onclick="event.stopPropagation();"><input type="checkbox" data-id="${po.id}"></td>
+            <td style="font-weight:600; color:#2563eb;">${esc(po.po_number)}</td>
+            <td><span class="badge-status badge-${po.order_status}">${esc(po.order_status_display)}</span></td>
+            <td><span class="badge-status badge-${po.receive_status}">${esc(po.receive_status_display)}</span></td>
+            <td>${esc(po.qb_po_number || '')}</td>
+            <td>${esc(po.vendor_name)}</td>
+            <td style="text-align:right;">$${Number(po.total).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+            <td style="text-align:right;">${po.expected ? Number(po.expected).toLocaleString(undefined, {maximumFractionDigits:2}) : ''}</td>
+            <td>${esc(po.order_date)}</td>
+            <td>${esc(po.vendor_type)}</td>
+        </tr>
+    `).join('');
+
+    // Pagination
+    const totalPages = Math.ceil(totalItems / PAGE_SIZE);
+    const start = (currentPage - 1) * PAGE_SIZE + 1;
+    const end = Math.min(currentPage * PAGE_SIZE, totalItems);
+    document.getElementById('paginationInfo').textContent = `Showing ${start} to ${end} of ${totalItems}`;
+
+    let btns = '';
+    if (totalPages > 1 && currentPage > 1) btns += `<button class="page-btn" onclick="goPage(1)">&laquo;</button>`;
+    if (currentPage > 1) btns += `<button class="page-btn" onclick="goPage(${currentPage-1})">&lt;</button>`;
+    let startP = Math.max(1, currentPage - 2);
+    let endP = Math.min(totalPages, startP + 4);
+    for (let p = startP; p <= endP; p++) {
+        btns += `<button class="page-btn ${p===currentPage?'active':''}" onclick="goPage(${p})">${p}</button>`;
+    }
+    if (currentPage < totalPages) btns += `<button class="page-btn" onclick="goPage(${currentPage+1})">&gt;</button>`;
+    document.getElementById('paginationBtns').innerHTML = btns;
+}
+
+function goPage(p) { currentPage = p; loadOrders(); }
+
+// ── Filters ─────────────────────────────────────────────────────
+
+function openFilterPanel() {
+    document.getElementById('filterOverlay').classList.add('open');
+    document.getElementById('filterPanel').classList.add('open');
+
+    // Populate buyers dynamically from loaded orders
+    const buyers = [...new Set(allOrders.map(o => o.buyer).filter(Boolean))].sort();
+    const bSel = document.getElementById('ff-buyer');
+    bSel.innerHTML = '<option value="">Choose Buyer</option>' + buyers.map(b => `<option value="${esc(b)}">${esc(b)}</option>`).join('');
+}
+
+function closeFilterPanel() {
+    document.getElementById('filterOverlay').classList.remove('open');
+    document.getElementById('filterPanel').classList.remove('open');
+}
+
+function applyFilters() {
+    activeFilters = {};
+    const mappings = [
+        ['ff-vendor', 'vendor'], ['ff-vendor-type', 'vendor_type'], ['ff-buyer', 'buyer'],
+        ['ff-order-status', 'order_status'], ['ff-receive-status', 'receive_status'],
+        ['ff-date-from', 'date_from'], ['ff-date-to', 'date_to'],
+        ['ff-expected-from', 'expected_from'], ['ff-expected-to', 'expected_to'],
+    ];
+    mappings.forEach(([elId, key]) => {
+        const val = document.getElementById(elId).value;
+        if (val) activeFilters[key] = val;
+    });
+    closeFilterPanel();
+    currentPage = 1;
+    loadOrders();
+}
+
+function clearAllFilters() {
+    document.getElementById('searchBox').value = '';
+    activeFilters = {};
+    ['ff-vendor','ff-vendor-type','ff-buyer','ff-order-status','ff-receive-status',
+     'ff-date-from','ff-date-to','ff-expected-from','ff-expected-to'].forEach(id => {
+        document.getElementById(id).value = '';
+    });
+    currentPage = 1;
+    loadOrders();
+}
+
+// ── New PO modal ────────────────────────────────────────────────
+
+function openNewPO() { document.getElementById('newPOOverlay').classList.add('open'); }
+function closeNewPO() { document.getElementById('newPOOverlay').classList.remove('open'); }
+
+async function createPO() {
+    const vendor = document.getElementById('new-vendor').value;
+    if (!vendor) { alert('Please select a vendor.'); return; }
+
+    const res = await fetch('/api/purchasing/orders/create/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+        body: JSON.stringify({ vendor_name: vendor }),
+    });
+    const data = await res.json();
+    if (data.error) { alert(data.error); return; }
+    window.location.href = '/purchasing/' + data.id + '/';
+}
+
+function exportPurchases() {
+    alert('Export coming soon.');
+}
+</script>
+{% endblock %}

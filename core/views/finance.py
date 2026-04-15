@@ -390,6 +390,16 @@ def vendor_list_api(request):
         'city': v.city,
         'state': v.state,
         'zipcode': v.zipcode,
+        'vendor_type': v.vendor_type,
+        'cert': v.cert,
+        'phone_extension': v.phone_extension,
+        'fax': v.fax,
+        'billing_email': v.billing_email,
+        'mailing_address': v.mailing_address,
+        'mailing_city': v.mailing_city,
+        'mailing_state': v.mailing_state,
+        'mailing_zipcode': v.mailing_zipcode,
+        'full_mailing_address': v.full_mailing_address,
     } for v in vendors]})
 
 
@@ -416,6 +426,15 @@ def vendor_create_api(request):
             city=data.get('city', ''),
             state=data.get('state', ''),
             zipcode=data.get('zipcode', ''),
+            vendor_type=data.get('vendor_type', ''),
+            cert=data.get('cert', ''),
+            phone_extension=data.get('phone_extension', ''),
+            fax=data.get('fax', ''),
+            billing_email=data.get('billing_email', ''),
+            mailing_address=data.get('mailing_address', ''),
+            mailing_city=data.get('mailing_city', ''),
+            mailing_state=data.get('mailing_state', ''),
+            mailing_zipcode=data.get('mailing_zipcode', ''),
         )
         return JsonResponse({'success': True, 'id': v.id})
     except Exception as e:
@@ -435,7 +454,9 @@ def vendor_update_api(request, vendor_id):
         if not name:
             return JsonResponse({'error': 'Name is required'}, status=400)
         v.name = name
-        for field in ('contact_name', 'phone', 'email', 'address', 'city', 'state', 'zipcode'):
+        for field in ('contact_name', 'phone', 'email', 'address', 'city', 'state', 'zipcode',
+                       'vendor_type', 'cert', 'phone_extension', 'fax', 'billing_email',
+                       'mailing_address', 'mailing_city', 'mailing_state', 'mailing_zipcode'):
             if field in data:
                 setattr(v, field, data[field].strip() if isinstance(data[field], str) else data[field])
         v.save()
