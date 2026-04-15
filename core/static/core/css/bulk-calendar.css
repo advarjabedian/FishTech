@@ -1,0 +1,58 @@
+/* Bulk Calendar Styles */
+.bulk-calendar-container {
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    overflow: hidden;
+}
+.bulk-calendar-header {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+    font-weight: bold;
+    text-align: center;
+    padding: 8px 0;
+}
+.bulk-calendar-body {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+}
+.bulk-calendar-day {
+    min-height: 70px;
+    border: 1px solid #eee;
+    padding: 4px;
+    cursor: default;
+}
+.bulk-calendar-day.empty {
+    background-color: #f8f9fa;
+}
+.bulk-calendar-day.no-data {
+    background-color: #f8f9fa;
+    opacity: 0.6;
+}
+.bulk-calendar-day.has-completed {
+    background-color: #d4edda;
+    cursor: pointer;
+}
+.bulk-calendar-day.has-verified {
+    background-color: #e2d9f3;
+    cursor: pointer;
+}
+.bulk-calendar-day.selected {
+    background-color: #0d6efd !important;
+    color: white;
+    cursor: pointer;
+}
+.bulk-calendar-day .day-number {
+    font-weight: bold;
+    margin-bottom: 4px;
+}
+.bulk-calendar-day .day-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px;
+}
+.bulk-calendar-day .day-badges .badge {
+    font-size: 0.65em;
+    padding: 2px 4px;
+}

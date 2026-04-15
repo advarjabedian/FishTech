@@ -3,6 +3,7 @@ from django.contrib.auth.models import User as DjangoUser
 from threading import local
 from django.conf import settings
 import uuid
+from . import constants as C
 
 _thread_locals = local()
 
@@ -34,13 +35,7 @@ class TenantModel(models.Model):
 
 class Tenant(models.Model):
     """Represents each fish factory customer"""
-    SUBSCRIPTION_STATUS_CHOICES = [
-        ('trialing', 'Trial'),
-        ('active', 'Active'),
-        ('past_due', 'Past Due'),
-        ('canceled', 'Canceled'),
-        ('unpaid', 'Unpaid'),
-    ]
+    SUBSCRIPTION_STATUS_CHOICES = C.SUBSCRIPTION_STATUS_CHOICES
     
     name = models.CharField(max_length=255)  # Company name
     subdomain = models.CharField(max_length=63, unique=True)  # e.g., 'goldenstateseafood'
@@ -115,15 +110,7 @@ class TenantUser(models.Model):
 
 class Lead(models.Model):
     """Sales lead tracking for platform admin"""
-    STAGE_CHOICES = [
-        ('prospect', 'Prospect'),
-        ('contacted', 'Contacted'),
-        ('demo', 'Demo Scheduled'),
-        ('proposal', 'Proposal Sent'),
-        ('negotiation', 'Negotiation'),
-        ('won', 'Won'),
-        ('lost', 'Lost'),
-    ]
+    STAGE_CHOICES = C.LEAD_STAGE_CHOICES
 
     company_name = models.CharField(max_length=255)
     contact_name = models.CharField(max_length=255, blank=True)
@@ -145,11 +132,7 @@ class Lead(models.Model):
 
 class TenantDocument(models.Model):
     """Signable documents associated with a tenant"""
-    DOCUMENT_TYPES = [
-        ('subscription_agreement', 'Subscription Agreement'),
-        ('privacy_policy', 'Privacy Policy'),
-        ('sla', 'Service Level Agreement'),
-    ]
+    DOCUMENT_TYPES = C.TENANT_DOCUMENT_TYPES
 
     tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name='documents')
     document_type = models.CharField(max_length=50, choices=DOCUMENT_TYPES)
@@ -217,11 +200,7 @@ class CompanyHACCPOwner(TenantModel):
 
 class HACCPDocument(TenantModel):
     """HACCP documents"""
-    STATUS_CHOICES = [
-        ('not_started', 'Not Started'),
-        ('in_progress', 'In Progress'),
-        ('completed', 'Completed'),
-    ]
+    STATUS_CHOICES = C.HACCP_STATUS_CHOICES
     
 
     product_type = models.CharField(max_length=100)
@@ -282,11 +261,7 @@ class SOP(TenantModel):
 
 class SOPParent(TenantModel):
     """Parent record for a shift inspection"""
-    SHIFT_CHOICES = [
-        ('Pre-Op', 'Pre-Op'),
-        ('Mid-Day', 'Mid-Day'),
-        ('Post-Op', 'Post-Op'),
-    ]
+    SHIFT_CHOICES = C.SHIFT_CHOICES
     
     date = models.DateField()
     time = models.TimeField()
@@ -367,10 +342,7 @@ class CompanyHoliday(TenantModel):
 
 class CompanyCertificate(TenantModel):
     """Company HACCP certificates"""
-    CERTIFICATE_TYPE_CHOICES = [
-        ('haccp_certificate', 'HACCP Certificate'),
-        ('letter_of_guarantee', 'Letter of Guarantee'),
-    ]
+    CERTIFICATE_TYPE_CHOICES = C.CERTIFICATE_TYPE_CHOICES
     
 
     year = models.IntegerField()
@@ -419,11 +391,7 @@ class Customer(TenantModel):
 
 class ContactEmail(TenantModel):
     """Saved email addresses for customers, vendors, or tenant-wide use"""
-    CONTACT_TYPE_CHOICES = [
-        ('customer', 'Customer'),
-        ('vendor', 'Vendor'),
-        ('tenant', 'Tenant'),
-    ]
+    CONTACT_TYPE_CHOICES = C.CONTACT_TYPE_CHOICES
     contact_type = models.CharField(max_length=20, choices=CONTACT_TYPE_CHOICES)
     entity_id = models.IntegerField(null=True, blank=True, help_text="Customer or Vendor ID (null for tenant-wide)")
     email = models.EmailField()
@@ -506,14 +474,7 @@ class Receipt(TenantModel):
 
 class DocumentFile(TenantModel):
     """Tracks uploaded files for SO/PO/POD/Customer/Vendor"""
-    DOCUMENT_TYPE_CHOICES = [
-        ('so', 'Sales Order'),
-        ('po', 'Purchase Order'),
-        ('pod', 'POD'),
-        ('customer', 'Customer'),
-        ('vendor', 'Vendor'),
-        ('receipt', 'Receipt'),
-    ]
+    DOCUMENT_TYPE_CHOICES = C.DOCUMENT_FILE_TYPE_CHOICES
     
     document_type = models.CharField(max_length=20, choices=DOCUMENT_TYPE_CHOICES)
     document_id = models.CharField(max_length=50)  # The SOID, POID, etc.
@@ -577,11 +538,7 @@ class Vehicle(TenantModel):
 
 class InboundMessage(TenantModel):
     """Inbound messages from email, voicemail, or SMS"""
-    SOURCE_CHOICES = [
-        ('email', 'Email'),
-        ('voicemail', 'Voicemail'),
-        ('sms', 'SMS/Text'),
-    ]
+    SOURCE_CHOICES = C.MESSAGE_SOURCE_CHOICES
     
     source = models.CharField(max_length=20, choices=SOURCE_CHOICES, default='email')
     received_at = models.DateTimeField(null=True, blank=True)
@@ -838,18 +795,8 @@ class Inventory(TenantModel):
 
 class SalesOrder(TenantModel):
     """Sales orders to customers."""
-    ORDER_STATUS_CHOICES = [
-        ('draft', 'Draft'),
-        ('open', 'Open'),
-        ('needs_review', 'Needs Review'),
-        ('closed', 'Closed'),
-        ('cancelled', 'Cancelled'),
-    ]
-    PACKED_STATUS_CHOICES = [
-        ('not_packed', 'Not Packed'),
-        ('packed', 'Packed'),
-        ('need_to_send', 'Need To Send'),
-    ]
+    ORDER_STATUS_CHOICES = C.SALES_ORDER_STATUS_CHOICES
+    PACKED_STATUS_CHOICES = C.PACKED_STATUS_CHOICES
 
     order_number = models.CharField(max_length=100)
     customer = models.ForeignKey(Customer, on_delete=models.SET_NULL, null=True, blank=True)
@@ -896,10 +843,7 @@ class SalesOrder(TenantModel):
 
 class SalesOrderItem(TenantModel):
     """Line items on a sales order."""
-    ITEM_TYPE_CHOICES = [
-        ('item', 'Item'),
-        ('fee', 'Fee'),
-    ]
+    ITEM_TYPE_CHOICES = C.ORDER_ITEM_TYPE_CHOICES
 
     sales_order = models.ForeignKey(SalesOrder, on_delete=models.CASCADE, related_name='items')
     item_type = models.CharField(max_length=10, choices=ITEM_TYPE_CHOICES, default='item')
@@ -927,17 +871,8 @@ class SalesOrderItem(TenantModel):
 
 class PurchaseOrder(TenantModel):
     """Purchase orders placed with vendors."""
-    ORDER_STATUS_CHOICES = [
-        ('draft', 'Draft'),
-        ('open', 'Open'),
-        ('closed', 'Closed'),
-        ('cancelled', 'Cancelled'),
-    ]
-    RECEIVE_STATUS_CHOICES = [
-        ('not_received', 'Not Received'),
-        ('partial', 'Partial'),
-        ('received', 'Received'),
-    ]
+    ORDER_STATUS_CHOICES = C.PURCHASE_ORDER_STATUS_CHOICES
+    RECEIVE_STATUS_CHOICES = C.RECEIVE_STATUS_CHOICES
 
     po_number = models.CharField(max_length=100)
     vendor = models.ForeignKey(Vendor, on_delete=models.SET_NULL, null=True, blank=True)
@@ -972,10 +907,7 @@ class PurchaseOrder(TenantModel):
 
 class PurchaseOrderItem(TenantModel):
     """Line items on a purchase order."""
-    ITEM_TYPE_CHOICES = [
-        ('item', 'Item'),
-        ('fee', 'Fee'),
-    ]
+    ITEM_TYPE_CHOICES = C.ORDER_ITEM_TYPE_CHOICES
 
     purchase_order = models.ForeignKey(PurchaseOrder, on_delete=models.CASCADE, related_name='items')
     item_type = models.CharField(max_length=10, choices=ITEM_TYPE_CHOICES, default='item')
@@ -1002,21 +934,8 @@ class PurchaseOrderItem(TenantModel):
 
 class ProcessBatch(TenantModel):
     """A processing batch that transforms source lots into output lots."""
-    PROCESS_TYPES = [
-        ('fish_cutting', 'Fish Cutting'),
-        ('commingle', 'Commingle'),
-        ('renaming', 'Renaming'),
-        ('freeze', 'Freeze'),
-        ('lot_breaking', 'Bag or Lot Breaking'),
-        ('shucking', 'Shucking'),
-        ('wet_store', 'Wet Store'),
-    ]
-    STATUS_CHOICES = [
-        ('draft', 'Draft'),
-        ('in_progress', 'In Progress'),
-        ('completed', 'Completed'),
-        ('cancelled', 'Cancelled'),
-    ]
+    PROCESS_TYPES = C.PROCESS_TYPE_CHOICES
+    STATUS_CHOICES = C.PROCESS_STATUS_CHOICES
 
     batch_number = models.CharField(max_length=100, unique=True)
     process_type = models.CharField(max_length=30, choices=PROCESS_TYPES)
@@ -1076,13 +995,7 @@ class ProcessBatchOutput(TenantModel):
 
 class FishOrder(TenantModel):
     """Customer order submitted through the public fish market page"""
-    STATUS_CHOICES = [
-        ('Pending', 'Pending'),
-        ('Confirmed', 'Confirmed'),
-        ('Ready', 'Ready'),
-        ('Delivered', 'Delivered'),
-        ('Cancelled', 'Cancelled'),
-    ]
+    STATUS_CHOICES = C.FISH_ORDER_STATUS_CHOICES
 
     # Customer info
     customer_name = models.CharField(max_length=255)
@@ -1120,11 +1033,7 @@ class FishOrder(TenantModel):
 
 class APExpense(TenantModel):
     """Accounts Payable — logged expenses for the ledger"""
-    STATUS_CHOICES = [
-        ('Unpaid', 'Unpaid'),
-        ('Paid', 'Paid'),
-        ('Overdue', 'Overdue'),
-    ]
+    STATUS_CHOICES = C.FINANCIAL_STATUS_CHOICES
 
     vendor = models.CharField(max_length=255)
     description = models.CharField(max_length=500)
@@ -1150,11 +1059,7 @@ class APExpense(TenantModel):
 
 class ARInvoice(TenantModel):
     """Accounts Receivable — invoices owed to the business"""
-    STATUS_CHOICES = [
-        ('Unpaid', 'Unpaid'),
-        ('Paid', 'Paid'),
-        ('Overdue', 'Overdue'),
-    ]
+    STATUS_CHOICES = C.FINANCIAL_STATUS_CHOICES
 
     customer = models.CharField(max_length=255)
     description = models.CharField(max_length=500)
