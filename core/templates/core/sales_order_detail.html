@@ -1,0 +1,810 @@
+{% extends 'core/base.html' %}
+{% block title %}SO {{ so.order_number }} - {{ so.customer_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+.so-header { display: flex; align-items: start; justify-content: space-between; margin-bottom: 0.25rem; }
+.so-header h2 { font-size: 1.4rem; font-weight: 700; margin: 0; }
+.so-header .meta { font-size: 0.8rem; color: #64748b; }
+.so-status-bar {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+.so-status-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.so-status-label {
+    font-size: 0.74rem;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
+.so-status-select {
+    border-radius: 999px;
+    border: 1px solid #dbe4f0;
+    padding: 0.45rem 2.1rem 0.45rem 0.9rem;
+    font-size: 0.82rem;
+    font-weight: 700;
+    cursor: pointer;
+    min-width: 150px;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image:
+        linear-gradient(45deg, transparent 50%, currentColor 50%),
+        linear-gradient(135deg, currentColor 50%, transparent 50%);
+    background-position:
+        calc(100% - 16px) calc(50% - 2px),
+        calc(100% - 11px) calc(50% - 2px);
+    background-size: 5px 5px, 5px 5px;
+    background-repeat: no-repeat;
+}
+.so-status-select:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.14);
+}
+.so-status-select.status-draft { background-color: #f8fafc; color: #475569; border-color: #cbd5e1; }
+.so-status-select.status-open { background-color: #dbeafe; color: #1d4ed8; border-color: #93c5fd; }
+.so-status-select.status-needs_review { background-color: #fef3c7; color: #b45309; border-color: #fcd34d; }
+.so-status-select.status-closed { background-color: #dcfce7; color: #15803d; border-color: #86efac; }
+.so-status-select.status-cancelled { background-color: #fee2e2; color: #b91c1c; border-color: #fca5a5; }
+.so-status-select.status-not_packed { background-color: #f8fafc; color: #475569; border-color: #cbd5e1; }
+.so-status-select.status-packed { background-color: #dcfce7; color: #15803d; border-color: #86efac; }
+.so-status-select.status-need_to_send { background-color: #e0e7ff; color: #4f46e5; border-color: #a5b4fc; }
+
+/* Tabs */
+.so-tabs { display: flex; gap: 0; border-bottom: 2px solid #e2e8f0; margin-bottom: 1.5rem; }
+.so-tab {
+    padding: 12px 24px; font-size: 0.9rem; font-weight: 600; color: #64748b;
+    cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -2px; transition: all 0.15s;
+}
+.so-tab:hover { color: #2563eb; }
+.so-tab.active { color: #2563eb; border-bottom-color: #2563eb; }
+
+.so-card { background: #fff; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); padding: 1.5rem; margin-bottom: 1.25rem; max-width: 1100px; }
+.so-card h5 { font-weight: 700; font-size: 0.95rem; margin-bottom: 1rem; }
+
+.info-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 1rem; }
+.info-item label { font-size: 0.73rem; font-weight: 600; color: #64748b; text-transform: uppercase; display: block; margin-bottom: 4px; }
+.info-item input, .info-item select {
+    width: 100%; border: 1px solid #d1d5db; border-radius: 8px; padding: 8px 12px; font-size: 0.85rem;
+}
+.info-item input:focus, .info-item select:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.12); outline: none; }
+
+.contact-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px 18px; margin-bottom: 0.75rem; }
+.contact-card .cc-label { font-size: 0.72rem; font-weight: 600; color: #64748b; text-transform: uppercase; margin-bottom: 4px; }
+.contact-card .cc-name { font-weight: 600; color: #1e293b; font-size: 0.85rem; }
+.contact-card .cc-detail { font-size: 0.8rem; color: #64748b; }
+.contact-card a { color: #2563eb; text-decoration: none; font-size: 0.8rem; }
+
+/* Items editor */
+.items-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+.items-table th { text-align: left; color: #64748b; font-weight: 700; font-size: 0.73rem; text-transform: uppercase; padding: 8px 0 10px; border-bottom: 1px solid #e2e8f0; }
+.items-table td { padding: 0; border-bottom: none; }
+.item-editor-cell { padding-top: 0.9rem; }
+.item-editor-card {
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+    padding: 1rem;
+    margin-bottom: 0.9rem;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow: hidden;
+}
+.item-editor-top {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 56px;
+    gap: 0.85rem;
+    align-items: end;
+    margin-bottom: 0.9rem;
+}
+.item-editor-bottom {
+    display: grid;
+    grid-template-columns: minmax(0, 1.7fr) minmax(0, 0.75fr) minmax(0, 0.9fr) minmax(0, 0.75fr) minmax(0, 0.95fr);
+    gap: 0.85rem;
+    align-items: end;
+    width: 100%;
+}
+.item-editor-top > div,
+.item-editor-bottom > div { min-width: 0; }
+.item-field-label { display: block; font-size: 0.7rem; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 0.35rem; }
+.item-editor-input,
+.item-editor-select {
+    width: 100%;
+    border: 1px solid #d1d5db;
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 0.92rem;
+    background: #fff;
+    min-width: 0;
+    box-sizing: border-box;
+}
+.item-editor-input:focus,
+.item-editor-select:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.12);
+}
+.item-delete-btn {
+    height: 44px;
+    width: 56px;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    background: #fff;
+    color: #94a3b8;
+    cursor: pointer;
+}
+.item-delete-btn:hover { color: #dc2626; border-color: #fca5a5; background: #fff5f5; }
+.item-margin-display {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    color: #64748b;
+    font-size: 0.92rem;
+    padding: 0 4px;
+}
+.item-amount-box {
+    min-height: 44px;
+    border-radius: 12px;
+    background: #eff6ff;
+    color: #1d4ed8;
+    font-weight: 800;
+    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 0 14px;
+    white-space: nowrap;
+}
+@media (max-width: 900px) {
+    .item-editor-bottom {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+@media (max-width: 640px) {
+    .item-editor-top,
+    .item-editor-bottom {
+        grid-template-columns: 1fr;
+    }
+    .item-delete-btn {
+        width: 100%;
+    }
+    .item-amount-box {
+        justify-content: flex-start;
+    }
+}
+.item-filter-bar { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.9rem; flex-wrap: wrap; }
+.item-filter-label { font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.02em; }
+.item-filter-btn {
+    border: 1px solid #dbe4f0;
+    background: #f8fafc;
+    color: #475569;
+    border-radius: 999px;
+    padding: 0.38rem 0.8rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+.item-filter-btn:hover { border-color: #93c5fd; color: #2563eb; background: #eff6ff; }
+.item-filter-btn.active { background: #2563eb; border-color: #2563eb; color: #fff; }
+.item-filter-note { font-size: 0.78rem; color: #64748b; }
+
+.add-links { display: flex; gap: 1rem; margin-top: 0.75rem; font-size: 0.82rem; }
+.add-links a { color: #2563eb; text-decoration: none; font-weight: 600; cursor: pointer; }
+.add-links a:hover { text-decoration: underline; }
+
+.totals-row { display: flex; justify-content: flex-end; gap: 2rem; font-size: 0.85rem; margin-top: 0.75rem; padding-top: 0.5rem; border-top: 1px solid #e5e7eb; }
+.totals-row .t-label { color: #64748b; font-weight: 600; }
+.totals-row .t-val { color: #1e293b; font-weight: 700; min-width: 80px; text-align: right; }
+
+.notes-area { width: 100%; border: 1px solid #d1d5db; border-radius: 8px; padding: 10px 12px; font-size: 0.85rem; resize: vertical; }
+.notes-area:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.12); outline: none; }
+
+.btn-publish { background: #0ea5e9; color: #fff; border: none; border-radius: 8px; padding: 8px 20px; font-size: 0.85rem; font-weight: 600; cursor: pointer; }
+.btn-publish:hover { background: #0284c7; }
+
+/* Packed Lots tab */
+.shipping-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
+.shipping-item .s-label { font-size: 0.73rem; font-weight: 600; color: #64748b; text-transform: uppercase; }
+.shipping-item .s-val { font-size: 0.9rem; font-weight: 600; color: #1e293b; margin-top: 2px; }
+
+.packed-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+.packed-table th { text-align: left; color: #64748b; font-weight: 600; font-size: 0.73rem; text-transform: uppercase; padding: 10px 12px; border-bottom: 1px solid #e2e8f0; }
+.packed-table td { padding: 10px 12px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+.packed-table a { color: #2563eb; text-decoration: none; font-weight: 500; }
+.packed-table a:hover { text-decoration: underline; }
+
+.status-match { background: #dcfce7; color: #16a34a; padding: 3px 10px; border-radius: 999px; font-size: 0.72rem; font-weight: 600; }
+.status-short { background: #fee2e2; color: #dc2626; padding: 3px 10px; border-radius: 999px; font-size: 0.72rem; font-weight: 600; }
+.status-unexpected { background: #fef3c7; color: #d97706; padding: 3px 10px; border-radius: 999px; font-size: 0.72rem; font-weight: 600; }
+.fifo-note { font-size: 0.78rem; color: #64748b; margin-top: 4px; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+{% include 'core/includes/sidebar.html' with active='sales' %}
+
+<div class="inv-main">
+    <div style="max-width:1180px; margin:0 auto;">
+    <div style="margin-bottom:1rem;">
+        <a href="{% url 'sales_orders_page' %}" style="font-size:0.85rem; color:#2563eb; text-decoration:none;">
+            <i class="bi bi-arrow-left me-1"></i> Back to Sales Orders
+        </a>
+    </div>
+
+    {% if trace_pos or trace_lots %}
+    <div style="background:#f0f6ff; border:1px solid #e2e8f0; border-radius:10px; padding:10px 16px; margin-bottom:1.25rem; display:flex; flex-wrap:wrap; gap:0.5rem; align-items:center; font-size:0.78rem;">
+        <span style="color:#64748b; font-weight:600;">Trace:</span>
+        {% for po in trace_pos %}
+        <a href="{% url 'purchase_detail_page' po.id %}" style="color:#2563eb; text-decoration:none; font-weight:600;">
+            <i class="bi bi-cart me-1"></i>{{ po.po_number }}
+        </a>
+        <i class="bi bi-chevron-right" style="color:#cbd5e1; font-size:0.65rem;"></i>
+        {% endfor %}
+        {% for lot in trace_lots %}
+        <span style="color:#0ea5e9; font-weight:600;"><i class="bi bi-box-arrow-in-down me-1"></i>{{ lot.trace_lot }}</span>
+        {% if not forloop.last %}<span style="color:#cbd5e1;">,</span>{% endif %}
+        {% endfor %}
+        <i class="bi bi-chevron-right" style="color:#cbd5e1; font-size:0.65rem;"></i>
+        <span style="color:#10b981; font-weight:600;"><i class="bi bi-receipt me-1"></i>{{ so.order_number }}</span>
+    </div>
+    {% endif %}
+
+    <div class="so-header">
+        <div>
+            <h2>{{ so.customer_name }}</h2>
+            <div class="meta">Sales Order {{ so.order_number }} &middot;
+                <span id="so-header-status" class="badge-status badge-{{ so.order_status }}">{{ so.get_order_status_display }}</span>
+            </div>
+        </div>
+        <div style="display:flex; gap:0.5rem;">
+            <button class="btn-inv-outline" onclick="withSpinner(this, () => saveDraft())">Save Draft</button>
+            <button class="btn-publish" onclick="withSpinner(this, () => publishSO())">Publish</button>
+        </div>
+    </div>
+
+    <div class="so-status-bar">
+        <div class="so-status-group">
+            <span class="so-status-label">Order Status</span>
+            <select id="so-order-status" class="so-status-select" onchange="refreshStatusSelectStyles()">
+                <option value="draft" {% if so.order_status == 'draft' %}selected{% endif %}>Draft</option>
+                <option value="open" {% if so.order_status == 'open' %}selected{% endif %}>Open</option>
+                <option value="needs_review" {% if so.order_status == 'needs_review' %}selected{% endif %}>Needs Review</option>
+                <option value="closed" {% if so.order_status == 'closed' %}selected{% endif %}>Closed</option>
+                <option value="cancelled" {% if so.order_status == 'cancelled' %}selected{% endif %}>Cancelled</option>
+            </select>
+        </div>
+        <div class="so-status-group">
+            <span class="so-status-label">Packed Status</span>
+            <select id="so-packed-status" class="so-status-select" onchange="refreshStatusSelectStyles()">
+                <option value="not_packed" {% if so.packed_status == 'not_packed' %}selected{% endif %}>Not Packed</option>
+                <option value="packed" {% if so.packed_status == 'packed' %}selected{% endif %}>Packed</option>
+                <option value="need_to_send" {% if so.packed_status == 'need_to_send' %}selected{% endif %}>Need To Send</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="so-tabs">
+        <div class="so-tab active" onclick="showTab('order')">Order Form</div>
+        <div class="so-tab" onclick="showTab('packed')">Packed Lots</div>
+    </div>
+
+    <!-- ORDER FORM TAB -->
+    <div id="tab-order">
+        <!-- Shipping note banner -->
+        {% if so.notes %}
+        <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:10px; padding:10px 16px; margin-bottom:1.25rem; max-width:1100px; font-size:0.85rem; color:#1e40af;">
+            <i class="bi bi-info-circle me-1"></i> {{ so.notes }}
+        </div>
+        {% endif %}
+
+        <div style="display:flex; gap:1.5rem; flex-wrap:wrap; max-width:1100px;">
+            <!-- Left: Order info -->
+            <div style="flex:1; min-width:500px;">
+                <div class="so-card">
+                    <h5>Sales Order Info</h5>
+                    <div class="info-grid">
+                        <div class="info-item"><label>Sales Rep</label><input type="text" id="so-sales-rep" value="{{ so.sales_rep }}"></div>
+                        <div class="info-item"><label>P.O. Number</label><input type="text" id="so-po" value="{{ so.po_number }}"></div>
+                        <div class="info-item"><label>Air Bill Number</label><input type="text" id="so-airbill" value="{{ so.air_bill_number }}"></div>
+                    </div>
+                    <div class="info-grid" style="margin-top:1rem;">
+                        <div class="info-item"><label>Order Date</label><input type="date" id="so-order-date" value="{{ so.order_date|date:'Y-m-d' }}"></div>
+                        <div class="info-item"><label>Pack Date</label><input type="date" id="so-pack-date" value="{{ so.pack_date|date:'Y-m-d' }}"></div>
+                        <div class="info-item"><label>Delivery Date</label><input type="date" id="so-delivery-date" value="{{ so.delivery_date|date:'Y-m-d' }}"></div>
+                    </div>
+                    <div class="info-grid" style="margin-top:1rem;">
+                        <div class="info-item"><label>Ship Date</label><input type="date" id="so-ship-date" value="{{ so.ship_date|date:'Y-m-d' }}"></div>
+                        <div class="info-item"><label>Shippers</label><input type="text" id="so-shipper" value="{{ so.shipper }}"></div>
+                        <div class="info-item"><label>Shipping Route</label><input type="text" id="so-route" value="{{ so.shipping_route }}"></div>
+                    </div>
+                    <div class="info-grid" style="margin-top:1rem;">
+                        <div class="info-item"><label>Order Weight (Lbs)</label><input type="number" step="0.01" id="so-weight" value="{{ so.order_weight }}"></div>
+                        <div class="info-item"><label>QB Invoice #</label><input type="text" id="so-qb" value="{{ so.qb_invoice_number }}"></div>
+                    </div>
+                </div>
+
+                <!-- Items -->
+                <div class="so-card">
+                    <h5>Items</h5>
+                    <div class="item-filter-bar">
+                        <span class="item-filter-label">Item Filter</span>
+                        <button type="button" class="item-filter-btn active" data-filter="in_stock" onclick="setProductFilter('in_stock')">In Stock</button>
+                        <button type="button" class="item-filter-btn" data-filter="recent" onclick="setProductFilter('recent')">Recently Processed</button>
+                        <button type="button" class="item-filter-btn" data-filter="all" onclick="setProductFilter('all')">All</button>
+                        <span class="item-filter-note" id="itemFilterNote"></span>
+                    </div>
+                    <table class="items-table">
+                        <thead><tr>
+                            <th>Item</th>
+                        </tr></thead>
+                        <tbody id="itemsTbody"></tbody>
+                    </table>
+                    <div class="add-links">
+                        <a onclick="addItemRow('item')"><i class="bi bi-plus me-1"></i>Add Item</a>
+                        <a onclick="addItemRow('fee')"><i class="bi bi-plus me-1"></i>Add Fee</a>
+                    </div>
+                    <div style="margin-top:1.5rem;">
+                        <textarea class="notes-area" id="so-notes" rows="2" placeholder="Enter receiving note (Internal)">{{ so.notes }}</textarea>
+                    </div>
+                    <div class="totals-row"><span class="t-label">Item Subtotal</span><span class="t-val" id="itemSubtotal">$0.00</span></div>
+                    <div class="totals-row" style="border:none;margin-top:0;padding-top:0.25rem;"><span class="t-label">Fee Subtotal</span><span class="t-val" id="feeSubtotal">$0.00</span></div>
+                    <div class="totals-row" style="border:none;margin-top:0;padding-top:0.25rem;"><span class="t-label" style="color:#1e293b;font-size:0.95rem;">Total</span><span class="t-val" id="grandTotal" style="color:#dc2626;font-size:0.95rem;">$0.00</span></div>
+                </div>
+            </div>
+
+            <!-- Right: Contact & Address cards -->
+            <div style="width:260px; flex-shrink:0;">
+                <div class="contact-card">
+                    <div class="cc-label">Contact Info</div>
+                    <div class="cc-name" id="cc-name">--</div>
+                    <div class="cc-detail" id="cc-phone"></div>
+                    <div id="cc-email"></div>
+                </div>
+                <div class="contact-card">
+                    <div class="cc-label">Delivery Address</div>
+                    <div id="del-addr" class="cc-detail">--</div>
+                </div>
+                <div class="contact-card">
+                    <div class="cc-label">Mailing Address</div>
+                    <div id="mail-addr" class="cc-detail">--</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PACKED LOTS TAB -->
+    <div id="tab-packed" style="display:none; max-width:1100px;">
+        <div style="display:flex; gap:0.5rem; margin-bottom:1.25rem;">
+            <button class="btn-publish" style="padding:6px 14px; font-size:0.8rem;" onclick="allocateFIFO()">
+                <i class="bi bi-arrow-down-up me-1"></i>Auto-Allocate FIFO
+            </button>
+            <button class="btn-inv-outline" style="padding:6px 14px; font-size:0.8rem;"><i class="bi bi-file-earmark-pdf me-1"></i>Save Bill Of Lading PDF</button>
+            <button class="btn-inv-outline" style="padding:6px 14px; font-size:0.8rem;"><i class="bi bi-eye me-1"></i>View Shipment Details</button>
+            <div style="flex:1;"></div>
+            <span style="font-size:0.8rem; color:#64748b; align-self:center;" id="packed-meta"></span>
+        </div>
+
+        <div id="fifoAlert" style="display:none; background:#eff6ff; border:1px solid #bfdbfe; border-radius:10px; padding:10px 16px; margin-bottom:1rem; font-size:0.84rem; color:#1e40af;"></div>
+
+        <div class="so-card">
+            <h5>Shipping Info</h5>
+            <div class="shipping-grid">
+                <div class="shipping-item"><div class="s-label">Shippers</div><div class="s-val" id="pk-shipper">--</div></div>
+                <div class="shipping-item"><div class="s-label">Shipping Date</div><div class="s-val" id="pk-ship-date">--</div></div>
+                <div class="shipping-item"><div class="s-label">Truck Temp</div><div class="s-val" id="pk-temp">--</div></div>
+                <div class="shipping-item"><div class="s-label">Packed By</div><div class="s-val" id="pk-packed-by">--</div></div>
+                <div class="shipping-item"><div class="s-label">Printed Manifest</div><div class="s-val" id="pk-manifest">No</div></div>
+                <div class="shipping-item"><div class="s-label">Printed Prop 65</div><div class="s-val" id="pk-prop65">No</div></div>
+            </div>
+        </div>
+
+        <div class="so-card">
+            <h5>Packed Items</h5>
+            <table class="packed-table">
+                <thead><tr>
+                    <th>Item</th>
+                    <th>Traceability Lot Code</th>
+                    <th>Ordered Quantity</th>
+                    <th>Packed Quantity</th>
+                    <th>Status</th>
+                </tr></thead>
+                <tbody id="packedTbody">
+                    <tr><td colspan="5" class="text-center text-muted py-4">No packed items yet.</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const SO_ID = {{ so.id }};
+let soData = null;
+let allProducts = [];
+let lineItems = [];
+let allocationData = null;
+let currentProductFilter = 'in_stock';
+
+document.addEventListener('DOMContentLoaded', async () => {
+    await loadProducts();
+    await loadSODetail();
+    refreshStatusSelectStyles();
+});
+
+// ── Tabs ────────────────────────────────────────────────────────
+
+function showTab(tab) {
+    document.getElementById('tab-order').style.display = tab === 'order' ? '' : 'none';
+    document.getElementById('tab-packed').style.display = tab === 'packed' ? '' : 'none';
+    document.querySelectorAll('.so-tab').forEach((el, i) => {
+        el.classList.toggle('active', (i === 0 && tab === 'order') || (i === 1 && tab === 'packed'));
+    });
+    if (tab === 'packed') loadPackedLots();
+}
+
+// ── Data ────────────────────────────────────────────────────────
+
+async function loadProducts() {
+    const res = await fetch('/api/processing/products/');
+    const data = await res.json();
+    allProducts = (data.products || []).sort((a, b) => {
+        const aOnHand = Number(a.on_hand || 0);
+        const bOnHand = Number(b.on_hand || 0);
+        const aInStock = aOnHand > 0 ? 1 : 0;
+        const bInStock = bOnHand > 0 ? 1 : 0;
+        if (aInStock !== bInStock) return bInStock - aInStock;
+        if (aOnHand !== bOnHand) return bOnHand - aOnHand;
+        return (a.item_name || '').localeCompare(b.item_name || '');
+    });
+}
+
+async function loadSODetail() {
+    const res = await fetch(`/api/sales/orders/${SO_ID}/detail/`);
+    soData = await res.json();
+    lineItems = soData.items || [];
+
+    document.getElementById('so-order-status').value = soData.order_status || 'draft';
+    document.getElementById('so-packed-status').value = soData.packed_status || 'not_packed';
+    refreshStatusSelectStyles();
+    refreshHeaderStatusBadge();
+
+    // Contact info
+    if (soData.contact_info && soData.contact_info.name) {
+        document.getElementById('cc-name').textContent = soData.contact_info.name;
+        document.getElementById('cc-phone').textContent = soData.contact_info.phone || '';
+        document.getElementById('cc-email').innerHTML = soData.contact_info.email
+            ? `<a href="mailto:${esc(soData.contact_info.email)}">${esc(soData.contact_info.email)}</a>` : '';
+    }
+
+    // Addresses
+    const fmtAddr = (a) => a ? [a.address, [a.city, a.state].filter(Boolean).join(', '), a.zip].filter(Boolean).join('<br>') + '<br>USA' : '--';
+    document.getElementById('del-addr').innerHTML = fmtAddr(soData.delivery_address);
+    document.getElementById('mail-addr').innerHTML = fmtAddr(soData.mailing_address);
+
+    // Populate shipping info on packed tab
+    document.getElementById('pk-shipper').textContent = soData.shipper || '--';
+    document.getElementById('pk-ship-date').textContent = soData.ship_date ? new Date(soData.ship_date).toLocaleDateString('en-GB', {day:'numeric',month:'short',year:'numeric'}) : '--';
+
+    renderItems();
+}
+
+function renderItems() {
+    const tbody = document.getElementById('itemsTbody');
+
+    tbody.innerHTML = lineItems.map((item, i) => {
+        const isFee = item.item_type === 'fee';
+        const topField = isFee
+            ? `<input type="text" value="${esc(item.description)}" placeholder="Fee description" onchange="lineItems[${i}].description=this.value; recalc();">`
+            : `<select class="item-select" data-product-id="${esc(item.product_id)}" onchange="onItemSelect(${i}, this.value)"><option value="">Choose Item</option>${buildProductOptions(item.product_id)}</select>`;
+        const qtyField = isFee
+            ? `<span style="font-size:0.8rem;color:#94a3b8;">--</span>`
+            : `<input class="item-editor-input" type="number" step="0.01" value="${item.quantity||''}" onchange="lineItems[${i}].quantity=parseFloat(this.value)||0; recalc();">`;
+        const marginField = isFee
+            ? `<div class="item-margin-display" style="color:#94a3b8;">--</div>`
+            : `<div class="item-margin-display">${esc(item.margin || 'No Data')}</div>`;
+        const topControl = isFee
+            ? `<input class="item-editor-input" type="text" value="${esc(item.description)}" placeholder="Fee description" onchange="lineItems[${i}].description=this.value; recalc();">`
+            : `<select class="item-editor-select" data-product-id="${esc(item.product_id)}" onchange="onItemSelect(${i}, this.value)"><option value="">Choose Item</option>${buildProductOptions(item.product_id)}</select>`;
+        const notesField = `<input class="item-editor-input" type="text" value="${esc(item.notes)}" placeholder="Enter note" onchange="lineItems[${i}].notes=this.value;">`;
+        const priceField = `<input class="item-editor-input" type="number" step="0.01" value="${item.unit_price||''}" placeholder="$" onchange="lineItems[${i}].unit_price=parseFloat(this.value)||0; recalc();">`;
+        return `
+        <tr>
+            <td class="item-editor-cell">
+                <div class="item-editor-card">
+                    <div class="item-editor-top">
+                        <div>
+                            <span class="item-field-label">${isFee ? 'Fee Description' : 'Item'}</span>
+                            ${topControl}
+                        </div>
+                        <button class="item-delete-btn" onclick="removeItem(${i})"><i class="bi bi-trash"></i></button>
+                    </div>
+                    <div class="item-editor-bottom">
+                        <div>
+                            <span class="item-field-label">Notes</span>
+                            ${notesField}
+                        </div>
+                        <div>
+                            <span class="item-field-label">Quantity</span>
+                            ${qtyField}
+                        </div>
+                        <div>
+                            <span class="item-field-label">Unit Price</span>
+                            ${priceField}
+                        </div>
+                        <div>
+                            <span class="item-field-label">Margin</span>
+                            ${marginField}
+                        </div>
+                        <div>
+                            <span class="item-field-label">Amount</span>
+                            <div class="item-amount-box">$${(item.amount||0).toFixed(2)}</div>
+                        </div>
+                    </div>
+                </div>
+            </td>
+        </tr>`;
+    }).join('');
+
+    // Set select values after render
+    tbody.querySelectorAll('.item-editor-select[data-product-id]').forEach(sel => {
+        if (sel.dataset.productId) sel.value = sel.dataset.productId;
+    });
+
+    updateProductFilterUI();
+    recalc();
+}
+
+function onItemSelect(idx, productId) {
+    const p = allProducts.find(x => x.product_id === productId);
+    if (p) { lineItems[idx].product_id = productId; lineItems[idx].description = p.item_name; lineItems[idx].unit_type = p.unit_type; }
+}
+
+function setProductFilter(filterName) {
+    currentProductFilter = filterName;
+    renderItems();
+}
+
+function getFilteredProducts() {
+    if (currentProductFilter === 'recent') {
+        return allProducts.filter(product => !!product.recently_processed);
+    }
+    if (currentProductFilter === 'all') {
+        return allProducts;
+    }
+    return allProducts.filter(product => Number(product.on_hand || 0) > 0);
+}
+
+function buildProductOptions(selectedProductId) {
+    const selectedId = selectedProductId || '';
+    const filteredProducts = getFilteredProducts();
+    const selectedProduct = selectedId ? allProducts.find(product => product.product_id === selectedId) : null;
+    const options = selectedProduct && !filteredProducts.some(product => product.product_id === selectedId)
+        ? [selectedProduct, ...filteredProducts]
+        : filteredProducts;
+    return options
+        .filter((product, index, arr) => product && arr.findIndex(entry => entry.product_id === product.product_id) === index)
+        .map(product => `<option value="${esc(product.product_id)}">${esc(formatProductOptionLabel(product))}</option>`)
+        .join('');
+}
+
+function formatQty(value) {
+    return Number(value || 0).toLocaleString(undefined, {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 2,
+    });
+}
+
+function formatProductOptionLabel(product) {
+    const onHand = Number(product.on_hand || 0);
+    const unit = product.unit_type || product.inventory_unit_of_measure || '';
+    if (currentProductFilter === 'recent' && product.recently_processed) {
+        return `${product.item_name} (${onHand > 0 ? `${formatQty(onHand)} ${unit || 'units'} on hand, ` : ''}recently processed)`;
+    }
+    if (onHand > 0) {
+        return `${product.item_name} (${formatQty(onHand)} ${unit || 'units'} on hand)`;
+    }
+    return `${product.item_name} (Out of stock)`;
+}
+
+function updateProductFilterUI() {
+    document.querySelectorAll('.item-filter-btn[data-filter]').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.filter === currentProductFilter);
+    });
+    const note = document.getElementById('itemFilterNote');
+    if (!note) return;
+    const count = getFilteredProducts().length;
+    if (currentProductFilter === 'recent') {
+        note.textContent = `${count} recently processed item${count === 1 ? '' : 's'} from the last 14 days`;
+        return;
+    }
+    if (currentProductFilter === 'all') {
+        note.textContent = `${count} active catalog item${count === 1 ? '' : 's'}`;
+        return;
+    }
+    note.textContent = `${count} item${count === 1 ? '' : 's'} currently in stock`;
+}
+
+function refreshStatusSelectStyles() {
+    const statusIds = ['so-order-status', 'so-packed-status'];
+    statusIds.forEach(id => {
+        const select = document.getElementById(id);
+        if (!select) return;
+        select.className = 'so-status-select';
+        select.classList.add(`status-${select.value}`);
+    });
+}
+
+function refreshHeaderStatusBadge() {
+    const badge = document.getElementById('so-header-status');
+    const orderSelect = document.getElementById('so-order-status');
+    if (!badge || !orderSelect) return;
+    const labels = {
+        draft: 'Draft',
+        open: 'Open',
+        needs_review: 'Needs Review',
+        closed: 'Closed',
+        cancelled: 'Cancelled',
+    };
+    badge.className = `badge-status badge-${orderSelect.value}`;
+    badge.textContent = labels[orderSelect.value] || orderSelect.value;
+}
+
+function addItemRow(type) {
+    lineItems.push({ id: null, item_type: type, product_id: '', description: type === 'fee' ? 'Fee' : '', notes: '', quantity: null, unit_type: '', unit_price: null, margin: '', amount: 0 });
+    renderItems();
+}
+
+function removeItem(idx) {
+    const item = lineItems[idx];
+    if (item.id) fetch(`/api/sales/orders/${SO_ID}/items/${item.id}/delete/`, { method: 'POST', headers: { 'X-CSRFToken': getCookie('csrftoken') } });
+    lineItems.splice(idx, 1);
+    renderItems();
+}
+
+function recalc() {
+    let itemSub = 0, feeSub = 0;
+    lineItems.forEach(item => {
+        if (item.item_type === 'fee') { item.amount = parseFloat(item.unit_price) || 0; feeSub += item.amount; }
+        else { item.amount = (parseFloat(item.quantity) || 0) * (parseFloat(item.unit_price) || 0); itemSub += item.amount; }
+    });
+    document.getElementById('itemSubtotal').textContent = '$' + itemSub.toFixed(2);
+    document.getElementById('feeSubtotal').textContent = '$' + feeSub.toFixed(2);
+    document.getElementById('grandTotal').textContent = '$' + (itemSub + feeSub).toFixed(2);
+}
+
+// ── Packed Lots ─────────────────────────────────────────────────
+
+async function loadPackedLots() {
+    const tbody = document.getElementById('packedTbody');
+    const res = await fetch(`/api/sales/orders/${SO_ID}/allocations/`);
+    allocationData = await res.json();
+    const allocatedItems = allocationData.items || [];
+    const shortages = allocationData.shortages || [];
+
+    if (!lineItems.length || lineItems.every(i => i.item_type === 'fee')) {
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">No packed items yet. Add items on the Order Form tab first.</td></tr>';
+        return;
+    }
+
+    const alertEl = document.getElementById('fifoAlert');
+    if (shortages.length) {
+        alertEl.style.display = '';
+        alertEl.innerHTML = '<i class="bi bi-exclamation-triangle me-1"></i>' + shortages.map(s =>
+            `${esc(s.item_name)} short by ${Number(s.short_qty).toLocaleString(undefined, {maximumFractionDigits:2})}`
+        ).join(' | ');
+    } else if (allocatedItems.some(item => (item.lots || []).length)) {
+        alertEl.style.display = '';
+        alertEl.innerHTML = '<i class="bi bi-check-circle me-1"></i>FIFO allocation is current. Oldest available lots are reserved first for this order.';
+    } else {
+        alertEl.style.display = 'none';
+        alertEl.textContent = '';
+    }
+
+    tbody.innerHTML = allocatedItems.map(item => {
+        const orderedQty = item.ordered_qty || 0;
+        const packedQty = item.allocated_qty || 0;
+        let statusHtml = '<span class="status-match">Match</span>';
+        if (packedQty < orderedQty) {
+            const diff = orderedQty - packedQty;
+            statusHtml = `<span class="status-short">&darr; ${diff} ${esc(item.unit_type)}</span>`;
+        }
+        const lotText = (item.lots || []).length
+            ? item.lots.map(lot => `${esc(lot.lot_id)} (${Number(lot.quantity).toLocaleString(undefined, {maximumFractionDigits:2})} ${esc(lot.unit_type)})`).join('<br>')
+            : '--';
+
+        return `<tr>
+            <td><a href="#">${esc(item.item_name)}</a><div class="fifo-note">${(item.lots || []).length ? `${item.lots.length} lot allocation(s)` : 'Not allocated yet'}</div></td>
+            <td>${lotText}</td>
+            <td>${orderedQty} ${esc(item.unit_type)}</td>
+            <td>${packedQty} ${esc(item.unit_type)}</td>
+            <td>${statusHtml}</td>
+        </tr>`;
+    }).join('');
+
+    document.getElementById('packed-meta').innerHTML = `<span style="color:#94a3b8;">Invoice ${esc(soData.qb_invoice_number || 'BT-' + soData.order_number)}</span>`;
+}
+
+async function allocateFIFO() {
+    const res = await fetch(`/api/sales/orders/${SO_ID}/allocate-fifo/`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCookie('csrftoken') },
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) {
+        alert(data.error || 'Unable to allocate FIFO lots.');
+        return;
+    }
+
+    if (data.shortages && data.shortages.length) {
+        alert('FIFO allocation completed with shortages: ' + data.shortages.map(s => `${s.item_name} short ${s.short_qty}`).join(', '));
+    } else {
+        alert('FIFO allocation completed.');
+    }
+    await loadPackedLots();
+}
+
+// ── Save ────────────────────────────────────────────────────────
+
+async function saveSalesOrder(orderStatus) {
+    await fetch(`/api/sales/orders/${SO_ID}/update/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+        body: JSON.stringify({
+            sales_rep: document.getElementById('so-sales-rep').value,
+            po_number: document.getElementById('so-po').value,
+            air_bill_number: document.getElementById('so-airbill').value,
+            order_date: document.getElementById('so-order-date').value || null,
+            pack_date: document.getElementById('so-pack-date').value || null,
+            delivery_date: document.getElementById('so-delivery-date').value || null,
+            ship_date: document.getElementById('so-ship-date').value || null,
+            shipper: document.getElementById('so-shipper').value,
+            shipping_route: document.getElementById('so-route').value,
+            order_weight: document.getElementById('so-weight').value || null,
+            qb_invoice_number: document.getElementById('so-qb').value,
+            notes: document.getElementById('so-notes').value,
+            order_status: orderStatus || document.getElementById('so-order-status').value || 'draft',
+            packed_status: document.getElementById('so-packed-status').value || 'not_packed',
+        }),
+    });
+
+    for (const item of lineItems) {
+        if (item.id) await fetch(`/api/sales/orders/${SO_ID}/items/${item.id}/delete/`, { method: 'POST', headers: { 'X-CSRFToken': getCookie('csrftoken') } });
+    }
+    for (const item of lineItems) {
+        await fetch(`/api/sales/orders/${SO_ID}/items/add/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+            body: JSON.stringify(item),
+        });
+    }
+}
+
+async function saveDraft() {
+    await saveSalesOrder(document.getElementById('so-order-status').value || 'draft');
+    refreshHeaderStatusBadge();
+    alert('Draft saved.');
+    loadSODetail();
+}
+
+async function publishSO() {
+    await saveSalesOrder(document.getElementById('so-order-status').value || 'open');
+    refreshHeaderStatusBadge();
+    alert('Sales order published.');
+    location.reload();
+}
+</script>
+{% endblock %}

@@ -1,6 +1,6 @@
 import csv
 from django.core.management.base import BaseCommand
-from core.models import SOP, Zone, Company, Tenant
+from core.models import SOP, Zone, Tenant
 
 
 class Command(BaseCommand):
@@ -9,13 +9,11 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument('csv_file', type=str, help='Path to the CSV file')
         parser.add_argument('--tenant-id', type=int, required=True, help='Tenant ID to associate records with')
-        parser.add_argument('--company-id', type=int, required=True, help='Force all records to this company ID')
         parser.add_argument('--dry-run', action='store_true', help='Preview without saving')
 
     def handle(self, *args, **options):
         csv_file = options['csv_file']
         tenant_id = options['tenant_id']
-        company_id = options['company_id']
         dry_run = options['dry_run']
 
         try:
@@ -24,14 +22,8 @@ class Command(BaseCommand):
             self.stderr.write(f'Tenant with ID {tenant_id} does not exist.')
             return
 
-        try:
-            company = Company.all_objects.get(pk=company_id, tenant=tenant)
-        except Company.DoesNotExist:
-            self.stderr.write(f'Company with ID {company_id} not found in tenant {tenant_id}.')
-            return
-
         zones = {}  # zone_name -> Zone
-        for z in Zone.all_objects.filter(tenant=tenant, company=company):
+        for z in Zone.all_objects.filter(tenant=tenant):
             zones[z.name] = z
 
         created_zones = 0
@@ -57,7 +49,6 @@ class Command(BaseCommand):
                         if not dry_run:
                             zone, was_created = Zone.all_objects.get_or_create(
                                 tenant=tenant,
-                                company=company,
                                 name=zone_name,
                             )
                             zones[zone_name] = zone
@@ -74,7 +65,6 @@ class Command(BaseCommand):
 
                 SOP.all_objects.update_or_create(
                     tenant=tenant,
-                    company=company,
                     sop_did=sop_did,
                     defaults={
                         'description': row['Description'].strip(),

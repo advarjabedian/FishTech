@@ -1,0 +1,484 @@
+{% extends 'core/base.html' %}
+{% block title %}PO {{ po.po_number }} - {{ po.vendor_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+.po-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; }
+.po-header h2 { font-size: 1.4rem; font-weight: 700; margin: 0; }
+.po-header .meta { font-size: 0.8rem; color: #64748b; }
+
+.po-card { background: #fff; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); padding: 1.5rem; margin-bottom: 1.25rem; }
+.po-card h5 { font-weight: 700; font-size: 0.95rem; margin-bottom: 1rem; }
+
+.info-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem; }
+.info-item label { font-size: 0.75rem; font-weight: 600; color: #64748b; text-transform: uppercase; display: block; margin-bottom: 4px; }
+.info-item input, .info-item select {
+    width: 100%; border: 1px solid #d1d5db; border-radius: 8px; padding: 8px 12px; font-size: 0.85rem;
+}
+.info-item input:focus, .info-item select:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.12); outline: none; }
+
+.contact-card {
+    background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px 18px;
+}
+.contact-card .cc-label { font-size: 0.75rem; font-weight: 600; color: #64748b; text-transform: uppercase; margin-bottom: 4px; }
+.contact-card .cc-name { font-weight: 600; color: #1e293b; }
+.contact-card .cc-detail { font-size: 0.82rem; color: #64748b; }
+
+/* Items table */
+.items-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+.items-table th {
+    text-align: left; color: #64748b; font-weight: 600; font-size: 0.73rem;
+    text-transform: uppercase; padding: 8px 10px; border-bottom: 1px solid #e2e8f0;
+}
+.items-table td { padding: 8px 10px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+.items-table .item-select { width: 100%; border: 1px solid #d1d5db; border-radius: 6px; padding: 6px 8px; font-size: 0.85rem; }
+.items-table input { border: 1px solid #d1d5db; border-radius: 6px; padding: 6px 8px; font-size: 0.85rem; width: 100%; }
+.items-table .del-btn { background: none; border: 1px solid #e5e7eb; border-radius: 6px; color: #94a3b8; cursor: pointer; padding: 4px 8px; }
+.items-table .del-btn:hover { color: #dc2626; border-color: #dc2626; }
+
+.add-links { display: flex; gap: 1rem; margin-top: 0.75rem; font-size: 0.82rem; }
+.add-links a { color: #2563eb; text-decoration: none; font-weight: 600; cursor: pointer; }
+.add-links a:hover { text-decoration: underline; }
+
+.totals-row { display: flex; justify-content: flex-end; gap: 2rem; font-size: 0.85rem; margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid #e5e7eb; }
+.totals-row .t-label { color: #64748b; font-weight: 600; }
+.totals-row .t-val { color: #1e293b; font-weight: 700; min-width: 80px; text-align: right; }
+
+.btn-publish { background: #0ea5e9; color: #fff; border: none; border-radius: 8px; padding: 8px 20px; font-size: 0.85rem; font-weight: 600; cursor: pointer; }
+.btn-publish:hover { background: #0284c7; }
+
+.notes-area { width: 100%; border: 1px solid #d1d5db; border-radius: 8px; padding: 10px 12px; font-size: 0.85rem; resize: vertical; }
+.notes-area:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.12); outline: none; }
+
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.3); z-index: 1060; display: none; }
+.modal-overlay.open { display: flex; align-items: center; justify-content: center; }
+.modal-box { background: #fff; border-radius: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.15); overflow: hidden; }
+.fg { margin-bottom: 1rem; }
+.contact-card:hover { border-color: #2563eb; background: #f0f6ff; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+{% include 'core/includes/sidebar.html' with active='purchase' %}
+
+<div class="inv-main">
+    <div style="max-width:900px; margin:0 auto;">
+    <div style="margin-bottom:1rem;">
+        <a href="{% url 'purchases_page' %}" style="font-size:0.85rem; color:#2563eb; text-decoration:none;">
+            <i class="bi bi-arrow-left me-1"></i> Back to Purchases
+        </a>
+    </div>
+
+    <div class="po-header">
+        <div>
+            <h2>{{ po.vendor_name }}</h2>
+            <div class="meta">
+                <i class="bi bi-clipboard me-1"></i> New Purchase &middot;
+                <span class="badge-status badge-{{ po.order_status }}">{{ po.get_order_status_display }}</span>
+            </div>
+        </div>
+        <div style="display:flex; gap:0.5rem;">
+            {% if po.order_status == 'draft' %}
+            <button class="btn-inv-outline" onclick="withSpinner(this, () => saveDraft())">Save Draft</button>
+            <button class="btn-publish" onclick="withSpinner(this, () => publishPO())">Publish</button>
+            {% elif po.order_status == 'closed' or po.order_status == 'cancelled' %}
+            <button class="btn-inv-outline" onclick="withSpinner(this, () => reopenPO())"><i class="bi bi-unlock me-1"></i>Reopen</button>
+            {% else %}
+            <button class="btn-inv-outline" onclick="withSpinner(this, () => saveChanges())">Save Changes</button>
+            <button class="btn-inv-outline" style="color:#dc2626; border-color:#dc2626;" onclick="withSpinner(this, () => closePO())"><i class="bi bi-check-circle me-1"></i>Close</button>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Purchase Info -->
+    <div class="po-card">
+        <div style="display:flex; justify-content:space-between; align-items:start; gap:1.5rem; flex-wrap:wrap;">
+            <div style="flex:1;">
+                <h5>Purchase Info</h5>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <label>Buyer</label>
+                        <input type="text" id="po-buyer" value="{{ po.buyer }}">
+                    </div>
+                    <div class="info-item">
+                        <label>Vendor Invoice Number</label>
+                        <input type="text" id="po-invoice" value="{{ po.vendor_invoice_number }}">
+                    </div>
+                    <div class="info-item">
+                        <label>Order Date</label>
+                        <input type="date" id="po-order-date" value="{{ po.order_date|date:'Y-m-d' }}">
+                    </div>
+                </div>
+                <div class="info-grid" style="margin-top:1rem;">
+                    <div class="info-item">
+                        <label>Expected Receipt Date</label>
+                        <input type="date" id="po-expected-date" value="{{ po.expected_date|date:'Y-m-d' }}">
+                    </div>
+                    <div class="info-item">
+                        <label>QB PO #</label>
+                        <input type="text" id="po-qb" value="{{ po.qb_po_number }}">
+                    </div>
+                </div>
+            </div>
+            <div class="contact-card" id="contactCard" style="min-width:220px; cursor:pointer;" onclick="openContactEdit()" title="Click to edit vendor contact info">
+                <div class="cc-label">Contact Info <i class="bi bi-pencil" style="font-size:0.7rem; opacity:0.5;"></i></div>
+                <div class="cc-name" id="cc-name">--</div>
+                <div class="cc-detail" id="cc-phone"></div>
+                <div class="cc-detail" id="cc-email"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Items -->
+    <div class="po-card">
+        <h5>Items</h5>
+        <table class="items-table">
+            <thead>
+                <tr>
+                    <th style="width:35%;">Item</th>
+                    <th style="width:30px;"></th>
+                    <th>Notes</th>
+                    <th style="width:100px;">Quantity</th>
+                    <th style="width:100px;">Unit Price</th>
+                    <th style="width:100px; text-align:right;">Amount</th>
+                </tr>
+            </thead>
+            <tbody id="itemsTbody"></tbody>
+        </table>
+
+        <div class="add-links">
+            <a onclick="addItemRow('item')"><i class="bi bi-plus me-1"></i>Add Item</a>
+            <a onclick="addItemRow('fee')"><i class="bi bi-plus me-1"></i>Add Fee</a>
+        </div>
+
+        <div style="margin-top:1.5rem;">
+            <textarea class="notes-area" id="po-notes" rows="2" placeholder="Enter receiving note (Internal)">{{ po.notes }}</textarea>
+        </div>
+
+        <div class="totals-row">
+            <div><span class="t-label">Item Subtotal</span></div>
+            <div><span class="t-val" id="itemSubtotal">$0.00</span></div>
+        </div>
+        <div class="totals-row" style="border:none; margin-top:0; padding-top:0.25rem;">
+            <div><span class="t-label">Fee Subtotal</span></div>
+            <div><span class="t-val" id="feeSubtotal">$0.00</span></div>
+        </div>
+        <div class="totals-row" style="border:none; margin-top:0; padding-top:0.25rem;">
+            <div><span class="t-label" style="color:#1e293b; font-size:0.95rem;">Total</span></div>
+            <div><span class="t-val" id="grandTotal" style="color:#dc2626; font-size:0.95rem;">$0.00</span></div>
+        </div>
+    </div>
+    <!-- Receive status summary (read-only, links to Receive page) -->
+    {% if po.order_status == 'open' or po.order_status == 'closed' %}
+    <div class="po-card" id="receivingCard">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h5 style="margin:0;"><i class="bi bi-box-arrow-in-down me-1"></i>Receiving</h5>
+            <div style="display:flex; align-items:center; gap:0.75rem;">
+                <span class="badge-status badge-{{ po.receive_status }}">{{ po.get_receive_status_display }}</span>
+                <a href="{% url 'receiving_page' %}" class="btn-inv-outline" style="padding:4px 12px; font-size:0.78rem;"><i class="bi bi-arrow-right me-1"></i>Go to Receive</a>
+            </div>
+        </div>
+        <table class="items-table" style="margin-top:0.75rem;">
+            <thead>
+                <tr>
+                    <th>Item</th>
+                    <th style="text-align:right;">Ordered</th>
+                    <th style="text-align:right;">Received</th>
+                    <th style="text-align:right;">Remaining</th>
+                </tr>
+            </thead>
+            <tbody id="receivingTbody"></tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    </div>
+</div>
+
+<!-- Contact Edit Modal -->
+<div class="modal-overlay" id="contactEditOverlay" onclick="closeContactEdit()">
+    <div class="modal-box" onclick="event.stopPropagation()" style="width:400px;">
+        <div style="padding:1.5rem;">
+            <h5 style="font-weight:700; margin-bottom:1.25rem;">Edit Vendor Contact</h5>
+            <div class="fg"><label style="font-size:0.8rem; font-weight:600; color:#64748b;">Contact Name</label>
+                <input type="text" id="edit-contact-name" class="form-control" style="border-radius:8px;"></div>
+            <div class="fg"><label style="font-size:0.8rem; font-weight:600; color:#64748b;">Phone</label>
+                <input type="text" id="edit-contact-phone" class="form-control" style="border-radius:8px;"></div>
+            <div class="fg"><label style="font-size:0.8rem; font-weight:600; color:#64748b;">Email</label>
+                <input type="email" id="edit-contact-email" class="form-control" style="border-radius:8px;"></div>
+            <div style="display:flex; gap:0.75rem; margin-top:1.25rem;">
+                <button class="btn-publish" onclick="withSpinner(this, () => saveContact())" style="flex:1;">Save</button>
+                <button class="btn-inv-outline" onclick="closeContactEdit()" style="flex:1;">Cancel</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const PO_ID = {{ po.id }};
+const PO_LOCKED = {% if po.order_status == 'closed' or po.order_status == 'cancelled' %}true{% else %}false{% endif %};
+let poData = null;
+let allProducts = [];
+let lineItems = []; // local state
+
+document.addEventListener('DOMContentLoaded', async () => {
+    await loadProducts();
+    await loadPODetail();
+    if (PO_LOCKED) {
+        document.querySelectorAll('#po-buyer, #po-invoice, #po-order-date, #po-expected-date, #po-qb, #po-notes').forEach(el => {
+            el.disabled = true;
+            el.style.background = '#f8fafc';
+            el.style.color = '#64748b';
+        });
+        document.getElementById('contactCard').style.pointerEvents = 'none';
+        document.querySelector('.add-links').style.display = 'none';
+    }
+});
+
+async function loadProducts() {
+    const res = await fetch('/api/processing/products/');
+    const data = await res.json();
+    allProducts = data.products || [];
+}
+
+async function loadPODetail() {
+    const res = await fetch(`/api/purchasing/orders/${PO_ID}/detail/`);
+    poData = await res.json();
+    lineItems = poData.items || [];
+
+    // Contact info
+    if (poData.vendor_info && poData.vendor_info.name) {
+        document.getElementById('cc-name').textContent = poData.vendor_info.name;
+        document.getElementById('cc-phone').textContent = poData.vendor_info.phone || '';
+        document.getElementById('cc-email').innerHTML = poData.vendor_info.email
+            ? `<a href="mailto:${esc(poData.vendor_info.email)}" style="color:#2563eb;">${esc(poData.vendor_info.email)}</a>` : '';
+    }
+
+    renderItems();
+    renderReceiving(poData.items || []);
+}
+
+function renderReceiving(items) {
+    const tbody = document.getElementById('receivingTbody');
+    if (!tbody) return;
+    const poItems = items.filter(i => i.item_type === 'item');
+    tbody.innerHTML = poItems.map(item => {
+        const remaining = item.remaining_qty || 0;
+        const rowColor = remaining <= 0 ? 'background:#f0fdf4;' : '';
+        const statusIcon = remaining <= 0
+            ? '<span style="color:#16a34a;"><i class="bi bi-check-circle-fill"></i></span>'
+            : '';
+        return `
+        <tr style="${rowColor}">
+            <td>${esc(item.description)} ${statusIcon}</td>
+            <td style="text-align:right;">${item.ordered_qty} ${esc(item.unit_type)}</td>
+            <td style="text-align:right;">${item.received_qty}</td>
+            <td style="text-align:right; ${remaining > 0 ? 'color:#dc2626; font-weight:600;' : 'color:#16a34a;'}">${remaining}</td>
+        </tr>`;
+    }).join('');
+}
+
+function renderItems() {
+    const tbody = document.getElementById('itemsTbody');
+    const productOpts = allProducts.map(p =>
+        `<option value="${esc(p.product_id)}">${esc(p.item_name)}</option>`
+    ).join('');
+
+    tbody.innerHTML = lineItems.map((item, i) => {
+        const isFee = item.item_type === 'fee';
+        if (PO_LOCKED) {
+            const name = isFee ? esc(item.description) : esc(item.description || item.product_id || '');
+            return `
+            <tr>
+                <td>${name}</td>
+                <td></td>
+                <td>${esc(item.notes)}</td>
+                <td>${isFee ? '' : (item.quantity || '')}</td>
+                <td>${item.unit_price ? '$' + Number(item.unit_price).toFixed(2) : ''}</td>
+                <td style="text-align:right; font-weight:600;">$${(item.amount||0).toFixed(2)}</td>
+            </tr>`;
+        }
+        return `
+        <tr>
+            <td>
+                ${isFee
+                    ? `<input type="text" value="${esc(item.description)}" placeholder="Fee description"
+                             onchange="lineItems[${i}].description=this.value; recalc();">`
+                    : `<select class="item-select" data-product-id="${esc(item.product_id)}" onchange="onItemSelect(${i}, this.value)">
+                        <option value="">Choose Item</option>
+                        ${productOpts}
+                       </select>`
+                }
+            </td>
+            <td><button class="del-btn" onclick="removeItem(${i})"><i class="bi bi-trash"></i></button></td>
+            <td><input type="text" value="${esc(item.notes)}" placeholder="Enter note" onchange="lineItems[${i}].notes=this.value;"></td>
+            <td>${isFee ? '' : `<input type="number" step="0.01" value="${item.quantity||''}" onchange="lineItems[${i}].quantity=parseFloat(this.value)||0; recalc();">`}</td>
+            <td><input type="number" step="0.01" value="${item.unit_price||''}" placeholder="$" onchange="lineItems[${i}].unit_price=parseFloat(this.value)||0; recalc();"></td>
+            <td style="text-align:right; font-weight:600;">$${(item.amount||0).toFixed(2)}</td>
+        </tr>`;
+    }).join('');
+
+    // Set select values after DOM is updated
+    tbody.querySelectorAll('.item-select[data-product-id]').forEach(sel => {
+        if (sel.dataset.productId) sel.value = sel.dataset.productId;
+    });
+
+    recalc();
+}
+
+function onItemSelect(idx, productId) {
+    const p = allProducts.find(x => x.product_id === productId);
+    if (p) {
+        lineItems[idx].product_id = productId;
+        lineItems[idx].description = p.item_name;
+        lineItems[idx].unit_type = p.unit_type;
+    }
+}
+
+function addItemRow(type) {
+    lineItems.push({
+        id: null, item_type: type, product_id: '', description: type === 'fee' ? 'Fee' : '',
+        notes: '', quantity: null, unit_type: '', unit_price: null, amount: 0,
+    });
+    renderItems();
+}
+
+function removeItem(idx) {
+    const item = lineItems[idx];
+    if (item.id) {
+        // Delete from server
+        fetch(`/api/purchasing/orders/${PO_ID}/items/${item.id}/delete/`, {
+            method: 'POST', headers: { 'X-CSRFToken': getCookie('csrftoken') },
+        });
+    }
+    lineItems.splice(idx, 1);
+    renderItems();
+}
+
+function recalc() {
+    let itemSub = 0, feeSub = 0;
+    lineItems.forEach(item => {
+        if (item.item_type === 'fee') {
+            item.amount = parseFloat(item.unit_price) || 0;
+            feeSub += item.amount;
+        } else {
+            item.amount = (parseFloat(item.quantity) || 0) * (parseFloat(item.unit_price) || 0);
+            itemSub += item.amount;
+        }
+    });
+    document.getElementById('itemSubtotal').textContent = '$' + itemSub.toFixed(2);
+    document.getElementById('feeSubtotal').textContent = '$' + feeSub.toFixed(2);
+    document.getElementById('grandTotal').textContent = '$' + (itemSub + feeSub).toFixed(2);
+
+    // Update amounts in table
+    const amountCells = document.querySelectorAll('.items-table tbody td:last-child');
+    lineItems.forEach((item, i) => {
+        if (amountCells[i]) amountCells[i].textContent = '$' + (item.amount || 0).toFixed(2);
+    });
+}
+
+async function saveData(status) {
+    await fetch(`/api/purchasing/orders/${PO_ID}/update/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+        body: JSON.stringify({
+            buyer: document.getElementById('po-buyer').value,
+            vendor_invoice_number: document.getElementById('po-invoice').value,
+            order_date: document.getElementById('po-order-date').value || null,
+            expected_date: document.getElementById('po-expected-date').value || null,
+            qb_po_number: document.getElementById('po-qb').value,
+            notes: document.getElementById('po-notes').value,
+            order_status: status,
+        }),
+    });
+
+    for (const item of lineItems) {
+        if (item.id) {
+            await fetch(`/api/purchasing/orders/${PO_ID}/items/${item.id}/delete/`, {
+                method: 'POST', headers: { 'X-CSRFToken': getCookie('csrftoken') },
+            });
+        }
+    }
+    for (const item of lineItems) {
+        await fetch(`/api/purchasing/orders/${PO_ID}/items/add/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+            body: JSON.stringify(item),
+        });
+    }
+}
+
+async function saveDraft() {
+    await saveData('draft');
+    alert('Draft saved.');
+    loadPODetail();
+}
+
+async function publishPO() {
+    await saveData('open');
+    alert('Purchase order published.');
+    location.reload();
+}
+
+async function saveChanges() {
+    await saveData('{{ po.order_status }}');
+    alert('Changes saved.');
+    loadPODetail();
+}
+
+async function closePO() {
+    if (!confirm('Close this purchase order? It will become read-only.')) return;
+    // Save current changes first, then close
+    await saveData('{{ po.order_status }}');
+    await fetch(`/api/purchasing/orders/${PO_ID}/update/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+        body: JSON.stringify({ order_status: 'closed' }),
+    });
+    location.reload();
+}
+
+async function reopenPO() {
+    if (!confirm('Reopen this purchase order for editing?')) return;
+    await fetch(`/api/purchasing/orders/${PO_ID}/update/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+        body: JSON.stringify({ order_status: 'open' }),
+    });
+    location.reload();
+}
+
+// ── Contact edit ────────────────────────────────────────────────
+function openContactEdit() {
+    if (!poData || !poData.vendor_info) return;
+    document.getElementById('edit-contact-name').value = poData.vendor_info.contact_name || poData.vendor_info.name || '';
+    document.getElementById('edit-contact-phone').value = poData.vendor_info.phone || '';
+    document.getElementById('edit-contact-email').value = poData.vendor_info.email || '';
+    document.getElementById('contactEditOverlay').classList.add('open');
+}
+function closeContactEdit() { document.getElementById('contactEditOverlay').classList.remove('open'); }
+
+async function saveContact() {
+    if (!poData || !poData.vendor_info || !poData.vendor_info.id) { alert('No vendor linked.'); return; }
+    const res = await fetch(`/api/vendors/${poData.vendor_info.id}/update/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+        body: JSON.stringify({
+            contact_name: document.getElementById('edit-contact-name').value,
+            phone: document.getElementById('edit-contact-phone').value,
+            email: document.getElementById('edit-contact-email').value,
+        }),
+    });
+    if (res.ok) {
+        closeContactEdit();
+        loadPODetail();
+    } else {
+        alert('Failed to update contact.');
+    }
+}
+</script>
+{% endblock %}

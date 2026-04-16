@@ -1,0 +1,1022 @@
+{% extends 'core/base.html' %}
+{% block title %}Products - FishTeck{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ── Page-specific header ──────────────────────────────────────── */
+.inv-header .item-count { font-size: 0.8rem; color: #64748b; }
+
+/* Tabs */
+.inv-tab {
+    background: none; border: none; padding: 10px 20px; font-size: 0.85rem;
+    font-weight: 600; color: #64748b; cursor: pointer; border-bottom: 2px solid transparent;
+    margin-bottom: -2px; transition: all 0.15s;
+}
+.inv-tab:hover { color: #2563eb; }
+.inv-tab.active { color: #2563eb; border-bottom-color: #2563eb; }
+.rejected-count {
+    background: #fee2e2; color: #991b1b; font-size: 0.7rem; font-weight: 700;
+    padding: 1px 7px; border-radius: 10px; margin-left: 6px;
+}
+.qc-badge-sm { display: inline-flex; align-items: center; font-size: 0.73rem; font-weight: 600; padding: 3px 8px; border-radius: 20px; }
+.qc-hold { background: #fef3c7; color: #92400e; }
+.qc-reject { background: #fee2e2; color: #991b1b; }
+
+/* ── Page-specific table styles ───────────────────────────────── */
+.inv-table tbody td.item-name {
+    font-weight: 600;
+    color: #1e293b;
+    max-width: 320px;
+}
+.inv-table .actions-cell {
+    width: 40px;
+    text-align: center;
+}
+.inv-table .actions-cell button {
+    background: none;
+    border: none;
+    color: #94a3b8;
+    cursor: pointer;
+    font-size: 1rem;
+    padding: 2px 4px;
+    border-radius: 4px;
+}
+.inv-table .actions-cell button:hover { color: #2563eb; background: #eff6ff; }
+
+/* ── Pagination page buttons ───────────────────────────────────── */
+.inv-pagination .page-btns { display: flex; gap: 4px; }
+.inv-pagination .page-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    background: #fff;
+    color: #374151;
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+.inv-pagination .page-btn:hover { border-color: #2563eb; color: #2563eb; }
+.inv-pagination .page-btn.active { background: #2563eb; color: #fff; border-color: #2563eb; }
+
+/* ── Slide-over panel ───────────────────────────────────────────── */
+.slide-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.25);
+    z-index: 1040;
+    display: none;
+}
+.slide-overlay.open { display: block; }
+
+.slide-panel {
+    position: fixed;
+    top: 0;
+    right: -520px;
+    width: 500px;
+    max-width: 90vw;
+    height: 100vh;
+    background: #fff;
+    box-shadow: -4px 0 24px rgba(0,0,0,0.12);
+    z-index: 1050;
+    transition: right 0.3s ease;
+    display: flex;
+    flex-direction: column;
+}
+.slide-panel.open { right: 0; }
+
+.slide-panel-header {
+    background: #2563eb;
+    color: #fff;
+    padding: 18px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+}
+.slide-panel-header h4 { margin: 0; font-size: 1.1rem; font-weight: 600; }
+.slide-panel-header .close-btn {
+    background: rgba(255,255,255,0.2);
+    border: none;
+    color: #fff;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    font-size: 1.1rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.slide-panel-header .close-btn:hover { background: rgba(255,255,255,0.35); }
+
+.slide-panel-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px;
+}
+.slide-panel-footer {
+    padding: 16px 24px;
+    border-top: 1px solid #e5e7eb;
+    display: flex;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+.form-label-inv {
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: #1e293b;
+    margin-bottom: 4px;
+    display: block;
+}
+.form-hint {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    margin-top: 2px;
+}
+.form-control-inv {
+    width: 100%;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 0.9rem;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+.form-control-inv:focus {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.12);
+    outline: none;
+}
+.form-group-inv { margin-bottom: 1.1rem; }
+
+/* ── Filter panel (right-side modal) ────────────────────────────── */
+.filter-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.25);
+    z-index: 1040;
+    display: none;
+}
+.filter-overlay.open { display: block; }
+.filter-panel {
+    position: fixed;
+    top: 0;
+    right: -420px;
+    width: 400px;
+    max-width: 90vw;
+    height: 100vh;
+    background: #fff;
+    box-shadow: -4px 0 24px rgba(0,0,0,0.12);
+    z-index: 1050;
+    transition: right 0.3s ease;
+    display: flex;
+    flex-direction: column;
+}
+.filter-panel.open { right: 0; }
+.filter-panel-header {
+    background: #2563eb;
+    color: #fff;
+    padding: 18px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+.filter-panel-header h4 { margin: 0; font-size: 1.1rem; font-weight: 600; }
+.filter-panel-header .close-btn {
+    background: rgba(255,255,255,0.2);
+    border: none;
+    color: #fff;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    font-size: 1.1rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.filter-panel-body { flex: 1; overflow-y: auto; padding: 24px; }
+.filter-panel-footer {
+    padding: 16px 24px;
+    border-top: 1px solid #e5e7eb;
+    display: flex;
+    gap: 10px;
+}
+.filter-check {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 1rem;
+    padding: 10px 14px;
+    background: #f8fafc;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+}
+.filter-check label { font-size: 0.85rem; font-weight: 600; color: #1e293b; margin: 0; }
+.filter-check .hint { font-size: 0.72rem; color: #94a3b8; }
+
+/* ── Item row clickable ─────────────────────────────────────────── */
+.inv-table tbody tr.clickable-row { cursor: pointer; }
+.inv-table tbody tr.clickable-row:hover { background: #eff6ff; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+{% include 'core/includes/sidebar.html' with active='inventory' %}
+
+<!-- Main content -->
+<div class="inv-main">
+    <div class="inv-header">
+        <h2><i class="bi bi-box-seam me-2" style="color:#2563eb;"></i>Products</h2>
+        <span class="item-count" id="itemCount">0 items</span>
+    </div>
+
+    <!-- Tabs -->
+    <div class="inv-tabs" style="display:flex; gap:0; margin-bottom:1rem; border-bottom:2px solid #e5e7eb;">
+        <button class="inv-tab active" id="tab-inventory" onclick="switchTab('inventory')">
+            <i class="bi bi-box-seam me-1"></i>Inventory
+        </button>
+        <button class="inv-tab" id="tab-rejected" onclick="switchTab('rejected')">
+            <i class="bi bi-exclamation-triangle me-1"></i>Rejected / Hold
+            <span class="rejected-count" id="rejectedCount" style="display:none;"></span>
+        </button>
+    </div>
+
+    <!-- INVENTORY TAB -->
+    <div id="panel-inventory">
+    <!-- Toolbar -->
+    <div class="inv-toolbar">
+        <div class="inv-toolbar-left">
+            <select class="filter-select" id="showFilter" onchange="onShowFilterChange()">
+                <option value="active">In Stock</option>
+                <option value="active_all">All Active Items</option>
+                <option value="inactive">Inactive Items</option>
+            </select>
+            <input type="text" class="search-box" id="searchBox" placeholder="Search..." oninput="debounceSearch()">
+            <button class="btn btn-sm btn-link text-muted" onclick="clearFilters()" style="font-size:0.8rem;">
+                <i class="bi bi-x-circle me-1"></i>Clear Filters
+            </button>
+            <button class="btn-inv-outline" onclick="openFilterPanel()" style="padding:6px 14px;">
+                <i class="bi bi-funnel me-1"></i>Filter
+            </button>
+        </div>
+        <div class="inv-toolbar-right">
+            <a href="/api/inventory/export/" class="btn-inv-outline"><i class="bi bi-download me-1"></i>Export</a>
+            <button class="btn-inv-outline" onclick="openImportCSV('/api/inventory/import/', () => loadItems(), ['qb_item_name','friendly_name','description','species','size_cull','sku','quantity_description','country_of_origin','brand','department','inventory_unit_of_measure','list_price','wholesale_price','upc'])"><i class="bi bi-upload me-1"></i>Import</button>
+            <button class="btn-inv-primary" onclick="openPanel()"><i class="bi bi-plus me-1"></i>Add Item</button>
+        </div>
+    </div>
+
+    <!-- Table -->
+    <div class="inv-table-card">
+        <div style="overflow-x: auto;">
+            <table class="inv-table">
+                <thead>
+                    <tr>
+                        <th style="width:30px;"></th>
+                        <th>Item Name</th>
+                        <th>SKU</th>
+                        <th>Expected</th>
+                        <th>Allocated</th>
+                        <th>On Hand</th>
+                        <th>List Price</th>
+                        <th>Wholesale</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody id="itemsTbody">
+                    <tr><td colspan="9" class="text-center text-muted py-4">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="inv-pagination">
+            <span id="paginationInfo">Showing 0 items</span>
+            <div class="page-btns" id="paginationBtns"></div>
+        </div>
+    </div>
+    </div><!-- /panel-inventory -->
+
+    <!-- REJECTED TAB -->
+    <div id="panel-rejected" style="display:none;">
+        <div class="inv-table-card">
+            <div style="overflow-x:auto;">
+                <table class="inv-table">
+                    <thead>
+                        <tr>
+                            <th>Trace Lot</th>
+                            <th>Product</th>
+                            <th>Vendor</th>
+                            <th>Receive Date</th>
+                            <th>QC Status</th>
+                            <th>QC Notes</th>
+                            <th>Checked At</th>
+                            <th style="text-align:right;">On Hand</th>
+                        </tr>
+                    </thead>
+                    <tbody id="rejectedTbody">
+                        <tr><td colspan="8" class="text-center text-muted py-4">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filter panel overlay -->
+<div class="filter-overlay" id="filterOverlay" onclick="closeFilterPanel()"></div>
+<div class="filter-panel" id="filterPanel">
+    <div class="filter-panel-header">
+        <h4>Filter Items</h4>
+        <button class="close-btn" onclick="closeFilterPanel()"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <div class="filter-panel-body">
+        <div class="filter-check">
+            <input type="checkbox" id="ff-instock">
+            <div>
+                <label for="ff-instock">In stock</label>
+                <div class="hint">Show only items that you have on hand.</div>
+            </div>
+        </div>
+
+        <div class="form-group-inv">
+            <label class="form-label-inv">Group</label>
+            <select class="form-control-inv" id="ff-group">
+                <option value="">Choose Group</option>
+            </select>
+        </div>
+
+        <div class="form-group-inv">
+            <label class="form-label-inv">Department</label>
+            <select class="form-control-inv" id="ff-department">
+                <option value="">Choose Department</option>
+            </select>
+        </div>
+
+        <div class="form-group-inv">
+            <label class="form-label-inv">Quantity Description</label>
+            <select class="form-control-inv" id="ff-qty-desc">
+                <option value="">Choose Quantity Description</option>
+            </select>
+        </div>
+
+        <div class="form-group-inv">
+            <label class="form-label-inv">UPC</label>
+            <select class="form-control-inv" id="ff-upc">
+                <option value="">Choose UPC</option>
+            </select>
+        </div>
+
+        <div class="form-group-inv">
+            <label class="form-label-inv">Size/Cull</label>
+            <select class="form-control-inv" id="ff-size-cull">
+                <option value="">Choose Size/Cull</option>
+            </select>
+        </div>
+
+        <div class="form-group-inv">
+            <label class="form-label-inv">SKU or Internal Code</label>
+            <select class="form-control-inv" id="ff-sku">
+                <option value="">Choose SKU or Internal Code</option>
+            </select>
+        </div>
+
+        <div class="form-group-inv">
+            <label class="form-label-inv">Habitat/Production Method</label>
+            <select class="form-control-inv" id="ff-habitat">
+                <option value="">Choose Habitat/Production Method</option>
+                <option value="Wild">Wild</option>
+                <option value="Farm Raised">Farm Raised</option>
+                <option value="Aquaculture">Aquaculture</option>
+                <option value="Line Caught">Line Caught</option>
+                <option value="Net Caught">Net Caught</option>
+                <option value="Dredged">Dredged</option>
+                <option value="Dive Harvested">Dive Harvested</option>
+            </select>
+        </div>
+
+        <div class="form-group-inv">
+            <label class="form-label-inv">Species</label>
+            <select class="form-control-inv" id="ff-species">
+                <option value="">Choose Species</option>
+            </select>
+        </div>
+
+        <div class="form-group-inv">
+            <label class="form-label-inv">Country of Origin</label>
+            <select class="form-control-inv" id="ff-country">
+                <option value="">Choose Country</option>
+            </select>
+        </div>
+
+        <div class="form-group-inv">
+            <label class="form-label-inv">Brand</label>
+            <select class="form-control-inv" id="ff-brand">
+                <option value="">Choose Brand</option>
+            </select>
+        </div>
+    </div>
+    <div class="filter-panel-footer">
+        <button class="btn-inv-primary" onclick="applyFilters()" style="flex:1;">Filter Items</button>
+        <button class="btn-inv-outline" onclick="closeFilterPanel()">Cancel</button>
+    </div>
+</div>
+
+<!-- Slide-over overlay -->
+<div class="slide-overlay" id="slideOverlay" onclick="closePanel()"></div>
+
+<!-- Slide-over panel -->
+<div class="slide-panel" id="slidePanel">
+    <div class="slide-panel-header">
+        <h4 id="panelTitle">Add an item</h4>
+        <button class="close-btn" onclick="closePanel()"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <div class="slide-panel-body">
+        <div id="panelError" class="alert alert-danger" style="display:none;"></div>
+        <input type="hidden" id="editId">
+
+        <div class="form-group-inv">
+            <label class="form-label-inv">Item Group</label>
+            <div class="d-flex gap-2">
+                <select class="form-control-inv" id="f-group" style="flex:1;">
+                    <option value="">Choose item group</option>
+                </select>
+                <button class="btn btn-sm btn-outline-secondary" onclick="promptNewGroup()" title="Add group" style="border-radius:8px;">
+                    <i class="bi bi-plus"></i>
+                </button>
+            </div>
+        </div>
+
+        <div class="form-group-inv">
+            <label class="form-label-inv">Item Name</label>
+            <input type="text" class="form-control-inv" id="f-item-name" disabled placeholder="Auto-generated">
+            <span class="form-hint">Naming method is AUTOMATIC. Name will appear as the form is completed.</span>
+        </div>
+
+        <div class="form-group-inv">
+            <label class="form-label-inv">QuickBooks Item Name</label>
+            <input type="text" class="form-control-inv" id="f-qb-name" oninput="updatePreviewName()">
+        </div>
+
+        <div class="form-group-inv">
+            <label class="form-label-inv">Item Friendly Name</label>
+            <input type="text" class="form-control-inv" id="f-friendly-name" oninput="updatePreviewName()">
+        </div>
+
+        <div class="form-group-inv">
+            <label class="form-label-inv">Item Description</label>
+            <textarea class="form-control-inv" id="f-description" rows="2"></textarea>
+        </div>
+
+        <div class="form-group-inv">
+            <label class="form-label-inv">Size/Cull</label>
+            <select class="form-control-inv" id="f-size-cull" oninput="updatePreviewName()">
+                <option value="">Choose Size/Cull</option>
+                <option value="Small">Small</option>
+                <option value="Medium">Medium</option>
+                <option value="Large">Large</option>
+                <option value="Jumbo">Jumbo</option>
+                <option value="Mixed">Mixed</option>
+                <option value="Choice">Choice</option>
+                <option value="Select">Select</option>
+                <option value="1x">1x</option>
+                <option value="1+ Per Lb">1+ Per Lb</option>
+                <option value="2-3 Per Lb">2-3 Per Lb</option>
+                <option value="10 Dozen">10 Dozen</option>
+                <option value="50 CT Bag">50 CT Bag</option>
+                <option value="100 Ct Bag">100 Ct Bag</option>
+                <option value="10 # Bag">10 # Bag</option>
+            </select>
+        </div>
+
+        <div class="form-group-inv">
+            <label class="form-label-inv">SKU or Internal Code</label>
+            <input type="text" class="form-control-inv" id="f-sku">
+        </div>
+
+        <div class="form-group-inv">
+            <label class="form-label-inv">Tasting Notes</label>
+            <textarea class="form-control-inv" id="f-tasting-notes" rows="2"></textarea>
+        </div>
+
+        <hr class="my-3">
+
+        <div class="form-group-inv">
+            <label class="form-label-inv">Quantity Description</label>
+            <input type="text" class="form-control-inv" id="f-qty-desc" placeholder="e.g. Bag, Box, Case" oninput="updatePreviewName()">
+        </div>
+
+        <div class="form-group-inv">
+            <label class="form-label-inv">Country of Origin</label>
+            <select class="form-control-inv" id="f-origin" oninput="updatePreviewName()">
+                <option value="">Choose Country</option>
+                <option value="USA">USA</option>
+                <option value="Canada">Canada</option>
+                <option value="Mexico">Mexico</option>
+                <option value="Chile">Chile</option>
+                <option value="Ecuador">Ecuador</option>
+                <option value="Japan">Japan</option>
+                <option value="China">China</option>
+                <option value="Vietnam">Vietnam</option>
+                <option value="Thailand">Thailand</option>
+                <option value="Indonesia">Indonesia</option>
+                <option value="India">India</option>
+                <option value="Norway">Norway</option>
+                <option value="Iceland">Iceland</option>
+                <option value="Spain">Spain</option>
+                <option value="Portugal">Portugal</option>
+                <option value="UK">UK</option>
+                <option value="Australia">Australia</option>
+                <option value="New Zealand">New Zealand</option>
+            </select>
+        </div>
+
+        <div class="form-group-inv">
+            <label class="form-label-inv">Brand</label>
+            <input type="text" class="form-control-inv" id="f-brand" oninput="updatePreviewName()">
+        </div>
+
+        <hr class="my-3">
+        <h6 class="fw-bold mb-3">Inventory Quantity</h6>
+
+        <div class="form-group-inv">
+            <label class="form-label-inv">Inventory Unit of Measure</label>
+            <select class="form-control-inv" id="f-uom">
+                <option value="">Choose Inventory Unit of Measure</option>
+                <option value="Lbs">Lbs</option>
+                <option value="Each">Each</option>
+                <option value="Bags">Bags</option>
+                <option value="Boxes">Boxes</option>
+                <option value="Cases">Cases</option>
+                <option value="Barrels">Barrels</option>
+                <option value="Bushels">Bushels</option>
+                <option value="Dozens">Dozens</option>
+                <option value="Gallons">Gallons</option>
+            </select>
+            <span class="form-hint">Choose the inventory unit of measure to determine how the item is stocked.</span>
+        </div>
+
+        <div class="form-group-inv">
+            <label class="form-label-inv">Habitat/Production Method</label>
+            <select class="form-control-inv" id="f-habitat">
+                <option value="">Choose Method</option>
+                <option value="Wild">Wild</option>
+                <option value="Farm Raised">Farm Raised</option>
+                <option value="Aquaculture">Aquaculture</option>
+                <option value="Line Caught">Line Caught</option>
+                <option value="Net Caught">Net Caught</option>
+                <option value="Dredged">Dredged</option>
+                <option value="Dive Harvested">Dive Harvested</option>
+            </select>
+        </div>
+
+        <div class="form-group-inv">
+            <label class="form-label-inv">Species</label>
+            <input type="text" class="form-control-inv" id="f-species" placeholder="e.g. Eastern Oyster">
+        </div>
+
+        <div class="form-group-inv">
+            <label class="form-label-inv">Department</label>
+            <input type="text" class="form-control-inv" id="f-department" placeholder="e.g. US Oysters">
+        </div>
+
+        <div class="form-group-inv">
+            <label class="form-label-inv">UPC</label>
+            <input type="text" class="form-control-inv" id="f-upc">
+        </div>
+
+        <hr class="my-3">
+        <h6 class="fw-bold mb-3">Pricing</h6>
+
+        <div class="row g-3">
+            <div class="col-6">
+                <div class="form-group-inv">
+                    <label class="form-label-inv">List Price (USD)</label>
+                    <input type="number" step="0.01" class="form-control-inv" id="f-list-price">
+                </div>
+            </div>
+            <div class="col-6">
+                <div class="form-group-inv">
+                    <label class="form-label-inv">Wholesale Price (USD)</label>
+                    <input type="number" step="0.01" class="form-control-inv" id="f-wholesale-price">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="slide-panel-footer">
+        <button class="btn-inv-primary" onclick="withSpinner(this, () => saveItem())" style="flex:1;">Save</button>
+        <button class="btn-inv-outline" onclick="closePanel()">Cancel</button>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let allItems = [];
+let filteredItems = [];
+let itemGroups = [];
+let currentPage = 1;
+const PAGE_SIZE = 100;
+let searchTimeout;
+let activeFilters = {};
+
+// ── Data loading ────────────────────────────────────────────────
+
+document.addEventListener('DOMContentLoaded', () => {
+    loadGroups();
+    loadItems();
+    loadRejectedCount();
+});
+
+let currentTab = 'inventory';
+
+function switchTab(tab) {
+    currentTab = tab;
+    document.getElementById('tab-inventory').classList.toggle('active', tab === 'inventory');
+    document.getElementById('tab-rejected').classList.toggle('active', tab === 'rejected');
+    document.getElementById('panel-inventory').style.display = tab === 'inventory' ? '' : 'none';
+    document.getElementById('panel-rejected').style.display = tab === 'rejected' ? '' : 'none';
+    if (tab === 'rejected') loadRejectedLots();
+}
+
+async function loadRejectedCount() {
+    try {
+        const res = await fetch('/api/inventory/rejected/');
+        const data = await res.json();
+        const count = (data.lots || []).length;
+        const el = document.getElementById('rejectedCount');
+        if (count > 0) { el.textContent = count; el.style.display = ''; }
+        else { el.style.display = 'none'; }
+    } catch {}
+}
+
+async function loadRejectedLots() {
+    const res = await fetch('/api/inventory/rejected/');
+    const data = await res.json();
+    const lots = data.lots || [];
+    const tbody = document.getElementById('rejectedTbody');
+    if (!lots.length) {
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">No rejected or held lots.</td></tr>';
+        return;
+    }
+    tbody.innerHTML = lots.map(lot => `
+        <tr>
+            <td style="font-weight:600;">${esc(lot.trace_lot)}</td>
+            <td>${esc(lot.product)}</td>
+            <td>${esc(lot.vendor)}</td>
+            <td>${esc(lot.receive_date)}</td>
+            <td><span class="qc-badge-sm qc-${lot.qc_status}">${lot.qc_status === 'hold' ? '<i class="bi bi-pause-circle-fill me-1"></i>Hold' : '<i class="bi bi-x-circle-fill me-1"></i>Reject'}</span></td>
+            <td style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${esc(lot.qc_notes || '--')}</td>
+            <td>${esc(lot.checked_at)}</td>
+            <td style="text-align:right;">${lot.on_hand} ${esc(lot.unit_type)}</td>
+        </tr>
+    `).join('');
+}
+
+function onShowFilterChange() {
+    const val = document.getElementById('showFilter').value;
+    if (val === 'active_all') {
+        activeFilters.showAll = true;
+        document.getElementById('showFilter').dataset.apiValue = 'active';
+    } else {
+        activeFilters.showAll = false;
+        document.getElementById('showFilter').dataset.apiValue = val;
+    }
+    loadItems();
+}
+
+async function loadGroups() {
+    const res = await fetch('/api/inventory/groups/');
+    const data = await res.json();
+    itemGroups = data.groups || [];
+    const sel = document.getElementById('f-group');
+    sel.innerHTML = '<option value="">Choose item group</option>' +
+        itemGroups.map(g => `<option value="${g.id}">${g.name}</option>`).join('');
+    // Also populate filter group dropdown
+    const fgSel = document.getElementById('ff-group');
+    fgSel.innerHTML = '<option value="">Choose Group</option>' +
+        itemGroups.map(g => `<option value="${g.name}">${g.name}</option>`).join('');
+}
+
+async function loadItems() {
+    const showEl = document.getElementById('showFilter');
+    const show = showEl.dataset.apiValue || (showEl.value === 'active_all' ? 'active' : showEl.value);
+    const search = document.getElementById('searchBox').value.trim();
+    let url = `/api/inventory/items/?show=${show}`;
+    if (search) url += `&search=${encodeURIComponent(search)}`;
+
+    const res = await fetch(url);
+    const data = await res.json();
+    allItems = data.items || [];
+    applyClientFilters();
+    populateFilterDropdowns();
+}
+
+function applyClientFilters() {
+    filteredItems = allItems.filter(item => {
+        // Hide items with no inventory unless "In Stock" filter is explicitly off
+        const hasInventory = item.expected > 0 || item.allocated > 0 || item.on_hand > 0;
+        if (!hasInventory && !activeFilters.showAll) return false;
+        if (activeFilters.instock && item.on_hand <= 0) return false;
+        if (activeFilters.group && item.item_group !== activeFilters.group) return false;
+        if (activeFilters.department && item.department !== activeFilters.department) return false;
+        if (activeFilters.qty_desc && item.quantity_description !== activeFilters.qty_desc) return false;
+        if (activeFilters.upc && item.upc !== activeFilters.upc) return false;
+        if (activeFilters.size_cull && item.size_cull !== activeFilters.size_cull) return false;
+        if (activeFilters.sku && item.sku !== activeFilters.sku) return false;
+        if (activeFilters.habitat && item.habitat_production_method !== activeFilters.habitat) return false;
+        if (activeFilters.species && item.species !== activeFilters.species) return false;
+        if (activeFilters.country && item.country_of_origin !== activeFilters.country) return false;
+        if (activeFilters.brand && item.brand !== activeFilters.brand) return false;
+        return true;
+    });
+    currentPage = 1;
+    renderTable();
+}
+
+function populateFilterDropdowns() {
+    const unique = (arr, key) => [...new Set(arr.map(i => i[key]).filter(Boolean))].sort();
+    populateSelect('ff-department', 'Choose Department', unique(allItems, 'department'));
+    populateSelect('ff-qty-desc', 'Choose Quantity Description', unique(allItems, 'quantity_description'));
+    populateSelect('ff-upc', 'Choose UPC', unique(allItems, 'upc'));
+    populateSelect('ff-size-cull', 'Choose Size/Cull', unique(allItems, 'size_cull'));
+    populateSelect('ff-sku', 'Choose SKU or Internal Code', unique(allItems, 'sku'));
+    populateSelect('ff-species', 'Choose Species', unique(allItems, 'species'));
+    populateSelect('ff-country', 'Choose Country', unique(allItems, 'country_of_origin'));
+    populateSelect('ff-brand', 'Choose Brand', unique(allItems, 'brand'));
+}
+
+function populateSelect(id, placeholder, options) {
+    const sel = document.getElementById(id);
+    const current = sel.value;
+    sel.innerHTML = `<option value="">${placeholder}</option>` +
+        options.map(o => `<option value="${o}">${o}</option>`).join('');
+    sel.value = current;
+}
+
+function debounceSearch() {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(loadItems, 300);
+}
+
+function clearFilters() {
+    document.getElementById('showFilter').value = 'active';
+    document.getElementById('searchBox').value = '';
+    activeFilters = {};
+    // Reset filter panel inputs
+    document.getElementById('ff-instock').checked = false;
+    ['ff-group','ff-department','ff-qty-desc','ff-upc','ff-size-cull','ff-sku','ff-habitat','ff-species','ff-country','ff-brand'].forEach(id => {
+        document.getElementById(id).value = '';
+    });
+    loadItems();
+}
+
+// ── Filter panel ────────────────────────────────────────────────
+
+function openFilterPanel() {
+    document.getElementById('filterOverlay').classList.add('open');
+    document.getElementById('filterPanel').classList.add('open');
+}
+
+function closeFilterPanel() {
+    document.getElementById('filterOverlay').classList.remove('open');
+    document.getElementById('filterPanel').classList.remove('open');
+}
+
+function applyFilters() {
+    activeFilters = {};
+    if (document.getElementById('ff-instock').checked) activeFilters.instock = true;
+    const fields = [
+        ['ff-group', 'group'], ['ff-department', 'department'], ['ff-qty-desc', 'qty_desc'],
+        ['ff-upc', 'upc'], ['ff-size-cull', 'size_cull'], ['ff-sku', 'sku'],
+        ['ff-habitat', 'habitat'], ['ff-species', 'species'], ['ff-country', 'country'],
+        ['ff-brand', 'brand']
+    ];
+    fields.forEach(([elId, key]) => {
+        const val = document.getElementById(elId).value;
+        if (val) activeFilters[key] = val;
+    });
+    closeFilterPanel();
+    applyClientFilters();
+}
+
+// ── Table rendering ─────────────────────────────────────────────
+
+function renderTable() {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    const page = filteredItems.slice(start, start + PAGE_SIZE);
+    const tbody = document.getElementById('itemsTbody');
+
+    document.getElementById('itemCount').textContent = filteredItems.length + ' items';
+
+    if (!page.length) {
+        tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted py-4">No items found.</td></tr>';
+        document.getElementById('paginationInfo').textContent = 'No items';
+        document.getElementById('paginationBtns').innerHTML = '';
+        return;
+    }
+
+    tbody.innerHTML = page.map((item, i) => `
+        <tr class="clickable-row" onclick="goToItem(${item.id})" style="cursor:pointer;">
+            <td class="actions-cell" onclick="event.stopPropagation();">
+                <button onclick="openEditPanel(${item.id})" title="Edit"><i class="bi bi-pencil-square"></i></button>
+            </td>
+            <td class="item-name">${esc(item.item_name)}</td>
+            <td>${esc(item.sku || '--')}</td>
+            <td>${fmt(item.expected)} ${esc(item.unit_type)}</td>
+            <td>${fmt(item.allocated)} ${esc(item.unit_type)}</td>
+            <td>${fmt(item.on_hand)} ${esc(item.unit_type)}</td>
+            <td>${item.list_price != null ? '$' + Number(item.list_price).toFixed(2) : '--'}</td>
+            <td>${item.wholesale_price != null ? '$' + Number(item.wholesale_price).toFixed(2) : '--'}</td>
+            <td class="actions-cell" onclick="event.stopPropagation();">
+                <div class="dropdown">
+                    <button class="btn btn-sm" data-bs-toggle="dropdown" style="background:none;border:none;color:#94a3b8;">
+                        <i class="bi bi-three-dots-vertical"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" href="/operations/inventory/${item.id}/"><i class="bi bi-eye me-2"></i>View Details</a></li>
+                        <li><a class="dropdown-item" href="#" onclick="openEditPanel(${item.id}); return false;"><i class="bi bi-pencil me-2"></i>Edit</a></li>
+                        <li><a class="dropdown-item" href="#" onclick="toggleActive(${item.id}); return false;"><i class="bi bi-toggle-on me-2"></i>${item.is_active ? 'Deactivate' : 'Activate'}</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-danger" href="#" onclick="deleteItem(${item.id}); return false;"><i class="bi bi-trash me-2"></i>Delete</a></li>
+                    </ul>
+                </div>
+            </td>
+        </tr>
+    `).join('');
+
+    // Pagination
+    const totalPages = Math.ceil(filteredItems.length / PAGE_SIZE);
+    const endIdx = Math.min(start + PAGE_SIZE, filteredItems.length);
+    document.getElementById('paginationInfo').textContent = `Showing ${start + 1} to ${endIdx} of ${filteredItems.length}`;
+
+    let btns = '';
+    if (currentPage > 1) btns += `<button class="page-btn" onclick="goPage(${currentPage - 1})">&lt;</button>`;
+    for (let p = 1; p <= totalPages; p++) {
+        btns += `<button class="page-btn ${p === currentPage ? 'active' : ''}" onclick="goPage(${p})">${p}</button>`;
+    }
+    if (currentPage < totalPages) btns += `<button class="page-btn" onclick="goPage(${currentPage + 1})">&gt;</button>`;
+    document.getElementById('paginationBtns').innerHTML = btns;
+}
+
+function goPage(p) { currentPage = p; renderTable(); }
+function goToItem(id) { window.location.href = '/operations/inventory/' + id + '/'; }
+// ── Panel ───────────────────────────────────────────────────────
+
+function openPanel() {
+    clearForm();
+    document.getElementById('panelTitle').textContent = 'Add an item';
+    document.getElementById('slideOverlay').classList.add('open');
+    document.getElementById('slidePanel').classList.add('open');
+}
+
+function openEditPanel(id) {
+    clearForm();
+    const item = allItems.find(x => x.id === id);
+    if (!item) return;
+
+    document.getElementById('panelTitle').textContent = 'Edit Item';
+    document.getElementById('editId').value = id;
+    document.getElementById('f-group').value = item.item_group_id || '';
+    document.getElementById('f-qb-name').value = item.qb_item_name || '';
+    document.getElementById('f-friendly-name').value = item.friendly_name || '';
+    document.getElementById('f-description').value = item.description || '';
+    document.getElementById('f-size-cull').value = item.size_cull || '';
+    document.getElementById('f-sku').value = item.sku || '';
+    document.getElementById('f-tasting-notes').value = item.tasting_notes || '';
+    document.getElementById('f-qty-desc').value = item.quantity_description || '';
+    document.getElementById('f-origin').value = item.country_of_origin || item.origin || '';
+    document.getElementById('f-brand').value = item.brand || '';
+    document.getElementById('f-uom').value = item.inventory_unit_of_measure || '';
+    document.getElementById('f-list-price').value = item.list_price || '';
+    document.getElementById('f-wholesale-price').value = item.wholesale_price || '';
+    document.getElementById('f-habitat').value = item.habitat_production_method || '';
+    document.getElementById('f-species').value = item.species || '';
+    document.getElementById('f-department').value = item.department || '';
+    document.getElementById('f-upc').value = item.upc || '';
+    updatePreviewName();
+
+    document.getElementById('slideOverlay').classList.add('open');
+    document.getElementById('slidePanel').classList.add('open');
+}
+
+function closePanel() {
+    document.getElementById('slideOverlay').classList.remove('open');
+    document.getElementById('slidePanel').classList.remove('open');
+}
+
+function clearForm() {
+    const ids = ['f-group','f-item-name','f-qb-name','f-friendly-name','f-description',
+                 'f-size-cull','f-sku','f-tasting-notes','f-qty-desc','f-origin',
+                 'f-brand','f-uom','f-list-price','f-wholesale-price',
+                 'f-habitat','f-species','f-department','f-upc'];
+    ids.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+    });
+    document.getElementById('editId').value = '';
+    document.getElementById('panelError').style.display = 'none';
+}
+
+function updatePreviewName() {
+    const parts = [];
+    const groupSel = document.getElementById('f-group');
+    if (groupSel.value) parts.push(groupSel.options[groupSel.selectedIndex].text);
+    const friendly = document.getElementById('f-friendly-name').value.trim();
+    const qb = document.getElementById('f-qb-name').value.trim();
+    if (friendly) parts.push(friendly);
+    else if (qb) parts.push(qb);
+    const origin = document.getElementById('f-origin').value;
+    if (origin) parts.push(origin);
+    const size = document.getElementById('f-size-cull').value;
+    if (size) parts.push(size);
+    const qty = document.getElementById('f-qty-desc').value.trim();
+    if (qty) parts.push(qty);
+    document.getElementById('f-item-name').value = parts.length ? parts.join(' \u00b7 ') : '';
+}
+
+// ── CRUD ────────────────────────────────────────────────────────
+
+async function saveItem() {
+    const id = document.getElementById('editId').value;
+    const payload = {
+        item_group_id: document.getElementById('f-group').value || null,
+        qb_item_name: document.getElementById('f-qb-name').value.trim(),
+        friendly_name: document.getElementById('f-friendly-name').value.trim(),
+        description: document.getElementById('f-description').value.trim(),
+        size_cull: document.getElementById('f-size-cull').value,
+        sku: document.getElementById('f-sku').value.trim(),
+        tasting_notes: document.getElementById('f-tasting-notes').value.trim(),
+        quantity_description: document.getElementById('f-qty-desc').value.trim(),
+        country_of_origin: document.getElementById('f-origin').value,
+        brand: document.getElementById('f-brand').value.trim(),
+        inventory_unit_of_measure: document.getElementById('f-uom').value,
+        list_price: document.getElementById('f-list-price').value || null,
+        wholesale_price: document.getElementById('f-wholesale-price').value || null,
+        habitat_production_method: document.getElementById('f-habitat').value,
+        species: document.getElementById('f-species').value.trim(),
+        department: document.getElementById('f-department').value.trim(),
+        upc: document.getElementById('f-upc').value.trim(),
+    };
+
+    const url = id ? `/api/inventory/items/${id}/update/` : '/api/inventory/items/create/';
+
+    try {
+        const res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+            body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        if (data.error) {
+            document.getElementById('panelError').textContent = data.error;
+            document.getElementById('panelError').style.display = '';
+            return;
+        }
+        closePanel();
+        loadItems();
+    } catch (e) {
+        document.getElementById('panelError').textContent = 'Failed to save item.';
+        document.getElementById('panelError').style.display = '';
+    }
+}
+
+async function deleteItem(id) {
+    if (!confirm('Delete this item? This cannot be undone.')) return;
+    await fetch(`/api/inventory/items/${id}/delete/`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCookie('csrftoken') },
+    });
+    loadItems();
+}
+
+async function toggleActive(id) {
+    await fetch(`/api/inventory/items/${id}/toggle-active/`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCookie('csrftoken') },
+    });
+    loadItems();
+}
+
+async function promptNewGroup() {
+    const name = prompt('Enter new item group name:');
+    if (!name || !name.trim()) return;
+    const res = await fetch('/api/inventory/groups/create/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+        body: JSON.stringify({ name: name.trim() }),
+    });
+    const data = await res.json();
+    if (data.error) { alert(data.error); return; }
+    await loadGroups();
+    document.getElementById('f-group').value = data.id;
+    updatePreviewName();
+}
+</script>
+{% endblock %}

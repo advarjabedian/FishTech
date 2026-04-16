@@ -1,21 +1,23 @@
 {% extends 'core/base.html' %}
+{% load static %}
 
 {% block title %}Operations Admin - FishTech{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div class="d-flex align-items-center">
-            <h2 class="mb-0">Operations Admin</h2>
-        </div>
+<div class="inv-main">
+    <div class="inv-header">
         <div>
-            <button type="button" class="btn btn-success me-2" onclick="openBulkReportModal()">
+            <h2><i class="bi bi-gear me-2" style="color:#2563eb;"></i>Operations Admin</h2>
+            <span class="sub">Configure zones, tasks, and inspection settings</span>
+        </div>
+        <div style="display:flex; gap:0.5rem;">
+            <button type="button" class="btn-inv-success" onclick="openBulkReportModal()">
                 <i class="bi bi-printer"></i> Bulk Reports
             </button>
-            <button class="btn btn-primary me-2" onclick="openSOPEditor()">
+            <button class="btn-inv-primary" onclick="openSOPEditor()">
                 <i class="bi bi-list-check"></i> Manage SOPs
             </button>
-            <a href="{% url 'compliance_hub' %}" class="btn btn-secondary">Back to Compliance</a>
+            <a href="{% url 'compliance_hub' %}" class="btn-inv-outline">Back to Compliance</a>
         </div>
     </div>
     
@@ -27,6 +29,7 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="{% static 'core/js/signature.js' %}"></script>
 {% include 'core/DailyInspections/operations_admin_scripts.html' %}
 <script>
 // Pass Django template variables to JS

@@ -1,3 +1,4 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -228,50 +229,19 @@
 </div>
 
 {% if not doc.is_signed %}
+<script src="{% static 'core/js/signature.js' %}"></script>
 <script>
-const canvas = document.getElementById('sigCanvas');
-const ctx = canvas.getContext('2d');
-let drawing = false;
+let sigPad;
+document.addEventListener('DOMContentLoaded', () => {
+    sigPad = new SignaturePad('#sigCanvas');
+});
 
-canvas.addEventListener('mousedown', e => { drawing = true; beginStroke(e); });
-canvas.addEventListener('mousemove', e => { if (drawing) stroke(e); });
-canvas.addEventListener('mouseup', () => drawing = false);
-canvas.addEventListener('mouseout', () => drawing = false);
-canvas.addEventListener('touchstart', e => { e.preventDefault(); drawing = true; beginStroke(e.touches[0]); }, {passive: false});
-canvas.addEventListener('touchmove', e => { e.preventDefault(); if (drawing) stroke(e.touches[0]); }, {passive: false});
-canvas.addEventListener('touchend', () => drawing = false);
-
-function beginStroke(e) {
-    const r = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / r.width;
-    const scaleY = canvas.height / r.height;
-    ctx.beginPath();
-    ctx.moveTo((e.clientX - r.left) * scaleX, (e.clientY - r.top) * scaleY);
-}
-
-function stroke(e) {
-    const r = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / r.width;
-    const scaleY = canvas.height / r.height;
-    ctx.lineTo((e.clientX - r.left) * scaleX, (e.clientY - r.top) * scaleY);
-    ctx.strokeStyle = '#000';
-    ctx.lineWidth = 2.5;
-    ctx.lineCap = 'round';
-    ctx.stroke();
-}
-
-function clearSig() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-}
+function clearSig() { sigPad.clear(); }
 
 function submitSign() {
     const name = document.getElementById('signerName').value.trim();
     if (!name) { alert('Please enter your full name.'); return; }
-
-    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const hasSig = imgData.data.some(p => p !== 0);
-    if (!hasSig) { alert('Please draw your signature.'); return; }
-
+    if (sigPad.isEmpty()) { alert('Please draw your signature.'); return; }
     if (!confirm('By clicking OK, you are legally signing this document on behalf of {{ tenant.name }}.')) return;
 
     fetch('/sign/{{ doc.signing_token }}/submit/', {
@@ -280,7 +250,7 @@ function submitSign() {
         body: JSON.stringify({
             signer_name: name,
             signer_title: document.getElementById('signerTitle').value.trim(),
-            signature: canvas.toDataURL()
+            signature: sigPad.toDataURL()
         })
     })
     .then(r => r.json())

@@ -1,0 +1,124 @@
+{% extends 'core/base.html' %}
+{% block title %}Picking List - FishTeck{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ── Page-specific ────────────────────────────────────────────── */
+.btn-pdf { background: #dc2626; color: #fff; border: none; border-radius: 8px; padding: 8px 20px; font-size: 0.85rem; font-weight: 600; cursor: pointer; }
+.btn-pdf:hover { background: #b91c1c; }
+.pick-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+.pick-table thead th { background: #f1f5f9; color: #64748b; font-weight: 600; font-size: 0.73rem; text-transform: uppercase; padding: 10px 14px; border-bottom: 1px solid #e2e8f0; }
+.pick-table tbody tr { border-bottom: 1px solid #f1f5f9; }
+.pick-table tbody td { padding: 9px 14px; vertical-align: middle; color: #334155; }
+.pick-table a { color: #2563eb; text-decoration: none; font-weight: 500; }
+.pick-table a:hover { text-decoration: underline; }
+.dept-row { background: #f8fafc; }
+.dept-row td { font-weight: 700; color: #1e293b; font-size: 0.9rem; padding: 10px 14px; }
+
+@media print { .inv-sidebar, .inv-toolbar, .inv-header > div:last-child, .inv-pagination { display: none !important; } .inv-main { margin-left: 0 !important; } }
+</style>
+{% endblock %}
+
+{% block content %}
+{% include 'core/includes/sidebar.html' with active='ship' %}
+
+<div class="inv-main">
+    <div class="inv-header">
+        <div>
+            <h2><i class="bi bi-grid-3x3-gap me-2" style="color:#2563eb;"></i>Picking List</h2>
+            <span class="sub" id="totalCount">0 Departments</span>
+        </div>
+        <button class="btn-pdf" onclick="savePDF()"><i class="bi bi-file-earmark-pdf me-1"></i>Save As PDF</button>
+    </div>
+
+    <div class="inv-toolbar">
+        <div class="inv-toolbar-left">
+            <select class="filter-select" id="filterBy">
+                <option value="pack_date">Filter By Pack Date</option>
+                <option value="ship_date">Filter By Ship Date</option>
+            </select>
+            <input type="date" class="filter-select" id="dateFrom" onchange="loadData()">
+            <span style="color:#64748b;">—</span>
+            <input type="date" class="filter-select" id="dateTo" onchange="loadData()">
+            <select class="filter-select" id="sortBy" onchange="loadData()">
+                <option value="department">Sort Departments A - Z</option>
+                <option value="department_desc">Sort Departments Z - A</option>
+            </select>
+        </div>
+        <div class="inv-toolbar-right">
+            <input type="text" class="search-box" id="searchBox" placeholder="Search..." oninput="debounceSearch()">
+            <button class="btn-inv-outline" onclick="clearFilters()"><i class="bi bi-x-circle me-1"></i>Clear Filters</button>
+        </div>
+    </div>
+
+    <div class="inv-table-card">
+        <table class="pick-table">
+            <thead><tr><th style="width:30px;"><input type="checkbox"></th><th>Item Name</th><th>Order Number</th><th>FIFO Lots</th><th style="text-align:right;">Quantity</th></tr></thead>
+            <tbody id="pickTbody"><tr><td colspan="5" class="text-center text-muted py-4">Loading...</td></tr></tbody>
+        </table>
+        <div class="inv-pagination"><span id="paginationInfo">Showing 0 items</span></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let searchTimeout;
+document.addEventListener('DOMContentLoaded', () => {
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('dateFrom').value = today;
+    document.getElementById('dateTo').value = today;
+    loadData();
+});
+
+function debounceSearch() { clearTimeout(searchTimeout); searchTimeout = setTimeout(loadData, 300); }
+function clearFilters() { document.getElementById('searchBox').value = ''; loadData(); }
+
+async function loadData() {
+    const dateFrom = document.getElementById('dateFrom').value;
+    const dateTo = document.getElementById('dateTo').value || dateFrom;
+    const search = document.getElementById('searchBox').value.trim();
+    const sort = document.getElementById('sortBy').value;
+
+    let url = `/api/shipping/picking/?date_from=${dateFrom}&date_to=${dateTo}&sort=${sort}`;
+    if (search) url += `&search=${encodeURIComponent(search)}`;
+
+    const res = await fetch(url);
+    const data = await res.json();
+    const depts = data.departments || [];
+    const tbody = document.getElementById('pickTbody');
+
+    document.getElementById('totalCount').textContent = `${data.total_departments || 0} Departments`;
+
+    if (!depts.length) {
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">No items for this date range.</td></tr>';
+        document.getElementById('paginationInfo').textContent = '0 items';
+        return;
+    }
+
+    let html = '';
+    let total = 0;
+    depts.forEach(dept => {
+        html += `<tr class="dept-row"><td></td><td colspan="4">${esc(dept.department)}</td></tr>`;
+        dept.items.forEach(item => {
+            total++;
+            const orders = item.order_number;
+            const fifoLots = item.fifo_lots && item.fifo_lots.length
+                ? item.fifo_lots.map(lot => `<div>${esc(lot)}</div>`).join('')
+                : '<span style="color:#94a3b8;">Not allocated</span>';
+            html += `<tr>
+                <td><input type="checkbox"></td>
+                <td><a href="#">${esc(item.item_name)}</a></td>
+                <td><a href="/sales/${item.so_id}/">${esc(orders)}</a></td>
+                <td>${fifoLots}</td>
+                <td style="text-align:right;">${item.quantity} ${esc(item.unit_type)}</td>
+            </tr>`;
+        });
+    });
+    tbody.innerHTML = html;
+    document.getElementById('paginationInfo').textContent = `Showing 1 to ${total} of ${total}`;
+}
+
+function savePDF() { window.print(); }
+</script>
+{% endblock %}

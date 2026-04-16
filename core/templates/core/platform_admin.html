@@ -41,8 +41,13 @@
 {% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-    <h2 class="mb-4"><i class="bi bi-speedometer2 me-2"></i>Platform Admin Dashboard</h2>
+<div class="inv-main">
+    <div class="inv-header">
+        <div>
+            <h2><i class="bi bi-speedometer2 me-2" style="color:#2563eb;"></i>Platform Admin Dashboard</h2>
+            <span class="sub">System-wide management and configuration</span>
+        </div>
+    </div>
 
     <!-- Metrics Cards -->
     <div class="row mb-4">
@@ -233,7 +238,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-primary" onclick="saveLead()">Save Lead</button>
+                    <button type="button" class="btn btn-primary" onclick="withSpinner(this, () => saveLead())">Save Lead</button>
                 </div>
             </div>
         </div>
@@ -539,18 +544,13 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" onclick="saveEditTenant()">Save</button>
+                <button type="button" class="btn btn-primary" onclick="withSpinner(this, () => saveEditTenant())">Save</button>
             </div>
         </div>
     </div>
 </div>
 
 <script>
-function getCookie(name) {
-    const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
-    return match ? decodeURIComponent(match[2]) : '';
-}
-
 function toggleTenantConfig(tenantId) {
     const row = document.getElementById(`config-row-${tenantId}`);
     const chevron = document.getElementById(`chevron-${tenantId}`);
@@ -629,7 +629,7 @@ function saveEditTenant() {
     };
     if (!payload.name) { alert('Name is required'); return; }
 
-    fetch(`/platform-admin/tenant/${id}/edit/`, {
+    return fetch(`/platform-admin/tenant/${id}/edit/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
         body: JSON.stringify(payload)
@@ -731,7 +731,7 @@ function saveLead() {
         notes: document.getElementById('leadNotes').value,
     };
 
-    fetch('/platform-admin/leads/save/', {
+    return fetch('/platform-admin/leads/save/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
         body: JSON.stringify(data)

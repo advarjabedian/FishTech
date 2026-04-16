@@ -1,0 +1,840 @@
+{% extends 'core/base.html' %}
+{% block title %}Sales Orders - FishTeck{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ── Page-specific badges ─────────────────────────────────────── */
+.badge-need_to_send { background: #e0e7ff; color: #4f46e5; }
+
+/* ── Pagination page buttons ──────────────────────────────────── */
+.inv-pagination .page-btns { display: flex; gap: 4px; }
+.inv-pagination .page-btn { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border: 1px solid #d1d5db; border-radius: 6px; background: #fff; color: #374151; cursor: pointer; font-size: 0.8rem; }
+.inv-pagination .page-btn:hover { border-color: #2563eb; color: #2563eb; }
+.inv-pagination .page-btn.active { background: #2563eb; color: #fff; border-color: #2563eb; }
+
+/* Filter panel (slide-over) */
+.filter-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.25); z-index: 1040; display: none; }
+.filter-overlay.open { display: block; }
+.filter-panel { position: fixed; top: 0; right: -460px; width: 440px; max-width: 90vw; height: 100vh; background: #fff; box-shadow: -4px 0 24px rgba(0,0,0,0.12); z-index: 1050; transition: right 0.3s ease; display: flex; flex-direction: column; }
+.filter-panel.open { right: 0; }
+.filter-panel-header { background: #2563eb; color: #fff; padding: 18px 24px; display: flex; align-items: center; justify-content: space-between; }
+.filter-panel-header h4 { margin: 0; font-size: 1.1rem; font-weight: 600; }
+.filter-panel-header .close-btn { background: rgba(255,255,255,0.2); border: none; color: #fff; width: 32px; height: 32px; border-radius: 50%; font-size: 1.1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.filter-panel-body { flex: 1; overflow-y: auto; padding: 24px; }
+.filter-panel-footer { padding: 16px 24px; border-top: 1px solid #e5e7eb; display: flex; gap: 10px; }
+.fg { margin-bottom: 1.25rem; }
+.fg label { font-weight: 600; font-size: 0.85rem; color: #1e293b; display: block; margin-bottom: 6px; }
+.fg select, .fg input { width: 100%; border: 1px solid #d1d5db; border-radius: 8px; padding: 9px 12px; font-size: 0.85rem; }
+.fg select:focus, .fg input:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.12); outline: none; }
+.fg .date-row { display: flex; gap: 0.5rem; }
+.fg .date-row input { flex: 1; }
+
+/* New SO modal */
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.3); z-index: 1060; display: none; }
+.modal-overlay.open { display: flex; align-items: center; justify-content: center; }
+.modal-box { background: #fff; border-radius: 16px; width: 420px; max-width: 95vw; box-shadow: 0 8px 32px rgba(0,0,0,0.15); overflow: hidden; }
+.modal-box-header { text-align: center; padding: 2rem 1.5rem 1rem; }
+.modal-box-header .icon { width: 56px; height: 56px; border-radius: 50%; background: #ecfdf5; display: inline-flex; align-items: center; justify-content: center; font-size: 1.4rem; color: #10b981; margin-bottom: 0.75rem; }
+.modal-box-header h5 { font-weight: 700; margin: 0; }
+.modal-box-body { padding: 0 1.5rem 1.5rem; }
+.modal-box-footer { padding: 1rem 1.5rem; display: flex; gap: 0.75rem; }
+.modal-box-footer .btn-go { flex: 1; background: #10b981; color: #fff; border: none; border-radius: 8px; padding: 10px; font-size: 0.9rem; font-weight: 600; cursor: pointer; }
+.modal-box-footer .btn-go:hover { background: #059669; }
+.modal-box-footer .btn-cancel { flex: 1; background: #fff; color: #374151; border: 1px solid #d1d5db; border-radius: 8px; padding: 10px; font-size: 0.9rem; font-weight: 600; cursor: pointer; }
+
+/* Customer manager modal */
+.customer-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.45);
+    z-index: 1070;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+}
+.customer-modal-overlay.open { display: flex; }
+.customer-modal {
+    width: min(1120px, 96vw);
+    max-height: calc(100vh - 3rem);
+    background: #fff;
+    border-radius: 18px;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(15, 23, 42, 0.24);
+    display: flex;
+    flex-direction: column;
+}
+.customer-modal-header {
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid #e2e8f0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+.customer-modal-title h4 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #0f172a;
+}
+.customer-modal-title span {
+    font-size: 0.82rem;
+    color: #64748b;
+}
+.customer-modal-close {
+    width: 36px;
+    height: 36px;
+    border-radius: 999px;
+    border: 1px solid #cbd5e1;
+    background: #fff;
+    color: #475569;
+    cursor: pointer;
+}
+.customer-modal-toolbar {
+    padding: 1rem 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    border-bottom: 1px solid #e2e8f0;
+    background: #f8fafc;
+}
+.customer-modal-search {
+    width: 280px;
+    max-width: 100%;
+    border: 1px solid #d1d5db;
+    border-radius: 10px;
+    padding: 8px 12px;
+    font-size: 0.9rem;
+}
+.customer-modal-search:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.12);
+}
+.customer-modal-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+.customer-modal-body {
+    padding: 1.25rem;
+    overflow: auto;
+}
+.customer-manager-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.35fr) minmax(340px, 0.95fr);
+    gap: 1rem;
+    align-items: start;
+}
+.customer-card {
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    background: #fff;
+    overflow: hidden;
+}
+.customer-card-header {
+    padding: 1rem 1rem 0.75rem;
+    border-bottom: 1px solid #f1f5f9;
+}
+.customer-card-header h5 {
+    margin: 0;
+    font-size: 0.98rem;
+    font-weight: 700;
+    color: #0f172a;
+}
+.customer-card-header p {
+    margin: 0.25rem 0 0;
+    font-size: 0.8rem;
+    color: #64748b;
+}
+.customer-table-wrap {
+    overflow: auto;
+    max-height: 60vh;
+}
+.customer-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+}
+.customer-table th {
+    padding: 10px 12px;
+    background: #f8fafc;
+    color: #64748b;
+    font-size: 0.74rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    border-bottom: 1px solid #e2e8f0;
+    white-space: nowrap;
+}
+.customer-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid #f1f5f9;
+    color: #334155;
+    vertical-align: middle;
+}
+.customer-table tr.customer-row { cursor: pointer; }
+.customer-table tr.customer-row:hover { background: #f8fbff; }
+.customer-table tr.customer-row.active { background: #eff6ff; }
+.customer-name-cell {
+    font-weight: 600;
+    color: #0f172a;
+}
+.customer-table-empty {
+    padding: 2rem 1rem;
+    text-align: center;
+    color: #64748b;
+}
+.customer-form {
+    padding: 1rem;
+}
+.customer-form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.85rem;
+}
+.customer-form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+.customer-form-group.full { grid-column: 1 / -1; }
+.customer-form-group label {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #1e293b;
+}
+.customer-form-group input {
+    width: 100%;
+    border: 1px solid #d1d5db;
+    border-radius: 10px;
+    padding: 9px 12px;
+    font-size: 0.9rem;
+}
+.customer-form-group input:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.12);
+}
+.customer-form-section {
+    grid-column: 1 / -1;
+    margin-top: 0.35rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid #f1f5f9;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #1e293b;
+}
+.customer-form-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1rem;
+}
+.customer-inline-error {
+    display: none;
+    margin-top: 0.85rem;
+    padding: 0.75rem 0.9rem;
+    border-radius: 10px;
+    background: #fef2f2;
+    color: #b91c1c;
+    font-size: 0.82rem;
+}
+@media (max-width: 900px) {
+    .customer-manager-layout {
+        grid-template-columns: 1fr;
+    }
+    .customer-table-wrap {
+        max-height: 42vh;
+    }
+}
+@media (max-width: 640px) {
+    .customer-form-grid {
+        grid-template-columns: 1fr;
+    }
+    .customer-modal {
+        width: 100%;
+        max-height: calc(100vh - 1rem);
+    }
+    .customer-modal-overlay {
+        padding: 0.5rem;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+
+{% include 'core/includes/sidebar.html' with active='sales' %}
+
+<div class="inv-main">
+    <div class="inv-header">
+        <div>
+            <h2><i class="bi bi-receipt me-2" style="color:#2563eb;"></i>Sales Orders</h2>
+            <span class="sub" id="totalCount">0 Sales Orders</span>
+        </div>
+        <div style="display:flex; gap:0.5rem;">
+            <a href="/api/sales/orders/export/" class="btn-inv-outline"><i class="bi bi-download me-1"></i>Export</a>
+            <button class="btn-inv-outline" onclick="openImportCSV('/api/sales/orders/import/', () => loadOrders(), ['order_number','customer_name','order_status','packed_status','qb_invoice_number','sales_rep','po_number','order_date','delivery_date','ship_date','shipper','shipping_route','notes'])"><i class="bi bi-upload me-1"></i>Import</button>
+            <button class="btn-inv-outline" onclick="openCustomerManager()"><i class="bi bi-people me-1"></i>Customers</button>
+            <button class="btn-inv-primary" onclick="openNewSO()"><i class="bi bi-plus me-1"></i>New Order</button>
+        </div>
+    </div>
+
+    <div class="inv-toolbar">
+        <div class="inv-toolbar-left">
+            <input type="text" class="search-box" id="searchBox" placeholder="Search..." oninput="debounceSearch()">
+            <button class="btn-inv-outline" onclick="clearAllFilters()"><i class="bi bi-x-circle me-1"></i>Clear Filters</button>
+            <button class="btn-inv-outline" onclick="openFilterPanel()"><i class="bi bi-funnel me-1"></i>Filter</button>
+        </div>
+    </div>
+
+    <div class="inv-table-card">
+        <div style="overflow-x:auto;">
+            <table class="inv-table">
+                <thead>
+                    <tr>
+                        <th style="width:30px;"><input type="checkbox"></th>
+                        <th>Order Number</th>
+                        <th>Order Status</th>
+                        <th>Packed Status</th>
+                        <th>QB Invoice #</th>
+                        <th>Customer</th>
+                        <th style="text-align:right;">Total $</th>
+                        <th>Order Date</th>
+                        <th>Route</th>
+                        <th style="width:40px;"></th>
+                    </tr>
+                </thead>
+                <tbody id="soTbody">
+                    <tr><td colspan="10" class="text-center text-muted py-4">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="inv-pagination">
+            <span id="paginationInfo">Showing 0 items</span>
+            <div class="page-btns" id="paginationBtns"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Filter panel -->
+<div class="filter-overlay" id="filterOverlay" onclick="closeFilterPanel()"></div>
+<div class="filter-panel" id="filterPanel">
+    <div class="filter-panel-header">
+        <h4>Filter Sales Orders</h4>
+        <button class="close-btn" onclick="closeFilterPanel()"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <div class="filter-panel-body">
+        <div class="fg"><label>Customer</label><select id="ff-customer"><option value="">Choose Customer</option></select></div>
+        <div class="fg"><label>Sales Rep</label><select id="ff-sales-rep"><option value="">Choose Sales Rep</option></select></div>
+        <div class="fg">
+            <label>Order Date</label>
+            <div class="date-row"><input type="date" id="ff-date-from"><input type="date" id="ff-date-to"></div>
+        </div>
+        <div class="fg">
+            <label>Order Status</label>
+            <select id="ff-order-status">
+                <option value="">Choose Order Status</option>
+                <option value="draft">Draft</option>
+                <option value="open">Open</option>
+                <option value="needs_review">Needs Review</option>
+                <option value="closed">Closed</option>
+                <option value="cancelled">Cancelled</option>
+            </select>
+        </div>
+        <div class="fg">
+            <label>Packed Status</label>
+            <select id="ff-packed-status">
+                <option value="">Choose Packed Status</option>
+                <option value="not_packed">Not Packed</option>
+                <option value="packed">Packed</option>
+                <option value="need_to_send">Need To Send</option>
+            </select>
+        </div>
+        <div class="fg"><label>Shipping Route</label><select id="ff-route"><option value="">Choose Route</option></select></div>
+        <div class="fg"><label>Shipper</label><select id="ff-shipper"><option value="">Choose Shipper</option></select></div>
+    </div>
+    <div class="filter-panel-footer">
+        <button class="btn-inv-primary" onclick="applyFilters()" style="flex:1;">Filter Orders</button>
+        <button class="btn-inv-outline" onclick="closeFilterPanel()">Cancel</button>
+    </div>
+</div>
+
+<!-- New SO modal -->
+<div class="modal-overlay" id="newSOOverlay" onclick="closeNewSO()">
+    <div class="modal-box" onclick="event.stopPropagation()">
+        <div class="modal-box-header">
+            <div class="icon"><i class="bi bi-clipboard-plus"></i></div>
+            <h5>Create New Order</h5>
+        </div>
+        <div class="modal-box-body">
+            <div class="fg"><label>Customer Name</label>
+                <select id="new-customer" class="form-control" style="border-radius:8px;"><option value="">Choose Customer Name</option></select>
+            </div>
+        </div>
+        <div class="modal-box-footer">
+            <button class="btn-go" onclick="createSO()">Next</button>
+            <button class="btn-cancel" onclick="closeNewSO()">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<!-- Customer manager modal -->
+<div class="customer-modal-overlay" id="customerManagerOverlay" onclick="closeCustomerManager()">
+    <div class="customer-modal" onclick="event.stopPropagation()">
+        <div class="customer-modal-header">
+            <div class="customer-modal-title">
+                <h4>Customers</h4>
+                <span id="customerManagerCount">0 customers</span>
+            </div>
+            <button class="customer-modal-close" onclick="closeCustomerManager()"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <div class="customer-modal-toolbar">
+            <input type="text" id="customerManagerSearch" class="customer-modal-search" placeholder="Search customers..." oninput="debounceCustomerSearch()">
+            <div class="customer-modal-actions">
+                <button class="btn-inv-outline" onclick="resetCustomerForm()"><i class="bi bi-arrow-counterclockwise me-1"></i>Clear</button>
+                <button class="btn-inv-primary" onclick="startNewCustomer()"><i class="bi bi-plus me-1"></i>Add Customer</button>
+            </div>
+        </div>
+        <div class="customer-modal-body">
+            <div class="customer-manager-layout">
+                <div class="customer-card">
+                    <div class="customer-card-header">
+                        <h5>Customer List</h5>
+                        <p>Select a customer to edit it, or create a new one on the right.</p>
+                    </div>
+                    <div class="customer-table-wrap">
+                        <table class="customer-table">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Contact</th>
+                                    <th>Phone</th>
+                                    <th>Email</th>
+                                    <th style="width:40px;"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="customerManagerTbody">
+                                <tr><td colspan="5" class="customer-table-empty">Loading customers...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="customer-card">
+                    <div class="customer-card-header">
+                        <h5 id="customerFormTitle">Add Customer</h5>
+                        <p>Changes save directly to your customers table.</p>
+                    </div>
+                    <div class="customer-form">
+                        <input type="hidden" id="customer-edit-id">
+                        <div class="customer-form-grid">
+                            <div class="customer-form-group full">
+                                <label for="customer-f-name">Customer Name</label>
+                                <input type="text" id="customer-f-name">
+                            </div>
+                            <div class="customer-form-group">
+                                <label for="customer-f-contact">Contact Name</label>
+                                <input type="text" id="customer-f-contact">
+                            </div>
+                            <div class="customer-form-group">
+                                <label for="customer-f-phone">Phone</label>
+                                <input type="text" id="customer-f-phone">
+                            </div>
+                            <div class="customer-form-group full">
+                                <label for="customer-f-email">Email</label>
+                                <input type="email" id="customer-f-email">
+                            </div>
+
+                            <div class="customer-form-section">Billing Address</div>
+                            <div class="customer-form-group full">
+                                <label for="customer-f-address">Address</label>
+                                <input type="text" id="customer-f-address">
+                            </div>
+                            <div class="customer-form-group">
+                                <label for="customer-f-city">City</label>
+                                <input type="text" id="customer-f-city">
+                            </div>
+                            <div class="customer-form-group">
+                                <label for="customer-f-state">State</label>
+                                <input type="text" id="customer-f-state" maxlength="2">
+                            </div>
+                            <div class="customer-form-group">
+                                <label for="customer-f-zip">Zip</label>
+                                <input type="text" id="customer-f-zip">
+                            </div>
+
+                            <div class="customer-form-section">Shipping Address</div>
+                            <div class="customer-form-group full">
+                                <label for="customer-f-ship-address">Address</label>
+                                <input type="text" id="customer-f-ship-address">
+                            </div>
+                            <div class="customer-form-group">
+                                <label for="customer-f-ship-city">City</label>
+                                <input type="text" id="customer-f-ship-city">
+                            </div>
+                            <div class="customer-form-group">
+                                <label for="customer-f-ship-state">State</label>
+                                <input type="text" id="customer-f-ship-state" maxlength="2">
+                            </div>
+                            <div class="customer-form-group">
+                                <label for="customer-f-ship-zip">Zip</label>
+                                <input type="text" id="customer-f-ship-zip">
+                            </div>
+                        </div>
+                        <div id="customerFormError" class="customer-inline-error"></div>
+                        <div class="customer-form-actions">
+                            <button class="btn-inv-primary" onclick="saveCustomerFromSales()" style="flex:1;">Save Customer</button>
+                            <button class="btn-inv-outline" onclick="resetCustomerForm()">Cancel</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let allOrders = [];
+let currentPage = 1;
+let totalItems = 0;
+const PAGE_SIZE = 100;
+let searchTimeout;
+let activeFilters = {};
+let customerManagerSearchTimeout;
+let customerManagerAll = [];
+let customerManagerFiltered = [];
+let selectedCustomerId = null;
+
+document.addEventListener('DOMContentLoaded', () => { loadOrders(); loadCustomers(); });
+
+async function updateSOStatus(soId, field, value, selectEl) {
+    const payload = {};
+    payload[field] = value;
+    const res = await fetch(`/api/sales/orders/${soId}/update/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+        body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+        alert('Failed to update status.');
+        loadOrders();
+        return;
+    }
+    // Update badge class
+    selectEl.className = 'inline-status-select badge-' + value;
+}
+
+async function loadOrders() {
+    const search = document.getElementById('searchBox').value.trim();
+    let url = `/api/sales/orders/?page=${currentPage}&page_size=${PAGE_SIZE}`;
+    if (search) url += `&search=${encodeURIComponent(search)}`;
+    for (const [k,v] of Object.entries(activeFilters)) { if (v) url += `&${k}=${encodeURIComponent(v)}`; }
+    const res = await fetch(url);
+    const data = await res.json();
+    allOrders = data.orders || [];
+    totalItems = data.total || 0;
+    renderTable();
+}
+
+async function loadCustomers() {
+    const res = await fetch('/api/sales/customers/');
+    const data = await res.json();
+    const customers = data.customers || [];
+    const opts = customers.map(c => `<option value="${esc(c.name)}">${esc(c.name)}</option>`).join('');
+    document.getElementById('ff-customer').innerHTML = '<option value="">Choose Customer</option>' + opts;
+    document.getElementById('new-customer').innerHTML = '<option value="">Choose Customer Name</option>' + opts;
+}
+
+function debounceSearch() { clearTimeout(searchTimeout); searchTimeout = setTimeout(() => { currentPage = 1; loadOrders(); }, 300); }
+
+function renderTable() {
+    const tbody = document.getElementById('soTbody');
+    document.getElementById('totalCount').textContent = `${totalItems} Sales Orders`;
+
+    if (!allOrders.length) {
+        tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted py-4">No sales orders found.</td></tr>';
+        document.getElementById('paginationInfo').textContent = '0 items';
+        document.getElementById('paginationBtns').innerHTML = '';
+        return;
+    }
+
+    const orderStatusOpts = [
+        ['draft','Draft'],['open','Open'],['needs_review','Needs Review'],['closed','Closed'],['cancelled','Cancelled']
+    ];
+    const packedStatusOpts = [
+        ['not_packed','Not Packed'],['packed','Packed'],['need_to_send','Need To Send']
+    ];
+
+    tbody.innerHTML = allOrders.map(so => `
+        <tr onclick="window.location='/sales/${so.id}/'">
+            <td onclick="event.stopPropagation();"><input type="checkbox"></td>
+            <td style="font-weight:600; color:#2563eb;">${esc(so.order_number)}</td>
+            <td onclick="event.stopPropagation();">
+                <select class="inline-status-select badge-${so.order_status}" onchange="updateSOStatus(${so.id}, 'order_status', this.value, this)" style="font-size:0.75rem; padding:2px 6px; border-radius:999px; border:1px solid #e2e8f0; cursor:pointer; font-weight:600;">
+                    ${orderStatusOpts.map(([v,l]) => `<option value="${v}" ${so.order_status===v?'selected':''}>${l}</option>`).join('')}
+                </select>
+            </td>
+            <td onclick="event.stopPropagation();">
+                <select class="inline-status-select badge-${so.packed_status}" onchange="updateSOStatus(${so.id}, 'packed_status', this.value, this)" style="font-size:0.75rem; padding:2px 6px; border-radius:999px; border:1px solid #e2e8f0; cursor:pointer; font-weight:600;">
+                    ${packedStatusOpts.map(([v,l]) => `<option value="${v}" ${so.packed_status===v?'selected':''}>${l}</option>`).join('')}
+                </select>
+            </td>
+            <td>${esc(so.qb_invoice_number || '')}</td>
+            <td>${esc(so.customer_name)}</td>
+            <td style="text-align:right;">$${Number(so.total).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
+            <td>${esc(so.order_date)}</td>
+            <td>${esc(so.shipping_route || '')}</td>
+            <td onclick="event.stopPropagation();"><button class="del-btn" title="Delete" onclick="deleteRecord('/api/sales/orders/${so.id}/delete/', 'Delete order ${esc(so.order_number)}? This cannot be undone.', () => loadOrders())"><i class="bi bi-trash"></i></button></td>
+        </tr>
+    `).join('');
+
+    const totalPages = Math.ceil(totalItems / PAGE_SIZE);
+    const start = (currentPage - 1) * PAGE_SIZE + 1;
+    const end = Math.min(currentPage * PAGE_SIZE, totalItems);
+    document.getElementById('paginationInfo').textContent = `Showing ${start} to ${end} of ${totalItems}`;
+    let btns = '';
+    if (currentPage > 1) btns += `<button class="page-btn" onclick="goPage(${currentPage-1})">&lt;</button>`;
+    for (let p = Math.max(1,currentPage-2); p <= Math.min(totalPages,currentPage+2); p++)
+        btns += `<button class="page-btn ${p===currentPage?'active':''}" onclick="goPage(${p})">${p}</button>`;
+    if (currentPage < totalPages) btns += `<button class="page-btn" onclick="goPage(${currentPage+1})">&gt;</button>`;
+    document.getElementById('paginationBtns').innerHTML = btns;
+}
+
+function goPage(p) { currentPage = p; loadOrders(); }
+
+function openFilterPanel() {
+    document.getElementById('filterOverlay').classList.add('open');
+    document.getElementById('filterPanel').classList.add('open');
+    // Populate dynamic filters
+    const reps = [...new Set(allOrders.map(o => o.sales_rep).filter(Boolean))].sort();
+    const routes = [...new Set(allOrders.map(o => o.shipping_route).filter(Boolean))].sort();
+    populateSelect('ff-sales-rep', 'Choose Sales Rep', reps);
+    populateSelect('ff-route', 'Choose Route', routes);
+}
+function closeFilterPanel() { document.getElementById('filterOverlay').classList.remove('open'); document.getElementById('filterPanel').classList.remove('open'); }
+function populateSelect(id, ph, opts) { document.getElementById(id).innerHTML = `<option value="">${ph}</option>` + opts.map(o => `<option value="${esc(o)}">${esc(o)}</option>`).join(''); }
+
+function applyFilters() {
+    activeFilters = {};
+    [['ff-customer','customer'],['ff-sales-rep','sales_rep'],['ff-order-status','order_status'],
+     ['ff-packed-status','packed_status'],['ff-route','shipping_route'],['ff-shipper','shipper'],
+     ['ff-date-from','date_from'],['ff-date-to','date_to']].forEach(([id,key]) => {
+        const v = document.getElementById(id).value; if (v) activeFilters[key] = v;
+    });
+    closeFilterPanel(); currentPage = 1; loadOrders();
+}
+
+function clearAllFilters() {
+    document.getElementById('searchBox').value = '';
+    activeFilters = {};
+    ['ff-customer','ff-sales-rep','ff-order-status','ff-packed-status','ff-route','ff-shipper','ff-date-from','ff-date-to'].forEach(id => document.getElementById(id).value = '');
+    currentPage = 1; loadOrders();
+}
+
+function openNewSO() { document.getElementById('newSOOverlay').classList.add('open'); }
+function closeNewSO() { document.getElementById('newSOOverlay').classList.remove('open'); }
+
+async function createSO() {
+    const customer = document.getElementById('new-customer').value;
+    if (!customer) { alert('Please select a customer.'); return; }
+    const res = await fetch('/api/sales/orders/create/', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+        body: JSON.stringify({ customer_name: customer }),
+    });
+    const data = await res.json();
+    if (data.error) { alert(data.error); return; }
+    window.location.href = '/sales/' + data.id + '/';
+}
+
+async function openCustomerManager() {
+    document.getElementById('customerManagerOverlay').classList.add('open');
+    await loadCustomerManager();
+    if (!selectedCustomerId) startNewCustomer();
+}
+
+function closeCustomerManager() {
+    document.getElementById('customerManagerOverlay').classList.remove('open');
+}
+
+async function loadCustomerManager() {
+    const res = await fetch('/api/sales/customers/');
+    const data = await res.json();
+    customerManagerAll = data.customers || [];
+    applyCustomerManagerFilters(false);
+}
+
+function debounceCustomerSearch() {
+    clearTimeout(customerManagerSearchTimeout);
+    customerManagerSearchTimeout = setTimeout(() => applyCustomerManagerFilters(true), 250);
+}
+
+function applyCustomerManagerFilters(resetSelection = true) {
+    const search = (document.getElementById('customerManagerSearch')?.value || '').trim().toLowerCase();
+    customerManagerFiltered = customerManagerAll.filter(c => {
+        if (!search) return true;
+        return [c.name, c.contact_name, c.phone, c.email, c.city, c.state]
+            .filter(Boolean)
+            .some(value => value.toLowerCase().includes(search));
+    });
+
+    if (resetSelection && selectedCustomerId && !customerManagerFiltered.some(c => c.id === selectedCustomerId)) {
+        selectedCustomerId = null;
+    }
+
+    renderCustomerManagerTable();
+}
+
+function renderCustomerManagerTable() {
+    const tbody = document.getElementById('customerManagerTbody');
+    document.getElementById('customerManagerCount').textContent = `${customerManagerFiltered.length} customer${customerManagerFiltered.length === 1 ? '' : 's'}`;
+
+    if (!customerManagerFiltered.length) {
+        tbody.innerHTML = '<tr><td colspan="5" class="customer-table-empty">No customers match your search.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = customerManagerFiltered.map(c => `
+        <tr class="customer-row ${selectedCustomerId === c.id ? 'active' : ''}" onclick="editCustomerFromManager(${c.id})">
+            <td class="customer-name-cell">${esc(c.name)}</td>
+            <td>${esc(c.contact_name || '--')}</td>
+            <td>${esc(c.phone || '--')}</td>
+            <td>${esc(c.email || '--')}</td>
+            <td onclick="event.stopPropagation();">
+                <button class="del-btn" title="Delete" onclick="deleteRecord('/api/sales/customers/${c.id}/delete/', 'Delete customer ${esc(c.name)}?', async () => { await handleCustomerDeleted(${c.id}); })"><i class="bi bi-trash"></i></button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function startNewCustomer() {
+    selectedCustomerId = null;
+    resetCustomerForm();
+}
+
+function editCustomerFromManager(id) {
+    const customer = customerManagerAll.find(item => item.id === id);
+    if (!customer) return;
+
+    selectedCustomerId = id;
+    document.getElementById('customerFormTitle').textContent = 'Edit Customer';
+    document.getElementById('customer-edit-id').value = customer.id;
+    document.getElementById('customer-f-name').value = customer.name || '';
+    document.getElementById('customer-f-contact').value = customer.contact_name || '';
+    document.getElementById('customer-f-phone').value = customer.phone || '';
+    document.getElementById('customer-f-email').value = customer.email || '';
+    document.getElementById('customer-f-address').value = customer.address || '';
+    document.getElementById('customer-f-city').value = customer.city || '';
+    document.getElementById('customer-f-state').value = customer.state || '';
+    document.getElementById('customer-f-zip').value = customer.zipcode || '';
+    document.getElementById('customer-f-ship-address').value = customer.ship_address || '';
+    document.getElementById('customer-f-ship-city').value = customer.ship_city || '';
+    document.getElementById('customer-f-ship-state').value = customer.ship_state || '';
+    document.getElementById('customer-f-ship-zip').value = customer.ship_zipcode || '';
+    hideCustomerFormError();
+    renderCustomerManagerTable();
+}
+
+function resetCustomerForm() {
+    selectedCustomerId = null;
+    document.getElementById('customerFormTitle').textContent = 'Add Customer';
+    document.getElementById('customer-edit-id').value = '';
+    [
+        'customer-f-name', 'customer-f-contact', 'customer-f-phone', 'customer-f-email',
+        'customer-f-address', 'customer-f-city', 'customer-f-state', 'customer-f-zip',
+        'customer-f-ship-address', 'customer-f-ship-city', 'customer-f-ship-state', 'customer-f-ship-zip'
+    ].forEach(id => {
+        document.getElementById(id).value = '';
+    });
+    hideCustomerFormError();
+    renderCustomerManagerTable();
+}
+
+function hideCustomerFormError() {
+    const errorEl = document.getElementById('customerFormError');
+    errorEl.style.display = 'none';
+    errorEl.textContent = '';
+}
+
+function showCustomerFormError(message) {
+    const errorEl = document.getElementById('customerFormError');
+    errorEl.textContent = message;
+    errorEl.style.display = 'block';
+}
+
+async function saveCustomerFromSales() {
+    const customerId = document.getElementById('customer-edit-id').value;
+    const payload = {
+        name: document.getElementById('customer-f-name').value.trim(),
+        contact_name: document.getElementById('customer-f-contact').value.trim(),
+        phone: document.getElementById('customer-f-phone').value.trim(),
+        email: document.getElementById('customer-f-email').value.trim(),
+        address: document.getElementById('customer-f-address').value.trim(),
+        city: document.getElementById('customer-f-city').value.trim(),
+        state: document.getElementById('customer-f-state').value.trim(),
+        zipcode: document.getElementById('customer-f-zip').value.trim(),
+        ship_address: document.getElementById('customer-f-ship-address').value.trim(),
+        ship_city: document.getElementById('customer-f-ship-city').value.trim(),
+        ship_state: document.getElementById('customer-f-ship-state').value.trim(),
+        ship_zipcode: document.getElementById('customer-f-ship-zip').value.trim(),
+    };
+
+    if (!payload.name) {
+        showCustomerFormError('Customer name is required.');
+        return;
+    }
+
+    const url = customerId ? `/api/sales/customers/${customerId}/update/` : '/api/sales/customers/create/';
+
+    try {
+        const res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+            body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        if (!res.ok || data.error) {
+            showCustomerFormError(data.error || 'Failed to save customer.');
+            return;
+        }
+
+        const customerName = payload.name;
+        await loadCustomerManager();
+        await loadCustomers();
+        const matchedCustomer = customerManagerAll.find(c => (c.name || '').toLowerCase() === customerName.toLowerCase());
+        if (matchedCustomer) {
+            selectedCustomerId = matchedCustomer.id;
+            editCustomerFromManager(matchedCustomer.id);
+        } else {
+            startNewCustomer();
+        }
+        document.getElementById('new-customer').value = customerName;
+    } catch (error) {
+        showCustomerFormError('Failed to save customer.');
+    }
+}
+
+async function handleCustomerDeleted(customerId) {
+    if (selectedCustomerId === customerId) {
+        selectedCustomerId = null;
+        resetCustomerForm();
+    }
+    await loadCustomerManager();
+    await loadCustomers();
+
+    const newCustomerSelect = document.getElementById('new-customer');
+    const filterCustomerSelect = document.getElementById('ff-customer');
+    if (newCustomerSelect && ![...newCustomerSelect.options].some(opt => opt.value === newCustomerSelect.value)) {
+        newCustomerSelect.value = '';
+    }
+    if (filterCustomerSelect && ![...filterCustomerSelect.options].some(opt => opt.value === filterCustomerSelect.value)) {
+        filterCustomerSelect.value = '';
+    }
+}
+</script>
+{% endblock %}

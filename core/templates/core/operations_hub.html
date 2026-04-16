@@ -1,107 +1,239 @@
 {% extends 'core/base.html' %}
-
-{% block title %}FishTeck{% endblock %}
+{% block title %}Dashboard - FishTeck{% endblock %}
 
 {% block extra_css %}
 <style>
-.card-dashboard {
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
-    margin-bottom: 20px;
-    height: 100%;
-    cursor: pointer;
-    border-width: 2px !important;
+/* Welcome header */
+.dash-welcome { margin-bottom: 1.5rem; }
+.dash-welcome h2 { font-size: 1.4rem; font-weight: 700; margin: 0; color: #1e293b; }
+.dash-welcome .sub { font-size: 0.8rem; color: #64748b; margin-top: 2px; }
+
+/* Stat cards */
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+.stat-card {
+    background: #fff; border-radius: 12px; padding: 1.25rem 1.5rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06); border-left: 4px solid #e2e8f0;
 }
-.card-dashboard .card-body {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 2rem 1.5rem;
+.stat-card .stat-label { font-size: 0.75rem; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.03em; }
+.stat-card .stat-val { font-size: 1.6rem; font-weight: 700; color: #1e293b; margin-top: 4px; }
+.stat-card .stat-sub { font-size: 0.75rem; color: #94a3b8; margin-top: 2px; }
+.stat-card.blue { border-left-color: #2563eb; }
+.stat-card.green { border-left-color: #10b981; }
+.stat-card.amber { border-left-color: #f59e0b; }
+.stat-card.red { border-left-color: #ef4444; }
+
+/* Quick actions */
+.qa-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+.qa-card {
+    background: #fff; border: 1px solid #e2e8f0; border-radius: 12px;
+    padding: 1.25rem 1rem; text-align: center; cursor: pointer;
+    transition: all 0.2s; text-decoration: none; color: inherit;
 }
-.card-dashboard .card-body p {
-    flex-grow: 1;
-    margin-bottom: 1rem;
-    text-align: center;
-}
-.card-dashboard .card-body .btn { margin-top: auto; }
-.card-dashboard:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 10px 20px rgba(0,0,0,0.1);
-}
-.card-icon { font-size: 3rem; margin-bottom: 15px; }
-.company-box:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 6px 12px rgba(0,0,0,0.1) !important;
-    border-color: #0d6efd !important;
-}
+.qa-card:hover { border-color: #2563eb; box-shadow: 0 4px 12px rgba(37,99,235,0.1); transform: translateY(-2px); }
+.qa-card i { font-size: 1.5rem; color: #2563eb; margin-bottom: 0.5rem; display: block; }
+.qa-card .qa-label { font-size: 0.82rem; font-weight: 600; color: #1e293b; }
+
+/* Recent activity */
+.dash-card { background: #fff; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); margin-bottom: 1.25rem; overflow: hidden; }
+.dash-card-header { padding: 14px 18px; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; justify-content: space-between; }
+.dash-card-header h6 { margin: 0; font-weight: 700; font-size: 0.95rem; }
+.dash-card-header a { font-size: 0.8rem; color: #2563eb; text-decoration: none; font-weight: 600; }
+
+.activity-table { width: 100%; border-collapse: collapse; font-size: 0.83rem; }
+.activity-table th { background: #f8fafc; color: #64748b; font-weight: 600; font-size: 0.73rem; text-transform: uppercase; padding: 8px 14px; }
+.activity-table td { padding: 9px 14px; border-bottom: 1px solid #f1f5f9; color: #334155; }
+.activity-table tr:hover { background: #f8fafc; }
+
+.badge-sm { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 0.7rem; font-weight: 600; }
+.badge-blue { background: #dbeafe; color: #2563eb; }
+.badge-green { background: #dcfce7; color: #16a34a; }
+.badge-amber { background: #fef3c7; color: #d97706; }
+
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+@media (max-width: 900px) { .two-col { grid-template-columns: 1fr; } }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-    <div class="row justify-content-center">
 
-        <!-- Accounting -->
-        <div class="col-md-4 mb-3">
-            <div class="card card-dashboard bg-success bg-opacity-10" style="border-color: #198754 !important;" onclick="window.location.href='{% url 'accounting_hub' %}'">
-                <div class="card-body text-center">
-                    <i class="bi bi-cash-coin card-icon text-success"></i>
-                    <h3>Accounting</h3>
-                    <p class="text-muted">AR, AP, and Ledger</p>
-                    <a href="{% url 'accounting_hub' %}" class="btn btn-success mt-2">View Accounting</a>
-                </div>
+{% include 'core/includes/sidebar.html' with active='dashboard' %}
+
+<div class="inv-main">
+    <div class="dash-welcome">
+        <h2>Dashboard</h2>
+        <div class="sub">Welcome back, {{ request.user.first_name|default:request.user.username }}.</div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stat-grid" id="statGrid">
+        <div class="stat-card blue">
+            <div class="stat-label">Open Sales Orders</div>
+            <div class="stat-val" id="stat-sales">--</div>
+        </div>
+        <div class="stat-card green">
+            <div class="stat-label">Items In Stock</div>
+            <div class="stat-val" id="stat-inventory">--</div>
+        </div>
+        <div class="stat-card amber">
+            <div class="stat-label">Pending Shipments</div>
+            <div class="stat-val" id="stat-ship">--</div>
+        </div>
+        <div class="stat-card red">
+            <div class="stat-label">Open Purchase Orders</div>
+            <div class="stat-val" id="stat-po">--</div>
+        </div>
+    </div>
+
+    <!-- Quick actions -->
+    <div class="qa-grid">
+        <a class="qa-card" href="{% url 'sales_orders_page' %}"><i class="bi bi-plus-circle"></i><div class="qa-label">New Sales Order</div></a>
+        <a class="qa-card" href="{% url 'purchases_page' %}"><i class="bi bi-cart-plus"></i><div class="qa-label">New Purchase</div></a>
+        <a class="qa-card" href="{% url 'receiving_page' %}"><i class="bi bi-box-arrow-in-down"></i><div class="qa-label">Receive Lot</div></a>
+        <a class="qa-card" href="{% url 'processing_hub' %}"><i class="bi bi-gear"></i><div class="qa-label">Start Processing</div></a>
+        <a class="qa-card" href="{% url 'shipping_packing' %}"><i class="bi bi-box"></i><div class="qa-label">Packing</div></a>
+        <a class="qa-card" href="{% url 'inventory_item_library' %}"><i class="bi bi-box-seam"></i><div class="qa-label">Item Library</div></a>
+    </div>
+
+    <div class="two-col">
+        <!-- Recent Sales Orders -->
+        <div class="dash-card">
+            <div class="dash-card-header">
+                <h6>Recent Sales Orders</h6>
+                <a href="{% url 'sales_orders_page' %}">View All</a>
             </div>
+            <table class="activity-table">
+                <thead><tr><th>Order</th><th>Customer</th><th>Product</th><th>Status</th><th style="text-align:right;">Total</th></tr></thead>
+                <tbody id="recentSales"><tr><td colspan="5" class="text-center text-muted py-3">Loading...</td></tr></tbody>
+            </table>
         </div>
 
-        <!-- Compliance -->
-        <div class="col-md-4 mb-3">
-            <div class="card card-dashboard bg-warning bg-opacity-10" style="border-color: #fd7e14 !important;" onclick="window.location.href='{% url 'compliance_hub' %}'">
-                <div class="card-body text-center">
-                    <i class="bi bi-shield-check card-icon" style="color: #fd7e14;"></i>
-                    <h3>Compliance</h3>
-                    <p class="text-muted">HACCP and daily inspections</p>
-                    <a href="{% url 'compliance_hub' %}" class="btn mt-2" style="background-color: #fd7e14; color: white;">View Compliance</a>
-                </div>
+        <!-- Recent Purchase Orders -->
+        <div class="dash-card">
+            <div class="dash-card-header">
+                <h6>Recent Purchase Orders</h6>
+                <a href="{% url 'purchases_page' %}">View All</a>
             </div>
+            <table class="activity-table">
+                <thead><tr><th>PO #</th><th>Vendor</th><th>Product</th><th>Status</th><th style="text-align:right;">Total</th></tr></thead>
+                <tbody id="recentPOs"><tr><td colspan="5" class="text-center text-muted py-3">Loading...</td></tr></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="two-col">
+        <!-- Recent Receiving -->
+        <div class="dash-card">
+            <div class="dash-card-header">
+                <h6>Recently Received</h6>
+                <a href="{% url 'receiving_page' %}">View All</a>
+            </div>
+            <table class="activity-table">
+                <thead><tr><th>Lot</th><th>Vendor</th><th>Product</th><th>Date</th><th style="text-align:right;">Qty</th></tr></thead>
+                <tbody id="recentRecv"><tr><td colspan="5" class="text-center text-muted py-3">Loading...</td></tr></tbody>
+            </table>
         </div>
 
-        <!-- Orders -->
-        <div class="col-md-4 mb-3">
-            <div class="card card-dashboard bg-danger bg-opacity-10" style="border-color: #dc3545 !important;" onclick="window.location.href='{% url 'orders_landing' %}'">
-                <div class="card-body text-center">
-                    <i class="bi bi-bag card-icon text-danger"></i>
-                    <h3>Orders</h3>
-                    <p class="text-muted">Profile orders and fish market</p>
-                    <a href="{% url 'orders_landing' %}" class="btn btn-danger mt-2">View Orders</a>
-                </div>
+        <!-- Recent Processing -->
+        <div class="dash-card">
+            <div class="dash-card-header">
+                <h6>Recent Processing</h6>
+                <a href="{% url 'processing_hub' %}">View All</a>
             </div>
+            <table class="activity-table">
+                <thead><tr><th>Batch</th><th>Product</th><th>Type</th><th>Status</th><th>Date</th></tr></thead>
+                <tbody id="recentProc"><tr><td colspan="5" class="text-center text-muted py-3">Loading...</td></tr></tbody>
+            </table>
         </div>
-
-        <!-- Documents -->
-        <div class="col-md-4 mb-3">
-            <div class="card card-dashboard bg-primary bg-opacity-10" style="border-color: #0d6efd !important;" onclick="window.location.href='{% url 'documents_home' %}'">
-                <div class="card-body text-center">
-                    <i class="bi bi-file-earmark-text card-icon text-primary"></i>
-                    <h3>Documents</h3>
-                    <p class="text-muted">Files, licenses, and vehicles</p>
-                    <a href="{% url 'documents_home' %}" class="btn btn-primary mt-2">View Documents</a>
-                </div>
-            </div>
-        </div>
-
-        <!-- Administration -->
-        <div class="col-md-4 mb-3">
-            <div class="card card-dashboard bg-secondary bg-opacity-10" style="border-color: #6c757d !important;" onclick="window.location.href='{% url 'manage_users' %}'">
-                <div class="card-body text-center">
-                    <i class="bi bi-people card-icon text-secondary"></i>
-                    <h3>Administration</h3>
-                    <p class="text-muted">Manage users and companies</p>
-                    <a href="{% url 'manage_users' %}" class="btn btn-secondary mt-2">Manage</a>
-                </div>
-            </div>
-        </div>
-
     </div>
 </div>
 
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    loadStats();
+    loadRecentSales();
+    loadRecentPOs();
+    loadRecentRecv();
+    loadRecentProc();
+});
+
+async function loadStats() {
+    try {
+        const r = await fetch('/api/operations/summary/');
+        if (!r.ok) { console.error('loadStats HTTP', r.status); return; }
+        const data = await r.json();
+        document.getElementById('stat-sales').textContent = data.open_sales_orders ?? '--';
+        document.getElementById('stat-inventory').textContent = data.items_in_stock ?? '--';
+        document.getElementById('stat-ship').textContent = data.pending_shipments ?? '--';
+        document.getElementById('stat-po').textContent = data.open_purchase_orders ?? '--';
+    } catch (e) { console.error('loadStats error', e); }
+}
+
+async function loadRecentSales() {
+    try {
+        const data = await fetch('/api/sales/orders/?page_size=5').then(r => r.json());
+        const orders = data.orders || [];
+        document.getElementById('recentSales').innerHTML = orders.length ? orders.map(o => `
+            <tr style="cursor:pointer;" onclick="window.location='/sales/${o.id}/'">
+                <td style="font-weight:600;color:#2563eb;">${esc(o.order_number)}</td>
+                <td>${esc(o.customer_name)}</td>
+                <td>${esc(o.products || '')}</td>
+                <td><span class="badge-sm badge-blue">${esc(o.order_status_display)}</span></td>
+                <td style="text-align:right;">$${Number(o.total).toFixed(2)}</td>
+            </tr>
+        `).join('') : '<tr><td colspan="5" class="text-center text-muted py-3">No orders yet.</td></tr>';
+    } catch {}
+}
+
+async function loadRecentPOs() {
+    try {
+        const data = await fetch('/api/purchasing/orders/?page_size=5').then(r => r.json());
+        const orders = data.orders || [];
+        document.getElementById('recentPOs').innerHTML = orders.length ? orders.map(o => `
+            <tr style="cursor:pointer;" onclick="window.location='/operations/purchases/${o.id}/'">
+                <td style="font-weight:600;color:#2563eb;">${esc(o.po_number)}</td>
+                <td>${esc(o.vendor_name)}</td>
+                <td>${esc(o.products || '')}</td>
+                <td><span class="badge-sm badge-green">${esc(o.order_status_display)}</span></td>
+                <td style="text-align:right;">$${Number(o.total).toFixed(2)}</td>
+            </tr>
+        `).join('') : '<tr><td colspan="5" class="text-center text-muted py-3">No POs yet.</td></tr>';
+    } catch {}
+}
+
+async function loadRecentRecv() {
+    try {
+        const data = await fetch('/api/receiving/lots/?page_size=5').then(r => r.json());
+        const lots = data.lots || [];
+        document.getElementById('recentRecv').innerHTML = lots.length ? lots.map(l => `
+            <tr style="cursor:pointer;" onclick="/* open detail */">
+                <td style="font-weight:600;">${esc(l.trace_lot)}</td>
+                <td>${esc(l.vendor)}</td>
+                <td>${esc(l.product_name || '')}</td>
+                <td>${esc(l.receive_date)}</td>
+                <td style="text-align:right;">${l.on_hand} ${esc(l.unit_type)}</td>
+            </tr>
+        `).join('') : '<tr><td colspan="5" class="text-center text-muted py-3">No received lots yet.</td></tr>';
+    } catch {}
+}
+
+async function loadRecentProc() {
+    try {
+        const data = await fetch('/api/processing/batches/').then(r => r.json());
+        const batches = (data.batches || []).slice(0, 5);
+        const types = {fish_cutting:'Fish Cutting',commingle:'Commingle',renaming:'Renaming',freeze:'Freeze',lot_breaking:'Lot Breaking',shucking:'Shucking',wet_store:'Wet Store'};
+        document.getElementById('recentProc').innerHTML = batches.length ? batches.map(b => `
+            <tr style="cursor:pointer;" onclick="window.location='/processing/${b.id}/'">
+                <td style="font-weight:600;">${esc(b.batch_number)}</td>
+                <td>${esc(b.products || '')}</td>
+                <td>${esc(types[b.process_type] || b.process_type)}</td>
+                <td><span class="badge-sm badge-amber">${esc(b.status_display)}</span></td>
+                <td>${esc(b.started_at)}</td>
+            </tr>
+        `).join('') : '<tr><td colspan="5" class="text-center text-muted py-3">No batches yet.</td></tr>';
+    } catch {}
+}
+</script>
 {% endblock %}

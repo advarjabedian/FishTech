@@ -8,7 +8,7 @@ from core.models import TenantUser, Tenant
 def login_view(request):
     """Login page for all tenants"""
     if request.user.is_authenticated:
-        return redirect('haccp')
+        return redirect('operations_hub')
     
     if request.method == 'POST':
         username = request.POST.get('username')
@@ -26,8 +26,8 @@ def login_view(request):
                 
                 login(request, user)
                 
-                # Redirect to next or operations hub
-                next_url = request.GET.get('next', 'operations_hub')
+                # Redirect to next or HACCP dashboard
+                next_url = request.GET.get('next', 'haccp')
                 return redirect(next_url)
             except TenantUser.DoesNotExist:
                 messages.error(request, 'User not associated with any tenant.')
@@ -60,6 +60,14 @@ def operations_hub(request):
     return render(request, 'core/operations_hub.html', {
         'is_admin': is_admin
     })
+
+
+@login_required
+def platform_admin_redirect(request):
+    """Redirect superusers to Django admin"""
+    if not request.user.is_superuser:
+        return redirect('home')
+    return redirect('admin:index')
 
 
 def register_view(request):

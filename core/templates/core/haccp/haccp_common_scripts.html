@@ -2,162 +2,73 @@
 // ========== COMMON VARIABLES ==========
 let canvas;
 let ctx;
-let modalCanvas;
-let modalCtx;
-let isDrawing = false;
+let _haccpSigData = '';
 let hasUnsavedChanges = false;
-let signatureModal;
 
 // ========== INITIALIZATION ==========
 document.addEventListener('DOMContentLoaded', function() {
-    // Initialize canvas variables
     canvas = document.getElementById('signature_canvas');
     if (!canvas) {
         console.error('Signature canvas not found');
         return;
     }
     ctx = canvas.getContext('2d');
-    
-    // Initialize modal canvas
-    modalCanvas = document.getElementById('signature_canvas_modal');
-    if (modalCanvas) {
-        modalCtx = modalCanvas.getContext('2d');
-        signatureModal = new bootstrap.Modal(document.getElementById('signatureModal'));
-    }
-    
+
     {% if document_type_slug == 'product_description' %}
     loadTableData();
     {% endif %}
-    
+
     {% if document_type_slug == 'flow_chart' %}
     initFlowChart();
     {% endif %}
-    
+
     {% if document_type_slug == 'hazard_analysis' %}
     initHazardAnalysis();
     {% endif %}
-    
+
     {% if document_type_slug == 'ccp_summary' %}
     initCCPSummary();
     {% endif %}
-    
+
     initializeSignature();
     setupChangeTracking();
 });
 
-// ========== SIGNATURE FUNCTIONS ==========
+// ========== SIGNATURE FUNCTIONS (uses shared SignatureModal) ==========
 function initializeSignature() {
     {% if document.approved_signature %}
     const img = new Image();
     img.onload = function() {
         ctx.drawImage(img, 0, 0);
+        _haccpSigData = '{{ document.approved_signature }}';
     };
     img.src = '{{ document.approved_signature }}';
     {% endif %}
-    
-    // Click on main canvas opens modal
+
     {% if not is_read_only %}
     canvas.addEventListener('click', function(e) {
         e.preventDefault();
-        openSignatureModal();
+        SignatureModal.open({
+            title: 'Draw Your Signature',
+            headerColor: '#198754',
+            saveLabel: 'Save Signature',
+            existingSignature: _haccpSigData || null,
+            onSave(dataUrl) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                const img = new Image();
+                img.onload = () => ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                img.src = dataUrl;
+                _haccpSigData = dataUrl;
+                hasUnsavedChanges = true;
+            }
+        });
     });
     {% endif %}
-    
-    // Setup modal canvas drawing
-    if (modalCanvas) {
-        modalCanvas.addEventListener('mousedown', startModalDrawing);
-        modalCanvas.addEventListener('mousemove', drawModal);
-        modalCanvas.addEventListener('mouseup', stopModalDrawing);
-        modalCanvas.addEventListener('mouseout', stopModalDrawing);
-        
-        modalCanvas.addEventListener('touchstart', function(e) {
-            e.preventDefault();
-            const touch = e.touches[0];
-            const rect = modalCanvas.getBoundingClientRect();
-            startModalDrawing({
-                clientX: touch.clientX,
-                clientY: touch.clientY
-            });
-        });
-        
-        modalCanvas.addEventListener('touchmove', function(e) {
-            e.preventDefault();
-            const touch = e.touches[0];
-            drawModal({
-                clientX: touch.clientX,
-                clientY: touch.clientY
-            });
-        });
-        
-        modalCanvas.addEventListener('touchend', function(e) {
-            e.preventDefault();
-            stopModalDrawing();
-        });
-    }
-}
-
-function openSignatureModal() {
-    // Copy current signature to modal canvas
-    modalCtx.clearRect(0, 0, modalCanvas.width, modalCanvas.height);
-    if (canvas.toDataURL() !== document.createElement('canvas').toDataURL()) {
-        // Scale the signature to fit modal canvas
-        const img = new Image();
-        img.onload = function() {
-            const scale = Math.min(
-                modalCanvas.width / canvas.width,
-                modalCanvas.height / canvas.height
-            );
-            const x = (modalCanvas.width - canvas.width * scale) / 2;
-            const y = (modalCanvas.height - canvas.height * scale) / 2;
-            modalCtx.drawImage(img, x, y, canvas.width * scale, canvas.height * scale);
-        };
-        img.src = canvas.toDataURL();
-    }
-    signatureModal.show();
-}
-
-function startModalDrawing(e) {
-    isDrawing = true;
-    const rect = modalCanvas.getBoundingClientRect();
-    modalCtx.beginPath();
-    modalCtx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
-}
-
-function drawModal(e) {
-    if (!isDrawing) return;
-    const rect = modalCanvas.getBoundingClientRect();
-    modalCtx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
-    modalCtx.strokeStyle = '#000';
-    modalCtx.lineWidth = 3;
-    modalCtx.stroke();
-}
-
-function stopModalDrawing() {
-    isDrawing = false;
-}
-
-function clearModalSignature() {
-    modalCtx.clearRect(0, 0, modalCanvas.width, modalCanvas.height);
-}
-
-function saveModalSignature() {
-    // Scale modal signature to main canvas
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    const scale = Math.min(
-        canvas.width / modalCanvas.width,
-        canvas.height / modalCanvas.height
-    );
-    const x = (canvas.width - modalCanvas.width * scale) / 2;
-    const y = (canvas.height - modalCanvas.height * scale) / 2;
-    ctx.drawImage(modalCanvas, 0, 0, modalCanvas.width, modalCanvas.height,
-                  x, y, modalCanvas.width * scale, modalCanvas.height * scale);
-    
-    hasUnsavedChanges = true;
-    signatureModal.hide();
 }
 
 function clearSignature() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    _haccpSigData = '';
     hasUnsavedChanges = true;
 }
 
@@ -381,9 +292,7 @@ function validateDocument() {
     }
     
     // Check signature
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const hasSignature = imageData.data.some(pixel => pixel !== 0);
-    if (!hasSignature) {
+    if (!_haccpSigData) {
         errors.push('Signature is required');
     }
     
@@ -392,8 +301,8 @@ function validateDocument() {
 }
 
 function collectFormData() {
-    const signature = canvas.toDataURL();
-    
+    const signature = _haccpSigData || canvas.toDataURL();
+
     return {
         originated_date: document.getElementById('originated_date').value,
         approved_date: document.getElementById('approved_date').value,

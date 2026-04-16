@@ -4,13 +4,19 @@
 {% block title %}Administration - FishTech{% endblock %}
 
 {% block content %}
-<div class="container mt-4 pb-5">
+{% include 'core/includes/sidebar.html' with active='settings' %}
+<div class="inv-main">
 
-    <div class="d-flex align-items-center gap-2 mb-4">
-        <a href="{% url 'operations_hub' %}" class="btn btn-sm btn-outline-secondary">
-            <i class="bi bi-arrow-left me-1"></i>Home
-        </a>
-        <h2 class="mb-0">Administration</h2>
+    <div class="inv-header">
+        <div>
+            <h2><i class="bi bi-gear me-2" style="color:#2563eb;"></i>Administration</h2>
+            <span class="sub">Facility settings and user management</span>
+        </div>
+        <div style="display:flex; gap:0.5rem;">
+            <a href="{% url 'operations_hub' %}" class="btn-inv-outline">
+                <i class="bi bi-arrow-left me-1"></i>Home
+            </a>
+        </div>
     </div>
 
     <!-- Facility Info -->
@@ -50,15 +56,14 @@
     <!-- Users Section -->
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h5 class="mb-0">Users</h5>
-        <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addUserModal">
+        <button class="btn-inv-primary" data-bs-toggle="modal" data-bs-target="#addUserModal">
             <i class="bi bi-plus me-1"></i>Add User
         </button>
     </div>
 
-    <div class="card">
-        <div class="card-body p-0">
-            <table class="table table-hover mb-0">
-                <thead class="table-dark">
+    <div class="inv-table-card">
+            <table class="inv-table">
+                <thead>
                     <tr>
                         <th>Name</th>
                         <th>Email</th>
@@ -88,7 +93,6 @@
                     {% endfor %}
                 </tbody>
             </table>
-        </div>
     </div>
 </div>
 
@@ -157,7 +161,7 @@
             </div>
             <div class="modal-footer">
                 <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button class="btn btn-primary" onclick="submitEditUser()">Save Changes</button>
+                <button class="btn btn-primary" onclick="withSpinner(this, () => submitEditUser())">Save Changes</button>
             </div>
         </div>
     </div>
@@ -198,22 +202,13 @@
             </div>
             <div class="modal-footer">
                 <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button class="btn btn-primary" onclick="submitEditCompany()">Save Changes</button>
+                <button class="btn btn-primary" onclick="withSpinner(this, () => submitEditCompany())">Save Changes</button>
             </div>
         </div>
     </div>
 </div>
 
 <script>
-function getCookie(name) {
-    let v = null;
-    document.cookie.split(';').forEach(c => {
-        const [k, val] = c.trim().split('=');
-        if (k === name) v = decodeURIComponent(val);
-    });
-    return v;
-}
-
 function submitAddUser() {
     const pw = document.getElementById('add_password').value;
     if (pw !== document.getElementById('add_password2').value) { alert('Passwords do not match'); return; }
@@ -238,7 +233,7 @@ function submitEditUser() {
     const pw = document.getElementById('edit_password').value;
     const pw2 = document.getElementById('edit_password2').value;
     if (pw || pw2) { if (pw !== pw2) { alert('Passwords do not match'); return; } if (pw.length < 8) { alert('Password must be at least 8 characters'); return; } }
-    fetch(`/api/edit-user/${document.getElementById('edit_user_id').value}/`, {
+    return fetch(`/api/edit-user/${document.getElementById('edit_user_id').value}/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
         body: JSON.stringify({ name: document.getElementById('edit_name').value, email: document.getElementById('edit_email').value, password: pw || null })
@@ -263,7 +258,7 @@ function editCompany(id, name, address, city, state, zipcode) {
 }
 
 function submitEditCompany() {
-    fetch(`/api/edit-company/${document.getElementById('edit_company_id').value}/`, {
+    return fetch(`/api/edit-company/${document.getElementById('edit_company_id').value}/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
         body: JSON.stringify({

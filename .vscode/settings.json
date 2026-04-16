@@ -1,0 +1,8 @@
+{
+    "chat.tools.terminal.autoApprove": {
+        "/^\\.\\\\venv\\\\Scripts\\\\Activate\\.ps1 ; python manage\\.py shell -c \"from django\\.urls import reverse; print\\(reverse\\('operations_hub'\\)\\); import django; print\\('Django', django\\.get_version\\(\\)\\)\"$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
+    }
+}

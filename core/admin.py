@@ -1,7 +1,7 @@
 from django.contrib import admin
 from .models import (
-    Tenant, TenantUser, Company, HACCPProductType, 
-    CompanyProductType, CompanyHACCPOwner, HACCPDocument, 
+    Tenant, TenantUser, HACCPProductType,
+    CompanyProductType, CompanyHACCPOwner, HACCPDocument,
     CompanyCertificate
 )
 
@@ -15,20 +15,14 @@ class TenantUserAdmin(admin.ModelAdmin):
     list_display = ['user', 'tenant']
     list_filter = ['tenant']
 
-@admin.register(Company)
-class CompanyAdmin(admin.ModelAdmin):
-    list_display = ['companyname', 'tenant', 'city', 'state']
-    list_filter = ['tenant']
-    search_fields = ['companyname']
-
 @admin.register(HACCPProductType)
 class HACCPProductTypeAdmin(admin.ModelAdmin):
     list_display = ['name', 'slug', 'is_active']
 
 @admin.register(CompanyProductType)
 class CompanyProductTypeAdmin(admin.ModelAdmin):
-    list_display = ['company', 'product_type', 'is_active']
-    list_filter = ['company', 'is_active']
+    list_display = ['tenant', 'product_type', 'is_active']
+    list_filter = ['tenant', 'is_active']
 
 @admin.register(HACCPDocument)
 class HACCPDocumentAdmin(admin.ModelAdmin):
@@ -37,5 +31,5 @@ class HACCPDocumentAdmin(admin.ModelAdmin):
 
 @admin.register(CompanyCertificate)
 class CompanyCertificateAdmin(admin.ModelAdmin):
-    list_display = ['company', 'certificate_type', 'year', 'is_completed']
+    list_display = ['tenant', 'certificate_type', 'year', 'is_completed']
     list_filter = ['certificate_type', 'year', 'is_completed']

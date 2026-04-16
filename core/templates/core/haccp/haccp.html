@@ -215,23 +215,8 @@ let currentMasterProductName = '';
 let masterSelectedYear = {% now "Y" %};
 let masterAllYears = [];
 
-function getCookie(name) {
-    let cookieValue = null;
-    if (document.cookie && document.cookie !== '') {
-        const cookies = document.cookie.split(';');
-        for (let i = 0; i < cookies.length; i++) {
-            const cookie = cookies[i].trim();
-            if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                break;
-            }
-        }
-    }
-    return cookieValue;
-}
-
 function loadAllProductTypes() {
-    return fetch('/api/haccp-all-product-types/')
+    return fetch('/api/haccp/all-product-types/')
         .then(r => r.json())
         .then(data => {
             productTypes = data.product_types;
@@ -262,7 +247,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
 function loadMasterProductTypes() {
-    fetch('/api/haccp-master-product-types/')
+    fetch('/api/haccp/master-product-types/')
         .then(r => r.json())
         .then(data => {
             const container = document.getElementById('master-product-types');
@@ -383,7 +368,7 @@ function openPrintModal(slug, name) {
 }
 
 function toggleProductTypeManager(companyId) {
-    fetch('/api/haccp-all-product-types/')
+    fetch('/api/haccp/all-product-types/')
         .then(r => r.json())
         .then(data => {
             productTypes = data.product_types;
@@ -463,7 +448,7 @@ function showMasterVersionHistory(productTypeSlug, productTypeName) {
     
     document.getElementById('masterVersionModalTitle').textContent = `Version History - ${productTypeName}`;
     
-    fetch(`/api/haccp-version-history/0/${productTypeSlug}/product_description/`)
+    fetch(`/api/haccp/version-history/0/${productTypeSlug}/product_description/`)
         .then(r => r.json())
         .then(data => {
             masterAllYears = data.years;
@@ -506,7 +491,7 @@ function loadMasterVersionsForYear(year) {
     const contentDiv = document.getElementById('masterVersionTableContent');
     contentDiv.innerHTML = '<div class="text-center"><div class="spinner-border text-primary" role="status"></div></div>';
     
-    fetch(`/api/haccp-version-history/0/${currentMasterProductType}/product_description/?year=${year}`)
+    fetch(`/api/haccp/version-history/0/${currentMasterProductType}/product_description/?year=${year}`)
         .then(r => r.json())
         .then(data => {
             renderMasterVersionTable(data.versions);
@@ -590,7 +575,7 @@ function renderMasterVersionTable(versions) {
 function deleteMasterVersion(year, version) {
     if (!confirm(`Delete version ${version} for year ${year}? This will delete all 4 documents in this version and cannot be undone.`)) return;
     
-    fetch(`/api/haccp-delete-version-set/0/${currentMasterProductType}/`, {
+    fetch(`/api/haccp/delete-version-set/0/${currentMasterProductType}/`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -622,7 +607,7 @@ function createMasterNewVersion() {
         return;
     }
     
-    fetch(`/api/haccp-generate-version/0/${currentMasterProductType}/product_description/`, {
+    fetch(`/api/haccp/generate-version/0/${currentMasterProductType}/product_description/`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -651,7 +636,7 @@ function openManageProductTypesModal() {
 }
 
 function loadAndRenderProductTypesList() {
-    fetch('/api/haccp-all-product-types/')
+    fetch('/api/haccp/all-product-types/')
         .then(r => r.json())
         .then(data => {
             // Update global array
@@ -722,7 +707,7 @@ function addNewProductTypeFromModal() {
         return;
     }
     
-    fetch('/api/haccp-add-product-type/', {
+    fetch('/api/haccp/add-product-type/', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -754,7 +739,7 @@ function saveProductTypeName(slug) {
         return;
     }
     
-    fetch('/api/haccp-update-product-type/', {
+    fetch('/api/haccp/update-product-type/', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -782,7 +767,7 @@ function addNewProductTypePrompt() {
         return;
     }
     
-    fetch('/api/haccp-add-product-type/', {
+    fetch('/api/haccp/add-product-type/', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -809,7 +794,7 @@ function deleteProductType(slug, name) {
         return;
     }
     
-    fetch('/api/haccp-delete-product-type/', {
+    fetch('/api/haccp/delete-product-type/', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -833,7 +818,7 @@ function deleteProductType(slug, name) {
 }
 
 function openRecycleBin() {
-    fetch('/api/haccp-inactive-product-types/')
+    fetch('/api/haccp/inactive-product-types/')
         .then(r => r.json())
         .then(data => {
             const container = document.getElementById('recycleBinList');
@@ -868,7 +853,7 @@ function restoreProductType(slug, name) {
         return;
     }
 
-    fetch('/api/haccp-restore-product-type/', {
+    fetch('/api/haccp/restore-product-type/', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -892,7 +877,7 @@ function restoreProductType(slug, name) {
 }
 
 function setHACCPOwner(companyId, userId) {
-    fetch(`/api/haccp-set-owner/${companyId}/`, {
+    fetch(`/api/haccp/set-owner/${companyId}/`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',

@@ -37,8 +37,8 @@
             <!-- Company -->
             <td style="cursor: pointer;" onclick="window.location.href='{% url 'operations_admin' %}?company_id={{ company.id }}'">
                 <div class="d-flex align-items-center">
-                    {% if company.config.company.logo %}
-                    <img src="{{ company.config.company.logo }}" alt="{{ company.name }}" style="width: 50px; height: 35px; object-fit: contain; margin-right: 10px;">
+                    {% if company.config.tenant.logo %}
+                    <img src="{{ company.config.tenant.logo }}" alt="{{ company.name }}" style="width: 50px; height: 35px; object-fit: contain; margin-right: 10px;">
                     {% endif %}
                     <strong style="text-decoration: underline;">{{ company.name }}</strong>
                 </div>

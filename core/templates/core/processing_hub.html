@@ -1,0 +1,236 @@
+{% extends 'core/base.html' %}
+{% block title %}Processing - FishTeck{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ── Process type grid ─────────────────────────────────────────── */
+.proc-grid {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 1rem;
+    align-items: stretch;
+}
+.proc-card {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 1.5rem 1rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-decoration: none;
+    color: inherit;
+    min-width: 0;
+}
+.proc-card:hover {
+    border-color: #2563eb;
+    box-shadow: 0 4px 16px rgba(37,99,235,0.12);
+    transform: translateY(-2px);
+}
+.proc-card .icon-circle {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.6rem;
+    color: #fff;
+    margin-bottom: 0.75rem;
+}
+.proc-card .proc-label {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #1e293b;
+    line-height: 1.25;
+}
+
+/* icon colors matching mobile app */
+.ic-cutting   { background: #3b82f6; }
+.ic-commingle { background: #22d3ee; }
+.ic-renaming  { background: #a78bfa; }
+.ic-freeze    { background: #38bdf8; }
+.ic-breaking  { background: #f59e0b; }
+.ic-shucking  { background: #34d399; }
+.ic-wetstore  { background: #60a5fa; }
+
+/* ── Recent batches table top margin ──────────────────────────── */
+.inv-table-card { margin-top: 2rem; }
+
+@media (max-width: 1400px) {
+    .proc-grid {
+        overflow-x: auto;
+        padding-bottom: 0.25rem;
+    }
+    .proc-card {
+        min-width: 160px;
+    }
+}
+
+@media (max-width: 900px) {
+    .proc-grid {
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        overflow-x: visible;
+    }
+    .proc-card {
+        min-width: 0;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+
+{% include 'core/includes/sidebar.html' with active='process' %}
+
+<!-- Main content -->
+<div class="inv-main">
+    <div class="inv-header">
+        <div>
+            <h2><i class="bi bi-gear me-2" style="color:#2563eb;"></i>Processing</h2>
+            <div class="sub">Choose a process type to start a new batch, or view recent batches below.</div>
+        </div>
+        <div style="display:flex; gap:0.5rem;">
+            <a href="/api/processing/batches/export/" class="btn-inv-outline"><i class="bi bi-download me-1"></i>Export</a>
+            <button class="btn-inv-outline" onclick="openImportCSV('/api/processing/batches/import/', () => loadBatches(), ['batch_number','process_type','status','notes'])"><i class="bi bi-upload me-1"></i>Import</button>
+        </div>
+    </div>
+
+    <!-- Process type cards -->
+    <div class="proc-grid">
+        <a class="proc-card" href="{% url 'processing_new' %}?type=fish_cutting">
+            <div class="icon-circle ic-cutting"><i class="bi bi-scissors"></i></div>
+            <div class="proc-label">Fish Cutting</div>
+        </a>
+        <a class="proc-card" href="{% url 'processing_new' %}?type=commingle">
+            <div class="icon-circle ic-commingle"><i class="bi bi-arrow-left-right"></i></div>
+            <div class="proc-label">Commingle</div>
+        </a>
+        <a class="proc-card" href="{% url 'processing_new' %}?type=renaming">
+            <div class="icon-circle ic-renaming"><i class="bi bi-pencil-square"></i></div>
+            <div class="proc-label">Renaming</div>
+        </a>
+        <a class="proc-card" href="{% url 'processing_new' %}?type=freeze">
+            <div class="icon-circle ic-freeze"><i class="bi bi-snow"></i></div>
+            <div class="proc-label">Freeze</div>
+        </a>
+        <a class="proc-card" href="{% url 'processing_new' %}?type=lot_breaking">
+            <div class="icon-circle ic-breaking"><i class="bi bi-share"></i></div>
+            <div class="proc-label">Bag or Lot Breaking</div>
+        </a>
+        <a class="proc-card" href="{% url 'processing_new' %}?type=shucking">
+            <div class="icon-circle ic-shucking"><i class="bi bi-box-arrow-right"></i></div>
+            <div class="proc-label">Shucking</div>
+        </a>
+        <a class="proc-card" href="{% url 'processing_new' %}?type=wet_store">
+            <div class="icon-circle ic-wetstore"><i class="bi bi-droplet-half"></i></div>
+            <div class="proc-label">Wet Store</div>
+        </a>
+    </div>
+
+    <!-- Recent batches -->
+    <div class="inv-table-card">
+        <div style="padding: 14px 18px; border-bottom: 1px solid #f1f5f9;">
+            <h6 style="margin:0; font-weight:700; font-size:0.95rem;">Recent Batches</h6>
+        </div>
+        <div class="inv-toolbar" style="padding: 8px 14px 0;">
+            <div class="inv-toolbar-left">
+                <select class="filter-select" id="statusFilter" onchange="loadBatches()">
+                    <option value="">All Statuses</option>
+                    <option value="draft">Draft</option>
+                    <option value="in_progress">In Progress</option>
+                    <option value="completed">Completed</option>
+                    <option value="cancelled">Cancelled</option>
+                </select>
+                <input type="text" class="search-box" id="batchSearch" placeholder="Search batches..." oninput="debounceSearch()">
+            </div>
+        </div>
+        <div style="overflow-x: auto;">
+            <table class="inv-table">
+                <thead>
+                    <tr>
+                        <th>Batch #</th>
+                        <th>Product(s)</th>
+                        <th>Process Type</th>
+                        <th>Status</th>
+                        <th>Started</th>
+                        <th>Completed</th>
+                        <th>Created By</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody id="batchTbody">
+                    <tr><td colspan="8" class="text-center text-muted py-4">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="inv-pagination">
+            <span id="paginationInfo">Showing 0 batches</span>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let allBatches = [];
+let searchTimeout;
+
+document.addEventListener('DOMContentLoaded', loadBatches);
+
+async function loadBatches() {
+    const status = document.getElementById('statusFilter').value;
+    const search = document.getElementById('batchSearch').value.trim();
+    let url = '/api/processing/batches/?';
+    if (status) url += `status=${status}&`;
+    if (search) url += `search=${encodeURIComponent(search)}&`;
+
+    try {
+        const res = await fetch(url);
+        const data = await res.json();
+        allBatches = data.batches || [];
+        renderBatches();
+    } catch {
+        document.getElementById('batchTbody').innerHTML =
+            '<tr><td colspan="8" class="text-center text-muted py-4">Failed to load batches.</td></tr>';
+    }
+}
+
+function renderBatches() {
+    const tbody = document.getElementById('batchTbody');
+
+    if (!allBatches.length) {
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">No batches yet. Start a new process above.</td></tr>';
+        document.getElementById('paginationInfo').textContent = '0 batches';
+        return;
+    }
+
+    const typeLabels = {
+        fish_cutting: 'Fish Cutting', commingle: 'Commingle', renaming: 'Renaming',
+        freeze: 'Freeze', lot_breaking: 'Bag or Lot Breaking', shucking: 'Shucking',
+        wet_store: 'Wet Store',
+    };
+
+    tbody.innerHTML = allBatches.map(b => `
+        <tr style="cursor:pointer;" onclick="window.location='/operations/processing/${b.id}/'">
+            <td style="font-weight:600;">${esc(b.batch_number)}</td>
+            <td style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${esc(b.products || '--')}</td>
+            <td>${esc(typeLabels[b.process_type] || b.process_type)}</td>
+            <td><span class="badge-status badge-${b.status}">${esc(b.status_display)}</span></td>
+            <td>${b.started_at || '--'}</td>
+            <td>${b.completed_at || '--'}</td>
+            <td>${esc(b.created_by || '--')}</td>
+            <td onclick="event.stopPropagation();"><button class="del-btn" title="Delete" onclick="deleteRecord('/api/processing/batches/${b.id}/delete/', 'Delete batch ${esc(b.batch_number)}? This cannot be undone.', () => loadBatches())"><i class="bi bi-trash"></i></button></td>
+        </tr>
+    `).join('');
+
+    document.getElementById('paginationInfo').textContent = `${allBatches.length} batch${allBatches.length !== 1 ? 'es' : ''}`;
+}
+
+function debounceSearch() {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(loadBatches, 300);
+}
+</script>
+{% endblock %}

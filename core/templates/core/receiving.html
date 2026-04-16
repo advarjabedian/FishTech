@@ -1,0 +1,1094 @@
+{% extends 'core/base.html' %}
+{% block title %}Receive - FishTeck{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ── Page-specific table styles ───────────────────────────────── */
+.inv-table .lot-code { font-weight: 600; color: #1e293b; white-space: nowrap; }
+
+/* QC badges */
+.qc-badge { display: inline-flex; align-items: center; font-size: 0.73rem; font-weight: 600; padding: 3px 8px; border-radius: 20px; white-space: nowrap; }
+.qc-pass { background: #dcfce7; color: #166534; }
+.qc-hold { background: #fef3c7; color: #92400e; }
+.qc-reject { background: #fee2e2; color: #991b1b; }
+.qc-pending { background: #f1f5f9; color: #64748b; }
+
+/* ── Pagination page buttons ──────────────────────────────────── */
+.inv-pagination .page-btns { display: flex; gap: 4px; }
+.inv-pagination .page-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 32px; height: 32px; border: 1px solid #d1d5db; border-radius: 6px;
+    background: #fff; color: #374151; cursor: pointer; font-size: 0.8rem;
+}
+.inv-pagination .page-btn:hover { border-color: #2563eb; color: #2563eb; }
+.inv-pagination .page-btn.active { background: #2563eb; color: #fff; border-color: #2563eb; }
+
+/* ── Slide-over (lot detail) ───────────────────────────────────── */
+.slide-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.25);
+    z-index: 1040; display: none;
+}
+.slide-overlay.open { display: block; }
+.slide-panel {
+    position: fixed; top: 0; right: -620px; width: 600px; max-width: 95vw;
+    height: 100vh; background: #fff; box-shadow: -4px 0 24px rgba(0,0,0,0.12);
+    z-index: 1050; transition: right 0.3s ease; display: flex; flex-direction: column;
+}
+.slide-panel.open { right: 0; }
+.slide-panel-header {
+    background: #0ea5e9; color: #fff; padding: 18px 24px;
+    display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
+}
+.slide-panel-header h4 { margin: 0; font-size: 1.05rem; font-weight: 600; }
+.slide-panel-header .close-btn {
+    background: rgba(255,255,255,0.2); border: none; color: #fff;
+    width: 32px; height: 32px; border-radius: 50%; font-size: 1.1rem;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+}
+.slide-panel-header .close-btn:hover { background: rgba(255,255,255,0.35); }
+.slide-panel-body { flex: 1; overflow-y: auto; padding: 0; }
+
+/* Detail header inside panel */
+.lot-detail-header {
+    background: #f0f9ff; padding: 20px 24px; border-bottom: 1px solid #e0f2fe;
+}
+.lot-detail-header .lot-icon {
+    width: 48px; height: 48px; border-radius: 50%; background: #0ea5e9;
+    color: #fff; display: inline-flex; align-items: center; justify-content: center;
+    font-size: 0.75rem; font-weight: 700; margin-right: 12px; vertical-align: middle;
+}
+.lot-detail-header .lot-title { font-size: 1.1rem; font-weight: 700; color: #0c4a6e; }
+.lot-detail-header .lot-subtitle { font-size: 0.8rem; color: #64748b; margin-top: 2px; }
+.lot-stats {
+    display: flex; gap: 2rem; margin-top: 1rem;
+}
+.lot-stat { text-align: center; }
+.lot-stat .stat-val { font-size: 1.3rem; font-weight: 700; color: #0c4a6e; }
+.lot-stat .stat-label { font-size: 0.7rem; color: #64748b; text-transform: uppercase; font-weight: 600; }
+
+.lot-detail-section { padding: 16px 24px; }
+.lot-detail-section h6 { font-weight: 700; font-size: 0.85rem; color: #1e293b; margin-bottom: 0.75rem; }
+.lot-detail-row { display: flex; font-size: 0.82rem; margin-bottom: 4px; }
+.lot-detail-row .label { color: #64748b; width: 140px; flex-shrink: 0; }
+.lot-detail-row .value { color: #1e293b; font-weight: 500; }
+
+/* Activity table */
+.activity-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+.activity-table th {
+    text-align: left; color: #64748b; font-weight: 600; font-size: 0.72rem;
+    text-transform: uppercase; padding: 6px 0; border-bottom: 1px solid #e5e7eb;
+}
+.activity-table td { padding: 6px 0; border-bottom: 1px solid #f1f5f9; color: #334155; }
+.activity-table a { color: #2563eb; text-decoration: none; }
+.activity-table a:hover { text-decoration: underline; }
+
+/* ── Receive modal ─────────────────────────────────────────────── */
+.recv-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.3); z-index: 1060; display: none; }
+.recv-overlay.open { display: flex; align-items: center; justify-content: center; }
+.recv-modal {
+    background: #fff; border-radius: 16px; width: 520px; max-width: 95vw;
+    max-height: 90vh; overflow-y: auto; box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+}
+.recv-modal-header {
+    background: #0ea5e9; color: #fff; padding: 18px 24px; border-radius: 16px 16px 0 0;
+    display: flex; align-items: center; justify-content: space-between;
+}
+.recv-modal-header h5 { margin: 0; font-weight: 700; }
+.recv-modal-body { padding: 24px; }
+.recv-modal-footer { padding: 16px 24px; border-top: 1px solid #e5e7eb; display: flex; gap: 10px; }
+.form-group-r { margin-bottom: 1rem; }
+.form-group-r label { font-weight: 600; font-size: 0.82rem; color: #1e293b; display: block; margin-bottom: 4px; }
+.form-control-r {
+    width: 100%; border: 1px solid #d1d5db; border-radius: 8px;
+    padding: 8px 12px; font-size: 0.85rem;
+}
+.form-control-r:focus { border-color: #0ea5e9; box-shadow: 0 0 0 3px rgba(14,165,233,0.12); outline: none; }
+.form-row-r { display: flex; gap: 1rem; }
+.form-row-r .form-group-r { flex: 1; }
+.quality-check-grid {
+    display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:0.5rem 1rem; margin-top:0.5rem;
+}
+.quality-check-item { display:flex; align-items:center; gap:0.45rem; font-size:0.82rem; color:#334155; }
+.quality-pill {
+    display:inline-block; padding:3px 10px; border-radius:999px; font-size:0.72rem; font-weight:700;
+}
+.quality-pass { background:#dcfce7; color:#166534; }
+.quality-hold { background:#fef3c7; color:#92400e; }
+.quality-reject { background:#fee2e2; color:#991b1b; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+{% include 'core/includes/sidebar.html' with active='receive' %}
+
+<!-- Main content -->
+<div class="inv-main">
+    <div class="inv-header">
+        <div>
+            <h2><i class="bi bi-box-arrow-in-down me-2" style="color:#0ea5e9;"></i>Receive</h2>
+            <span class="sub" id="totalCount">0 total items</span>
+        </div>
+        <div style="display:flex; gap:0.5rem;">
+            <a href="/api/receiving/lots/export/" class="btn-inv-outline"><i class="bi bi-download me-1"></i>Export</a>
+            <button class="btn-inv-outline" onclick="openImportCSV('/api/receiving/lots/import/', () => loadLots(), ['productid','desc','vendorid','receivedate','vendorlot','unittype','unitsonhand','unitsin','actualcost'])"><i class="bi bi-upload me-1"></i>Import</button>
+            <button class="btn-inv-primary" onclick="openReceiveModal()">
+                <i class="bi bi-plus-circle me-1"></i> Receive
+            </button>
+        </div>
+    </div>
+
+    <!-- Tabs -->
+    <div style="display:flex; gap:0; margin-bottom:1rem; border-bottom:2px solid #e2e8f0;">
+        <button class="recv-tab active" id="tabToReceive" onclick="showRecvTab('toReceive')" style="padding:8px 20px; font-size:0.85rem; font-weight:600; border:none; background:none; cursor:pointer; border-bottom:2px solid #2563eb; margin-bottom:-2px; color:#2563eb;">To Receive</button>
+        <button class="recv-tab" id="tabReceived" onclick="showRecvTab('received')" style="padding:8px 20px; font-size:0.85rem; font-weight:600; border:none; background:none; cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-2px; color:#64748b;">Received</button>
+    </div>
+
+    <!-- To Receive tab -->
+    <div id="panelToReceive">
+        <div id="openPOsList" style="margin-bottom:1rem;">
+            <div class="text-center text-muted py-4">Loading open purchase orders...</div>
+        </div>
+    </div>
+
+    <!-- Received tab -->
+    <div id="panelReceived" style="display:none;">
+
+    <!-- Toolbar -->
+    <div class="inv-toolbar">
+        <div class="inv-toolbar-left">
+            <input type="text" class="search-box" id="searchBox" placeholder="Search..." oninput="debounceSearch()">
+            <button class="btn-inv-outline" onclick="clearFilters()"><i class="bi bi-x-circle me-1"></i>Clear Filters</button>
+            <button class="btn-inv-outline" onclick="toggleFilterRow()"><i class="bi bi-funnel me-1"></i>Filter</button>
+        </div>
+    </div>
+
+    <!-- Filter row (hidden by default) -->
+    <div id="filterRow" style="display:none; margin-bottom:1rem; display:none; gap:0.75rem; flex-wrap:wrap; align-items:end;">
+        <div>
+            <label style="font-size:0.75rem; font-weight:600; color:#64748b; display:block;">Vendor</label>
+            <select class="filter-select" id="filterVendor" onchange="loadLots()">
+                <option value="">All Vendors</option>
+            </select>
+        </div>
+        <div>
+            <label style="font-size:0.75rem; font-weight:600; color:#64748b; display:block;">Vendor Type</label>
+            <select class="filter-select" id="filterVendorType" onchange="loadLots()">
+                <option value="">All Types</option>
+                <option value="Dealer">Dealer</option>
+                <option value="Harvester">Harvester</option>
+                <option value="Exporter">Exporter</option>
+                <option value="Distributor">Distributor</option>
+            </select>
+        </div>
+        <div>
+            <label style="font-size:0.75rem; font-weight:600; color:#64748b; display:block;">Date From</label>
+            <input type="date" class="filter-select" id="filterDateFrom" onchange="loadLots()">
+        </div>
+        <div>
+            <label style="font-size:0.75rem; font-weight:600; color:#64748b; display:block;">Date To</label>
+            <input type="date" class="filter-select" id="filterDateTo" onchange="loadLots()">
+        </div>
+    </div>
+
+    <!-- Table -->
+    <div class="inv-table-card">
+        <div style="overflow-x: auto;">
+            <table class="inv-table">
+                <thead>
+                    <tr>
+                        <th>Trace Lot Code</th>
+                        <th>Product</th>
+                        <th>QC</th>
+                        <th>Location</th>
+                        <th>Received At</th>
+                        <th>Purchase #</th>
+                        <th>Vendor</th>
+                        <th>Vendor Type</th>
+                        <th style="text-align:right;">Cost</th>
+                        <th style="width:40px;"></th>
+                    </tr>
+                </thead>
+                <tbody id="lotsTbody">
+                    <tr><td colspan="10" class="text-center text-muted py-4">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="inv-pagination">
+            <span id="paginationInfo">Showing 0 items</span>
+            <div class="page-btns" id="paginationBtns"></div>
+        </div>
+    </div>
+
+    </div><!-- /panelReceived -->
+</div>
+
+<!-- Lot detail slide-over -->
+<div class="slide-overlay" id="detailOverlay" onclick="closeDetail()"></div>
+<div class="slide-panel" id="detailPanel">
+    <div class="slide-panel-header">
+        <div style="display:flex; align-items:center; gap:8px;">
+            <a href="#" onclick="closeDetail(); return false;" style="color:#fff; text-decoration:none; font-size:0.85rem;">
+                <i class="bi bi-arrow-left me-1"></i> Back
+            </a>
+        </div>
+        <h4>Receive Lot</h4>
+        <button class="close-btn" onclick="closeDetail()"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <div class="slide-panel-body" id="detailBody">
+        <div class="text-center text-muted py-5">Loading...</div>
+    </div>
+</div>
+
+<!-- Receive new lot modal -->
+<div class="recv-overlay" id="recvOverlay" onclick="closeReceiveModal()">
+    <div class="recv-modal" onclick="event.stopPropagation()">
+        <div class="recv-modal-header">
+            <h5><i class="bi bi-box-arrow-in-down me-2"></i>Receive New Lot</h5>
+            <button class="close-btn" onclick="closeReceiveModal()" style="background:rgba(255,255,255,0.2); border:none; color:#fff; width:32px; height:32px; border-radius:50%; cursor:pointer;">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+        <div class="recv-modal-body">
+            <div id="recvError" class="alert alert-danger" style="display:none;"></div>
+
+            <div class="form-group-r">
+                <label>Product *</label>
+                <select class="form-control-r" id="r-product">
+                    <option value="">Select product...</option>
+                </select>
+            </div>
+
+            <div class="form-row-r">
+                <div class="form-group-r">
+                    <label>Quantity *</label>
+                    <input type="number" step="0.01" min="0" class="form-control-r" id="r-qty">
+                </div>
+                <div class="form-group-r">
+                    <label>Unit</label>
+                    <input type="text" class="form-control-r" id="r-unit" placeholder="e.g. Lbs, Bags">
+                </div>
+            </div>
+
+            <div class="form-row-r">
+                <div class="form-group-r">
+                    <label>Vendor</label>
+                    <select class="form-control-r" id="r-vendor">
+                        <option value="">Select vendor...</option>
+                    </select>
+                </div>
+                <div class="form-group-r">
+                    <label>Vendor Type</label>
+                    <select class="form-control-r" id="r-vendor-type">
+                        <option value="">Select...</option>
+                        <option value="Dealer">Dealer</option>
+                        <option value="Harvester">Harvester</option>
+                        <option value="Exporter">Exporter</option>
+                        <option value="Distributor">Distributor</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-row-r">
+                <div class="form-group-r">
+                    <label>Receive Date</label>
+                    <input type="date" class="form-control-r" id="r-date">
+                </div>
+                <div class="form-group-r">
+                    <label>Receive Time</label>
+                    <input type="time" class="form-control-r" id="r-time">
+                </div>
+            </div>
+
+            <div class="form-row-r">
+                <div class="form-group-r">
+                    <label>Location</label>
+                    <input type="text" class="form-control-r" id="r-location" placeholder="e.g. Cooler A">
+                </div>
+                <div class="form-group-r">
+                    <label>Purchase Order</label>
+                    <select class="form-control-r" id="r-po" onchange="onPOSelect(this.value)">
+                        <option value="">-- None (no PO) --</option>
+                    </select>
+                    <input type="hidden" id="r-po-item-id">
+                </div>
+            </div>
+
+            <!-- PO Items (shown when a PO is selected) -->
+            <div id="po-items-section" style="display:none; margin-bottom:12px;">
+                <label style="font-weight:600; font-size:0.85rem;">PO Line Items</label>
+                <div id="po-items-list" style="max-height:180px; overflow-y:auto; border:1px solid #dee2e6; border-radius:6px; padding:4px;"></div>
+            </div>
+
+            <!-- Variance alert (shown after receive if flagged) -->
+            <div id="variance-alert" class="alert alert-warning" style="display:none; margin-bottom:12px; font-size:0.85rem;">
+                <i class="bi bi-exclamation-triangle me-1"></i>
+                <span id="variance-alert-text"></span>
+            </div>
+
+            <div class="form-row-r">
+                <div class="form-group-r">
+                    <label>Cost</label>
+                    <input type="number" step="0.01" class="form-control-r" id="r-cost" placeholder="0.00">
+                </div>
+                <div class="form-group-r">
+                    <label>Origin</label>
+                    <input type="text" class="form-control-r" id="r-origin" placeholder="e.g. Wellfleet, MA">
+                </div>
+            </div>
+
+            <div style="margin-top:1rem; border-top:1px solid #e5e7eb; padding-top:1rem;">
+                <div style="font-weight:700; color:#0f172a; margin-bottom:0.25rem;">Quality Checklist</div>
+                <div style="font-size:0.8rem; color:#64748b; margin-bottom:0.75rem;">Optional at receive, but designed for freshness scoring and dock decisions.</div>
+                <div class="form-row-r">
+                    <div class="form-group-r">
+                        <label>Freshness Score</label>
+                        <input type="number" min="0" max="10" step="1" class="form-control-r" id="q-score" placeholder="0-10">
+                    </div>
+                    <div class="form-group-r">
+                        <label>Status</label>
+                        <select class="form-control-r" id="q-status">
+                            <option value="pass">Pass</option>
+                            <option value="hold">Hold</option>
+                            <option value="reject">Reject</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="quality-check-grid">
+                    <label class="quality-check-item"><input type="checkbox" id="q-appearance"> Appearance OK</label>
+                    <label class="quality-check-item"><input type="checkbox" id="q-odor"> Odor OK</label>
+                    <label class="quality-check-item"><input type="checkbox" id="q-texture"> Texture OK</label>
+                    <label class="quality-check-item"><input type="checkbox" id="q-packaging"> Packaging OK</label>
+                    <label class="quality-check-item"><input type="checkbox" id="q-temp"> Temp Compliant</label>
+                </div>
+                <div class="form-group-r" style="margin-top:0.75rem; margin-bottom:0;">
+                    <label>Quality Notes</label>
+                    <input type="text" class="form-control-r" id="q-notes" placeholder="Freshness notes, damage, exceptions, hold reason...">
+                </div>
+            </div>
+        </div>
+        <div class="recv-modal-footer">
+            <button class="btn-inv-primary" onclick="submitReceive()" style="flex:1;">Receive</button>
+            <button class="btn-inv-outline" onclick="closeReceiveModal()">Cancel</button>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function qcBadge(status) {
+    const map = {
+        pass: '<span class="qc-badge qc-pass"><i class="bi bi-check-circle-fill me-1"></i>Pass</span>',
+        hold: '<span class="qc-badge qc-hold"><i class="bi bi-pause-circle-fill me-1"></i>Hold</span>',
+        reject: '<span class="qc-badge qc-reject"><i class="bi bi-x-circle-fill me-1"></i>Reject</span>',
+    };
+    return map[status] || '<span class="qc-badge qc-pending"><i class="bi bi-clock me-1"></i>Pending</span>';
+}
+
+let allLots = [];
+let currentPage = 1;
+let totalItems = 0;
+const PAGE_SIZE = 100;
+let searchTimeout;
+let currentDetailLotId = null;
+
+document.addEventListener('DOMContentLoaded', () => {
+    loadOpenPOs();
+    loadLots();
+    loadProducts();
+    loadVendors();
+    document.getElementById('r-date').value = new Date().toISOString().split('T')[0];
+});
+
+// ── Tab switching ──────────────────────────────────────────────
+
+function showRecvTab(tab) {
+    document.getElementById('panelToReceive').style.display = tab === 'toReceive' ? '' : 'none';
+    document.getElementById('panelReceived').style.display = tab === 'received' ? '' : 'none';
+    document.getElementById('tabToReceive').style.borderBottomColor = tab === 'toReceive' ? '#2563eb' : 'transparent';
+    document.getElementById('tabToReceive').style.color = tab === 'toReceive' ? '#2563eb' : '#64748b';
+    document.getElementById('tabReceived').style.borderBottomColor = tab === 'received' ? '#2563eb' : 'transparent';
+    document.getElementById('tabReceived').style.color = tab === 'received' ? '#2563eb' : '#64748b';
+}
+
+// ── Open POs (To Receive) ──────────────────────────────────────
+
+async function loadOpenPOs() {
+    const container = document.getElementById('openPOsList');
+    try {
+        const res = await fetch('/api/receiving/open-pos/');
+        const data = await res.json();
+        const pos = (data.purchase_orders || []).filter(po => po.items.length > 0);
+
+        if (!pos.length) {
+            container.innerHTML = '<div style="text-align:center; color:#94a3b8; padding:2rem;"><i class="bi bi-check-circle" style="font-size:2rem; display:block; margin-bottom:0.5rem; color:#10b981;"></i>All caught up! No items pending receiving.</div>';
+            return;
+        }
+
+        container.innerHTML = pos.map(po => `
+            <div style="background:#fff; border:1px solid #e2e8f0; border-radius:10px; margin-bottom:0.75rem; overflow:hidden;">
+                <div style="padding:12px 16px; display:flex; justify-content:space-between; align-items:center; background:#f8fafc; border-bottom:1px solid #e2e8f0;">
+                    <div>
+                        <a href="/operations/purchases/${po.id}/" style="font-weight:700; color:#2563eb; text-decoration:none; font-size:0.9rem;">${esc(po.po_number)}</a>
+                        <span style="color:#64748b; font-size:0.82rem; margin-left:0.5rem;">${esc(po.vendor_name)}</span>
+                    </div>
+                    <span style="font-size:0.75rem; color:#64748b;">${po.items.length} item${po.items.length > 1 ? 's' : ''} to receive</span>
+                </div>
+                <table style="width:100%; border-collapse:collapse; font-size:0.83rem; table-layout:fixed;">
+                    <colgroup>
+                        <col style="width:auto;">
+                        <col style="width:180px;">
+                        <col style="width:180px;">
+                        <col style="width:180px;">
+                        <col style="width:140px;">
+                        <col style="width:84px;">
+                    </colgroup>
+                    <thead><tr style="border-bottom:1px solid #f1f5f9;">
+                        <th style="text-align:left; padding:6px 16px; color:#64748b; font-weight:600; font-size:0.73rem; text-transform:uppercase;">Item</th>
+                        <th style="text-align:right; padding:6px 12px; color:#64748b; font-weight:600; font-size:0.73rem; text-transform:uppercase;">Ordered</th>
+                        <th style="text-align:right; padding:6px 12px; color:#64748b; font-weight:600; font-size:0.73rem; text-transform:uppercase;">Received</th>
+                        <th style="text-align:right; padding:6px 12px; color:#64748b; font-weight:600; font-size:0.73rem; text-transform:uppercase;">Remaining</th>
+                        <th style="padding:6px 8px;"></th>
+                        <th style="padding:6px 8px;"></th>
+                    </tr></thead>
+                    <tbody>${po.items.map(item => `
+                        <tr style="border-bottom:1px solid #f1f5f9;">
+                            <td style="padding:8px 16px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${esc(item.description)}</td>
+                            <td style="text-align:right; padding:8px 12px;">${item.ordered_qty} ${esc(item.unit_type)}</td>
+                            <td style="text-align:right; padding:8px 12px;">${item.received_qty}</td>
+                            <td style="text-align:right; padding:8px 12px; color:#dc2626; font-weight:600;">${item.remaining_qty}</td>
+                            <td style="padding:6px 8px;"><input type="number" step="0.01" min="0" value="${item.remaining_qty}" id="open-recv-${po.id}-${item.id}" style="width:100%; border:1px solid #d1d5db; border-radius:6px; padding:4px 8px; font-size:0.83rem;"></td>
+                            <td style="padding:6px 8px;"><button class="btn-inv-primary" style="padding:4px 12px; font-size:0.78rem; white-space:nowrap;" onclick="openReceiveFromPOItem(${po.id}, '${esc(po.po_number)}', ${item.id}, '${esc(item.product_id)}', '${esc(item.description)}', '${esc(item.unit_type)}', ${item.unit_price}, '${esc(po.vendor_name)}', '${esc(po.vendor_type || '')}', ${item.remaining_qty})">Receive</button></td>
+                        </tr>
+                    `).join('')}</tbody>
+                </table>
+            </div>
+        `).join('');
+    } catch(e) {
+        console.error('loadOpenPOs error', e);
+        container.innerHTML = '<div class="text-center text-muted py-3">Error loading open POs.</div>';
+    }
+}
+
+function openReceiveFromPOItem(poId, poNumber, poItemId, productId, description, unitType, unitPrice, vendor, vendorType, remainingQty) {
+    const qtyInput = document.getElementById(`open-recv-${poId}-${poItemId}`);
+    const qty = parseFloat(qtyInput?.value || remainingQty);
+    if (!qty || qty <= 0) { alert('Enter a quantity to receive.'); return; }
+
+    openReceiveModal({
+        productId,
+        description,
+        quantity: qty,
+        unitType,
+        unitPrice,
+        vendor,
+        vendorType,
+        poId,
+        poNumber,
+        poItemId,
+    });
+}
+
+// ── Data loading ────────────────────────────────────────────────
+
+async function loadLots() {
+    const search = document.getElementById('searchBox').value.trim();
+    const vendor = document.getElementById('filterVendor')?.value || '';
+    const vendorType = document.getElementById('filterVendorType')?.value || '';
+    const dateFrom = document.getElementById('filterDateFrom')?.value || '';
+    const dateTo = document.getElementById('filterDateTo')?.value || '';
+
+    let url = `/api/receiving/lots/?page=${currentPage}&page_size=${PAGE_SIZE}`;
+    if (search) url += `&search=${encodeURIComponent(search)}`;
+    if (vendor) url += `&vendor=${encodeURIComponent(vendor)}`;
+    if (vendorType) url += `&vendor_type=${encodeURIComponent(vendorType)}`;
+    if (dateFrom) url += `&date_from=${dateFrom}`;
+    if (dateTo) url += `&date_to=${dateTo}`;
+
+    const res = await fetch(url);
+    const data = await res.json();
+    allLots = data.lots || [];
+    totalItems = data.total || 0;
+    renderTable();
+}
+
+async function loadProducts() {
+    const res = await fetch('/api/processing/products/');
+    const data = await res.json();
+    const sel = document.getElementById('r-product');
+    sel.innerHTML = '<option value="">Select product...</option>' +
+        (data.products || []).map(p => `<option value="${esc(p.product_id)}" data-unit="${esc(p.unit_type)}">${esc(p.item_name)}</option>`).join('');
+
+    // Auto-fill unit when product changes
+    sel.addEventListener('change', function() {
+        const opt = this.options[this.selectedIndex];
+        const unit = opt?.dataset?.unit || '';
+        if (unit && !document.getElementById('r-unit').value) {
+            document.getElementById('r-unit').value = unit;
+        }
+    });
+}
+
+async function loadVendors() {
+    const res = await fetch('/api/receiving/vendors/');
+    const data = await res.json();
+    const vendors = data.vendors || [];
+
+    // Populate receive modal vendor dropdown
+    const rSel = document.getElementById('r-vendor');
+    rSel.innerHTML = '<option value="">Select vendor...</option>' +
+        vendors.map(v => `<option value="${esc(v.name)}" data-type="${esc(v.vendor_type || '')}">${esc(v.name)}</option>`).join('');
+
+    // Auto-fill vendor type
+    rSel.addEventListener('change', function() {
+        const opt = this.options[this.selectedIndex];
+        const vt = opt?.dataset?.type || '';
+        if (vt) document.getElementById('r-vendor-type').value = vt;
+    });
+
+    // Populate filter dropdown
+    const fSel = document.getElementById('filterVendor');
+    if (fSel) {
+        fSel.innerHTML = '<option value="">All Vendors</option>' +
+            vendors.map(v => `<option value="${esc(v.name)}">${esc(v.name)}</option>`).join('');
+    }
+}
+
+function debounceSearch() {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => { currentPage = 1; loadLots(); }, 300);
+}
+
+function clearFilters() {
+    document.getElementById('searchBox').value = '';
+    if (document.getElementById('filterVendor')) document.getElementById('filterVendor').value = '';
+    if (document.getElementById('filterVendorType')) document.getElementById('filterVendorType').value = '';
+    if (document.getElementById('filterDateFrom')) document.getElementById('filterDateFrom').value = '';
+    if (document.getElementById('filterDateTo')) document.getElementById('filterDateTo').value = '';
+    currentPage = 1;
+    loadLots();
+}
+
+function toggleFilterRow() {
+    const row = document.getElementById('filterRow');
+    row.style.display = row.style.display === 'flex' ? 'none' : 'flex';
+}
+
+// ── Table rendering ─────────────────────────────────────────────
+
+function renderTable() {
+    const tbody = document.getElementById('lotsTbody');
+    document.getElementById('totalCount').textContent = `${totalItems} total items`;
+
+    if (!allLots.length) {
+        tbody.innerHTML = '<tr><td colspan="10" class="text-center text-muted py-4">No received lots found.</td></tr>';
+        document.getElementById('paginationInfo').textContent = '0 items';
+        document.getElementById('paginationBtns').innerHTML = '';
+        return;
+    }
+
+    tbody.innerHTML = allLots.map(lot => `
+        <tr onclick="openDetail(${lot.id})">
+            <td class="lot-code">${esc(lot.trace_lot)}</td>
+            <td>${esc(lot.product_name || '--')}</td>
+            <td>${qcBadge(lot.qc_status)}</td>
+            <td>${esc(lot.location || '--')}</td>
+            <td>${esc(lot.received_at || lot.receive_date || '--')}</td>
+            <td>${esc(lot.purchase_order || '--')}</td>
+            <td>${esc(lot.vendor || '--')}</td>
+            <td>${esc(lot.vendor_type || '--')}</td>
+            <td style="text-align:right;">${lot.cost != null ? '$' + Number(lot.cost).toFixed(2) : '--'}</td>
+            <td onclick="event.stopPropagation();"><button class="del-btn" title="Delete" onclick="deleteRecord('/api/receiving/lots/${lot.id}/delete/', 'Delete lot ${esc(lot.trace_lot)}? This cannot be undone.', () => loadLots())"><i class="bi bi-trash"></i></button></td>
+        </tr>
+    `).join('');
+
+    // Pagination
+    const totalPages = Math.ceil(totalItems / PAGE_SIZE);
+    const start = (currentPage - 1) * PAGE_SIZE + 1;
+    const end = Math.min(currentPage * PAGE_SIZE, totalItems);
+    document.getElementById('paginationInfo').textContent = `Showing ${start} to ${end} of ${totalItems}`;
+
+    let btns = '';
+    if (currentPage > 1) btns += `<button class="page-btn" onclick="goPage(${currentPage - 1})">&lt;</button>`;
+    const maxPages = Math.min(totalPages, 5);
+    let startP = Math.max(1, currentPage - 2);
+    for (let p = startP; p < startP + maxPages && p <= totalPages; p++) {
+        btns += `<button class="page-btn ${p === currentPage ? 'active' : ''}" onclick="goPage(${p})">${p}</button>`;
+    }
+    if (currentPage < totalPages) btns += `<button class="page-btn" onclick="goPage(${currentPage + 1})">&gt;</button>`;
+    document.getElementById('paginationBtns').innerHTML = btns;
+}
+
+function goPage(p) { currentPage = p; loadLots(); }
+
+// ── Lot detail slide-over ───────────────────────────────────────
+
+let currentLotVendor = '';
+let currentLotVendorType = '';
+
+async function openDetail(id) {
+    currentDetailLotId = id;
+    document.getElementById('detailOverlay').classList.add('open');
+    document.getElementById('detailPanel').classList.add('open');
+    document.getElementById('detailBody').innerHTML = '<div class="text-center text-muted py-5">Loading...</div>';
+
+    const res = await fetch(`/api/receiving/lots/${id}/`);
+    const lot = await res.json();
+    currentLotVendor = lot.vendor || '';
+    currentLotVendorType = lot.vendor_type || '';
+    const qc = lot.quality_check || null;
+    const statusOptions = (lot.quality_status_choices || []).map(opt =>
+        `<option value="${opt.value}" ${qc && qc.status === opt.value ? 'selected' : ''}>${esc(opt.label)}</option>`
+    ).join('');
+    const statusBadge = qc
+        ? `<span class="quality-pill quality-${qc.status}">${esc(qc.status_display)}</span>`
+        : '<span style="color:#94a3b8;">No checklist logged</span>';
+
+    document.getElementById('detailBody').innerHTML = `
+        <div class="lot-detail-header">
+            <div style="display:flex; align-items:center;">
+                <div class="lot-icon">LOT</div>
+                <div>
+                    <div class="lot-title">${esc(lot.trace_lot)}</div>
+                    <div class="lot-subtitle">${esc(lot.item_name)}</div>
+                </div>
+            </div>
+            <div class="lot-stats">
+                <div class="lot-stat">
+                    <div class="stat-val">${Number(lot.initial_qty).toLocaleString(undefined, {maximumFractionDigits:2})}</div>
+                    <div class="stat-label">Initial Quantity<br>${esc(lot.unit_type)}</div>
+                </div>
+                <div class="lot-stat">
+                    <div class="stat-val">${Number(lot.on_hand).toLocaleString(undefined, {maximumFractionDigits:2})}</div>
+                    <div class="stat-label">On Hand<br>${esc(lot.unit_type)}</div>
+                </div>
+                <div class="lot-stat">
+                    <div class="stat-val">${lot.lot_age || '--'}</div>
+                    <div class="stat-label">Lot Age<br>Days</div>
+                </div>
+            </div>
+        </div>
+
+        ${(lot.po_number || lot.processing_batches.length || lot.sales_orders.length) ? `
+        <div class="lot-detail-section" style="border-bottom:1px solid #f1f5f9; background:#f0f6ff; padding:12px 24px;">
+            <div style="display:flex; flex-wrap:wrap; gap:0.5rem; align-items:center; font-size:0.78rem;">
+                <span style="color:#64748b; font-weight:600;">Trace:</span>
+                ${lot.po_id ? `<a href="/operations/purchases/${lot.po_id}/" style="color:#2563eb; text-decoration:none; font-weight:600;"><i class="bi bi-cart me-1"></i>${esc(lot.po_number)}</a><i class="bi bi-chevron-right" style="color:#cbd5e1; font-size:0.65rem;"></i>` : ''}
+                <span style="font-weight:600; color:#0ea5e9;"><i class="bi bi-box-arrow-in-down me-1"></i>${esc(lot.trace_lot)}</span>
+                ${lot.processing_batches.map(b => `<i class="bi bi-chevron-right" style="color:#cbd5e1; font-size:0.65rem;"></i><a href="/operations/processing/${b.id}/" style="color:#f59e0b; text-decoration:none; font-weight:600;"><i class="bi bi-gear me-1"></i>${esc(b.batch_number)}</a>`).join('')}
+                ${lot.sales_orders.map(so => `<i class="bi bi-chevron-right" style="color:#cbd5e1; font-size:0.65rem;"></i><a href="/sales/${so.id}/" style="color:#10b981; text-decoration:none; font-weight:600;"><i class="bi bi-receipt me-1"></i>${esc(so.order_number)}</a>`).join('')}
+            </div>
+        </div>` : ''}
+
+        <div class="lot-detail-section" style="border-bottom:1px solid #f1f5f9;">
+            <h6>Receiving Quality</h6>
+            <div class="lot-detail-row"><span class="label">Checklist Status</span><span class="value">${statusBadge}</span></div>
+            <div class="lot-detail-row"><span class="label">Freshness Score</span><span class="value">${qc ? esc(String(qc.freshness_score)) + ' / 10' : '--'}</span></div>
+            <div class="lot-detail-row"><span class="label">Checked By</span><span class="value">${qc ? esc(qc.checked_by || '--') : '--'}</span></div>
+            <div class="lot-detail-row"><span class="label">Checked At</span><span class="value">${qc ? esc(qc.checked_at || '--') : '--'}</span></div>
+            <div style="margin-top:0.75rem; padding:12px; background:#f8fafc; border-radius:10px; border:1px solid #e2e8f0;">
+                <div class="form-row-r">
+                    <div class="form-group-r">
+                        <label>Freshness Score</label>
+                        <input type="number" min="0" max="10" step="1" class="form-control-r" id="d-q-score" value="${qc ? esc(String(qc.freshness_score)) : ''}">
+                    </div>
+                    <div class="form-group-r">
+                        <label>Status</label>
+                        <select class="form-control-r" id="d-q-status">${statusOptions}</select>
+                    </div>
+                </div>
+                <div class="quality-check-grid">
+                    <label class="quality-check-item"><input type="checkbox" id="d-q-appearance" ${qc && qc.appearance_ok ? 'checked' : ''}> Appearance OK</label>
+                    <label class="quality-check-item"><input type="checkbox" id="d-q-odor" ${qc && qc.odor_ok ? 'checked' : ''}> Odor OK</label>
+                    <label class="quality-check-item"><input type="checkbox" id="d-q-texture" ${qc && qc.texture_ok ? 'checked' : ''}> Texture OK</label>
+                    <label class="quality-check-item"><input type="checkbox" id="d-q-packaging" ${qc && qc.packaging_ok ? 'checked' : ''}> Packaging OK</label>
+                    <label class="quality-check-item"><input type="checkbox" id="d-q-temp" ${qc && qc.temp_ok ? 'checked' : ''}> Temp Compliant</label>
+                </div>
+                <div class="form-group-r" style="margin-top:0.75rem; margin-bottom:0.75rem;">
+                    <label>Quality Notes</label>
+                    <input type="text" class="form-control-r" id="d-q-notes" value="${qc ? esc(qc.notes || '') : ''}" placeholder="Freshness notes, exceptions, hold reason...">
+                </div>
+                <button class="btn-inv-primary" onclick="withSpinner(this, () => saveQualityCheck())">Save Quality Check</button>
+            </div>
+        </div>
+
+        <div class="lot-detail-section" style="border-bottom:1px solid #f1f5f9;">
+            <div style="display:flex; gap:0.5rem; margin-bottom:1rem;">
+                <button class="btn-inv-outline" style="padding:5px 12px; font-size:0.78rem;">
+                    <i class="bi bi-pencil me-1"></i> Adjust
+                </button>
+                <button class="btn-inv-outline" style="padding:5px 12px; font-size:0.78rem;">
+                    <i class="bi bi-download me-1"></i> Export
+                </button>
+            </div>
+
+            ${lot.vendor_info && lot.vendor_info.name ? `
+            <div class="lot-detail-row"><span class="label">Vendor</span><span class="value">${esc(lot.vendor_info.name)}</span></div>
+            <div class="lot-detail-row"><span class="label">Vendor Type</span><span class="value">${esc(lot.vendor_info.type || lot.vendor_type)}</span></div>
+            ${lot.vendor_info.cert ? `<div class="lot-detail-row"><span class="label">Certification</span><span class="value">${esc(lot.vendor_info.cert)}</span></div>` : ''}
+            ` : `
+            <div class="lot-detail-row"><span class="label">Vendor</span><span class="value">${esc(lot.vendor)}</span></div>
+            <div class="lot-detail-row"><span class="label">Vendor Type</span><span class="value">${esc(lot.vendor_type)}</span></div>
+            `}
+        </div>
+
+        <div class="lot-detail-section" style="border-bottom:1px solid #f1f5f9;">
+            <h6>Activity</h6>
+            <table class="activity-table">
+                <thead>
+                    <tr>
+                        <th>Activity</th>
+                        <th>Order</th>
+                        <th>Customer/Vendor</th>
+                        <th>Date</th>
+                        <th style="text-align:right;">Quantity</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${lot.activities.map(a => `
+                    <tr>
+                        <td>${esc(a.type)}</td>
+                        <td><a href="#">${esc(a.order)}</a></td>
+                        <td>${esc(a.customer_vendor)}</td>
+                        <td>${esc(a.date)}</td>
+                        <td style="text-align:right;">${esc(a.quantity)}</td>
+                    </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+            <div style="font-size:0.75rem; color:#94a3b8; margin-top:6px;">Showing 1 to ${lot.activities.length} of ${lot.activities.length}</div>
+        </div>
+
+        ${lot.po_items && lot.po_items.length ? `
+        <div class="lot-detail-section" style="border-bottom:1px solid #f1f5f9;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+                <h6 style="margin:0;">PO Receiving Status</h6>
+                <a href="/operations/purchases/${lot.po_id}/" style="font-size:0.75rem; color:#2563eb; text-decoration:none;">${esc(lot.po_number)} <i class="bi bi-arrow-right"></i></a>
+            </div>
+            <table style="width:100%; border-collapse:collapse; font-size:0.8rem;">
+                <thead><tr style="border-bottom:1px solid #e2e8f0;">
+                    <th style="text-align:left; padding:4px 6px; color:#64748b; font-weight:600;">Item</th>
+                    <th style="text-align:right; padding:4px 6px; color:#64748b; font-weight:600;">Ordered</th>
+                    <th style="text-align:right; padding:4px 6px; color:#64748b; font-weight:600;">Received</th>
+                    <th style="text-align:right; padding:4px 6px; color:#64748b; font-weight:600;">Remaining</th>
+                    <th style="width:100px;"></th>
+                    <th style="width:50px;"></th>
+                </tr></thead>
+                <tbody>${lot.po_items.map(item => {
+                    const remaining = item.remaining_qty || 0;
+                    return `<tr style="${remaining <= 0 ? 'background:#f0fdf4;' : ''}">
+                        <td style="padding:6px;">${esc(item.description)} ${remaining <= 0 ? '<i class="bi bi-check-circle-fill" style="color:#16a34a;"></i>' : ''}</td>
+                        <td style="text-align:right; padding:6px;">${item.ordered_qty}</td>
+                        <td style="text-align:right; padding:6px;">${item.received_qty}</td>
+                        <td style="text-align:right; padding:6px; ${remaining > 0 ? 'color:#dc2626; font-weight:600;' : 'color:#16a34a;'}">${remaining}</td>
+                        <td style="padding:4px;">${remaining > 0 ? `<input type="number" step="0.01" min="0" value="${remaining}" id="detail-recv-qty-${item.id}" style="width:100%; border:1px solid #d1d5db; border-radius:4px; padding:2px 6px; font-size:0.8rem;">` : ''}</td>
+                        <td style="padding:4px;">${remaining > 0 ? `<button style="background:#2563eb; color:#fff; border:none; border-radius:4px; padding:3px 8px; font-size:0.75rem; cursor:pointer; white-space:nowrap;" onclick="withSpinner(this, () => receiveFromDetail(${lot.po_id}, ${item.id}, '${esc(item.product_id)}', '${esc(item.description)}', '${esc(item.unit_type)}', ${item.unit_price}))">Recv</button>` : ''}</td>
+                    </tr>`;
+                }).join('')}</tbody>
+            </table>
+        </div>` : ''}
+
+        <div class="lot-detail-section">
+            <h6>Lot Info</h6>
+            <div class="lot-detail-row"><span class="label">Item</span><span class="value">${esc(lot.item_name)}</span></div>
+            <div class="lot-detail-row"><span class="label">Quantity</span><span class="value">${Number(lot.on_hand).toLocaleString(undefined, {maximumFractionDigits:2})} ${esc(lot.unit_type)}</span></div>
+            <div class="lot-detail-row"><span class="label">Traceability Lot Code</span><span class="value">${esc(lot.trace_lot)}</span></div>
+            <div class="lot-detail-row"><span class="label">Receive Date</span><span class="value">${esc(lot.receive_date)}</span></div>
+            ${lot.location ? `<div class="lot-detail-row"><span class="label">Location</span><span class="value">${esc(lot.location)}</span></div>` : ''}
+            ${lot.origin ? `<div class="lot-detail-row"><span class="label">Origin</span><span class="value">${esc(lot.origin)}</span></div>` : ''}
+            ${lot.cost != null ? `<div class="lot-detail-row"><span class="label">Cost</span><span class="value">$${Number(lot.cost).toFixed(2)}</span></div>` : ''}
+        </div>
+    `;
+}
+
+function closeDetail() {
+    currentDetailLotId = null;
+    document.getElementById('detailOverlay').classList.remove('open');
+    document.getElementById('detailPanel').classList.remove('open');
+}
+
+async function receiveFromDetail(poId, poItemId, productId, description, unitType, unitPrice) {
+    const qtyInput = document.getElementById(`detail-recv-qty-${poItemId}`);
+    const qty = parseFloat(qtyInput.value);
+    if (!qty || qty <= 0) { alert('Enter a quantity to receive.'); return; }
+
+    // Get vendor from the currently open lot detail
+    const detailBody = document.getElementById('detailBody');
+    const vendorEl = detailBody ? detailBody.querySelector('.lot-detail-row .value') : null;
+
+    const res = await fetch('/api/receiving/lots/create/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+        body: JSON.stringify({
+            product_id: productId,
+            description: description,
+            quantity: qty,
+            unit_type: unitType,
+            vendor: currentLotVendor || '',
+            vendor_type: currentLotVendorType || '',
+            purchase_order_id: poId,
+            po_item_id: poItemId,
+            receive_date: new Date().toISOString().split('T')[0],
+            cost: unitPrice || 0,
+        }),
+    });
+    if (!res.ok) {
+        const err = await res.json();
+        alert(err.error || 'Failed to receive.');
+        return;
+    }
+    // Reload the detail panel and lot list
+    await openDetail(currentDetailLotId);
+    loadLots();
+}
+
+function buildQualityPayload(prefix) {
+    return {
+        freshness_score: document.getElementById(`${prefix}-score`).value || 0,
+        status: document.getElementById(`${prefix}-status`).value,
+        appearance_ok: document.getElementById(`${prefix}-appearance`).checked,
+        odor_ok: document.getElementById(`${prefix}-odor`).checked,
+        texture_ok: document.getElementById(`${prefix}-texture`).checked,
+        packaging_ok: document.getElementById(`${prefix}-packaging`).checked,
+        temp_ok: document.getElementById(`${prefix}-temp`).checked,
+        notes: document.getElementById(`${prefix}-notes`).value.trim(),
+    };
+}
+
+function hasMeaningfulQualityInput(payload) {
+    return Boolean(
+        Number(payload.freshness_score || 0) > 0 ||
+        payload.appearance_ok ||
+        payload.odor_ok ||
+        payload.texture_ok ||
+        payload.packaging_ok ||
+        payload.temp_ok ||
+        (payload.notes || '').trim() ||
+        payload.status === 'hold' ||
+        payload.status === 'reject'
+    );
+}
+
+async function saveQualityCheck() {
+    if (!currentDetailLotId) return;
+    const res = await fetch(`/api/receiving/lots/${currentDetailLotId}/quality/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+        body: JSON.stringify(buildQualityPayload('d-q')),
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) {
+        alert(data.error || 'Unable to save quality checklist.');
+        return;
+    }
+    await openDetail(currentDetailLotId);
+    await loadLots();
+}
+
+// ── Receive modal ───────────────────────────────────────────────
+
+let openPOsCache = [];
+
+function resetReceiveForm() {
+    document.getElementById('recvError').style.display = 'none';
+    document.getElementById('variance-alert').style.display = 'none';
+    document.getElementById('po-items-section').style.display = 'none';
+    document.getElementById('r-product').value = '';
+    document.getElementById('r-qty').value = '';
+    document.getElementById('r-unit').value = '';
+    document.getElementById('r-vendor').value = '';
+    document.getElementById('r-vendor-type').value = '';
+    document.getElementById('r-date').value = new Date().toISOString().split('T')[0];
+    document.getElementById('r-time').value = '';
+    document.getElementById('r-location').value = '';
+    document.getElementById('r-po').value = '';
+    document.getElementById('r-po-item-id').value = '';
+    document.getElementById('r-cost').value = '';
+    document.getElementById('r-origin').value = '';
+    document.getElementById('q-score').value = '';
+    document.getElementById('q-status').value = 'pass';
+    document.getElementById('q-appearance').checked = false;
+    document.getElementById('q-odor').checked = false;
+    document.getElementById('q-texture').checked = false;
+    document.getElementById('q-packaging').checked = false;
+    document.getElementById('q-temp').checked = false;
+    document.getElementById('q-notes').value = '';
+}
+
+async function openReceiveModal(prefill = null) {
+    document.getElementById('recvOverlay').classList.add('open');
+    resetReceiveForm();
+    await loadOpenPOsForModal();
+    if (prefill) {
+        if (prefill.productId) {
+            const prodSelect = document.getElementById('r-product');
+            for (let opt of prodSelect.options) {
+                if (opt.value === prefill.productId) {
+                    prodSelect.value = prefill.productId;
+                    break;
+                }
+            }
+        }
+        if (prefill.quantity != null) document.getElementById('r-qty').value = prefill.quantity;
+        if (prefill.unitType) document.getElementById('r-unit').value = prefill.unitType;
+        if (prefill.vendor) document.getElementById('r-vendor').value = prefill.vendor;
+        if (prefill.vendorType) document.getElementById('r-vendor-type').value = prefill.vendorType;
+        if (prefill.unitPrice != null) document.getElementById('r-cost').value = prefill.unitPrice;
+        if (prefill.poNumber) {
+            document.getElementById('r-po').value = prefill.poNumber;
+            onPOSelect(prefill.poNumber);
+        }
+        if (prefill.poItemId) document.getElementById('r-po-item-id').value = prefill.poItemId;
+    }
+}
+
+function closeReceiveModal() {
+    document.getElementById('recvOverlay').classList.remove('open');
+}
+
+async function loadOpenPOsForModal() {
+    try {
+        const res = await fetch('/api/receiving/open-pos/');
+        const data = await res.json();
+        openPOsCache = data.purchase_orders || [];
+        const sel = document.getElementById('r-po');
+        sel.innerHTML = '<option value="">-- None (no PO) --</option>' +
+            openPOsCache.map(po =>
+                `<option value="${po.po_number}">PO-${esc(po.po_number)} — ${esc(po.vendor_name)} (${po.items.length} items)</option>`
+            ).join('');
+    } catch { /* silently fail — PO selector just stays empty */ }
+}
+
+function onPOSelect(poNumber) {
+    const section = document.getElementById('po-items-section');
+    const list = document.getElementById('po-items-list');
+    document.getElementById('r-po-item-id').value = '';
+
+    if (!poNumber) {
+        section.style.display = 'none';
+        return;
+    }
+
+    const po = openPOsCache.find(p => p.po_number === poNumber);
+    if (!po || !po.items.length) {
+        section.style.display = 'none';
+        return;
+    }
+
+    // Auto-fill vendor from PO
+    if (po.vendor_name) {
+        const vSel = document.getElementById('r-vendor');
+        for (let opt of vSel.options) {
+            if (opt.value === po.vendor_name) { vSel.value = po.vendor_name; break; }
+        }
+    }
+    if (po.vendor_type) {
+        document.getElementById('r-vendor-type').value = po.vendor_type;
+    }
+
+    list.innerHTML = po.items.map(item => `
+        <div class="po-item-row" style="display:flex; justify-content:space-between; align-items:center; padding:6px 8px; border-bottom:1px solid #eee; cursor:pointer;"
+             onclick="selectPOItem(${item.id}, '${esc(item.product_id)}', ${item.remaining_qty}, '${esc(item.unit_type)}', ${item.unit_price})">
+            <div>
+                <strong style="font-size:0.85rem;">${esc(item.description)}</strong><br>
+                <small class="text-muted">Ordered: ${item.ordered_qty} ${esc(item.unit_type)} | Received: ${item.received_qty} | Remaining: <strong>${item.remaining_qty}</strong></small>
+            </div>
+            <button class="btn btn-sm btn-outline-primary" type="button">Select</button>
+        </div>
+    `).join('');
+    section.style.display = 'block';
+}
+
+function selectPOItem(itemId, productId, remainingQty, unitType, unitPrice) {
+    document.getElementById('r-po-item-id').value = itemId;
+    // Auto-fill product, quantity, unit from PO item
+    if (productId) {
+        const prodSelect = document.getElementById('r-product');
+        for (let opt of prodSelect.options) {
+            if (opt.value === productId) { prodSelect.value = productId; break; }
+        }
+    }
+    document.getElementById('r-qty').value = remainingQty;
+    if (unitType) document.getElementById('r-unit').value = unitType;
+    if (unitPrice) document.getElementById('r-cost').value = unitPrice;
+
+    // Highlight selected row
+    document.querySelectorAll('.po-item-row').forEach(row => row.style.background = '');
+}
+
+async function submitReceive() {
+    const product = document.getElementById('r-product').value;
+    const qty = document.getElementById('r-qty').value;
+
+    if (!product) { showRecvError('Please select a product.'); return; }
+    if (!qty || parseFloat(qty) <= 0) { showRecvError('Please enter a valid quantity.'); return; }
+
+    // Format time
+    const timeInput = document.getElementById('r-time').value;
+    let receiveTime = '';
+    if (timeInput) {
+        const [h, m] = timeInput.split(':');
+        const hr = parseInt(h);
+        receiveTime = `${hr > 12 ? hr - 12 : hr || 12}:${m} ${hr >= 12 ? 'pm' : 'am'}`;
+    }
+
+    const poItemId = document.getElementById('r-po-item-id').value;
+    const poSelect = document.getElementById('r-po');
+    const poNumber = poSelect.value;
+
+    const qualityPayload = buildQualityPayload('q');
+    const payload = {
+        product_id: product,
+        quantity: parseFloat(qty),
+        unit_type: document.getElementById('r-unit').value.trim(),
+        vendor: document.getElementById('r-vendor').value,
+        vendor_type: document.getElementById('r-vendor-type').value,
+        receive_date: document.getElementById('r-date').value,
+        receive_time: receiveTime,
+        location: document.getElementById('r-location').value.trim(),
+        purchase_order: poNumber,
+        po_item_id: poItemId ? parseInt(poItemId) : null,
+        cost: document.getElementById('r-cost').value || null,
+        origin: document.getElementById('r-origin').value.trim(),
+    };
+    if (hasMeaningfulQualityInput(qualityPayload)) payload.quality_check = qualityPayload;
+
+    try {
+        const res = await fetch('/api/receiving/lots/create/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+            body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        if (data.error) { showRecvError(data.error); return; }
+
+        // Show variance warning if flagged
+        if (data.variance_warning) {
+            document.getElementById('variance-alert-text').textContent = data.variance_warning;
+            document.getElementById('variance-alert').style.display = 'block';
+            // Don't close modal yet — let user see the warning
+            setTimeout(() => {
+                closeReceiveModal();
+                document.getElementById('variance-alert').style.display = 'none';
+            }, 3000);
+        } else {
+            closeReceiveModal();
+        }
+
+        resetReceiveForm();
+        await loadOpenPOs();
+        loadLots();
+    } catch {
+        showRecvError('Failed to create lot.');
+    }
+}
+
+function showRecvError(msg) {
+    const el = document.getElementById('recvError');
+    el.textContent = msg;
+    el.style.display = '';
+}
+</script>
+{% endblock %}

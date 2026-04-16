@@ -1,0 +1,61 @@
+{% comment %}
+Reusable sidebar for the core processing workflow.
+Usage: {% include 'core/includes/sidebar.html' with active='purchase' %}
+Active values: dashboard, purchase, receive, inventory, process, sales, ship, settings
+{% endcomment %}
+
+<div class="inv-sidebar">
+    <a href="{% url 'operations_hub' %}" title="Dashboard" class="{% if active == 'dashboard' %}active{% endif %}" style="margin-bottom:0.5rem;">
+        <i class="bi bi-grid-1x2"></i><span>Home</span>
+    </a>
+    <a href="{% url 'purchases_page' %}" title="Purchase" class="{% if active == 'purchase' %}active{% endif %}">
+        <i class="bi bi-cart"></i><span>Purchase</span>
+    </a>
+    <a href="{% url 'receiving_page' %}" title="Receive" class="{% if active == 'receive' %}active{% endif %}">
+        <i class="bi bi-box-arrow-in-down"></i><span>Receive</span>
+    </a>
+    <a href="{% url 'inventory_item_library' %}" title="Products" class="{% if active == 'inventory' %}active{% endif %}">
+        <i class="bi bi-box-seam"></i><span>Products</span>
+    </a>
+    <a href="{% url 'processing_hub' %}" title="Process" class="{% if active == 'process' %}active{% endif %}">
+        <i class="bi bi-gear"></i><span>Process</span>
+    </a>
+    <a href="{% url 'sales_orders_page' %}" title="Sales" class="{% if active == 'sales' %}active{% endif %}">
+        <i class="bi bi-receipt"></i><span>Sales</span>
+    </a>
+    <a href="{% url 'shipping_hub' %}" title="Ship" class="{% if active == 'ship' %}active{% endif %}">
+        <i class="bi bi-truck"></i><span>Ship</span>
+    </a>
+    <a href="{% url 'trace_page' %}" title="Trace" class="{% if active == 'trace' %}active{% endif %}">
+        <i class="bi bi-diagram-3"></i><span>Trace</span>
+    </a>
+
+    <div style="flex:1;"></div>
+
+    <a href="{% url 'vendor_list_page' %}" title="Vendors" class="{% if active == 'vendors' %}active{% endif %}">
+        <i class="bi bi-building"></i><span>Vendors</span>
+    </a>
+    <a href="{% url 'customer_list_page' %}" title="Customers" class="{% if active == 'customers' %}active{% endif %}">
+        <i class="bi bi-people"></i><span>Customers</span>
+    </a>
+    <a href="{% url 'settings_page' %}" title="Settings" class="{% if active == 'settings' %}active{% endif %}" style="margin-bottom:0.5rem;">
+        <i class="bi bi-gear-fill"></i><span>Settings</span>
+    </a>
+</div>
+
+<style>
+.inv-sidebar {
+    width: 72px; min-height: calc(100vh - 56px); background: #f0f6ff;
+    border-right: 1px solid #d6e4f0; display: flex; flex-direction: column;
+    align-items: center; padding-top: 1rem; gap: 0.25rem;
+    position: fixed; left: 0; top: 56px; z-index: 100;
+}
+.inv-sidebar > a {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    width: 56px; padding: 10px 0; border-radius: 10px; color: #5a7ba6;
+    text-decoration: none; font-size: 0.65rem; font-weight: 500; transition: all 0.15s;
+}
+.inv-sidebar > a i { font-size: 1.3rem; margin-bottom: 2px; }
+.inv-sidebar > a:hover { background: #dbe8f7; color: #2563eb; }
+.inv-sidebar > a.active { background: #2563eb; color: #fff; }
+</style>

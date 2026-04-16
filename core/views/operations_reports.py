@@ -147,8 +147,7 @@ def generate_operational_report(request, parent_id):
 def generate_deviations_report(request, parent_id):
     """Generate the Deviations/Corrective Actions Report PDF"""
     sop_parent = SOPParent.objects.get(id=parent_id)
-    company = sop_parent.company
-    
+
     # Get only failed items with deviations
     deviations = SOPChild.objects.filter(
         sop_parent=sop_parent,
