@@ -6,6 +6,56 @@
 .so-header { display: flex; align-items: start; justify-content: space-between; margin-bottom: 0.25rem; }
 .so-header h2 { font-size: 1.4rem; font-weight: 700; margin: 0; }
 .so-header .meta { font-size: 0.8rem; color: #64748b; }
+.so-status-bar {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+.so-status-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.so-status-label {
+    font-size: 0.74rem;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
+.so-status-select {
+    border-radius: 999px;
+    border: 1px solid #dbe4f0;
+    padding: 0.45rem 2.1rem 0.45rem 0.9rem;
+    font-size: 0.82rem;
+    font-weight: 700;
+    cursor: pointer;
+    min-width: 150px;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image:
+        linear-gradient(45deg, transparent 50%, currentColor 50%),
+        linear-gradient(135deg, currentColor 50%, transparent 50%);
+    background-position:
+        calc(100% - 16px) calc(50% - 2px),
+        calc(100% - 11px) calc(50% - 2px);
+    background-size: 5px 5px, 5px 5px;
+    background-repeat: no-repeat;
+}
+.so-status-select:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.14);
+}
+.so-status-select.status-draft { background-color: #f8fafc; color: #475569; border-color: #cbd5e1; }
+.so-status-select.status-open { background-color: #dbeafe; color: #1d4ed8; border-color: #93c5fd; }
+.so-status-select.status-needs_review { background-color: #fef3c7; color: #b45309; border-color: #fcd34d; }
+.so-status-select.status-closed { background-color: #dcfce7; color: #15803d; border-color: #86efac; }
+.so-status-select.status-cancelled { background-color: #fee2e2; color: #b91c1c; border-color: #fca5a5; }
+.so-status-select.status-not_packed { background-color: #f8fafc; color: #475569; border-color: #cbd5e1; }
+.so-status-select.status-packed { background-color: #dcfce7; color: #15803d; border-color: #86efac; }
+.so-status-select.status-need_to_send { background-color: #e0e7ff; color: #4f46e5; border-color: #a5b4fc; }
 
 /* Tabs */
 .so-tabs { display: flex; gap: 0; border-bottom: 2px solid #e2e8f0; margin-bottom: 1.5rem; }
@@ -32,14 +82,120 @@
 .contact-card .cc-detail { font-size: 0.8rem; color: #64748b; }
 .contact-card a { color: #2563eb; text-decoration: none; font-size: 0.8rem; }
 
-/* Items table */
+/* Items editor */
 .items-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
-.items-table th { text-align: left; color: #64748b; font-weight: 600; font-size: 0.73rem; text-transform: uppercase; padding: 8px 10px; border-bottom: 1px solid #e2e8f0; }
-.items-table td { padding: 8px 10px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
-.items-table .item-select { width: 100%; border: 1px solid #d1d5db; border-radius: 6px; padding: 6px 8px; font-size: 0.85rem; }
-.items-table input { border: 1px solid #d1d5db; border-radius: 6px; padding: 6px 8px; font-size: 0.85rem; width: 100%; }
-.items-table .del-btn { background: none; border: 1px solid #e5e7eb; border-radius: 6px; color: #94a3b8; cursor: pointer; padding: 4px 8px; }
-.items-table .del-btn:hover { color: #dc2626; border-color: #dc2626; }
+.items-table th { text-align: left; color: #64748b; font-weight: 700; font-size: 0.73rem; text-transform: uppercase; padding: 8px 0 10px; border-bottom: 1px solid #e2e8f0; }
+.items-table td { padding: 0; border-bottom: none; }
+.item-editor-cell { padding-top: 0.9rem; }
+.item-editor-card {
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+    padding: 1rem;
+    margin-bottom: 0.9rem;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow: hidden;
+}
+.item-editor-top {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 56px;
+    gap: 0.85rem;
+    align-items: end;
+    margin-bottom: 0.9rem;
+}
+.item-editor-bottom {
+    display: grid;
+    grid-template-columns: minmax(0, 1.7fr) minmax(0, 0.75fr) minmax(0, 0.9fr) minmax(0, 0.75fr) minmax(0, 0.95fr);
+    gap: 0.85rem;
+    align-items: end;
+    width: 100%;
+}
+.item-editor-top > div,
+.item-editor-bottom > div { min-width: 0; }
+.item-field-label { display: block; font-size: 0.7rem; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 0.35rem; }
+.item-editor-input,
+.item-editor-select {
+    width: 100%;
+    border: 1px solid #d1d5db;
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 0.92rem;
+    background: #fff;
+    min-width: 0;
+    box-sizing: border-box;
+}
+.item-editor-input:focus,
+.item-editor-select:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.12);
+}
+.item-delete-btn {
+    height: 44px;
+    width: 56px;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    background: #fff;
+    color: #94a3b8;
+    cursor: pointer;
+}
+.item-delete-btn:hover { color: #dc2626; border-color: #fca5a5; background: #fff5f5; }
+.item-margin-display {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    color: #64748b;
+    font-size: 0.92rem;
+    padding: 0 4px;
+}
+.item-amount-box {
+    min-height: 44px;
+    border-radius: 12px;
+    background: #eff6ff;
+    color: #1d4ed8;
+    font-weight: 800;
+    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 0 14px;
+    white-space: nowrap;
+}
+@media (max-width: 900px) {
+    .item-editor-bottom {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+@media (max-width: 640px) {
+    .item-editor-top,
+    .item-editor-bottom {
+        grid-template-columns: 1fr;
+    }
+    .item-delete-btn {
+        width: 100%;
+    }
+    .item-amount-box {
+        justify-content: flex-start;
+    }
+}
+.item-filter-bar { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.9rem; flex-wrap: wrap; }
+.item-filter-label { font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.02em; }
+.item-filter-btn {
+    border: 1px solid #dbe4f0;
+    background: #f8fafc;
+    color: #475569;
+    border-radius: 999px;
+    padding: 0.38rem 0.8rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+.item-filter-btn:hover { border-color: #93c5fd; color: #2563eb; background: #eff6ff; }
+.item-filter-btn.active { background: #2563eb; border-color: #2563eb; color: #fff; }
+.item-filter-note { font-size: 0.78rem; color: #64748b; }
 
 .add-links { display: flex; gap: 1rem; margin-top: 0.75rem; font-size: 0.82rem; }
 .add-links a { color: #2563eb; text-decoration: none; font-weight: 600; cursor: pointer; }
@@ -107,12 +263,33 @@
         <div>
             <h2>{{ so.customer_name }}</h2>
             <div class="meta">Sales Order {{ so.order_number }} &middot;
-                <span class="badge-status badge-{{ so.order_status }}">{{ so.get_order_status_display }}</span>
+                <span id="so-header-status" class="badge-status badge-{{ so.order_status }}">{{ so.get_order_status_display }}</span>
             </div>
         </div>
         <div style="display:flex; gap:0.5rem;">
             <button class="btn-inv-outline" onclick="withSpinner(this, () => saveDraft())">Save Draft</button>
             <button class="btn-publish" onclick="withSpinner(this, () => publishSO())">Publish</button>
+        </div>
+    </div>
+
+    <div class="so-status-bar">
+        <div class="so-status-group">
+            <span class="so-status-label">Order Status</span>
+            <select id="so-order-status" class="so-status-select" onchange="refreshStatusSelectStyles()">
+                <option value="draft" {% if so.order_status == 'draft' %}selected{% endif %}>Draft</option>
+                <option value="open" {% if so.order_status == 'open' %}selected{% endif %}>Open</option>
+                <option value="needs_review" {% if so.order_status == 'needs_review' %}selected{% endif %}>Needs Review</option>
+                <option value="closed" {% if so.order_status == 'closed' %}selected{% endif %}>Closed</option>
+                <option value="cancelled" {% if so.order_status == 'cancelled' %}selected{% endif %}>Cancelled</option>
+            </select>
+        </div>
+        <div class="so-status-group">
+            <span class="so-status-label">Packed Status</span>
+            <select id="so-packed-status" class="so-status-select" onchange="refreshStatusSelectStyles()">
+                <option value="not_packed" {% if so.packed_status == 'not_packed' %}selected{% endif %}>Not Packed</option>
+                <option value="packed" {% if so.packed_status == 'packed' %}selected{% endif %}>Packed</option>
+                <option value="need_to_send" {% if so.packed_status == 'need_to_send' %}selected{% endif %}>Need To Send</option>
+            </select>
         </div>
     </div>
 
@@ -160,12 +337,16 @@
                 <!-- Items -->
                 <div class="so-card">
                     <h5>Items</h5>
+                    <div class="item-filter-bar">
+                        <span class="item-filter-label">Item Filter</span>
+                        <button type="button" class="item-filter-btn active" data-filter="in_stock" onclick="setProductFilter('in_stock')">In Stock</button>
+                        <button type="button" class="item-filter-btn" data-filter="recent" onclick="setProductFilter('recent')">Recently Processed</button>
+                        <button type="button" class="item-filter-btn" data-filter="all" onclick="setProductFilter('all')">All</button>
+                        <span class="item-filter-note" id="itemFilterNote"></span>
+                    </div>
                     <table class="items-table">
                         <thead><tr>
-                            <th style="width:35%;">Item</th><th style="width:30px;"></th>
-                            <th>Notes</th><th style="width:80px;">Quantity</th>
-                            <th style="width:90px;">Unit Price</th><th style="width:80px;">Margin</th>
-                            <th style="width:90px; text-align:right;">Amount</th>
+                            <th>Item</th>
                         </tr></thead>
                         <tbody id="itemsTbody"></tbody>
                     </table>
@@ -256,10 +437,12 @@ let soData = null;
 let allProducts = [];
 let lineItems = [];
 let allocationData = null;
+let currentProductFilter = 'in_stock';
 
 document.addEventListener('DOMContentLoaded', async () => {
     await loadProducts();
     await loadSODetail();
+    refreshStatusSelectStyles();
 });
 
 // ── Tabs ────────────────────────────────────────────────────────
@@ -278,13 +461,26 @@ function showTab(tab) {
 async function loadProducts() {
     const res = await fetch('/api/processing/products/');
     const data = await res.json();
-    allProducts = data.products || [];
+    allProducts = (data.products || []).sort((a, b) => {
+        const aOnHand = Number(a.on_hand || 0);
+        const bOnHand = Number(b.on_hand || 0);
+        const aInStock = aOnHand > 0 ? 1 : 0;
+        const bInStock = bOnHand > 0 ? 1 : 0;
+        if (aInStock !== bInStock) return bInStock - aInStock;
+        if (aOnHand !== bOnHand) return bOnHand - aOnHand;
+        return (a.item_name || '').localeCompare(b.item_name || '');
+    });
 }
 
 async function loadSODetail() {
     const res = await fetch(`/api/sales/orders/${SO_ID}/detail/`);
     soData = await res.json();
     lineItems = soData.items || [];
+
+    document.getElementById('so-order-status').value = soData.order_status || 'draft';
+    document.getElementById('so-packed-status').value = soData.packed_status || 'not_packed';
+    refreshStatusSelectStyles();
+    refreshHeaderStatusBadge();
 
     // Contact info
     if (soData.contact_info && soData.contact_info.name) {
@@ -308,35 +504,163 @@ async function loadSODetail() {
 
 function renderItems() {
     const tbody = document.getElementById('itemsTbody');
-    const productOpts = allProducts.map(p => `<option value="${esc(p.product_id)}">${esc(p.item_name)}</option>`).join('');
 
     tbody.innerHTML = lineItems.map((item, i) => {
         const isFee = item.item_type === 'fee';
-        return `<tr>
-            <td>${isFee
-                ? `<input type="text" value="${esc(item.description)}" placeholder="Fee description" onchange="lineItems[${i}].description=this.value; recalc();">`
-                : `<select class="item-select" data-product-id="${esc(item.product_id)}" onchange="onItemSelect(${i}, this.value)"><option value="">Choose Item</option>${productOpts}</select>`
-            }</td>
-            <td><button class="del-btn" onclick="removeItem(${i})"><i class="bi bi-trash"></i></button></td>
-            <td><input type="text" value="${esc(item.notes)}" placeholder="Enter note" onchange="lineItems[${i}].notes=this.value;"></td>
-            <td>${isFee ? '' : `<input type="number" step="0.01" value="${item.quantity||''}" onchange="lineItems[${i}].quantity=parseFloat(this.value)||0; recalc();">`}</td>
-            <td><input type="number" step="0.01" value="${item.unit_price||''}" placeholder="$" onchange="lineItems[${i}].unit_price=parseFloat(this.value)||0; recalc();"></td>
-            <td>${isFee ? '' : `<span style="font-size:0.8rem;color:#64748b;">${esc(item.margin || 'No Data')}</span>`}</td>
-            <td style="text-align:right; font-weight:600;">$${(item.amount||0).toFixed(2)}</td>
+        const topField = isFee
+            ? `<input type="text" value="${esc(item.description)}" placeholder="Fee description" onchange="lineItems[${i}].description=this.value; recalc();">`
+            : `<select class="item-select" data-product-id="${esc(item.product_id)}" onchange="onItemSelect(${i}, this.value)"><option value="">Choose Item</option>${buildProductOptions(item.product_id)}</select>`;
+        const qtyField = isFee
+            ? `<span style="font-size:0.8rem;color:#94a3b8;">--</span>`
+            : `<input class="item-editor-input" type="number" step="0.01" value="${item.quantity||''}" onchange="lineItems[${i}].quantity=parseFloat(this.value)||0; recalc();">`;
+        const marginField = isFee
+            ? `<div class="item-margin-display" style="color:#94a3b8;">--</div>`
+            : `<div class="item-margin-display">${esc(item.margin || 'No Data')}</div>`;
+        const topControl = isFee
+            ? `<input class="item-editor-input" type="text" value="${esc(item.description)}" placeholder="Fee description" onchange="lineItems[${i}].description=this.value; recalc();">`
+            : `<select class="item-editor-select" data-product-id="${esc(item.product_id)}" onchange="onItemSelect(${i}, this.value)"><option value="">Choose Item</option>${buildProductOptions(item.product_id)}</select>`;
+        const notesField = `<input class="item-editor-input" type="text" value="${esc(item.notes)}" placeholder="Enter note" onchange="lineItems[${i}].notes=this.value;">`;
+        const priceField = `<input class="item-editor-input" type="number" step="0.01" value="${item.unit_price||''}" placeholder="$" onchange="lineItems[${i}].unit_price=parseFloat(this.value)||0; recalc();">`;
+        return `
+        <tr>
+            <td class="item-editor-cell">
+                <div class="item-editor-card">
+                    <div class="item-editor-top">
+                        <div>
+                            <span class="item-field-label">${isFee ? 'Fee Description' : 'Item'}</span>
+                            ${topControl}
+                        </div>
+                        <button class="item-delete-btn" onclick="removeItem(${i})"><i class="bi bi-trash"></i></button>
+                    </div>
+                    <div class="item-editor-bottom">
+                        <div>
+                            <span class="item-field-label">Notes</span>
+                            ${notesField}
+                        </div>
+                        <div>
+                            <span class="item-field-label">Quantity</span>
+                            ${qtyField}
+                        </div>
+                        <div>
+                            <span class="item-field-label">Unit Price</span>
+                            ${priceField}
+                        </div>
+                        <div>
+                            <span class="item-field-label">Margin</span>
+                            ${marginField}
+                        </div>
+                        <div>
+                            <span class="item-field-label">Amount</span>
+                            <div class="item-amount-box">$${(item.amount||0).toFixed(2)}</div>
+                        </div>
+                    </div>
+                </div>
+            </td>
         </tr>`;
     }).join('');
 
     // Set select values after render
-    tbody.querySelectorAll('.item-select[data-product-id]').forEach(sel => {
+    tbody.querySelectorAll('.item-editor-select[data-product-id]').forEach(sel => {
         if (sel.dataset.productId) sel.value = sel.dataset.productId;
     });
 
+    updateProductFilterUI();
     recalc();
 }
 
 function onItemSelect(idx, productId) {
     const p = allProducts.find(x => x.product_id === productId);
     if (p) { lineItems[idx].product_id = productId; lineItems[idx].description = p.item_name; lineItems[idx].unit_type = p.unit_type; }
+}
+
+function setProductFilter(filterName) {
+    currentProductFilter = filterName;
+    renderItems();
+}
+
+function getFilteredProducts() {
+    if (currentProductFilter === 'recent') {
+        return allProducts.filter(product => !!product.recently_processed);
+    }
+    if (currentProductFilter === 'all') {
+        return allProducts;
+    }
+    return allProducts.filter(product => Number(product.on_hand || 0) > 0);
+}
+
+function buildProductOptions(selectedProductId) {
+    const selectedId = selectedProductId || '';
+    const filteredProducts = getFilteredProducts();
+    const selectedProduct = selectedId ? allProducts.find(product => product.product_id === selectedId) : null;
+    const options = selectedProduct && !filteredProducts.some(product => product.product_id === selectedId)
+        ? [selectedProduct, ...filteredProducts]
+        : filteredProducts;
+    return options
+        .filter((product, index, arr) => product && arr.findIndex(entry => entry.product_id === product.product_id) === index)
+        .map(product => `<option value="${esc(product.product_id)}">${esc(formatProductOptionLabel(product))}</option>`)
+        .join('');
+}
+
+function formatQty(value) {
+    return Number(value || 0).toLocaleString(undefined, {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 2,
+    });
+}
+
+function formatProductOptionLabel(product) {
+    const onHand = Number(product.on_hand || 0);
+    const unit = product.unit_type || product.inventory_unit_of_measure || '';
+    if (currentProductFilter === 'recent' && product.recently_processed) {
+        return `${product.item_name} (${onHand > 0 ? `${formatQty(onHand)} ${unit || 'units'} on hand, ` : ''}recently processed)`;
+    }
+    if (onHand > 0) {
+        return `${product.item_name} (${formatQty(onHand)} ${unit || 'units'} on hand)`;
+    }
+    return `${product.item_name} (Out of stock)`;
+}
+
+function updateProductFilterUI() {
+    document.querySelectorAll('.item-filter-btn[data-filter]').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.filter === currentProductFilter);
+    });
+    const note = document.getElementById('itemFilterNote');
+    if (!note) return;
+    const count = getFilteredProducts().length;
+    if (currentProductFilter === 'recent') {
+        note.textContent = `${count} recently processed item${count === 1 ? '' : 's'} from the last 14 days`;
+        return;
+    }
+    if (currentProductFilter === 'all') {
+        note.textContent = `${count} active catalog item${count === 1 ? '' : 's'}`;
+        return;
+    }
+    note.textContent = `${count} item${count === 1 ? '' : 's'} currently in stock`;
+}
+
+function refreshStatusSelectStyles() {
+    const statusIds = ['so-order-status', 'so-packed-status'];
+    statusIds.forEach(id => {
+        const select = document.getElementById(id);
+        if (!select) return;
+        select.className = 'so-status-select';
+        select.classList.add(`status-${select.value}`);
+    });
+}
+
+function refreshHeaderStatusBadge() {
+    const badge = document.getElementById('so-header-status');
+    const orderSelect = document.getElementById('so-order-status');
+    if (!badge || !orderSelect) return;
+    const labels = {
+        draft: 'Draft',
+        open: 'Open',
+        needs_review: 'Needs Review',
+        closed: 'Closed',
+        cancelled: 'Cancelled',
+    };
+    badge.className = `badge-status badge-${orderSelect.value}`;
+    badge.textContent = labels[orderSelect.value] || orderSelect.value;
 }
 
 function addItemRow(type) {
@@ -435,7 +759,7 @@ async function allocateFIFO() {
 
 // ── Save ────────────────────────────────────────────────────────
 
-async function saveDraft() {
+async function saveSalesOrder(orderStatus) {
     await fetch(`/api/sales/orders/${SO_ID}/update/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
@@ -452,7 +776,8 @@ async function saveDraft() {
             order_weight: document.getElementById('so-weight').value || null,
             qb_invoice_number: document.getElementById('so-qb').value,
             notes: document.getElementById('so-notes').value,
-            order_status: 'draft',
+            order_status: orderStatus || document.getElementById('so-order-status').value || 'draft',
+            packed_status: document.getElementById('so-packed-status').value || 'not_packed',
         }),
     });
 
@@ -466,17 +791,19 @@ async function saveDraft() {
             body: JSON.stringify(item),
         });
     }
+}
+
+async function saveDraft() {
+    await saveSalesOrder(document.getElementById('so-order-status').value || 'draft');
+    refreshHeaderStatusBadge();
     alert('Draft saved.');
     loadSODetail();
 }
 
 async function publishSO() {
-    await saveDraft();
-    await fetch(`/api/sales/orders/${SO_ID}/update/`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
-        body: JSON.stringify({ order_status: 'open' }),
-    });
+    await saveSalesOrder(document.getElementById('so-order-status').value || 'open');
+    refreshHeaderStatusBadge();
+    alert('Sales order published.');
     location.reload();
 }
 </script>

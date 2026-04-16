@@ -201,9 +201,8 @@
                         <th>Product</th>
                         <th>QC</th>
                         <th>Location</th>
-                        <th>Receive Date</th>
+                        <th>Received At</th>
                         <th>Purchase #</th>
-                        <th>Receive Time</th>
                         <th>Vendor</th>
                         <th>Vendor Type</th>
                         <th style="text-align:right;">Cost</th>
@@ -211,7 +210,7 @@
                     </tr>
                 </thead>
                 <tbody id="lotsTbody">
-                    <tr><td colspan="11" class="text-center text-muted py-4">Loading...</td></tr>
+                    <tr><td colspan="10" class="text-center text-muted py-4">Loading...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -437,23 +436,31 @@ async function loadOpenPOs() {
                     </div>
                     <span style="font-size:0.75rem; color:#64748b;">${po.items.length} item${po.items.length > 1 ? 's' : ''} to receive</span>
                 </div>
-                <table style="width:100%; border-collapse:collapse; font-size:0.83rem;">
+                <table style="width:100%; border-collapse:collapse; font-size:0.83rem; table-layout:fixed;">
+                    <colgroup>
+                        <col style="width:auto;">
+                        <col style="width:180px;">
+                        <col style="width:180px;">
+                        <col style="width:180px;">
+                        <col style="width:140px;">
+                        <col style="width:84px;">
+                    </colgroup>
                     <thead><tr style="border-bottom:1px solid #f1f5f9;">
                         <th style="text-align:left; padding:6px 16px; color:#64748b; font-weight:600; font-size:0.73rem; text-transform:uppercase;">Item</th>
                         <th style="text-align:right; padding:6px 12px; color:#64748b; font-weight:600; font-size:0.73rem; text-transform:uppercase;">Ordered</th>
                         <th style="text-align:right; padding:6px 12px; color:#64748b; font-weight:600; font-size:0.73rem; text-transform:uppercase;">Received</th>
                         <th style="text-align:right; padding:6px 12px; color:#64748b; font-weight:600; font-size:0.73rem; text-transform:uppercase;">Remaining</th>
-                        <th style="width:140px; padding:6px 8px;"></th>
-                        <th style="width:70px; padding:6px 8px;"></th>
+                        <th style="padding:6px 8px;"></th>
+                        <th style="padding:6px 8px;"></th>
                     </tr></thead>
                     <tbody>${po.items.map(item => `
                         <tr style="border-bottom:1px solid #f1f5f9;">
-                            <td style="padding:8px 16px;">${esc(item.description)}</td>
+                            <td style="padding:8px 16px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${esc(item.description)}</td>
                             <td style="text-align:right; padding:8px 12px;">${item.ordered_qty} ${esc(item.unit_type)}</td>
                             <td style="text-align:right; padding:8px 12px;">${item.received_qty}</td>
                             <td style="text-align:right; padding:8px 12px; color:#dc2626; font-weight:600;">${item.remaining_qty}</td>
                             <td style="padding:6px 8px;"><input type="number" step="0.01" min="0" value="${item.remaining_qty}" id="open-recv-${po.id}-${item.id}" style="width:100%; border:1px solid #d1d5db; border-radius:6px; padding:4px 8px; font-size:0.83rem;"></td>
-                            <td style="padding:6px 8px;"><button class="btn-inv-primary" style="padding:4px 12px; font-size:0.78rem; white-space:nowrap;" onclick="withSpinner(this, () => receiveOpenPO(${po.id}, ${item.id}, '${esc(item.product_id)}', '${esc(item.description)}', '${esc(item.unit_type)}', ${item.unit_price}, '${esc(po.vendor_name)}', '${esc(po.vendor_type || '')}'))">Receive</button></td>
+                            <td style="padding:6px 8px;"><button class="btn-inv-primary" style="padding:4px 12px; font-size:0.78rem; white-space:nowrap;" onclick="openReceiveFromPOItem(${po.id}, '${esc(po.po_number)}', ${item.id}, '${esc(item.product_id)}', '${esc(item.description)}', '${esc(item.unit_type)}', ${item.unit_price}, '${esc(po.vendor_name)}', '${esc(po.vendor_type || '')}', ${item.remaining_qty})">Receive</button></td>
                         </tr>
                     `).join('')}</tbody>
                 </table>
@@ -465,35 +472,23 @@ async function loadOpenPOs() {
     }
 }
 
-async function receiveOpenPO(poId, poItemId, productId, description, unitType, unitPrice, vendor, vendorType) {
+function openReceiveFromPOItem(poId, poNumber, poItemId, productId, description, unitType, unitPrice, vendor, vendorType, remainingQty) {
     const qtyInput = document.getElementById(`open-recv-${poId}-${poItemId}`);
-    const qty = parseFloat(qtyInput.value);
+    const qty = parseFloat(qtyInput?.value || remainingQty);
     if (!qty || qty <= 0) { alert('Enter a quantity to receive.'); return; }
 
-    const res = await fetch('/api/receiving/lots/create/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
-        body: JSON.stringify({
-            product_id: productId,
-            description: description,
-            quantity: qty,
-            unit_type: unitType,
-            vendor: vendor,
-            vendor_type: vendorType,
-            purchase_order_id: poId,
-            po_item_id: poItemId,
-            receive_date: new Date().toISOString().split('T')[0],
-            cost: unitPrice || 0,
-        }),
+    openReceiveModal({
+        productId,
+        description,
+        quantity: qty,
+        unitType,
+        unitPrice,
+        vendor,
+        vendorType,
+        poId,
+        poNumber,
+        poItemId,
     });
-    if (!res.ok) {
-        const err = await res.json();
-        alert(err.error || 'Failed to receive.');
-        return;
-    }
-    // Reload both tabs
-    await loadOpenPOs();
-    loadLots();
 }
 
 // ── Data loading ────────────────────────────────────────────────
@@ -588,7 +583,7 @@ function renderTable() {
     document.getElementById('totalCount').textContent = `${totalItems} total items`;
 
     if (!allLots.length) {
-        tbody.innerHTML = '<tr><td colspan="11" class="text-center text-muted py-4">No received lots found.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="10" class="text-center text-muted py-4">No received lots found.</td></tr>';
         document.getElementById('paginationInfo').textContent = '0 items';
         document.getElementById('paginationBtns').innerHTML = '';
         return;
@@ -600,9 +595,8 @@ function renderTable() {
             <td>${esc(lot.product_name || '--')}</td>
             <td>${qcBadge(lot.qc_status)}</td>
             <td>${esc(lot.location || '--')}</td>
-            <td>${esc(lot.receive_date)}</td>
+            <td>${esc(lot.received_at || lot.receive_date || '--')}</td>
             <td>${esc(lot.purchase_order || '--')}</td>
-            <td>${esc(lot.receive_time || '--')}</td>
             <td>${esc(lot.vendor || '--')}</td>
             <td>${esc(lot.vendor_type || '--')}</td>
             <td style="text-align:right;">${lot.cost != null ? '$' + Number(lot.cost).toFixed(2) : '--'}</td>
@@ -897,13 +891,57 @@ async function saveQualityCheck() {
 
 let openPOsCache = [];
 
-async function openReceiveModal() {
-    document.getElementById('recvOverlay').classList.add('open');
+function resetReceiveForm() {
     document.getElementById('recvError').style.display = 'none';
     document.getElementById('variance-alert').style.display = 'none';
     document.getElementById('po-items-section').style.display = 'none';
+    document.getElementById('r-product').value = '';
+    document.getElementById('r-qty').value = '';
+    document.getElementById('r-unit').value = '';
+    document.getElementById('r-vendor').value = '';
+    document.getElementById('r-vendor-type').value = '';
+    document.getElementById('r-date').value = new Date().toISOString().split('T')[0];
+    document.getElementById('r-time').value = '';
+    document.getElementById('r-location').value = '';
+    document.getElementById('r-po').value = '';
     document.getElementById('r-po-item-id').value = '';
+    document.getElementById('r-cost').value = '';
+    document.getElementById('r-origin').value = '';
+    document.getElementById('q-score').value = '';
+    document.getElementById('q-status').value = 'pass';
+    document.getElementById('q-appearance').checked = false;
+    document.getElementById('q-odor').checked = false;
+    document.getElementById('q-texture').checked = false;
+    document.getElementById('q-packaging').checked = false;
+    document.getElementById('q-temp').checked = false;
+    document.getElementById('q-notes').value = '';
+}
+
+async function openReceiveModal(prefill = null) {
+    document.getElementById('recvOverlay').classList.add('open');
+    resetReceiveForm();
     await loadOpenPOsForModal();
+    if (prefill) {
+        if (prefill.productId) {
+            const prodSelect = document.getElementById('r-product');
+            for (let opt of prodSelect.options) {
+                if (opt.value === prefill.productId) {
+                    prodSelect.value = prefill.productId;
+                    break;
+                }
+            }
+        }
+        if (prefill.quantity != null) document.getElementById('r-qty').value = prefill.quantity;
+        if (prefill.unitType) document.getElementById('r-unit').value = prefill.unitType;
+        if (prefill.vendor) document.getElementById('r-vendor').value = prefill.vendor;
+        if (prefill.vendorType) document.getElementById('r-vendor-type').value = prefill.vendorType;
+        if (prefill.unitPrice != null) document.getElementById('r-cost').value = prefill.unitPrice;
+        if (prefill.poNumber) {
+            document.getElementById('r-po').value = prefill.poNumber;
+            onPOSelect(prefill.poNumber);
+        }
+        if (prefill.poItemId) document.getElementById('r-po-item-id').value = prefill.poItemId;
+    }
 }
 
 function closeReceiveModal() {
@@ -978,7 +1016,6 @@ function selectPOItem(itemId, productId, remainingQty, unitType, unitPrice) {
 
     // Highlight selected row
     document.querySelectorAll('.po-item-row').forEach(row => row.style.background = '');
-    event.currentTarget.closest('.po-item-row').style.background = '#e8f4fd';
 }
 
 async function submitReceive() {
@@ -1040,15 +1077,8 @@ async function submitReceive() {
             closeReceiveModal();
         }
 
-        // Clear form
-        ['r-product','r-qty','r-unit','r-vendor','r-vendor-type','r-location','r-cost','r-origin'].forEach(id => {
-            document.getElementById(id).value = '';
-        });
-        document.getElementById('r-po').value = '';
-        document.getElementById('r-po-item-id').value = '';
-        document.getElementById('po-items-section').style.display = 'none';
-        document.getElementById('r-date').value = new Date().toISOString().split('T')[0];
-        document.getElementById('r-time').value = '';
+        resetReceiveForm();
+        await loadOpenPOs();
         loadLots();
     } catch {
         showRecvError('Failed to create lot.');

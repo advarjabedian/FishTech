@@ -8,6 +8,14 @@
     display: flex; gap: 0; margin-bottom: 1.5rem; background: #fff;
     border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.06);
 }
+.process-wizard-shell {
+    max-width: 920px;
+    margin: 0 auto;
+}
+.process-step-panel {
+    max-width: 820px;
+    margin: 0 auto;
+}
 .step {
     flex: 1; padding: 14px 16px; text-align: center; font-size: 0.82rem;
     font-weight: 600; color: #94a3b8; background: #fff;
@@ -24,7 +32,7 @@
 .step.done .step-num { background: #16a34a; color: #fff; }
 
 /* Lot cards */
-.lot-list { display: flex; flex-direction: column; gap: 0.75rem; max-width: 800px; }
+.lot-list { display: flex; flex-direction: column; gap: 0.75rem; max-width: 800px; margin: 0 auto; }
 .lot-card {
     background: #fff; border: 1px solid #e2e8f0; border-radius: 12px;
     padding: 1rem 1.25rem; display: flex; align-items: center; gap: 1rem;
@@ -48,7 +56,7 @@
 /* Quantity / Output cards */
 .qty-card {
     background: #fff; border: 1px solid #e2e8f0; border-radius: 12px;
-    padding: 1.25rem; margin-bottom: 1rem; max-width: 800px;
+    padding: 1.25rem; margin: 0 auto 1rem; max-width: 800px;
 }
 .qty-card .lot-label { font-weight: 600; color: #1e293b; margin-bottom: 0.5rem; }
 .qty-card .lot-sub { font-size: 0.78rem; color: #64748b; margin-bottom: 0.75rem; }
@@ -68,7 +76,7 @@
 /* Output section */
 .output-card {
     background: #fff; border: 1px solid #e2e8f0; border-radius: 12px;
-    padding: 1.25rem; margin-bottom: 1rem; max-width: 800px;
+    padding: 1.25rem; margin: 0 auto 1rem; max-width: 800px;
 }
 .output-card h6 { font-weight: 700; margin-bottom: 1rem; }
 .form-row { display: flex; gap: 1rem; margin-bottom: 0.75rem; flex-wrap: wrap; }
@@ -88,7 +96,7 @@
 }
 .add-output-btn {
     background: none; border: 1px dashed #d1d5db; border-radius: 12px; padding: 1rem;
-    width: 100%; max-width: 800px; text-align: center; cursor: pointer;
+    width: 100%; max-width: 800px; margin: 0 auto; display: block; text-align: center; cursor: pointer;
     color: #64748b; font-size: 0.85rem; font-weight: 600; transition: all 0.15s;
 }
 .add-output-btn:hover { border-color: #2563eb; color: #2563eb; background: #eff6ff; }
@@ -97,7 +105,7 @@
 .type-hint {
     background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px;
     padding: 12px 16px; font-size: 0.82rem; color: #1e40af; margin-bottom: 1.25rem;
-    max-width: 800px;
+    max-width: 800px; margin-left: auto; margin-right: auto;
 }
 .type-hint i { margin-right: 6px; }
 
@@ -109,10 +117,43 @@
 }
 .btn-danger-sm:hover { text-decoration: underline; }
 
-.bottom-bar {
-    position: fixed; bottom: 0; left: 72px; right: 0; background: #fff;
-    border-top: 1px solid #e5e7eb; padding: 14px 2rem;
-    display: flex; justify-content: space-between; align-items: center; z-index: 50;
+.wizard-nav {
+    max-width: 820px;
+    margin: 1.5rem auto 0;
+    padding: 1rem 0 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    border-top: 1px solid #e5e7eb;
+}
+.wizard-nav-spacer {
+    flex: 1;
+}
+.wizard-nav .btn-inv-outline,
+.wizard-nav .btn-inv-primary {
+    min-width: 140px;
+    min-height: 50px;
+    padding: 12px 22px;
+    font-size: 0.98rem;
+    font-weight: 700;
+    border-radius: 12px;
+}
+.wizard-nav .btn-inv-primary {
+    box-shadow: 0 10px 24px rgba(37,99,235,0.16);
+}
+@media (max-width: 720px) {
+    .wizard-nav {
+        flex-direction: column-reverse;
+        align-items: stretch;
+    }
+    .wizard-nav-spacer {
+        display: none;
+    }
+    .wizard-nav .btn-inv-outline,
+    .wizard-nav .btn-inv-primary {
+        width: 100%;
+    }
 }
 </style>
 {% endblock %}
@@ -121,75 +162,78 @@
 
 {% include 'core/includes/sidebar.html' with active='process' %}
 
-<div class="inv-main" style="padding-bottom: 80px;">
+<div class="inv-main">
     <div class="inv-header">
         <h2><i class="bi bi-gear me-2" style="color:#2563eb;"></i>{{ process_type_label }}</h2>
         <div class="sub">Select source lots, configure output, and start processing.</div>
     </div>
 
-    <!-- Steps -->
-    <div class="steps-bar">
-        <div class="step active" id="step1-tab">
-            <span class="step-num">1</span> Source Lots
+    <div class="process-wizard-shell">
+        <!-- Steps -->
+        <div class="steps-bar">
+            <div class="step active" id="step1-tab">
+                <span class="step-num">1</span> Source Lots
+            </div>
+            <div class="step" id="step2-tab">
+                <span class="step-num">2</span> Quantities
+            </div>
+            <div class="step" id="step3-tab">
+                <span class="step-num">3</span> Output
+            </div>
+            <div class="step" id="step4-tab">
+                <span class="step-num">4</span> Confirm
+            </div>
         </div>
-        <div class="step" id="step2-tab">
-            <span class="step-num">2</span> Quantities
-        </div>
-        <div class="step" id="step3-tab">
-            <span class="step-num">3</span> Output
-        </div>
-        <div class="step" id="step4-tab">
-            <span class="step-num">4</span> Confirm
-        </div>
-    </div>
 
-    <!-- Step 1: Choose source lots -->
-    <div id="step1">
-        <div style="margin-bottom: 1rem; display:flex; gap:0.75rem; align-items:center;">
-            <input type="text" class="search-box" id="lotSearch" placeholder="Search lots..." oninput="debounceLotSearch()">
-            <span id="lotCount" style="font-size:0.8rem; color:#64748b;">0 lots</span>
-        </div>
-        <div class="lot-list" id="lotList">
-            <div class="text-center text-muted py-4">Loading available lots...</div>
-        </div>
-    </div>
+        <div class="process-step-panel">
+            <!-- Step 1: Choose source lots -->
+            <div id="step1">
+                <div style="margin-bottom: 1rem; display:flex; gap:0.75rem; align-items:center; justify-content:center; flex-wrap:wrap;">
+                    <input type="text" class="search-box" id="lotSearch" placeholder="Search lots..." oninput="debounceLotSearch()">
+                    <span id="lotCount" style="font-size:0.8rem; color:#64748b;">0 lots</span>
+                </div>
+                <div class="lot-list" id="lotList">
+                    <div class="text-center text-muted py-4">Loading available lots...</div>
+                </div>
+            </div>
 
-    <!-- Step 2: Enter quantities -->
-    <div id="step2" style="display:none;">
-        <div id="qtyCards"></div>
-    </div>
+            <!-- Step 2: Enter quantities -->
+            <div id="step2" style="display:none;">
+                <div id="qtyCards"></div>
+            </div>
 
-    <!-- Step 3: Configure output -->
-    <div id="step3" style="display:none;">
-        <div class="type-hint" id="typeHint"></div>
-        <div id="outputCards"></div>
-        <button class="add-output-btn" onclick="addOutput()">
-            <i class="bi bi-plus-circle me-1"></i> Add Another Output Lot
-        </button>
-    </div>
+            <!-- Step 3: Configure output -->
+            <div id="step3" style="display:none;">
+                <div class="type-hint" id="typeHint"></div>
+                <div id="outputCards"></div>
+                <button class="add-output-btn" onclick="addOutput()">
+                    <i class="bi bi-plus-circle me-1"></i> Add Another Output Lot
+                </button>
+            </div>
 
-    <!-- Step 4: Confirm -->
-    <div id="step4" style="display:none;">
-        <div style="max-width:800px; background:#fff; border-radius:12px; padding:1.5rem; border:1px solid #e2e8f0;">
-            <h5 style="font-weight:700; margin-bottom:1rem;">Batch Summary</h5>
-            <div id="summaryContent"></div>
-            <div style="margin-top:1rem;">
-                <label style="font-weight:600; font-size:0.85rem;">Notes (optional)</label>
-                <textarea id="batchNotes" class="form-control" rows="2" style="border-radius:8px; margin-top:4px;"></textarea>
+            <!-- Step 4: Confirm -->
+            <div id="step4" style="display:none;">
+                <div style="max-width:800px; margin:0 auto; background:#fff; border-radius:12px; padding:1.5rem; border:1px solid #e2e8f0;">
+                    <h5 style="font-weight:700; margin-bottom:1rem;">Batch Summary</h5>
+                    <div id="summaryContent"></div>
+                    <div style="margin-top:1rem;">
+                        <label style="font-weight:600; font-size:0.85rem;">Notes (optional)</label>
+                        <textarea id="batchNotes" class="form-control" rows="2" style="border-radius:8px; margin-top:4px;"></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <div class="wizard-nav">
+                <button class="btn-inv-outline" id="backBtn" onclick="goBack()" style="display:none;">
+                    <i class="bi bi-arrow-left me-1"></i> Back
+                </button>
+                <div class="wizard-nav-spacer"></div>
+                <button class="btn-inv-primary" id="nextBtn" onclick="goNext()" disabled>
+                    Next <i class="bi bi-arrow-right ms-1"></i>
+                </button>
             </div>
         </div>
     </div>
-</div>
-
-<!-- Bottom bar -->
-<div class="bottom-bar">
-    <button class="btn-inv-outline" id="backBtn" onclick="goBack()" style="display:none;">
-        <i class="bi bi-arrow-left me-1"></i> Back
-    </button>
-    <div></div>
-    <button class="btn-inv-primary" id="nextBtn" onclick="goNext()" disabled>
-        Next <i class="bi bi-arrow-right ms-1"></i>
-    </button>
 </div>
 
 {% endblock %}
@@ -391,6 +435,12 @@ function getSourceUnitType() {
     return ids.length ? (selectedLots[ids[0]].unit_type || '') : '';
 }
 
+function deriveOutputQuantity(totalQty, yieldPercent) {
+    const qty = parseFloat(totalQty) || 0;
+    const pct = parseFloat(yieldPercent) || 0;
+    return Math.round(qty * pct) / 100;
+}
+
 function initOutputStep() {
     document.getElementById('typeHint').innerHTML = TYPE_HINTS[PROCESS_TYPE] || '';
 
@@ -412,12 +462,13 @@ function initOutputStep() {
             });
         } else {
             // fish_cutting, shucking, lot_breaking — user needs to configure
+            const defaultYield = PROCESS_TYPE === 'shucking' ? 15 : (PROCESS_TYPE === 'fish_cutting' ? 65 : 100);
             outputItems.push({
                 product_id: '',
                 product_name: '',
-                quantity: totalQty,
+                quantity: deriveOutputQuantity(totalQty, defaultYield),
                 unit_type: unitType,
-                yield_percent: PROCESS_TYPE === 'shucking' ? 15 : (PROCESS_TYPE === 'fish_cutting' ? 65 : 100),
+                yield_percent: defaultYield,
                 lot_id: '',
             });
         }
@@ -585,10 +636,14 @@ async function submitBatch() {
         product_id: selectedLots[id].product_id,
     }));
 
+    const totalInputQty = getTotalSourceQty();
+    const yieldDrivenProcesses = ['fish_cutting', 'shucking', 'lot_breaking'];
     const outputs = outputItems.map(out => ({
         product_id: out.product_id,
         description: out.product_name,
-        quantity: out.quantity,
+        quantity: yieldDrivenProcesses.includes(PROCESS_TYPE) && out.yield_percent !== '' && out.yield_percent != null
+            ? deriveOutputQuantity(totalInputQty, out.yield_percent)
+            : out.quantity,
         unit_type: out.unit_type,
         yield_percent: out.yield_percent || null,
         lot_id: out.lot_id,

@@ -3,9 +3,13 @@
 
 {% block extra_css %}
 <style>
+.process-detail-shell {
+    max-width: 980px;
+    margin: 0 auto;
+}
 .detail-card {
     background: #fff; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.06);
-    padding: 1.5rem; margin-bottom: 1.25rem; max-width: 900px;
+    padding: 1.5rem; margin-bottom: 1.25rem; max-width: 900px; margin-left: auto; margin-right: auto;
 }
 .detail-card h5 { font-weight: 700; font-size: 1rem; margin-bottom: 1rem; }
 .detail-row { display: flex; gap: 2rem; flex-wrap: wrap; margin-bottom: 0.5rem; font-size: 0.85rem; }
@@ -25,6 +29,26 @@
 }
 .mini-kpi .label { font-size:0.72rem; color:#64748b; text-transform:uppercase; font-weight:700; }
 .mini-kpi .value { font-size:1.05rem; color:#0f172a; font-weight:700; margin-top:2px; }
+.balance-banner {
+    display: none;
+    margin-bottom: 1rem;
+    padding: 0.9rem 1rem;
+    border-radius: 10px;
+    font-size: 0.84rem;
+    font-weight: 600;
+}
+.balance-banner.warning {
+    display: block;
+    background: #fff7ed;
+    border: 1px solid #fdba74;
+    color: #c2410c;
+}
+.balance-banner.good {
+    display: block;
+    background: #ecfdf5;
+    border: 1px solid #86efac;
+    color: #166534;
+}
 
 </style>
 {% endblock %}
@@ -34,187 +58,194 @@
 {% include 'core/includes/sidebar.html' with active='process' %}
 
 <div class="inv-main">
-    <div style="margin-bottom: 1rem;">
-        <a href="{% url 'processing_hub' %}" style="font-size:0.85rem; color:#2563eb; text-decoration:none;">
-            <i class="bi bi-arrow-left me-1"></i> Back to Processing
-        </a>
-    </div>
-
-    <div style="display:flex; align-items:center; gap:1rem; margin-bottom:1.5rem;">
-        <h2 style="font-size:1.4rem; font-weight:700; margin:0;">
-            <i class="bi bi-gear me-2" style="color:#2563eb;"></i>{{ batch.batch_number }}
-        </h2>
-        <span class="badge-status badge-{{ batch.status }}">{{ batch.get_status_display }}</span>
-    </div>
-
-    {% if source_pos or source_lots_trace %}
-    <div style="background:#f0f6ff; border:1px solid #e2e8f0; border-radius:10px; padding:10px 16px; margin-bottom:1.25rem; display:flex; flex-wrap:wrap; gap:0.5rem; align-items:center; font-size:0.78rem;">
-        <span style="color:#64748b; font-weight:600;">Trace:</span>
-        {% for po in source_pos %}
-        <a href="{% url 'purchase_detail_page' po.id %}" style="color:#2563eb; text-decoration:none; font-weight:600;">
-            <i class="bi bi-cart me-1"></i>{{ po.po_number }}
-        </a>
-        <i class="bi bi-chevron-right" style="color:#cbd5e1; font-size:0.65rem;"></i>
-        {% endfor %}
-        {% for lot in source_lots_trace %}
-        <span style="color:#0ea5e9; font-weight:600;"><i class="bi bi-box-arrow-in-down me-1"></i>{{ lot.trace_lot }}</span>
-        {% if not forloop.last %}<span style="color:#cbd5e1;">,</span>{% endif %}
-        {% endfor %}
-        <i class="bi bi-chevron-right" style="color:#cbd5e1; font-size:0.65rem;"></i>
-        <span style="color:#f59e0b; font-weight:600;"><i class="bi bi-gear me-1"></i>{{ batch.batch_number }}</span>
-    </div>
-    {% endif %}
-
-    <!-- Batch info -->
-    <div class="detail-card">
-        <h5>Batch Details</h5>
-        <div class="detail-row">
-            <span class="label">Process Type</span>
-            <span class="value">{{ batch.get_process_type_display }}</span>
+    <div class="process-detail-shell">
+        <div style="margin-bottom: 1rem; max-width:900px; margin-left:auto; margin-right:auto;">
+            <a href="{% url 'processing_hub' %}" style="font-size:0.85rem; color:#2563eb; text-decoration:none;">
+                <i class="bi bi-arrow-left me-1"></i> Back to Processing
+            </a>
         </div>
-        <div class="detail-row">
-            <span class="label">Started</span>
-            <span class="value">{{ batch.started_at|date:"d M Y H:i" }}</span>
+
+        <div style="display:flex; align-items:center; gap:1rem; margin-bottom:1.5rem; max-width:900px; margin-left:auto; margin-right:auto;">
+            <h2 style="font-size:1.4rem; font-weight:700; margin:0;">
+                <i class="bi bi-gear me-2" style="color:#2563eb;"></i>{{ batch.batch_number }}
+            </h2>
+            <span class="badge-status badge-{{ batch.status }}">{{ batch.get_status_display }}</span>
         </div>
-        {% if batch.completed_at %}
-        <div class="detail-row">
-            <span class="label">Completed</span>
-            <span class="value">{{ batch.completed_at|date:"d M Y H:i" }}</span>
+
+        {% if source_pos or source_lots_trace %}
+        <div style="background:#f0f6ff; border:1px solid #e2e8f0; border-radius:10px; padding:10px 16px; margin:0 auto 1.25rem; max-width:900px; display:flex; flex-wrap:wrap; gap:0.5rem; align-items:center; font-size:0.78rem;">
+            <span style="color:#64748b; font-weight:600;">Trace:</span>
+            {% for po in source_pos %}
+            <a href="{% url 'purchase_detail_page' po.id %}" style="color:#2563eb; text-decoration:none; font-weight:600;">
+                <i class="bi bi-cart me-1"></i>{{ po.po_number }}
+            </a>
+            <i class="bi bi-chevron-right" style="color:#cbd5e1; font-size:0.65rem;"></i>
+            {% endfor %}
+            {% for lot in source_lots_trace %}
+            <span style="color:#0ea5e9; font-weight:600;"><i class="bi bi-box-arrow-in-down me-1"></i>{{ lot.trace_lot }}</span>
+            {% if not forloop.last %}<span style="color:#cbd5e1;">,</span>{% endif %}
+            {% endfor %}
+            <i class="bi bi-chevron-right" style="color:#cbd5e1; font-size:0.65rem;"></i>
+            <span style="color:#f59e0b; font-weight:600;"><i class="bi bi-gear me-1"></i>{{ batch.batch_number }}</span>
         </div>
         {% endif %}
-        <div class="detail-row">
-            <span class="label">Created By</span>
-            <span class="value">{{ batch.created_by.get_full_name|default:batch.created_by.username|default:"--" }}</span>
-        </div>
-        {% if batch.notes %}
-        <div class="detail-row">
-            <span class="label">Notes</span>
-            <span class="value">{{ batch.notes }}</span>
-        </div>
-        {% endif %}
-    </div>
 
-    <!-- Source lots -->
-    <div class="detail-card">
-        <h5>Source Lots</h5>
-        <table class="source-table">
-            <thead>
-                <tr>
-                    <th>Lot ID</th>
-                    <th>Item</th>
-                    <th>Vendor</th>
-                    <th style="text-align:right;">Quantity</th>
-                </tr>
-            </thead>
-            <tbody id="sourceTbody">
-                <tr><td colspan="4" class="text-center text-muted py-3">Loading...</td></tr>
-            </tbody>
-        </table>
-    </div>
-
-    <!-- Output lots -->
-    <div class="detail-card">
-        <h5>Output Lots</h5>
-        <table class="source-table">
-            <thead>
-                <tr>
-                    <th>Lot ID</th>
-                    <th>Product</th>
-                    <th style="text-align:right;">Quantity</th>
-                    <th style="text-align:right;">Yield</th>
-                </tr>
-            </thead>
-            <tbody id="outputTbody">
-                <tr><td colspan="4" class="text-center text-muted py-3">Loading...</td></tr>
-            </tbody>
-        </table>
-    </div>
-
-    <div class="detail-card">
-        <h5>Waste & Byproduct</h5>
-        <div class="mini-kpis">
-            <div class="mini-kpi">
-                <div class="label">Waste Qty</div>
-                <div class="value" id="wasteQty">0</div>
+        <!-- Batch info -->
+        <div class="detail-card">
+            <h5>Batch Details</h5>
+            <div class="detail-row">
+                <span class="label">Process Type</span>
+                <span class="value">{{ batch.get_process_type_display }}</span>
             </div>
+            <div class="detail-row">
+                <span class="label">Started</span>
+                <span class="value">{{ batch.started_at|date:"d M Y H:i" }}</span>
+            </div>
+            {% if batch.completed_at %}
+            <div class="detail-row">
+                <span class="label">Completed</span>
+                <span class="value">{{ batch.completed_at|date:"d M Y H:i" }}</span>
+            </div>
+            {% endif %}
+            <div class="detail-row">
+                <span class="label">Created By</span>
+                <span class="value">{{ batch.created_by.get_full_name|default:batch.created_by.username|default:"--" }}</span>
+            </div>
+            {% if batch.notes %}
+            <div class="detail-row">
+                <span class="label">Notes</span>
+                <span class="value">{{ batch.notes }}</span>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Source lots -->
+        <div class="detail-card">
+            <h5>Source Lots</h5>
+            <table class="source-table">
+                <thead>
+                    <tr>
+                        <th>Lot ID</th>
+                        <th>Item</th>
+                        <th>Vendor</th>
+                        <th style="text-align:right;">Quantity</th>
+                    </tr>
+                </thead>
+                <tbody id="sourceTbody">
+                    <tr><td colspan="4" class="text-center text-muted py-3">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Output lots -->
+        <div class="detail-card">
+            <h5>Output Lots</h5>
+            <table class="source-table">
+                <thead>
+                    <tr>
+                        <th>Lot ID</th>
+                        <th>Product</th>
+                        <th style="text-align:right;">Quantity</th>
+                        <th style="text-align:right;">Yield</th>
+                    </tr>
+                </thead>
+                <tbody id="outputTbody">
+                    <tr><td colspan="4" class="text-center text-muted py-3">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="detail-card">
+            <h5>Waste & Byproduct</h5>
+            <div class="mini-kpis">
+                <div class="mini-kpi">
+                    <div class="label">Waste Qty</div>
+                    <div class="value" id="wasteQty">0</div>
+                </div>
             <div class="mini-kpi">
                 <div class="label">Byproduct Qty</div>
                 <div class="value" id="byproductQty">0</div>
+                </div>
+                <div class="mini-kpi">
+                    <div class="label">Est. Value</div>
+                    <div class="value" id="wasteValue">$0.00</div>
+                </div>
+                <div class="mini-kpi">
+                    <div class="label">Unaccounted Qty</div>
+                    <div class="value" id="unaccountedQty">0</div>
+                </div>
             </div>
-            <div class="mini-kpi">
-                <div class="label">Est. Value</div>
-                <div class="value" id="wasteValue">$0.00</div>
+
+            <div id="balanceBanner" class="balance-banner"></div>
+            <div id="wasteError" class="alert alert-danger" style="display:none;"></div>
+
+            <div class="row g-3 mb-3">
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold small">Type</label>
+                    <select id="w-entry-type" class="form-select"></select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold small">Category</label>
+                    <select id="w-category" class="form-select"></select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold small">Source Lot</label>
+                    <select id="w-source-lot" class="form-select"></select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold small">Quantity</label>
+                    <input id="w-quantity" type="number" step="0.01" min="0" class="form-control" placeholder="0.00">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold small">Unit</label>
+                    <input id="w-unit-type" type="text" class="form-control" placeholder="Lbs, Each, Bags">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold small">Estimated Value</label>
+                    <input id="w-estimated-value" type="number" step="0.01" min="0" class="form-control" placeholder="0.00">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold small">Notes</label>
+                    <input id="w-notes" type="text" class="form-control" placeholder="Why was this discarded or retained?">
+                </div>
             </div>
+
+            <div class="mb-3">
+                <button class="btn-inv-primary" onclick="saveWasteEntry()">
+                    <i class="bi bi-plus-circle me-1"></i> Log Entry
+                </button>
+            </div>
+
+            <table class="source-table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Type</th>
+                        <th>Category</th>
+                        <th>Source Lot</th>
+                        <th style="text-align:right;">Quantity</th>
+                        <th style="text-align:right;">Value</th>
+                        <th>Notes</th>
+                    </tr>
+                </thead>
+                <tbody id="wasteTbody">
+                    <tr><td colspan="7" class="text-center text-muted py-3">Loading...</td></tr>
+                </tbody>
+            </table>
         </div>
 
-        <div id="wasteError" class="alert alert-danger" style="display:none;"></div>
-
-        <div class="row g-3 mb-3">
-            <div class="col-md-3">
-                <label class="form-label fw-semibold small">Type</label>
-                <select id="w-entry-type" class="form-select"></select>
-            </div>
-            <div class="col-md-3">
-                <label class="form-label fw-semibold small">Category</label>
-                <select id="w-category" class="form-select"></select>
-            </div>
-            <div class="col-md-3">
-                <label class="form-label fw-semibold small">Source Lot</label>
-                <select id="w-source-lot" class="form-select"></select>
-            </div>
-            <div class="col-md-3">
-                <label class="form-label fw-semibold small">Quantity</label>
-                <input id="w-quantity" type="number" step="0.01" min="0" class="form-control" placeholder="0.00">
-            </div>
-            <div class="col-md-3">
-                <label class="form-label fw-semibold small">Unit</label>
-                <input id="w-unit-type" type="text" class="form-control" placeholder="Lbs, Each, Bags">
-            </div>
-            <div class="col-md-3">
-                <label class="form-label fw-semibold small">Estimated Value</label>
-                <input id="w-estimated-value" type="number" step="0.01" min="0" class="form-control" placeholder="0.00">
-            </div>
-            <div class="col-md-6">
-                <label class="form-label fw-semibold small">Notes</label>
-                <input id="w-notes" type="text" class="form-control" placeholder="Why was this discarded or retained?">
-            </div>
-        </div>
-
-        <div class="mb-3">
-            <button class="btn-inv-primary" onclick="saveWasteEntry()">
-                <i class="bi bi-plus-circle me-1"></i> Log Entry
+        <!-- Actions -->
+        {% if batch.status == 'in_progress' %}
+        <div style="display:flex; gap:0.75rem; max-width:900px; margin:0 auto;">
+            <button class="btn-inv-primary" onclick="completeBatch()">
+                <i class="bi bi-check-circle me-1"></i> Mark Completed
+            </button>
+            <button class="btn-inv-outline" onclick="cancelBatch()">
+                <i class="bi bi-x-circle me-1"></i> Cancel Batch
             </button>
         </div>
-
-        <table class="source-table">
-            <thead>
-                <tr>
-                    <th>Date</th>
-                    <th>Type</th>
-                    <th>Category</th>
-                    <th>Source Lot</th>
-                    <th style="text-align:right;">Quantity</th>
-                    <th style="text-align:right;">Value</th>
-                    <th>Notes</th>
-                </tr>
-            </thead>
-            <tbody id="wasteTbody">
-                <tr><td colspan="7" class="text-center text-muted py-3">Loading...</td></tr>
-            </tbody>
-        </table>
+        {% endif %}
     </div>
-
-    <!-- Actions -->
-    {% if batch.status == 'in_progress' %}
-    <div style="display:flex; gap:0.75rem; max-width:900px;">
-        <button class="btn-inv-primary" onclick="completeBatch()">
-            <i class="bi bi-check-circle me-1"></i> Mark Completed
-        </button>
-        <button class="btn-inv-outline" onclick="cancelBatch()">
-            <i class="bi bi-x-circle me-1"></i> Cancel Batch
-        </button>
-    </div>
-    {% endif %}
 </div>
 
 {% endblock %}
@@ -223,6 +254,14 @@
 <script>
 const BATCH_ID = {{ batch.id }};
 let wasteSourceOptions = [];
+let batchAccounting = {
+    totalInputQty: 0,
+    totalOutputQty: 0,
+    accountedQty: 0,
+    unaccountedQty: 0,
+    defaultUnitType: '',
+    isBalanced: true,
+};
 
 document.addEventListener('DOMContentLoaded', () => { loadSources(); loadOutputs(); loadWasteEntries(); });
 
@@ -278,6 +317,18 @@ async function loadWasteEntries() {
     document.getElementById('wasteQty').textContent = Number(data.summary?.waste_qty || 0).toLocaleString(undefined, {maximumFractionDigits:2});
     document.getElementById('byproductQty').textContent = Number(data.summary?.byproduct_qty || 0).toLocaleString(undefined, {maximumFractionDigits:2});
     document.getElementById('wasteValue').textContent = '$' + Number(data.summary?.estimated_value || 0).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
+    batchAccounting = {
+        totalInputQty: Number(data.summary?.total_input_qty || 0),
+        totalOutputQty: Number(data.summary?.total_output_qty || 0),
+        accountedQty: Number(data.summary?.accounted_qty || 0),
+        unaccountedQty: Number(data.summary?.unaccounted_qty || 0),
+        defaultUnitType: data.summary?.default_unit_type || '',
+        isBalanced: Boolean(data.summary?.is_balanced),
+    };
+    document.getElementById('unaccountedQty').textContent =
+        Number(batchAccounting.unaccountedQty).toLocaleString(undefined, {maximumFractionDigits:2}) +
+        (batchAccounting.defaultUnitType ? ` ${batchAccounting.defaultUnitType}` : '');
+    updateBalanceUI();
 
     document.getElementById('w-entry-type').innerHTML = (data.entry_types || []).map(opt =>
         `<option value="${opt.value}">${esc(opt.label)}</option>`
@@ -313,6 +364,53 @@ async function loadWasteEntries() {
             document.getElementById('w-unit-type').value = unit;
         }
     };
+
+    maybePrefillWasteForm();
+}
+
+function updateBalanceUI() {
+    const banner = document.getElementById('balanceBanner');
+    const nextBtn = document.querySelector('button[onclick="completeBatch()"]');
+    const remainder = Number(batchAccounting.unaccountedQty || 0);
+    const unit = batchAccounting.defaultUnitType ? ` ${batchAccounting.defaultUnitType}` : '';
+
+    if (Math.abs(remainder) < 0.0001) {
+        banner.className = 'balance-banner good';
+        banner.textContent = 'Batch is balanced. Input quantity matches output plus waste/byproduct.';
+        if (nextBtn) nextBtn.disabled = false;
+        return;
+    }
+
+    banner.className = 'balance-banner warning';
+    if (remainder > 0) {
+        banner.textContent = `There is ${remainder.toFixed(2)}${unit} still unaccounted for. Log it as waste or byproduct before completing this batch.`;
+    } else {
+        banner.textContent = `This batch is over-accounted by ${Math.abs(remainder).toFixed(2)}${unit}. Reduce waste/byproduct or outputs before completing.`;
+    }
+    if (nextBtn) nextBtn.disabled = true;
+}
+
+function maybePrefillWasteForm() {
+    const qtyInput = document.getElementById('w-quantity');
+    const unitInput = document.getElementById('w-unit-type');
+    const notesInput = document.getElementById('w-notes');
+    const currentQty = parseFloat(qtyInput.value || 0);
+    const remainder = Number(batchAccounting.unaccountedQty || 0);
+
+    if (currentQty > 0 || Math.abs(remainder) < 0.0001 || remainder < 0) return;
+
+    document.getElementById('w-entry-type').value = 'waste';
+    document.getElementById('w-category').value = 'trim';
+    if (wasteSourceOptions.length === 1 && !document.getElementById('w-source-lot').value) {
+        document.getElementById('w-source-lot').value = wasteSourceOptions[0].inventory_id;
+    }
+    qtyInput.value = remainder.toFixed(2);
+    if (!unitInput.value && batchAccounting.defaultUnitType) {
+        unitInput.value = batchAccounting.defaultUnitType;
+    }
+    if (!notesInput.value) {
+        notesInput.value = 'Suggested remainder from output yield';
+    }
 }
 
 function hideWasteError() {
@@ -358,10 +456,16 @@ async function saveWasteEntry() {
 
 async function completeBatch() {
     if (!confirm('Mark this batch as completed?')) return;
-    await fetch(`/api/processing/batches/${BATCH_ID}/complete/`, {
+    const res = await fetch(`/api/processing/batches/${BATCH_ID}/complete/`, {
         method: 'POST',
         headers: { 'X-CSRFToken': getCookie('csrftoken') },
     });
+    const data = await res.json();
+    if (!res.ok || data.error) {
+        alert(data.error || 'Unable to complete batch.');
+        await loadWasteEntries();
+        return;
+    }
     location.reload();
 }
 
