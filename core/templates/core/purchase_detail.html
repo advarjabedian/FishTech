@@ -147,13 +147,12 @@
             <div><span class="t-val" id="grandTotal" style="color:#dc2626; font-size:0.95rem;">$0.00</span></div>
         </div>
     </div>
-    <!-- Receive status summary (read-only, links to Arrivals page) -->
+    <!-- Receive status summary -->
     <div class="po-card" id="receivingCard">
         <div style="display:flex; justify-content:space-between; align-items:center;">
             <h5 style="margin:0;"><i class="bi bi-box-arrow-in-down me-1"></i>Receiving</h5>
             <div style="display:flex; align-items:center; gap:0.75rem;">
-                <span class="badge-status badge-{{ po.receive_status }}">{{ po.get_receive_status_display }}</span>
-                <a href="{% url 'purchases_page' %}" class="btn-inv-outline" style="padding:4px 12px; font-size:0.78rem;"><i class="bi bi-arrow-right me-1"></i>Open Arrivals</a>
+                <span class="badge-status badge-{{ po.receive_status }}" id="receiveStatusBadge">{{ po.get_receive_status_display }}</span>
             </div>
         </div>
         <table class="items-table" style="margin-top:0.75rem;">
@@ -216,6 +215,9 @@ async function loadPODetail() {
     const res = await fetch(`/api/purchasing/orders/${PO_ID}/detail/`);
     poData = await res.json();
     lineItems = poData.items || [];
+    if (!lineItems.length) {
+        lineItems = [buildEmptyRow('item')];
+    }
 
     // Contact info
     if (poData.vendor_info && poData.vendor_info.name) {
@@ -233,20 +235,80 @@ function renderReceiving(items) {
     const tbody = document.getElementById('receivingTbody');
     if (!tbody) return;
     const poItems = items.filter(i => i.item_type === 'item');
+    if (!poItems.length) {
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-4">Add an item above to see it in receiving.</td></tr>';
+        updateReceiveStatusBadge('not_received');
+        return;
+    }
     tbody.innerHTML = poItems.map(item => {
-        const remaining = item.remaining_qty || 0;
+        const orderedQty = Number(item.ordered_qty ?? item.quantity ?? 0);
+        const receivedQty = Number(item.received_qty ?? item.received_quantity ?? 0);
+        const remaining = Number(item.remaining_qty ?? Math.max(orderedQty - receivedQty, 0));
         const rowColor = remaining <= 0 ? 'background:#f0fdf4;' : '';
         const statusIcon = remaining <= 0
             ? '<span style="color:#16a34a;"><i class="bi bi-check-circle-fill"></i></span>'
             : '';
         return `
         <tr style="${rowColor}">
-            <td>${esc(item.description)} ${statusIcon}</td>
-            <td style="text-align:right;">${item.ordered_qty} ${esc(item.unit_type)}</td>
-            <td style="text-align:right;">${item.received_qty}</td>
+            <td>${esc(item.description || item.product_id || 'Item')} ${statusIcon}</td>
+            <td style="text-align:right;">${orderedQty || 0} ${esc(item.unit_type || '')}</td>
+            <td style="text-align:right;">
+                <input type="number" step="0.01" min="0" value="${receivedQty || 0}" style="max-width:120px; text-align:right;"
+                    onchange="setReceivedQty(${item.row_index}, this.value)">
+            </td>
             <td style="text-align:right; ${remaining > 0 ? 'color:#dc2626; font-weight:600;' : 'color:#16a34a;'}">${remaining}</td>
         </tr>`;
     }).join('');
+    updateReceiveStatusBadge(getReceiveStatusFromItems(poItems));
+}
+
+function receivingItemsFromLineItems() {
+    return lineItems
+        .filter(item => item.item_type === 'item')
+        .map((item, rowIndex) => {
+            const orderedQty = Number(item.quantity || 0);
+            const receivedQty = Number(item.received_qty || 0);
+            const remainingQty = Math.max(orderedQty - receivedQty, 0);
+            return {
+                ...item,
+                row_index: rowIndex,
+                ordered_qty: orderedQty,
+                received_qty: receivedQty,
+                remaining_qty: remainingQty,
+            };
+        })
+        .filter(item => item.description || item.product_id || item.ordered_qty || item.unit_type);
+}
+
+function getReceiveStatusFromItems(items) {
+    const relevantItems = (items || []).filter(item => item.item_type !== 'fee');
+    if (!relevantItems.length) return 'not_received';
+    const anyReceived = relevantItems.some(item => Number(item.received_qty || 0) > 0);
+    if (!anyReceived) return 'not_received';
+    const allReceived = relevantItems.every(item => Number(item.received_qty || 0) >= Number(item.ordered_qty || item.quantity || 0));
+    return allReceived ? 'received' : 'partial';
+}
+
+function updateReceiveStatusBadge(status) {
+    const badge = document.getElementById('receiveStatusBadge');
+    if (!badge) return;
+    const labels = {
+        not_received: 'Not Received',
+        partial: 'Partial',
+        received: 'Received',
+    };
+    badge.className = `badge-status badge-${status}`;
+    badge.textContent = labels[status] || status;
+}
+
+function setReceivedQty(rowIndex, value) {
+    const target = lineItems[rowIndex];
+    if (!target) return;
+    const orderedQty = Number(target.quantity || 0);
+    const receivedQty = Math.max(0, Math.min(Number(value || 0), orderedQty || Number(value || 0)));
+    target.received_qty = receivedQty;
+    target.remaining_qty = Math.max(orderedQty - receivedQty, 0);
+    renderReceiving(receivingItemsFromLineItems());
 }
 
 function renderItems() {
@@ -289,6 +351,7 @@ function renderItems() {
     });
 
     recalc();
+    renderReceiving(receivingItemsFromLineItems());
 }
 
 function getPurchaseItemLabel(product) {
@@ -305,11 +368,24 @@ function onItemSelect(idx, productId) {
     }
 }
 
+function buildEmptyRow(type) {
+    return {
+        id: null,
+        item_type: type,
+        product_id: '',
+        description: type === 'fee' ? 'Fee' : '',
+        notes: '',
+        quantity: null,
+        received_qty: 0,
+        remaining_qty: 0,
+        unit_type: '',
+        unit_price: null,
+        amount: 0,
+    };
+}
+
 function addItemRow(type) {
-    lineItems.push({
-        id: null, item_type: type, product_id: '', description: type === 'fee' ? 'Fee' : '',
-        notes: '', quantity: null, unit_type: '', unit_price: null, amount: 0,
-    });
+    lineItems.push(buildEmptyRow(type));
     renderItems();
 }
 
@@ -333,6 +409,7 @@ function recalc() {
             feeSub += item.amount;
         } else {
             item.amount = (parseFloat(item.quantity) || 0) * (parseFloat(item.unit_price) || 0);
+            item.remaining_qty = Math.max((parseFloat(item.quantity) || 0) - (parseFloat(item.received_qty) || 0), 0);
             itemSub += item.amount;
         }
     });
@@ -356,6 +433,7 @@ async function saveData() {
             order_date: document.getElementById('po-order-date').value || null,
             notes: document.getElementById('po-notes').value,
             order_status: 'open',
+            receive_status: getReceiveStatusFromItems(receivingItemsFromLineItems()),
         }),
     });
 

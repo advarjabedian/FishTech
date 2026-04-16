@@ -30,7 +30,19 @@ def _tenant_page(template_name, extra_context=None):
 purchases_page = _tenant_page("core/arrivals.html")
 receiving_page = _tenant_page("core/arrivals.html")
 inventory_item_library = _tenant_page("core/inventory_item_library.html")
-processing_hub = _tenant_page("core/processing_hub.html")
+@login_required
+def processing_hub(request):
+    if not getattr(request, "tenant", None):
+        return redirect("home")
+    sale_mode = request.GET.get("mode", "").strip() == "sale"
+    return render(
+        request,
+        "core/processing_hub.html",
+        {
+            "sale_mode": sale_mode,
+            "selected_lot_id": request.GET.get("lot_id", "").strip(),
+        },
+    )
 sales_orders_page = _tenant_page("core/sales_orders.html")
 settings_page = _tenant_page("core/settings.html")
 vendor_list_page = _tenant_page("core/vendor_list.html")
@@ -86,12 +98,14 @@ def processing_new(request):
     if not getattr(request, "tenant", None):
         return redirect("home")
     process_type = request.GET.get("type", "").strip()
+    sale_mode = request.GET.get("mode", "").strip() == "sale"
     return render(
         request,
-        "core/processing_new.html",
+        "core/processing_sale_new.html" if sale_mode else "core/processing_new.html",
         {
             "process_type": process_type,
             "process_type_label": PROCESS_LABELS.get(process_type, "Process"),
+            "sale_mode": sale_mode,
         },
     )
 

@@ -84,31 +84,40 @@
     <div class="inv-header">
         <div>
             <h2><i class="bi bi-gear me-2" style="color:#2563eb;"></i>Processing</h2>
-            <div class="sub">Choose a process type to start a new batch, or view recent batches below.</div>
+            <div class="sub">
+                {% if sale_mode %}
+                Choose how you're processing this lot before creating the sale and invoice.
+                {% else %}
+                Choose a process type to start a new batch, or view recent batches below.
+                {% endif %}
+            </div>
         </div>
+        {% if not sale_mode %}
         <div style="display:flex; gap:0.5rem;">
             <a href="/api/processing/batches/export/" class="btn-inv-outline"><i class="bi bi-download me-1"></i>Export</a>
             <button class="btn-inv-outline" onclick="openImportCSV('/api/processing/batches/import/', () => loadBatches(), ['batch_number','process_type','status','notes'])"><i class="bi bi-upload me-1"></i>Import</button>
         </div>
+        {% endif %}
     </div>
 
     <!-- Process type cards -->
     <div class="proc-grid">
-        <a class="proc-card" href="{% url 'processing_new' %}?type=fish_cutting">
+        <a class="proc-card" href="{% url 'processing_new' %}?type=fish_cutting{% if sale_mode %}&mode=sale{% endif %}{% if selected_lot_id %}&lot_id={{ selected_lot_id }}{% endif %}">
             <div class="icon-circle ic-cutting"><i class="bi bi-scissors"></i></div>
             <div class="proc-label">Fish Cutting</div>
         </a>
-        <a class="proc-card" href="{% url 'processing_new' %}?type=commingle">
+        <a class="proc-card" href="{% url 'processing_new' %}?type=commingle{% if sale_mode %}&mode=sale{% endif %}{% if selected_lot_id %}&lot_id={{ selected_lot_id }}{% endif %}">
             <div class="icon-circle ic-commingle"><i class="bi bi-arrow-left-right"></i></div>
             <div class="proc-label">Commingle</div>
         </a>
-        <a class="proc-card" href="{% url 'processing_new' %}?type=renaming">
+        <a class="proc-card" href="{% url 'processing_new' %}?type=renaming{% if sale_mode %}&mode=sale{% endif %}{% if selected_lot_id %}&lot_id={{ selected_lot_id }}{% endif %}">
             <div class="icon-circle ic-renaming"><i class="bi bi-pencil-square"></i></div>
             <div class="proc-label">Renaming</div>
         </a>
     </div>
 
     <!-- Recent batches -->
+    {% if not sale_mode %}
     <div class="inv-table-card">
         <div style="padding: 14px 18px; border-bottom: 1px solid #f1f5f9;">
             <h6 style="margin:0; font-weight:700; font-size:0.95rem;">Recent Batches</h6>
@@ -148,6 +157,7 @@
             <span id="paginationInfo">Showing 0 batches</span>
         </div>
     </div>
+    {% endif %}
 </div>
 
 {% endblock %}

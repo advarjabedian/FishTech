@@ -858,6 +858,7 @@ def purchasing_order_item_add(request, order_id):
         description=(data.get("description") or "").strip(),
         notes=(data.get("notes") or "").strip(),
         quantity=data.get("quantity") or None,
+        received_quantity=data.get("received_qty") or data.get("received_quantity") or 0,
         unit_type=(data.get("unit_type") or "").strip(),
         unit_price=data.get("unit_price") or None,
         amount=amount,

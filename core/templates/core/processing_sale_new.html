@@ -1,0 +1,101 @@
+{% extends 'core/base.html' %}
+{% block title %}{{ process_type_label }} - New Sale{% endblock %}
+
+{% block extra_css %}
+<style>
+.wiz{max-width:960px;margin:0 auto}.steps{display:flex;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.06);margin-bottom:1.5rem}.step{flex:1;padding:14px 10px;text-align:center;font-size:.82rem;font-weight:700;color:#94a3b8;border-bottom:3px solid transparent}.step.active{background:#eff6ff;color:#2563eb;border-bottom-color:#2563eb}.step.done{color:#16a34a;border-bottom-color:#16a34a}.cardx{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:1rem 1.1rem;margin-bottom:1rem}.lot{display:flex;justify-content:space-between;gap:1rem;align-items:center;cursor:pointer}.lot.sel{background:#eff6ff;border-color:#2563eb}.meta{font-size:.78rem;color:#64748b}.grid{display:grid;gap:1rem}.grid.two{grid-template-columns:repeat(2,minmax(0,1fr))}.grid.three{grid-template-columns:repeat(3,minmax(0,1fr))}.grid.five{grid-template-columns:2fr 1fr 1fr 1fr 1fr}.grid input,.grid select,textarea{width:100%;border:1px solid #d1d5db;border-radius:8px;padding:8px 10px}.lbl{display:block;font-size:.78rem;font-weight:700;color:#334155;margin-bottom:4px}.hint{background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:12px 14px;color:#1e40af;font-size:.82rem;margin-bottom:1rem}.actions{display:flex;justify-content:space-between;gap:1rem;padding-top:1rem;border-top:1px solid #e5e7eb}.tot{display:flex;justify-content:flex-end;gap:1rem;font-weight:700;margin-top:1rem}.sum table{width:100%;font-size:.84rem;border-collapse:collapse}.sum th,.sum td{padding:6px 8px;border-bottom:1px solid #e5e7eb}.sum th{text-align:left;color:#64748b;font-size:.73rem;text-transform:uppercase}.empty{color:#94a3b8;text-align:center;padding:1rem}.addbtn{border:1px dashed #cbd5e1;background:#fff;color:#2563eb;border-radius:10px;padding:.85rem 1rem;width:100%;font-weight:700}.rm{border:none;background:none;color:#dc2626;font-weight:700}.rowamt{text-align:right;font-weight:700;padding-top:28px}.pill{display:inline-block;background:#eff6ff;color:#1d4ed8;border-radius:999px;padding:.25rem .75rem;font-size:.78rem;font-weight:700}
+@media (max-width:800px){.grid.two,.grid.three,.grid.five{grid-template-columns:1fr}.steps{display:block}.actions{flex-direction:column-reverse}}
+</style>
+{% endblock %}
+
+{% block content %}
+{% include 'core/includes/sidebar.html' with active='process' %}
+<div class="inv-main">
+  <div class="inv-header">
+    <h2><i class="bi bi-gear me-2" style="color:#2563eb;"></i>{{ process_type_label }}</h2>
+    <div class="sub">Process first, then create the sale and invoice.</div>
+  </div>
+  <div class="wiz">
+    <div class="steps">
+      <div class="step active" id="tab1">1. Source Lots</div>
+      <div class="step" id="tab2">2. Quantities</div>
+      <div class="step" id="tab3">3. Output</div>
+      <div class="step" id="tab4">4. Sale</div>
+      <div class="step" id="tab5">5. Confirm</div>
+    </div>
+
+    <div id="step1">
+      <div class="hint" id="typeHint"></div>
+      <div class="cardx">
+        <div style="display:flex;gap:.75rem;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-bottom:1rem;">
+          <input type="text" class="search-box" id="lotSearch" placeholder="Search lots..." oninput="debounceSearch()">
+          <span class="meta" id="lotCount">0 lots</span>
+        </div>
+        <div id="lotList"><div class="empty">Loading available lots...</div></div>
+      </div>
+    </div>
+
+    <div id="step2" style="display:none;"><div id="qtyList"></div></div>
+    <div id="step3" style="display:none;"><div id="outputList"></div><button class="addbtn" onclick="addOutput()">Add Another Output</button></div>
+    <div id="step4" style="display:none;">
+      <div class="cardx">
+        <div class="grid three">
+          <div><label class="lbl">Customer</label><select id="customerSelect"></select></div>
+          <div><label class="lbl">Order Date</label><input type="date" id="orderDate"></div>
+          <div><label class="lbl">Delivery Date</label><input type="date" id="deliveryDate"></div>
+        </div>
+        <div class="grid two" style="margin-top:1rem;">
+          <div><label class="lbl">Air Bill Number</label><input type="text" id="airBill" placeholder="Optional"></div>
+          <div><label class="lbl">Notes</label><textarea id="saleNotes" rows="2" placeholder="Invoice notes"></textarea></div>
+        </div>
+        <div style="margin-top:1rem;"><span class="pill">Output lines become the invoice lines</span></div>
+        <div id="saleLines" style="margin-top:1rem;"></div>
+        <div class="tot"><span>Total</span><span id="grandTotal">$0.00</span></div>
+      </div>
+    </div>
+    <div id="step5" style="display:none;"><div class="cardx sum" id="summaryBox"></div></div>
+
+    <div class="actions">
+      <button class="btn-inv-outline" id="backBtn" onclick="backStep()" style="display:none;">Back</button>
+      <div></div>
+      <button class="btn-inv-primary" id="nextBtn" onclick="nextStep()" disabled>Next</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const PROCESS_TYPE='{{ process_type }}', PREFILL_LOT_ID=new URLSearchParams(location.search).get('lot_id')||'';
+const HINTS={fish_cutting:'Fish Cutting: choose the source lot, set the input, then define the cut output you are selling.',commingle:'Commingle: combine the selected lots into one sale-ready output.',renaming:'Renaming: re-label the selected lot under the sale product you need.'};
+let step=1,lots=[],products=[],customers=[],selected={},qtys={},outputs=[],searchTimer;
+document.addEventListener('DOMContentLoaded',async()=>{document.getElementById('typeHint').textContent=HINTS[PROCESS_TYPE]||'';document.getElementById('orderDate').value=new Date().toISOString().slice(0,10);await Promise.all([loadLots(),loadProducts(),loadCustomers()]);refreshNav();});
+function debounceSearch(){clearTimeout(searchTimer);searchTimer=setTimeout(loadLots,250)}
+async function loadLots(){const q=document.getElementById('lotSearch').value.trim();let url='/api/processing/source-lots/?';if(q)url+=`search=${encodeURIComponent(q)}&`;const r=await fetch(url),d=await r.json();lots=d.lots||[];if(PREFILL_LOT_ID&&!Object.keys(selected).length){const lot=lots.find(x=>String(x.id)===String(PREFILL_LOT_ID));if(lot){selected[lot.id]=lot;qtys[lot.id]=Number(lot.on_hand||0)}}renderLots();refreshNav()}
+async function loadProducts(){const r=await fetch('/api/processing/products/'),d=await r.json();products=d.products||[]}
+async function loadCustomers(){const r=await fetch('/api/sales/customers/'),d=await r.json();customers=d.customers||[];document.getElementById('customerSelect').innerHTML='<option value="">Choose customer</option>'+customers.map(c=>`<option value="${esc(c.name)}">${esc(c.name)}</option>`).join('')}
+function renderLots(){document.getElementById('lotCount').textContent=`${lots.length} lots`;const wrap=document.getElementById('lotList');if(!lots.length){wrap.innerHTML='<div class="empty">No lots with available inventory found.</div>';return}wrap.innerHTML=lots.map(l=>`<div class="cardx lot ${selected[l.id]?'sel':''}" onclick="toggleLot(${l.id})"><div><div><strong>${esc(l.item_name||l.product||'Unknown Product')}</strong></div><div class="meta">${esc(l.lot_id||l.trace_lot||'')} · ${esc(l.vendor||'--')} ${l.receive_date?'· '+esc(l.receive_date):''}</div></div><div style="text-align:right;"><div style="font-weight:700;color:#2563eb;">${fmt(l.on_hand)}</div><div class="meta">${esc(l.unit_type||'')}</div></div></div>`).join('')}
+function toggleLot(id){if(selected[id]){delete selected[id];delete qtys[id]}else{const lot=lots.find(x=>x.id===id);if(lot){selected[id]=lot;qtys[id]=Number(lot.on_hand||0)}}renderLots();refreshNav()}
+function ids(){return Object.keys(selected)} function totalIn(){return ids().reduce((s,id)=>s+Number(qtys[id]||0),0)} function sourceUnit(){const id=ids()[0];return id?(selected[id].unit_type||''):''}
+function refreshNav(){document.getElementById('backBtn').style.display=step===1?'none':'';const btn=document.getElementById('nextBtn');btn.disabled=(step===1&&!ids().length)||(step===4&&!document.getElementById('customerSelect').value);btn.textContent=step===5?'Process + Create Invoice':'Next'}
+function showStep(n){step=n;for(let i=1;i<=5;i++){document.getElementById('step'+i).style.display=i===n?'':'none';const tab=document.getElementById('tab'+i);tab.className='step'+(i===n?' active':i<n?' done':'')}refreshNav()}
+function nextStep(){if(step===1){showStep(2);renderQtys();return}if(step===2){if(!validateQtys())return;showStep(3);initOutputs();return}if(step===3){if(!validateOutputs())return;showStep(4);renderSaleLines();return}if(step===4){if(!document.getElementById('customerSelect').value){alert('Choose a customer.');return}showStep(5);renderSummary();return}submitAll()}
+function backStep(){if(step>1)showStep(step-1)}
+function validateQtys(){for(const id of ids()){const lot=selected[id],q=Number(qtys[id]||0);if(q<=0){alert('Enter a quantity for each selected lot.');return false}if(q>Number(lot.on_hand||0)){alert(`Quantity for ${lot.item_name||lot.product||'lot'} is greater than on hand.`);return false}}return true}
+function renderQtys(){document.getElementById('qtyList').innerHTML=ids().map(id=>{const lot=selected[id];return`<div class="cardx"><div style="font-weight:700;margin-bottom:.35rem;">${esc(lot.item_name||lot.product||'')}</div><div class="meta" style="margin-bottom:.75rem;">${esc(lot.lot_id||'')} · On hand: ${fmt(lot.on_hand)} ${esc(lot.unit_type||'')}</div><div class="grid three"><div><label class="lbl">Quantity In</label><input type="number" step="0.01" min="0" max="${Number(lot.on_hand||0)}" value="${qtys[id]||''}" oninput="qtys[${id}]=parseFloat(this.value)||0"></div><div><label class="lbl">Unit</label><input value="${esc(lot.unit_type||'')}" disabled></div><div class="rowamt"><button class="btn-inv-outline" onclick="qtys[${id}]=${Number(lot.on_hand||0)};renderQtys()">Use All</button></div></div></div>`}).join('')}
+function initOutputs(){if(outputs.length){renderOutputs();return}const first=selected[ids()[0]],total=totalIn(),unit=sourceUnit();if(PROCESS_TYPE==='fish_cutting'){outputs=[{product_id:'',product_name:'',quantity:Math.round(total*65)/100,unit_type:unit,yield_percent:65,unit_price:''}]}else{outputs=[{product_id:first?(first.product_id||''):'',product_name:first?(first.item_name||first.product||''):'',quantity:total,unit_type:unit,yield_percent:100,unit_price:''}]}renderOutputs()}
+function productOptions(selectedId){return '<option value="">Choose product</option>'+products.map(p=>{const name=p.display_name||p.description||p.item_name||p.product_id||'';return`<option value="${esc(p.product_id)}" ${p.product_id===(selectedId||'')?'selected':''}>${esc(name)}</option>`}).join('')}
+function setOutProduct(i,val){outputs[i].product_id=val;const p=products.find(x=>x.product_id===val);outputs[i].product_name=p?(p.display_name||p.description||p.item_name||p.product_id):''}
+function setYield(i,val){outputs[i].yield_percent=val;outputs[i].quantity=Math.round(totalIn()*Number(val||0))/100;renderOutputs()}
+function addOutput(){outputs.push({product_id:'',product_name:'',quantity:0,unit_type:sourceUnit(),yield_percent:'',unit_price:''});renderOutputs()}
+function removeOutput(i){outputs.splice(i,1);renderOutputs()}
+function renderOutputs(){document.getElementById('outputList').innerHTML=outputs.map((o,i)=>`<div class="cardx"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem;"><strong>Output ${i+1}</strong>${outputs.length>1?`<button class="rm" onclick="removeOutput(${i})">Remove</button>`:''}</div>${PROCESS_TYPE!=='commingle'?`<div class="grid two"><div><label class="lbl">Output Product</label><select onchange="setOutProduct(${i},this.value)">${productOptions(o.product_id)}</select></div><div></div></div>`:''}<div class="grid three" style="margin-top:1rem;"><div><label class="lbl">Output Quantity</label><input type="number" step="0.01" min="0" value="${o.quantity||''}" oninput="outputs[${i}].quantity=parseFloat(this.value)||0"></div><div><label class="lbl">Unit</label><input value="${esc(o.unit_type||'')}" oninput="outputs[${i}].unit_type=this.value"></div>${PROCESS_TYPE==='fish_cutting'?`<div><label class="lbl">Yield %</label><input type="number" step="0.1" min="0" max="100" value="${o.yield_percent||''}" oninput="setYield(${i},this.value)"></div>`:'<div></div>'}</div></div>`).join('')}
+function validateOutputs(){if(!outputs.length){alert('Add at least one output line.');return false}for(let i=0;i<outputs.length;i++){const o=outputs[i];if(Number(o.quantity||0)<=0){alert(`Enter a valid quantity for output ${i+1}.`);return false}if(!o.unit_type){alert(`Choose a unit for output ${i+1}.`);return false}if(PROCESS_TYPE!=='commingle'&&!o.product_id){alert(`Choose a product for output ${i+1}.`);return false}}return true}
+function fallbackName(o,i){const first=selected[ids()[0]];return o.product_name||o.product_id||(first?(first.item_name||first.product||`Output ${i+1}`):`Output ${i+1}`)}
+function renderSaleLines(){const wrap=document.getElementById('saleLines');wrap.innerHTML=`<div class="grid five">${outputs.map((o,i)=>`<div><label class="lbl">Product</label><input value="${esc(fallbackName(o,i))}" disabled></div><div><label class="lbl">Qty</label><input value="${fmt(o.quantity)}" disabled></div><div><label class="lbl">Unit</label><input value="${esc(o.unit_type||'')}" disabled></div><div><label class="lbl">Unit Price</label><input type="number" step="0.01" min="0" value="${o.unit_price||''}" oninput="outputs[${i}].unit_price=parseFloat(this.value)||0;updateTotal()"></div><div class="rowamt" id="amt${i}">$0.00</div>`).join('')}</div>`;updateTotal();refreshNav()}
+function updateTotal(){let total=0;outputs.forEach((o,i)=>{const amt=Number(o.quantity||0)*Number(o.unit_price||0);total+=amt;const el=document.getElementById('amt'+i);if(el)el.textContent='$'+amt.toFixed(2)});document.getElementById('grandTotal').textContent='$'+total.toFixed(2)}
+document.addEventListener('change',e=>{if(e.target&&e.target.id==='customerSelect')refreshNav()})
+function renderSummary(){const customer=document.getElementById('customerSelect').value,od=document.getElementById('orderDate').value||'--',dd=document.getElementById('deliveryDate').value||'--',ab=document.getElementById('airBill').value.trim()||'--';let total=0;let html=`<div style="margin-bottom:1rem;"><strong>Customer:</strong> ${esc(customer)}<br><strong>Order Date:</strong> ${esc(od)}<br><strong>Delivery Date:</strong> ${esc(dd)}<br><strong>Air Bill Number:</strong> ${esc(ab)}</div><table><tr><th>Source Lot</th><th>Product</th><th style="text-align:right;">Qty In</th></tr>`;ids().forEach(id=>{const lot=selected[id];html+=`<tr><td>${esc(lot.lot_id||'')}</td><td>${esc(lot.item_name||lot.product||'')}</td><td style="text-align:right;">${fmt(qtys[id])} ${esc(lot.unit_type||'')}</td></tr>`});html+=`</table><div style="height:1rem;"></div><table><tr><th>Output / Invoice Line</th><th style="text-align:right;">Qty</th><th style="text-align:right;">Price</th><th style="text-align:right;">Amount</th></tr>`;outputs.forEach((o,i)=>{const amt=Number(o.quantity||0)*Number(o.unit_price||0);total+=amt;html+=`<tr><td>${esc(fallbackName(o,i))}</td><td style="text-align:right;">${fmt(o.quantity)} ${esc(o.unit_type||'')}</td><td style="text-align:right;">$${Number(o.unit_price||0).toFixed(2)}</td><td style="text-align:right;">$${amt.toFixed(2)}</td></tr>`});html+=`</table><div class="tot"><span>Total</span><span>$${total.toFixed(2)}</span></div>`;document.getElementById('summaryBox').innerHTML=html}
+async function submitAll(){const btn=document.getElementById('nextBtn');btn.disabled=true;btn.textContent='Creating...';const sources=ids().map(id=>({inventory_id:Number(id),quantity:Number(qtys[id]||0),unit_type:selected[id].unit_type||'',product_id:selected[id].product_id||''}));const batchOutputs=outputs.map((o,i)=>({product_id:o.product_id||'',description:fallbackName(o,i),quantity:Number(o.quantity||0),unit_type:o.unit_type||'',yield_percent:o.yield_percent||null,lot_id:'',origin:''}));try{const batchRes=await fetch('/api/processing/batches/create/',{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken')},body:JSON.stringify({process_type:PROCESS_TYPE,sources,outputs:batchOutputs,notes:document.getElementById('saleNotes').value.trim()})});const batchData=await batchRes.json();if(!batchRes.ok||batchData.error)throw new Error(batchData.error||'Unable to create the process batch.');const orderRes=await fetch('/api/sales/orders/create/',{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken')},body:JSON.stringify({customer_name:document.getElementById('customerSelect').value})});const orderData=await orderRes.json();if(!orderRes.ok||orderData.error)throw new Error(orderData.error||'Unable to create the sale.');const orderId=orderData.id;await fetch(`/api/sales/orders/${orderId}/update/`,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken')},body:JSON.stringify({order_status:'open',order_date:document.getElementById('orderDate').value||null,delivery_date:document.getElementById('deliveryDate').value||null,air_bill_number:document.getElementById('airBill').value.trim(),notes:document.getElementById('saleNotes').value.trim()})});for(let i=0;i<outputs.length;i++){const o=outputs[i];const itemRes=await fetch(`/api/sales/orders/${orderId}/items/add/`,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken')},body:JSON.stringify({item_type:'item',product_id:o.product_id||'',description:fallbackName(o,i),notes:'',quantity:Number(o.quantity||0),unit_type:o.unit_type||'',unit_price:Number(o.unit_price||0)})});const itemData=await itemRes.json();if(!itemRes.ok||itemData.error)throw new Error(itemData.error||'Unable to add an invoice line.')}await fetch(`/api/sales/orders/${orderId}/allocate-fifo/`,{method:'POST',headers:{'X-CSRFToken':getCookie('csrftoken')}});location.href=`/sales/${orderId}/`}catch(err){alert(err.message||'Unable to process and create the invoice.');btn.disabled=false;btn.textContent='Process + Create Invoice'}}
+</script>
+{% endblock %}

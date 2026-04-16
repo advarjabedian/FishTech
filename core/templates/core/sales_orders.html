@@ -41,22 +41,7 @@
     font-weight: 600;
     color: #2563eb;
 }
-.sales-muted {
-    font-size: 0.78rem;
-    color: #94a3b8;
-}
-.lot-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
-    padding: 0.32rem 0.7rem;
-    border-radius: 999px;
-    background: #eff6ff;
-    color: #1d4ed8;
-    font-size: 0.76rem;
-    font-weight: 700;
-}
-.sell-btn {
+.sales-action-btn {
     border: 1px solid #bfdbfe;
     background: #eff6ff;
     color: #2563eb;
@@ -65,24 +50,11 @@
     font-size: 0.78rem;
     font-weight: 700;
     cursor: pointer;
+    white-space: nowrap;
 }
-.sell-btn:hover {
+.sales-action-btn:hover {
     background: #dbeafe;
 }
-.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.3); z-index: 1060; display: none; }
-.modal-overlay.open { display: flex; align-items: center; justify-content: center; }
-.modal-box { background: #fff; border-radius: 16px; width: 420px; max-width: 95vw; box-shadow: 0 8px 32px rgba(0,0,0,0.15); overflow: hidden; }
-.modal-box-header { text-align: center; padding: 2rem 1.5rem 1rem; }
-.modal-box-header .icon { width: 56px; height: 56px; border-radius: 50%; background: #ecfdf5; display: inline-flex; align-items: center; justify-content: center; font-size: 1.4rem; color: #10b981; margin-bottom: 0.75rem; }
-.modal-box-header h5 { font-weight: 700; margin: 0; }
-.modal-box-body { padding: 0 1.5rem 1.5rem; }
-.modal-box-footer { padding: 1rem 1.5rem; display: flex; gap: 0.75rem; }
-.modal-box-footer .btn-go { flex: 1; background: #10b981; color: #fff; border: none; border-radius: 8px; padding: 10px; font-size: 0.9rem; font-weight: 600; cursor: pointer; }
-.modal-box-footer .btn-go:hover { background: #059669; }
-.modal-box-footer .btn-cancel { flex: 1; background: #fff; color: #374151; border: 1px solid #d1d5db; border-radius: 8px; padding: 10px; font-size: 0.9rem; font-weight: 600; cursor: pointer; }
-.fg { margin-bottom: 1rem; }
-.fg label { font-weight: 600; font-size: 0.85rem; color: #1e293b; display: block; margin-bottom: 6px; }
-.fg select { width: 100%; border: 1px solid #d1d5db; border-radius: 8px; padding: 9px 12px; font-size: 0.9rem; }
 </style>
 {% endblock %}
 
@@ -94,11 +66,11 @@
     <div class="inv-header">
         <div>
             <h2><i class="bi bi-receipt me-2" style="color:#2563eb;"></i>Sales</h2>
-            <span class="sub" id="totalCount">0 received lots ready to sell</span>
+            <span class="sub" id="totalCount">0 received lots ready to process and sell</span>
         </div>
         <div style="display:flex; gap:0.5rem;">
             <a href="{% url 'customer_list_page' %}" class="btn-inv-outline"><i class="bi bi-people me-1"></i>Customers</a>
-            <button class="btn-inv-primary" onclick="openNewSO()"><i class="bi bi-plus me-1"></i>New Sale</button>
+            <button class="btn-inv-primary" onclick="startNewSale()"><i class="bi bi-plus me-1"></i>New Sale</button>
         </div>
     </div>
 
@@ -115,46 +87,22 @@
                 <thead>
                     <tr>
                         <th>Product</th>
-                        <th>Vendor</th>
                         <th>Lot</th>
                         <th>Received</th>
                         <th style="text-align:right;">On Hand</th>
                         <th>Unit</th>
                         <th style="text-align:right;">Cost</th>
-                        <th style="width:110px;"></th>
+                        <th style="width:120px; text-align:right;">Action</th>
                     </tr>
                 </thead>
                 <tbody id="salesTbody">
-                    <tr><td colspan="8" class="text-center text-muted py-4">Loading...</td></tr>
+                    <tr><td colspan="7" class="text-center text-muted py-4">Loading...</td></tr>
                 </tbody>
             </table>
         </div>
         <div class="inv-pagination">
             <span id="paginationInfo">Showing 0 items</span>
             <div class="page-btns" id="paginationBtns"></div>
-        </div>
-    </div>
-</div>
-
-<div class="modal-overlay" id="newSOOverlay" onclick="closeNewSO()">
-    <div class="modal-box" onclick="event.stopPropagation()">
-        <div class="modal-box-header">
-            <div class="icon"><i class="bi bi-clipboard-plus"></i></div>
-            <h5>Create New Sale</h5>
-        </div>
-        <div class="modal-box-body">
-            <div class="fg" id="selectedLotWrap" style="display:none;">
-                <label>Selected Lot</label>
-                <div id="selectedLotLabel" class="lot-pill"></div>
-            </div>
-            <div class="fg">
-                <label>Customer Name</label>
-                <select id="new-customer"><option value="">Choose Customer Name</option></select>
-            </div>
-        </div>
-        <div class="modal-box-footer">
-            <button class="btn-go" onclick="createSO()">Next</button>
-            <button class="btn-cancel" onclick="closeNewSO()">Cancel</button>
         </div>
     </div>
 </div>
@@ -168,10 +116,8 @@ let totalItems = 0;
 const PAGE_SIZE = 100;
 let searchTimeout;
 let lots = [];
-let selectedLot = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
-    await loadCustomers();
     await loadLots();
 });
 
@@ -202,21 +148,12 @@ async function loadLots() {
     renderTable();
 }
 
-async function loadCustomers() {
-    const res = await fetch('/api/sales/customers/');
-    const data = await res.json();
-    const customers = data.customers || [];
-    document.getElementById('new-customer').innerHTML =
-        '<option value="">Choose Customer Name</option>' +
-        customers.map(c => `<option value="${esc(c.name)}">${esc(c.name)}</option>`).join('');
-}
-
 function renderTable() {
     const tbody = document.getElementById('salesTbody');
-    document.getElementById('totalCount').textContent = `${totalItems} received lots ready to sell`;
+    document.getElementById('totalCount').textContent = `${totalItems} received lots ready to process and sell`;
 
     if (!lots.length) {
-        tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">No received lots found.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">No received lots found.</td></tr>';
         document.getElementById('paginationInfo').textContent = '0 items';
         document.getElementById('paginationBtns').innerHTML = '';
         return;
@@ -224,17 +161,13 @@ function renderTable() {
 
     tbody.innerHTML = lots.map(lot => `
         <tr>
-            <td>
-                <div class="sales-product">${esc(lot.product_name || '')}</div>
-                <div class="sales-muted">${esc(lot.purchase_order || '')}</div>
-            </td>
-            <td>${esc(lot.vendor || '')}</td>
+            <td><div class="sales-product">${esc(lot.product_name || '')}</div></td>
             <td><span class="sales-lot">${esc(lot.trace_lot)}</span></td>
             <td>${esc(lot.receive_date || '')}</td>
             <td style="text-align:right; font-weight:700;">${Number(lot.on_hand || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</td>
             <td>${esc(lot.unit_type || '')}</td>
             <td style="text-align:right;">$${Number(lot.cost || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-            <td><button class="sell-btn" onclick="openNewSO(${lot.id})">Sell</button></td>
+            <td style="text-align:right;"><button class="sales-action-btn" onclick="startNewSale(${lot.id})">New Sale</button></td>
         </tr>
     `).join('');
 
@@ -256,41 +189,10 @@ function goPage(page) {
     loadLots();
 }
 
-function openNewSO(lotId = null) {
-    selectedLot = lotId ? lots.find(lot => lot.id === lotId) || null : null;
-    const wrap = document.getElementById('selectedLotWrap');
-    const label = document.getElementById('selectedLotLabel');
-    if (selectedLot) {
-        wrap.style.display = '';
-        label.textContent = `${selectedLot.trace_lot} • ${selectedLot.product_name || 'Item'}`;
-    } else {
-        wrap.style.display = 'none';
-        label.textContent = '';
-    }
-    document.getElementById('newSOOverlay').classList.add('open');
-}
-
-function closeNewSO() {
-    document.getElementById('newSOOverlay').classList.remove('open');
-}
-
-async function createSO() {
-    const customer = document.getElementById('new-customer').value;
-    if (!customer) {
-        alert('Please select a customer.');
-        return;
-    }
-    const res = await fetch('/api/sales/orders/create/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
-        body: JSON.stringify({ customer_name: customer }),
-    });
-    const data = await res.json();
-    if (data.error) {
-        alert(data.error);
-        return;
-    }
-    const target = selectedLot ? `/sales/${data.id}/?lot_id=${selectedLot.id}` : `/sales/${data.id}/`;
+function startNewSale(lotId = null) {
+    const target = lotId
+        ? `/operations/processing/?mode=sale&lot_id=${lotId}`
+        : '/operations/processing/?mode=sale';
     window.location.href = target;
 }
 </script>

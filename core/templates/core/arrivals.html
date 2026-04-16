@@ -252,7 +252,7 @@
                     <option value="">Choose a vendor</option>
                 </select>
                 <input id="new-vendor-name" class="coming-input" type="text" placeholder="Enter new vendor name" style="display:none; margin-top:0.75rem;">
-                <div class="helper-copy">This creates the purchase and keeps you here on Arrivals.</div>
+                <div class="helper-copy">This creates the purchase and opens it so you can add items.</div>
             </div>
         </div>
         <div class="modal-footer">
@@ -320,9 +320,34 @@ let currentReceivePO = null;
 const PAGE_SIZE = 100;
 
 document.addEventListener('DOMContentLoaded', async () => {
-    await loadVendors();
-    await loadOrders();
+    setOrdersMessage('Loading...');
+    try {
+        await loadVendors();
+        await loadOrders();
+    } catch (error) {
+        console.error('Arrivals failed to load', error);
+        setOrdersMessage('Unable to load purchases.');
+    }
 });
+
+function safeEsc(value) {
+    if (typeof esc === 'function') {
+        return esc(value);
+    }
+    const text = value == null ? '' : String(value);
+    return text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function setOrdersMessage(message) {
+    const tbody = document.getElementById('comingTbody');
+    if (!tbody) return;
+    tbody.innerHTML = `<tr><td colspan="10"><div class="coming-empty">${safeEsc(message)}</div></td></tr>`;
+}
 
 function currentDateString() {
     return new Date().toISOString().split('T')[0];
@@ -351,9 +376,12 @@ function debounceSearch() {
 
 async function loadVendors() {
     const res = await fetch('/api/receiving/vendors/');
+    if (!res.ok) {
+        throw new Error('Unable to load vendors.');
+    }
     const data = await res.json();
     const vendors = data.vendors || [];
-    const options = vendors.map(v => `<option value="${esc(v.name)}">${esc(v.name)}</option>`).join('');
+    const options = vendors.map(v => `<option value="${safeEsc(v.name)}">${safeEsc(v.name)}</option>`).join('');
     document.getElementById('vendorFilter').innerHTML = '<option value="">All vendors</option>' + options;
     document.getElementById('new-vendor-select').innerHTML =
         '<option value="">Choose a vendor</option>' +
@@ -362,23 +390,36 @@ async function loadVendors() {
 }
 
 async function loadOrders() {
-    const params = new URLSearchParams({
-        page: currentPage,
-        page_size: PAGE_SIZE,
-    });
-    const search = document.getElementById('searchBox').value.trim();
-    const vendor = document.getElementById('vendorFilter').value;
-    const receiveStatus = document.getElementById('receiveStatusFilter').value;
+    try {
+        const params = new URLSearchParams({
+            page: currentPage,
+            page_size: PAGE_SIZE,
+        });
+        const search = document.getElementById('searchBox').value.trim();
+        const vendor = document.getElementById('vendorFilter').value;
+        const receiveStatus = document.getElementById('receiveStatusFilter').value;
 
-    if (search) params.set('search', search);
-    if (vendor) params.set('vendor', vendor);
-    if (receiveStatus) params.set('receive_status', receiveStatus);
+        if (search) params.set('search', search);
+        if (vendor) params.set('vendor', vendor);
+        if (receiveStatus) params.set('receive_status', receiveStatus);
 
-    const res = await fetch(`/api/purchasing/orders/?${params.toString()}`);
-    const data = await res.json();
-    allOrders = data.orders || [];
-    totalItems = data.total || 0;
-    renderTable();
+        const res = await fetch(`/api/purchasing/orders/?${params.toString()}`);
+        if (!res.ok) {
+            throw new Error(`Unable to load purchases (${res.status}).`);
+        }
+        const data = await res.json();
+        allOrders = data.orders || [];
+        totalItems = data.total || 0;
+        renderTable();
+    } catch (error) {
+        console.error('loadOrders failed', error);
+        allOrders = [];
+        totalItems = 0;
+        document.getElementById('totalCount').textContent = '0 purchases expected and received';
+        document.getElementById('paginationInfo').textContent = '0 items';
+        document.getElementById('paginationBtns').innerHTML = '';
+        setOrdersMessage('Unable to load purchases.');
+    }
 }
 
 function renderTable() {
@@ -397,24 +438,24 @@ function renderTable() {
         const canReceive = po.order_status !== 'cancelled' && po.receive_status !== 'received';
         return `
         <tr onclick="window.location='/operations/purchases/${po.id}/'">
-            <td style="font-weight:700; color:#2563eb;">${esc(po.po_number)}</td>
+            <td style="font-weight:700; color:#2563eb;">${safeEsc(po.po_number)}</td>
             <td onclick="event.stopPropagation();">
                 <select class="inline-status-select badge-${po.receive_status}" onchange="updatePOReceiveStatus(${po.id}, this.value, this)">
                     ${receiveStatusOpts.map(([value, label]) => `<option value="${value}" ${po.receive_status === value ? 'selected' : ''}>${label}</option>`).join('')}
                 </select>
             </td>
-            <td>${esc(po.vendor_name || '--')}</td>
+            <td>${safeEsc(po.vendor_name || '--')}</td>
             <td style="text-align:right;">$${Number(po.total || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
             <td style="text-align:right;">${po.expected ? Number(po.expected).toLocaleString(undefined, { maximumFractionDigits: 2 }) : '--'}</td>
             <td style="text-align:right;">${po.arrived ? Number(po.arrived).toLocaleString(undefined, { maximumFractionDigits: 2 }) : '0'}</td>
-            <td>${esc(po.unit_type || '--')}</td>
-            <td>${esc(po.order_date || '--')}</td>
-            <td class="coming-product" title="${esc(po.products || '')}">${esc(po.products || '--')}</td>
+            <td>${safeEsc(po.unit_type || '--')}</td>
+            <td>${safeEsc(po.order_date || '--')}</td>
+            <td class="coming-product" title="${safeEsc(po.products || '')}">${safeEsc(po.products || '--')}</td>
             <td onclick="event.stopPropagation();">
                 <div class="coming-actions">
                     ${canReceive ? `<button class="btn-inv-outline" onclick="openReceiveModalForPO(${po.id})">Receive Part</button>` : ''}
                     ${canReceive ? `<button class="btn-inv-primary" onclick="receiveAll(${po.id})">Receive All</button>` : ''}
-                    <button class="del-btn" title="Delete" onclick="deleteRecord('/api/purchasing/orders/${po.id}/delete/', 'Delete PO ${esc(po.po_number)}? This cannot be undone.', () => loadOrders())"><i class="bi bi-trash"></i></button>
+                    <button class="del-btn" title="Delete" onclick="deleteRecord('/api/purchasing/orders/${po.id}/delete/', 'Delete PO ${safeEsc(po.po_number)}? This cannot be undone.', () => loadOrders())"><i class="bi bi-trash"></i></button>
                 </div>
             </td>
         </tr>`;
@@ -522,7 +563,7 @@ async function createPO() {
         return;
     }
     closeNewPO();
-    await loadOrders();
+    window.location.href = `/operations/purchases/${data.id}/`;
 }
 
 async function ensureOpenPOs() {
@@ -561,7 +602,7 @@ async function openReceiveModalForPO(poId) {
     const select = document.getElementById('receiveItem');
     select.innerHTML = currentReceivePO.items.map(item => `
         <option value="${item.id}">
-            ${esc(item.description || item.product_id || 'Item')} | remaining ${Number(item.remaining_qty || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })} ${esc(item.unit_type || '')}
+            ${safeEsc(item.description || item.product_id || 'Item')} | remaining ${Number(item.remaining_qty || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })} ${safeEsc(item.unit_type || '')}
         </option>
     `).join('');
     syncReceiveItemSelection();

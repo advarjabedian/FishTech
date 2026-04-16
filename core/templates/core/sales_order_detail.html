@@ -225,6 +225,16 @@
 
 .btn-publish { background: #0ea5e9; color: #fff; border: none; border-radius: 8px; padding: 8px 20px; font-size: 0.85rem; font-weight: 600; cursor: pointer; }
 .btn-publish:hover { background: #0284c7; }
+.process-callout {
+    max-width: 1100px;
+    margin-bottom: 1.25rem;
+    padding: 0.95rem 1.1rem;
+    border-radius: 12px;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    color: #1e40af;
+    font-size: 0.84rem;
+}
 </style>
 {% endblock %}
 
@@ -267,7 +277,6 @@
         </div>
         <div style="display:flex; gap:0.5rem;">
             <button class="btn-inv-outline" onclick="withSpinner(this, () => saveDraft())">Save Changes</button>
-            <button class="btn-publish" onclick="withSpinner(this, () => publishSO())">Create Invoice</button>
         </div>
     </div>
 
@@ -296,15 +305,12 @@
                 <div class="so-card">
                     <h5>Sales Order Info</h5>
                     <div class="info-grid">
-                        <div class="info-item"><label>Sales Rep</label><input type="text" id="so-sales-rep" value="{{ so.sales_rep }}"></div>
-                        <div class="info-item"><label>P.O. Number</label><input type="text" id="so-po" value="{{ so.po_number }}"></div>
                         <div class="info-item"><label>Air Bill Number</label><input type="text" id="so-airbill" value="{{ so.air_bill_number }}"></div>
                     </div>
                     <div class="info-grid" style="margin-top:1rem;">
                         <div class="info-item"><label>Order Date</label><input type="date" id="so-order-date" value="{{ so.order_date|date:'Y-m-d' }}"></div>
                         <div class="info-item"><label>Delivery Date</label><input type="date" id="so-delivery-date" value="{{ so.delivery_date|date:'Y-m-d' }}"></div>
                         <div class="info-item"><label>Order Weight (Lbs)</label><input type="number" step="0.01" id="so-weight" value="{{ so.order_weight }}"></div>
-                        <div class="info-item"><label>QB Invoice #</label><input type="text" id="so-qb" value="{{ so.qb_invoice_number }}"></div>
                     </div>
                 </div>
 
@@ -481,6 +487,22 @@ function prefillFromSelectedLot() {
         process_batch_id: null,
     });
     renderItems();
+}
+
+function validateProcessBeforeInvoice() {
+    const saleItems = lineItems.filter(item => item.item_type === 'item');
+    if (!saleItems.length) {
+        return 'Add an item before creating the invoice.';
+    }
+    const missingProcess = saleItems.find(item => !(item.process_type || '').trim());
+    if (missingProcess) {
+        return 'Choose a process for each sale item before creating the invoice.';
+    }
+    const missingLots = saleItems.find(item => !Array.isArray(item.process_source_lot_ids) || !item.process_source_lot_ids.length);
+    if (missingLots) {
+        return 'Choose the source lot for each sale item before creating the invoice.';
+    }
+    return '';
 }
 
 function renderItems() {
@@ -744,13 +766,10 @@ async function saveSalesOrder(orderStatus) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
         body: JSON.stringify({
-            sales_rep: document.getElementById('so-sales-rep').value,
-            po_number: document.getElementById('so-po').value,
             air_bill_number: document.getElementById('so-airbill').value,
             order_date: document.getElementById('so-order-date').value || null,
             delivery_date: document.getElementById('so-delivery-date').value || null,
             order_weight: document.getElementById('so-weight').value || null,
-            qb_invoice_number: document.getElementById('so-qb').value,
             notes: document.getElementById('so-notes').value,
             order_status: orderStatus || document.getElementById('so-order-status').value || 'draft',
         }),
@@ -787,6 +806,11 @@ async function saveDraft() {
 
 async function publishSO() {
     try {
+        const validationError = validateProcessBeforeInvoice();
+        if (validationError) {
+            alert(validationError);
+            return;
+        }
         await saveSalesOrder(document.getElementById('so-order-status').value || 'open');
         refreshHeaderStatusBadge();
         alert('Invoice created.');

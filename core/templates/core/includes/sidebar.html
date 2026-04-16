@@ -14,6 +14,9 @@ Active values: dashboard, purchase, receive, inventory, sales, settings
     <a href="{% url 'inventory_item_library' %}" title="Products" class="{% if active == 'inventory' %}active{% endif %}">
         <i class="bi bi-box-seam"></i><span>Products</span>
     </a>
+    <a href="{% url 'processing_hub' %}" title="Process" class="{% if active == 'process' %}active{% endif %}">
+        <i class="bi bi-scissors"></i><span>Process</span>
+    </a>
     <a href="{% url 'sales_orders_page' %}" title="Sales" class="{% if active == 'sales' %}active{% endif %}">
         <i class="bi bi-receipt"></i><span>Sales</span>
     </a>
