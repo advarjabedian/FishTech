@@ -249,6 +249,8 @@ let quantities = {};     // inv.id -> number
 let outputItems = [];    // [{product_id, product_name, quantity, unit_type, yield_percent, lot_id}]
 let allProducts = [];
 let searchTimeout;
+const PAGE_PARAMS = new URLSearchParams(window.location.search);
+const PREFILL_PRODUCT_ID = PAGE_PARAMS.get('product_id') || '';
 const UNIT_OPTIONS = ['', 'Pcs', 'Lbs', 'Cs', 'Ea', 'Bag', 'Box', 'Tray', 'Doz'];
 
 const TYPE_HINTS = {
@@ -262,6 +264,9 @@ const TYPE_HINTS = {
 };
 
 document.addEventListener('DOMContentLoaded', () => {
+    if (PREFILL_PRODUCT_ID) {
+        document.getElementById('lotSearch').value = PREFILL_PRODUCT_ID;
+    }
     loadLots();
     loadProducts();
 });
@@ -480,8 +485,9 @@ function initOutputStep() {
         if (['commingle', 'freeze', 'wet_store', 'renaming'].includes(PROCESS_TYPE)) {
             // Same product, same quantity (1:1 processes)
             const firstLot = selectedLots[Object.keys(selectedLots)[0]];
+            const defaultProductId = PREFILL_PRODUCT_ID || (firstLot ? firstLot.product_id : '');
             outputItems.push({
-                product_id: firstLot ? firstLot.product_id : '',
+                product_id: defaultProductId,
                 product_name: firstLot ? lotDisplayName(firstLot) : '',
                 quantity: totalQty,
                 unit_type: unitType,
@@ -492,7 +498,7 @@ function initOutputStep() {
             // fish_cutting, shucking, lot_breaking — user needs to configure
             const defaultYield = PROCESS_TYPE === 'shucking' ? 15 : (PROCESS_TYPE === 'fish_cutting' ? 65 : 100);
             outputItems.push({
-                product_id: '',
+                product_id: PREFILL_PRODUCT_ID,
                 product_name: '',
                 quantity: deriveOutputQuantity(totalQty, defaultYield),
                 unit_type: unitType,

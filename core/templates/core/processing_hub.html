@@ -6,7 +6,7 @@
 /* ── Process type grid ─────────────────────────────────────────── */
 .proc-grid {
     display: grid;
-    grid-template-columns: repeat(7, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 1rem;
     align-items: stretch;
 }
@@ -49,10 +49,6 @@
 .ic-cutting   { background: #3b82f6; }
 .ic-commingle { background: #22d3ee; }
 .ic-renaming  { background: #a78bfa; }
-.ic-freeze    { background: #38bdf8; }
-.ic-breaking  { background: #f59e0b; }
-.ic-shucking  { background: #34d399; }
-.ic-wetstore  { background: #60a5fa; }
 
 /* ── Recent batches table top margin ──────────────────────────── */
 .inv-table-card { margin-top: 2rem; }
@@ -109,22 +105,6 @@
         <a class="proc-card" href="{% url 'processing_new' %}?type=renaming">
             <div class="icon-circle ic-renaming"><i class="bi bi-pencil-square"></i></div>
             <div class="proc-label">Renaming</div>
-        </a>
-        <a class="proc-card" href="{% url 'processing_new' %}?type=freeze">
-            <div class="icon-circle ic-freeze"><i class="bi bi-snow"></i></div>
-            <div class="proc-label">Freeze</div>
-        </a>
-        <a class="proc-card" href="{% url 'processing_new' %}?type=lot_breaking">
-            <div class="icon-circle ic-breaking"><i class="bi bi-share"></i></div>
-            <div class="proc-label">Bag or Lot Breaking</div>
-        </a>
-        <a class="proc-card" href="{% url 'processing_new' %}?type=shucking">
-            <div class="icon-circle ic-shucking"><i class="bi bi-box-arrow-right"></i></div>
-            <div class="proc-label">Shucking</div>
-        </a>
-        <a class="proc-card" href="{% url 'processing_new' %}?type=wet_store">
-            <div class="icon-circle ic-wetstore"><i class="bi bi-droplet-half"></i></div>
-            <div class="proc-label">Wet Store</div>
         </a>
     </div>
 

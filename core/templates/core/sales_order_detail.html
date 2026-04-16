@@ -1,4 +1,4 @@
-{% extends 'core/base.html' %}
+﻿{% extends 'core/base.html' %}
 {% block title %}SO {{ so.order_number }} - {{ so.customer_name }}{% endblock %}
 
 {% block extra_css %}
@@ -53,18 +53,6 @@
 .so-status-select.status-needs_review { background-color: #fef3c7; color: #b45309; border-color: #fcd34d; }
 .so-status-select.status-closed { background-color: #dcfce7; color: #15803d; border-color: #86efac; }
 .so-status-select.status-cancelled { background-color: #fee2e2; color: #b91c1c; border-color: #fca5a5; }
-.so-status-select.status-not_packed { background-color: #f8fafc; color: #475569; border-color: #cbd5e1; }
-.so-status-select.status-packed { background-color: #dcfce7; color: #15803d; border-color: #86efac; }
-.so-status-select.status-need_to_send { background-color: #e0e7ff; color: #4f46e5; border-color: #a5b4fc; }
-
-/* Tabs */
-.so-tabs { display: flex; gap: 0; border-bottom: 2px solid #e2e8f0; margin-bottom: 1.5rem; }
-.so-tab {
-    padding: 12px 24px; font-size: 0.9rem; font-weight: 600; color: #64748b;
-    cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -2px; transition: all 0.15s;
-}
-.so-tab:hover { color: #2563eb; }
-.so-tab.active { color: #2563eb; border-bottom-color: #2563eb; }
 
 .so-card { background: #fff; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); padding: 1.5rem; margin-bottom: 1.25rem; max-width: 1100px; }
 .so-card h5 { font-weight: 700; font-size: 0.95rem; margin-bottom: 1rem; }
@@ -112,8 +100,17 @@
     align-items: end;
     width: 100%;
 }
+.item-editor-process {
+    display: grid;
+    grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.8fr) minmax(0, 0.8fr);
+    gap: 0.85rem;
+    align-items: end;
+    width: 100%;
+    margin-top: 0.85rem;
+}
 .item-editor-top > div,
-.item-editor-bottom > div { min-width: 0; }
+.item-editor-bottom > div,
+.item-editor-process > div { min-width: 0; }
 .item-field-label { display: block; font-size: 0.7rem; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 0.35rem; }
 .item-field-subtext { margin-top: 0.35rem; font-size: 0.76rem; color: #94a3b8; font-weight: 500; }
 .item-editor-input,
@@ -132,6 +129,20 @@
     outline: none;
     border-color: #2563eb;
     box-shadow: 0 0 0 3px rgba(37,99,235,0.12);
+}
+.item-editor-multiselect {
+    min-height: 88px;
+}
+.process-batch-pill {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    padding: 0 12px;
+    border-radius: 999px;
+    background: #eff6ff;
+    color: #1d4ed8;
+    font-size: 0.8rem;
+    font-weight: 700;
 }
 .item-delete-btn {
     height: 44px;
@@ -167,6 +178,9 @@
 @media (max-width: 900px) {
     .item-editor-bottom {
         grid-template-columns: 1fr 1fr 1fr;
+    }
+    .item-editor-process {
+        grid-template-columns: 1fr;
     }
 }
 @media (max-width: 640px) {
@@ -211,22 +225,6 @@
 
 .btn-publish { background: #0ea5e9; color: #fff; border: none; border-radius: 8px; padding: 8px 20px; font-size: 0.85rem; font-weight: 600; cursor: pointer; }
 .btn-publish:hover { background: #0284c7; }
-
-/* Packed Lots tab */
-.shipping-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
-.shipping-item .s-label { font-size: 0.73rem; font-weight: 600; color: #64748b; text-transform: uppercase; }
-.shipping-item .s-val { font-size: 0.9rem; font-weight: 600; color: #1e293b; margin-top: 2px; }
-
-.packed-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
-.packed-table th { text-align: left; color: #64748b; font-weight: 600; font-size: 0.73rem; text-transform: uppercase; padding: 10px 12px; border-bottom: 1px solid #e2e8f0; }
-.packed-table td { padding: 10px 12px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
-.packed-table a { color: #2563eb; text-decoration: none; font-weight: 500; }
-.packed-table a:hover { text-decoration: underline; }
-
-.status-match { background: #dcfce7; color: #16a34a; padding: 3px 10px; border-radius: 999px; font-size: 0.72rem; font-weight: 600; }
-.status-short { background: #fee2e2; color: #dc2626; padding: 3px 10px; border-radius: 999px; font-size: 0.72rem; font-weight: 600; }
-.status-unexpected { background: #fef3c7; color: #d97706; padding: 3px 10px; border-radius: 999px; font-size: 0.72rem; font-weight: 600; }
-.fifo-note { font-size: 0.78rem; color: #64748b; margin-top: 4px; }
 </style>
 {% endblock %}
 
@@ -238,7 +236,7 @@
     <div style="max-width:1180px; margin:0 auto;">
     <div style="margin-bottom:1rem;">
         <a href="{% url 'sales_orders_page' %}" style="font-size:0.85rem; color:#2563eb; text-decoration:none;">
-            <i class="bi bi-arrow-left me-1"></i> Back to Sales Orders
+            <i class="bi bi-arrow-left me-1"></i> Back to Sales
         </a>
     </div>
 
@@ -268,8 +266,8 @@
             </div>
         </div>
         <div style="display:flex; gap:0.5rem;">
-            <button class="btn-inv-outline" onclick="withSpinner(this, () => saveDraft())">Save Draft</button>
-            <button class="btn-publish" onclick="withSpinner(this, () => publishSO())">Publish</button>
+            <button class="btn-inv-outline" onclick="withSpinner(this, () => saveDraft())">Save Changes</button>
+            <button class="btn-publish" onclick="withSpinner(this, () => publishSO())">Create Invoice</button>
         </div>
     </div>
 
@@ -284,25 +282,8 @@
                 <option value="cancelled" {% if so.order_status == 'cancelled' %}selected{% endif %}>Cancelled</option>
             </select>
         </div>
-        <div class="so-status-group">
-            <span class="so-status-label">Packed Status</span>
-            <select id="so-packed-status" class="so-status-select" onchange="refreshStatusSelectStyles()">
-                <option value="not_packed" {% if so.packed_status == 'not_packed' %}selected{% endif %}>Not Packed</option>
-                <option value="packed" {% if so.packed_status == 'packed' %}selected{% endif %}>Packed</option>
-                <option value="need_to_send" {% if so.packed_status == 'need_to_send' %}selected{% endif %}>Need To Send</option>
-            </select>
-        </div>
     </div>
 
-    <!-- Tabs -->
-    <div class="so-tabs">
-        <div class="so-tab active" onclick="showTab('order')">Order Form</div>
-        <div class="so-tab" onclick="showTab('packed')">Packed Lots</div>
-    </div>
-
-    <!-- ORDER FORM TAB -->
-    <div id="tab-order">
-        <!-- Shipping note banner -->
         {% if so.notes %}
         <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:10px; padding:10px 16px; margin-bottom:1.25rem; max-width:1100px; font-size:0.85rem; color:#1e40af;">
             <i class="bi bi-info-circle me-1"></i> {{ so.notes }}
@@ -321,15 +302,7 @@
                     </div>
                     <div class="info-grid" style="margin-top:1rem;">
                         <div class="info-item"><label>Order Date</label><input type="date" id="so-order-date" value="{{ so.order_date|date:'Y-m-d' }}"></div>
-                        <div class="info-item"><label>Pack Date</label><input type="date" id="so-pack-date" value="{{ so.pack_date|date:'Y-m-d' }}"></div>
                         <div class="info-item"><label>Delivery Date</label><input type="date" id="so-delivery-date" value="{{ so.delivery_date|date:'Y-m-d' }}"></div>
-                    </div>
-                    <div class="info-grid" style="margin-top:1rem;">
-                        <div class="info-item"><label>Ship Date</label><input type="date" id="so-ship-date" value="{{ so.ship_date|date:'Y-m-d' }}"></div>
-                        <div class="info-item"><label>Shippers</label><input type="text" id="so-shipper" value="{{ so.shipper }}"></div>
-                        <div class="info-item"><label>Shipping Route</label><input type="text" id="so-route" value="{{ so.shipping_route }}"></div>
-                    </div>
-                    <div class="info-grid" style="margin-top:1rem;">
                         <div class="info-item"><label>Order Weight (Lbs)</label><input type="number" step="0.01" id="so-weight" value="{{ so.order_weight }}"></div>
                         <div class="info-item"><label>QB Invoice #</label><input type="text" id="so-qb" value="{{ so.qb_invoice_number }}"></div>
                     </div>
@@ -383,50 +356,6 @@
             </div>
         </div>
     </div>
-
-    <!-- PACKED LOTS TAB -->
-    <div id="tab-packed" style="display:none; max-width:1100px;">
-        <div style="display:flex; gap:0.5rem; margin-bottom:1.25rem;">
-            <button class="btn-publish" style="padding:6px 14px; font-size:0.8rem;" onclick="allocateFIFO()">
-                <i class="bi bi-arrow-down-up me-1"></i>Auto-Allocate FIFO
-            </button>
-            <button class="btn-inv-outline" style="padding:6px 14px; font-size:0.8rem;"><i class="bi bi-file-earmark-pdf me-1"></i>Save Bill Of Lading PDF</button>
-            <button class="btn-inv-outline" style="padding:6px 14px; font-size:0.8rem;"><i class="bi bi-eye me-1"></i>View Shipment Details</button>
-            <div style="flex:1;"></div>
-            <span style="font-size:0.8rem; color:#64748b; align-self:center;" id="packed-meta"></span>
-        </div>
-
-        <div id="fifoAlert" style="display:none; background:#eff6ff; border:1px solid #bfdbfe; border-radius:10px; padding:10px 16px; margin-bottom:1rem; font-size:0.84rem; color:#1e40af;"></div>
-
-        <div class="so-card">
-            <h5>Shipping Info</h5>
-            <div class="shipping-grid">
-                <div class="shipping-item"><div class="s-label">Shippers</div><div class="s-val" id="pk-shipper">--</div></div>
-                <div class="shipping-item"><div class="s-label">Shipping Date</div><div class="s-val" id="pk-ship-date">--</div></div>
-                <div class="shipping-item"><div class="s-label">Truck Temp</div><div class="s-val" id="pk-temp">--</div></div>
-                <div class="shipping-item"><div class="s-label">Packed By</div><div class="s-val" id="pk-packed-by">--</div></div>
-                <div class="shipping-item"><div class="s-label">Printed Manifest</div><div class="s-val" id="pk-manifest">No</div></div>
-                <div class="shipping-item"><div class="s-label">Printed Prop 65</div><div class="s-val" id="pk-prop65">No</div></div>
-            </div>
-        </div>
-
-        <div class="so-card">
-            <h5>Packed Items</h5>
-            <table class="packed-table">
-                <thead><tr>
-                    <th>Item</th>
-                    <th>Traceability Lot Code</th>
-                    <th>Ordered Quantity</th>
-                    <th>Packed Quantity</th>
-                    <th>Status</th>
-                </tr></thead>
-                <tbody id="packedTbody">
-                    <tr><td colspan="5" class="text-center text-muted py-4">No packed items yet.</td></tr>
-                </tbody>
-            </table>
-        </div>
-    </div>
-    </div>
 </div>
 
 {% endblock %}
@@ -436,29 +365,18 @@
 const SO_ID = {{ so.id }};
 let soData = null;
 let allProducts = [];
+let availableLots = [];
 let lineItems = [];
-let allocationData = null;
 let currentProductFilter = 'in_stock';
 const UNIT_OPTIONS = ['', 'Pcs', 'Lbs', 'Cs', 'Ea', 'Bag', 'Box', 'Tray', 'Doz'];
 
 document.addEventListener('DOMContentLoaded', async () => {
     await loadProducts();
+    await loadSourceLots();
     await loadSODetail();
+    prefillFromSelectedLot();
     refreshStatusSelectStyles();
 });
-
-// ── Tabs ────────────────────────────────────────────────────────
-
-function showTab(tab) {
-    document.getElementById('tab-order').style.display = tab === 'order' ? '' : 'none';
-    document.getElementById('tab-packed').style.display = tab === 'packed' ? '' : 'none';
-    document.querySelectorAll('.so-tab').forEach((el, i) => {
-        el.classList.toggle('active', (i === 0 && tab === 'order') || (i === 1 && tab === 'packed'));
-    });
-    if (tab === 'packed') loadPackedLots();
-}
-
-// ── Data ────────────────────────────────────────────────────────
 
 async function loadProducts() {
     const res = await fetch('/api/processing/products/');
@@ -474,16 +392,10 @@ async function loadProducts() {
     });
 }
 
-function productDisplayName(product) {
-    return product.display_name || product.description || product.item_name || product.product_id || '';
-}
-
-function productSpec(product) {
-    return [product.quantity_description, product.size_cull].filter(Boolean).join(' · ');
-}
-
-function unitOptions(selected) {
-    return UNIT_OPTIONS.map(unit => `<option value="${esc(unit)}" ${unit === (selected || '') ? 'selected' : ''}>${esc(unit || 'Choose Unit')}</option>`).join('');
+async function loadSourceLots() {
+    const res = await fetch('/api/processing/source-lots/');
+    const data = await res.json();
+    availableLots = data.lots || [];
 }
 
 async function loadSODetail() {
@@ -492,42 +404,94 @@ async function loadSODetail() {
     lineItems = soData.items || [];
 
     document.getElementById('so-order-status').value = soData.order_status || 'draft';
-    document.getElementById('so-packed-status').value = soData.packed_status || 'not_packed';
     refreshStatusSelectStyles();
     refreshHeaderStatusBadge();
 
-    // Contact info
     if (soData.contact_info && soData.contact_info.name) {
         document.getElementById('cc-name').textContent = soData.contact_info.name;
         document.getElementById('cc-phone').textContent = soData.contact_info.phone || '';
         document.getElementById('cc-email').innerHTML = soData.contact_info.email
-            ? `<a href="mailto:${esc(soData.contact_info.email)}">${esc(soData.contact_info.email)}</a>` : '';
+            ? `<a href="mailto:${esc(soData.contact_info.email)}">${esc(soData.contact_info.email)}</a>`
+            : '';
     }
 
-    // Addresses
     const fmtAddr = (a) => a ? [a.address, [a.city, a.state].filter(Boolean).join(', '), a.zip].filter(Boolean).join('<br>') + '<br>USA' : '--';
     document.getElementById('del-addr').innerHTML = fmtAddr(soData.delivery_address);
     document.getElementById('mail-addr').innerHTML = fmtAddr(soData.mailing_address);
 
-    // Populate shipping info on packed tab
-    document.getElementById('pk-shipper').textContent = soData.shipper || '--';
-    document.getElementById('pk-ship-date').textContent = soData.ship_date ? new Date(soData.ship_date).toLocaleDateString('en-GB', {day:'numeric',month:'short',year:'numeric'}) : '--';
+    renderItems();
+}
 
+function productDisplayName(product) {
+    return product.display_name || product.description || product.item_name || product.product_id || '';
+}
+
+function productSpec(product) {
+    return [product.quantity_description, product.size_cull].filter(Boolean).join(' • ');
+}
+
+function unitOptions(selected) {
+    return UNIT_OPTIONS.map(unit => `<option value="${esc(unit)}" ${unit === (selected || '') ? 'selected' : ''}>${esc(unit || 'Choose Unit')}</option>`).join('');
+}
+
+function processTypeOptions(selected) {
+    const opts = [
+        ['', 'No Processing'],
+        ['fish_cutting', 'Cut'],
+        ['renaming', 'Rename'],
+        ['commingle', 'Commingle'],
+    ];
+    return opts.map(([value, label]) => `<option value="${value}" ${value === (selected || '') ? 'selected' : ''}>${label}</option>`).join('');
+}
+
+function relevantLotsForItem(item) {
+    if (!item || !item.product_id) return availableLots;
+    if (item.process_type === 'renaming') return availableLots;
+    return availableLots.filter(lot => !lot.product_id || lot.product_id === item.product_id);
+}
+
+function sourceLotOptions(item) {
+    const selectedIds = (item.process_source_lot_ids || []).map(v => String(v));
+    return relevantLotsForItem(item).map(lot => {
+        const label = `${lot.lot_id} • ${lot.item_name || lot.product || 'Item'} • ${Number(lot.on_hand || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })} ${lot.unit_type || ''}`;
+        return `<option value="${lot.id}" ${selectedIds.includes(String(lot.id)) ? 'selected' : ''}>${esc(label)}</option>`;
+    }).join('');
+}
+
+function prefillFromSelectedLot() {
+    const params = new URLSearchParams(window.location.search);
+    const selectedLotId = params.get('lot_id');
+    if (!selectedLotId || lineItems.length) return;
+    const lot = availableLots.find(entry => String(entry.id) === String(selectedLotId));
+    if (!lot) return;
+    lineItems.push({
+        id: null,
+        item_type: 'item',
+        product_id: lot.product_id || '',
+        description: lot.item_name || lot.product || '',
+        product_spec: '',
+        notes: '',
+        quantity: null,
+        unit_type: lot.unit_type || '',
+        unit_price: null,
+        margin: '',
+        amount: 0,
+        process_type: '',
+        process_source_lot_ids: [Number(lot.id)],
+        process_batch_id: null,
+    });
     renderItems();
 }
 
 function renderItems() {
     const tbody = document.getElementById('itemsTbody');
-    recalc(false);
+    recalc();
 
     tbody.innerHTML = lineItems.map((item, i) => {
         const isFee = item.item_type === 'fee';
-        const topField = isFee
-            ? `<input type="text" value="${esc(item.description)}" placeholder="Fee description" onchange="lineItems[${i}].description=this.value; recalc();">`
-            : `<select class="item-select" data-product-id="${esc(item.product_id)}" onchange="onItemSelect(${i}, this.value)"><option value="">Choose Item</option>${buildProductOptions(item.product_id)}</select>`;
         const qtyField = isFee
             ? `<span style="font-size:0.8rem;color:#94a3b8;">--</span>`
-            : `<input class="item-editor-input" type="number" step="0.01" value="${item.quantity||''}" onchange="lineItems[${i}].quantity=parseFloat(this.value)||0; recalc();">`;
+            : `<input class="item-editor-input" type="number" step="0.01" value="${item.quantity || ''}" onchange="lineItems[${i}].quantity=parseFloat(this.value)||0; recalc();">`;
         const marginField = isFee
             ? `<div class="item-margin-display" style="color:#94a3b8;">--</div>`
             : `<div class="item-margin-display">${esc(item.margin || 'No Data')}</div>`;
@@ -538,7 +502,26 @@ function renderItems() {
         const unitField = isFee
             ? `<span style="font-size:0.8rem;color:#94a3b8;">--</span>`
             : `<select class="item-editor-select" onchange="lineItems[${i}].unit_type=this.value">${unitOptions(item.unit_type)}</select>`;
-        const priceField = `<input class="item-editor-input" type="number" step="0.01" value="${item.unit_price||''}" placeholder="$" onchange="lineItems[${i}].unit_price=parseFloat(this.value)||0; recalc();">`;
+        const priceField = `<input class="item-editor-input" type="number" step="0.01" value="${item.unit_price || ''}" placeholder="$" onchange="lineItems[${i}].unit_price=parseFloat(this.value)||0; recalc();">`;
+        const processFields = isFee ? '' : `
+            <div class="item-editor-process">
+                <div>
+                    <span class="item-field-label">Process</span>
+                    <select class="item-editor-select" onchange="setProcessType(${i}, this.value)">
+                        ${processTypeOptions(item.process_type)}
+                    </select>
+                </div>
+                <div>
+                    <span class="item-field-label">Source Lots</span>
+                    <select class="item-editor-select item-editor-multiselect" multiple onchange="setProcessLots(${i}, this)">
+                        ${sourceLotOptions(item)}
+                    </select>
+                </div>
+                <div>
+                    <span class="item-field-label">Batch</span>
+                    <div class="process-batch-pill">${item.process_batch_id ? `Linked #${item.process_batch_id}` : 'Will create on save'}</div>
+                </div>
+            </div>`;
         return `
         <tr>
             <td class="item-editor-cell">
@@ -573,15 +556,15 @@ function renderItems() {
                         </div>
                         <div>
                             <span class="item-field-label">Amount</span>
-                            <div class="item-amount-box" id="item-amount-${i}">$${(item.amount||0).toFixed(2)}</div>
+                            <div class="item-amount-box" id="item-amount-${i}">$${(item.amount || 0).toFixed(2)}</div>
                         </div>
                     </div>
+                    ${processFields}
                 </div>
             </td>
         </tr>`;
     }).join('');
 
-    // Set select values after render
     tbody.querySelectorAll('.item-editor-select[data-product-id]').forEach(sel => {
         if (sel.dataset.productId) sel.value = sel.dataset.productId;
     });
@@ -590,20 +573,39 @@ function renderItems() {
 }
 
 function onItemSelect(idx, productId) {
-    const p = allProducts.find(x => x.product_id === productId);
-    if (p) {
-        lineItems[idx].product_id = productId;
-        lineItems[idx].description = productDisplayName(p);
-        lineItems[idx].product_spec = productSpec(p);
-        lineItems[idx].unit_type = p.selling_unit_of_measure || p.inventory_unit_of_measure || p.unit_type || '';
+    const product = allProducts.find(x => x.product_id === productId);
+    if (!product) {
+        lineItems[idx].product_id = '';
+        lineItems[idx].description = '';
+        lineItems[idx].product_spec = '';
+        lineItems[idx].unit_type = '';
         renderItems();
         return;
     }
-    lineItems[idx].product_id = '';
-    lineItems[idx].description = '';
-    lineItems[idx].product_spec = '';
-    lineItems[idx].unit_type = '';
+    lineItems[idx].product_id = productId;
+    lineItems[idx].description = productDisplayName(product);
+    lineItems[idx].product_spec = productSpec(product);
+    lineItems[idx].unit_type = product.selling_unit_of_measure || product.inventory_unit_of_measure || product.unit_type || '';
+    if (lineItems[idx].process_type !== 'renaming') {
+        lineItems[idx].process_source_lot_ids = (lineItems[idx].process_source_lot_ids || []).filter(lotId => {
+            const lot = availableLots.find(entry => String(entry.id) === String(lotId));
+            return lot && lot.product_id === productId;
+        });
+    }
     renderItems();
+}
+
+function setProcessType(idx, value) {
+    lineItems[idx].process_type = value;
+    if (!value) {
+        lineItems[idx].process_source_lot_ids = [];
+        lineItems[idx].process_batch_id = null;
+    }
+    renderItems();
+}
+
+function setProcessLots(idx, selectEl) {
+    lineItems[idx].process_source_lot_ids = Array.from(selectEl.selectedOptions).map(option => Number(option.value));
 }
 
 function setProductFilter(filterName) {
@@ -612,12 +614,8 @@ function setProductFilter(filterName) {
 }
 
 function getFilteredProducts() {
-    if (currentProductFilter === 'recent') {
-        return allProducts.filter(product => !!product.recently_processed);
-    }
-    if (currentProductFilter === 'all') {
-        return allProducts;
-    }
+    if (currentProductFilter === 'recent') return allProducts.filter(product => !!product.recently_processed);
+    if (currentProductFilter === 'all') return allProducts;
     return allProducts.filter(product => Number(product.on_hand || 0) > 0);
 }
 
@@ -635,10 +633,7 @@ function buildProductOptions(selectedProductId) {
 }
 
 function formatQty(value) {
-    return Number(value || 0).toLocaleString(undefined, {
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 2,
-    });
+    return Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 }
 
 function formatProductOptionLabel(product) {
@@ -646,7 +641,7 @@ function formatProductOptionLabel(product) {
     const unit = product.selling_unit_of_measure || product.inventory_unit_of_measure || product.unit_type || '';
     const baseName = productDisplayName(product);
     const spec = productSpec(product);
-    const label = spec ? `${baseName} · ${spec}` : baseName;
+    const label = spec ? `${baseName} • ${spec}` : baseName;
     if (currentProductFilter === 'recent' && product.recently_processed) {
         return `${label} (${onHand > 0 ? `${formatQty(onHand)} ${unit || 'units'} on hand, ` : ''}recently processed)`;
     }
@@ -675,13 +670,10 @@ function updateProductFilterUI() {
 }
 
 function refreshStatusSelectStyles() {
-    const statusIds = ['so-order-status', 'so-packed-status'];
-    statusIds.forEach(id => {
-        const select = document.getElementById(id);
-        if (!select) return;
-        select.className = 'so-status-select';
-        select.classList.add(`status-${select.value}`);
-    });
+    const select = document.getElementById('so-order-status');
+    if (!select) return;
+    select.className = 'so-status-select';
+    select.classList.add(`status-${select.value}`);
 }
 
 function refreshHeaderStatusBadge() {
@@ -700,22 +692,45 @@ function refreshHeaderStatusBadge() {
 }
 
 function addItemRow(type) {
-    lineItems.push({ id: null, item_type: type, product_id: '', description: type === 'fee' ? 'Fee' : '', product_spec: '', notes: '', quantity: null, unit_type: '', unit_price: null, margin: '', amount: 0 });
+    lineItems.push({
+        id: null,
+        item_type: type,
+        product_id: '',
+        description: type === 'fee' ? 'Fee' : '',
+        product_spec: '',
+        notes: '',
+        quantity: null,
+        unit_type: '',
+        unit_price: null,
+        margin: '',
+        amount: 0,
+        process_type: '',
+        process_source_lot_ids: [],
+        process_batch_id: null,
+    });
     renderItems();
 }
 
 function removeItem(idx) {
     const item = lineItems[idx];
-    if (item.id) fetch(`/api/sales/orders/${SO_ID}/items/${item.id}/delete/`, { method: 'POST', headers: { 'X-CSRFToken': getCookie('csrftoken') } });
+    if (item.id) {
+        fetch(`/api/sales/orders/${SO_ID}/items/${item.id}/delete/`, { method: 'POST', headers: { 'X-CSRFToken': getCookie('csrftoken') } });
+    }
     lineItems.splice(idx, 1);
     renderItems();
 }
 
 function recalc() {
-    let itemSub = 0, feeSub = 0;
+    let itemSub = 0;
+    let feeSub = 0;
     lineItems.forEach((item, idx) => {
-        if (item.item_type === 'fee') { item.amount = parseFloat(item.unit_price) || 0; feeSub += item.amount; }
-        else { item.amount = (parseFloat(item.quantity) || 0) * (parseFloat(item.unit_price) || 0); itemSub += item.amount; }
+        if (item.item_type === 'fee') {
+            item.amount = parseFloat(item.unit_price) || 0;
+            feeSub += item.amount;
+        } else {
+            item.amount = (parseFloat(item.quantity) || 0) * (parseFloat(item.unit_price) || 0);
+            itemSub += item.amount;
+        }
         const amountEl = document.getElementById(`item-amount-${idx}`);
         if (amountEl) amountEl.textContent = '$' + (item.amount || 0).toFixed(2);
     });
@@ -723,82 +738,6 @@ function recalc() {
     document.getElementById('feeSubtotal').textContent = '$' + feeSub.toFixed(2);
     document.getElementById('grandTotal').textContent = '$' + (itemSub + feeSub).toFixed(2);
 }
-
-// ── Packed Lots ─────────────────────────────────────────────────
-
-async function loadPackedLots() {
-    const tbody = document.getElementById('packedTbody');
-    const res = await fetch(`/api/sales/orders/${SO_ID}/allocations/`);
-    allocationData = await res.json();
-    const allocatedItems = allocationData.items || [];
-    const shortages = allocationData.shortages || [];
-
-    if (!lineItems.length || lineItems.every(i => i.item_type === 'fee')) {
-        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">No packed items yet. Add items on the Order Form tab first.</td></tr>';
-        return;
-    }
-
-    const alertEl = document.getElementById('fifoAlert');
-    if (shortages.length) {
-        alertEl.style.display = '';
-        alertEl.innerHTML = '<i class="bi bi-exclamation-triangle me-1"></i>' + shortages.map(s =>
-            `${esc(s.item_name)} short by ${Number(s.short_qty).toLocaleString(undefined, {maximumFractionDigits:2})}`
-        ).join(' | ');
-    } else if (allocatedItems.some(item => (item.lots || []).length)) {
-        alertEl.style.display = '';
-        alertEl.innerHTML = '<i class="bi bi-check-circle me-1"></i>FIFO allocation is current. Oldest available lots are reserved first for this order.';
-    } else {
-        alertEl.style.display = 'none';
-        alertEl.textContent = '';
-    }
-
-    tbody.innerHTML = allocatedItems.map(item => {
-        const orderedQty = item.ordered_qty || 0;
-        const packedQty = item.allocated_qty || 0;
-        let statusHtml = '<span class="status-match">Match</span>';
-        if (packedQty < orderedQty) {
-            const diff = orderedQty - packedQty;
-            statusHtml = `<span class="status-short">&darr; ${diff} ${esc(item.unit_type)}</span>`;
-        }
-        const lotText = (item.lots || []).length
-            ? item.lots.map(lot => `${esc(lot.lot_id)} (${Number(lot.quantity).toLocaleString(undefined, {maximumFractionDigits:2})} ${esc(lot.unit_type)})`).join('<br>')
-            : '--';
-        const itemInfo = item.product_spec
-            ? `${esc(item.item_name)}<div class="fifo-note">${esc(item.product_spec)}</div><div class="fifo-note">${(item.lots || []).length ? `${item.lots.length} lot allocation(s)` : 'Not allocated yet'}</div>`
-            : `${esc(item.item_name)}<div class="fifo-note">${(item.lots || []).length ? `${item.lots.length} lot allocation(s)` : 'Not allocated yet'}</div>`;
-
-        return `<tr>
-            <td><a href="#">${itemInfo}</a></td>
-            <td>${lotText}</td>
-            <td>${orderedQty} ${esc(item.unit_type)}</td>
-            <td>${packedQty} ${esc(item.unit_type)}</td>
-            <td>${statusHtml}</td>
-        </tr>`;
-    }).join('');
-
-    document.getElementById('packed-meta').innerHTML = `<span style="color:#94a3b8;">Invoice ${esc(soData.qb_invoice_number || 'BT-' + soData.order_number)}</span>`;
-}
-
-async function allocateFIFO() {
-    const res = await fetch(`/api/sales/orders/${SO_ID}/allocate-fifo/`, {
-        method: 'POST',
-        headers: { 'X-CSRFToken': getCookie('csrftoken') },
-    });
-    const data = await res.json();
-    if (!res.ok || data.error) {
-        alert(data.error || 'Unable to allocate FIFO lots.');
-        return;
-    }
-
-    if (data.shortages && data.shortages.length) {
-        alert('FIFO allocation completed with shortages: ' + data.shortages.map(s => `${s.item_name} short ${s.short_qty}`).join(', '));
-    } else {
-        alert('FIFO allocation completed.');
-    }
-    await loadPackedLots();
-}
-
-// ── Save ────────────────────────────────────────────────────────
 
 async function saveSalesOrder(orderStatus) {
     await fetch(`/api/sales/orders/${SO_ID}/update/`, {
@@ -809,43 +748,53 @@ async function saveSalesOrder(orderStatus) {
             po_number: document.getElementById('so-po').value,
             air_bill_number: document.getElementById('so-airbill').value,
             order_date: document.getElementById('so-order-date').value || null,
-            pack_date: document.getElementById('so-pack-date').value || null,
             delivery_date: document.getElementById('so-delivery-date').value || null,
-            ship_date: document.getElementById('so-ship-date').value || null,
-            shipper: document.getElementById('so-shipper').value,
-            shipping_route: document.getElementById('so-route').value,
             order_weight: document.getElementById('so-weight').value || null,
             qb_invoice_number: document.getElementById('so-qb').value,
             notes: document.getElementById('so-notes').value,
             order_status: orderStatus || document.getElementById('so-order-status').value || 'draft',
-            packed_status: document.getElementById('so-packed-status').value || 'not_packed',
         }),
     });
 
     for (const item of lineItems) {
-        if (item.id) await fetch(`/api/sales/orders/${SO_ID}/items/${item.id}/delete/`, { method: 'POST', headers: { 'X-CSRFToken': getCookie('csrftoken') } });
+        if (item.id) {
+            await fetch(`/api/sales/orders/${SO_ID}/items/${item.id}/delete/`, { method: 'POST', headers: { 'X-CSRFToken': getCookie('csrftoken') } });
+        }
     }
     for (const item of lineItems) {
-        await fetch(`/api/sales/orders/${SO_ID}/items/add/`, {
+        const res = await fetch(`/api/sales/orders/${SO_ID}/items/add/`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
             body: JSON.stringify(item),
         });
+        const data = await res.json();
+        if (!res.ok || data.error) {
+            throw new Error(data.error || 'Unable to save sales item.');
+        }
     }
 }
 
 async function saveDraft() {
-    await saveSalesOrder(document.getElementById('so-order-status').value || 'draft');
-    refreshHeaderStatusBadge();
-    alert('Draft saved.');
-    loadSODetail();
+    try {
+        await saveSalesOrder(document.getElementById('so-order-status').value || 'draft');
+        refreshHeaderStatusBadge();
+        alert('Changes saved.');
+        await loadSODetail();
+    } catch (error) {
+        alert(error.message || 'Unable to save changes.');
+    }
 }
 
 async function publishSO() {
-    await saveSalesOrder(document.getElementById('so-order-status').value || 'open');
-    refreshHeaderStatusBadge();
-    alert('Sales order published.');
-    location.reload();
+    try {
+        await saveSalesOrder(document.getElementById('so-order-status').value || 'open');
+        refreshHeaderStatusBadge();
+        alert('Invoice created.');
+        location.reload();
+    } catch (error) {
+        alert(error.message || 'Unable to create invoice.');
+    }
 }
 </script>
 {% endblock %}
+

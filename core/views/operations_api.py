@@ -4,6 +4,7 @@ import json
 from decimal import Decimal
 
 from django.contrib.auth.decorators import login_required
+from django.db import transaction
 from django.db.models import Q, Sum
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404
@@ -21,14 +22,17 @@ from core.models import (
     ProcessBatchSource,
     ProcessBatchWaste,
     Product,
+    ProductImage,
     PurchaseOrder,
     PurchaseOrderItem,
     ReceivingQualityCheck,
+    CustomerProfile,
     SalesOrder,
     SalesOrderAllocation,
     SalesOrderItem,
     TenantUser,
     Vendor,
+    ProcessBatchOutput,
 )
 
 
@@ -124,12 +128,17 @@ def _po_to_dict(order):
     expected = getattr(order, "expected_total", None)
     if expected is None:
         expected = sum((item.quantity or 0) for item in order.items.all() if item.item_type == "item")
+    arrived = sum((item.received_quantity or 0) for item in order.items.all() if item.item_type == "item")
     total = getattr(order, "order_total", None)
     if total is None:
         total = order.total or 0
     vendor_type = ""
     if order.vendor_id and order.vendor:
         vendor_type = order.vendor.vendor_type or ""
+    unit_types = sorted(set(filter(None, [
+        (item.unit_type or (item.product.unit_type if item.product_id and item.product else ""))
+        for item in order.items.all() if item.item_type == "item"
+    ])))
     return {
         "id": order.id,
         "po_number": order.po_number,
@@ -143,6 +152,8 @@ def _po_to_dict(order):
         "buyer": order.buyer,
         "total": _to_float(total) or 0,
         "expected": _to_float(expected) or 0,
+        "arrived": _to_float(arrived) or 0,
+        "unit_type": ", ".join(unit_types) or "",
         "order_date": _date_str(order.order_date),
         "expected_date": _date_str(order.expected_date),
         "products": ", ".join(sorted(set(filter(None, (
@@ -176,6 +187,7 @@ def _product_to_dict(product, totals=None):
         "unit_type": product.inventory_unit_of_measure or product.unit_type or "",
         "selling_unit_of_measure": product.selling_unit_of_measure or "",
         "buying_unit_of_measure": product.buying_unit_of_measure or "",
+        "raw_cost": _to_float(product.raw_cost),
         "list_price": _to_float(product.list_price),
         "wholesale_price": _to_float(product.wholesale_price),
         "habitat_production_method": product.habitat_production_method or "",
@@ -187,6 +199,21 @@ def _product_to_dict(product, totals=None):
         "allocated": _to_float(totals.get("allocated")) or 0,
         "on_hand": _to_float(totals.get("on_hand")) or 0,
     }
+
+
+def _next_product_id(tenant):
+    existing_ids = Product.objects.filter(tenant=tenant).values_list("product_id", flat=True)
+    highest = 0
+    for value in existing_ids:
+        if not value:
+            continue
+        value = str(value).strip()
+        if not value.startswith("ITEM-"):
+            continue
+        suffix = value[5:]
+        if suffix.isdigit():
+            highest = max(highest, int(suffix))
+    return f"ITEM-{highest + 1:04d}"
 
 
 def _sales_order_total(order):
@@ -221,6 +248,149 @@ def _sales_item_name(item):
     if item.product_id and item.product:
         return item.product.description or item.product.item_name or item.product.product_id
     return ""
+
+
+def _selected_source_lot_ids(data):
+    raw = data.get("process_source_lot_ids")
+    if raw in (None, ""):
+        return []
+    if isinstance(raw, list):
+        values = raw
+    else:
+        values = str(raw).split(",")
+    lot_ids = []
+    for value in values:
+        try:
+            lot_ids.append(int(str(value).strip()))
+        except Exception:
+            continue
+    return list(dict.fromkeys(lot_ids))
+
+
+def _rollback_process_batch(batch):
+    source_rows = list(batch.sources.select_related("inventory").all())
+    output_inventory_ids = [output.inventory_id for output in batch.outputs.all() if output.inventory_id]
+
+    for source in source_rows:
+        if not source.inventory_id or not source.inventory:
+            continue
+        source.inventory.unitsonhand = (source.inventory.unitsonhand or 0) + (source.quantity or 0)
+        source.inventory.unitsavailable = (source.inventory.unitsavailable or 0) + (source.quantity or 0)
+        source.inventory.save(update_fields=["unitsonhand", "unitsavailable"])
+
+    if output_inventory_ids:
+        Inventory.objects.filter(id__in=output_inventory_ids).delete()
+
+    batch.delete()
+
+
+def _create_processing_batch_for_sales_item(request, tenant, sales_item, data):
+    process_type = (data.get("process_type") or "").strip()
+    if not process_type or sales_item.item_type != "item":
+        return None
+
+    lot_ids = _selected_source_lot_ids(data)
+    if not lot_ids:
+        raise ValueError("Choose at least one source lot for processed sales items.")
+
+    requested_qty = Decimal(str(sales_item.quantity or 0))
+    if requested_qty <= 0:
+        raise ValueError("Processed sales items need a quantity greater than zero.")
+    if not sales_item.product_id or not sales_item.product or not sales_item.product.product_id:
+        raise ValueError("Choose a product before processing this sales item.")
+
+    lot_map = {
+        lot.id: lot for lot in Inventory.objects.filter(tenant=tenant, id__in=lot_ids, unitsonhand__gt=0)
+    }
+    selected_lots = [lot_map[lot_id] for lot_id in lot_ids if lot_id in lot_map]
+    if not selected_lots:
+        raise ValueError("Selected source lots are not available.")
+
+    remaining = requested_qty
+    source_payloads = []
+    for lot in selected_lots:
+        available = Decimal(str(lot.unitsonhand or 0))
+        if available <= 0:
+            continue
+        take = min(available, remaining)
+        if take <= 0:
+            continue
+        source_payloads.append({
+            "inventory": lot,
+            "quantity": take,
+            "unit_type": (lot.unittype or sales_item.unit_type or "").strip(),
+        })
+        remaining -= take
+        if remaining <= 0:
+            break
+
+    if remaining > 0:
+        raise ValueError("Not enough quantity in the selected source lots to cover this sale.")
+
+    last = ProcessBatch.objects.filter(tenant=tenant).order_by("-id").first()
+    next_num = (last.id + 1) if last else 1
+    batch_number = f"PB-{next_num:04d}"
+    batch = ProcessBatch.objects.create(
+        tenant=tenant,
+        batch_number=batch_number,
+        process_type=process_type,
+        status="completed",
+        completed_at=timezone.now(),
+        notes=f"Created from sales order {sales_item.sales_order.order_number}",
+        created_by=request.user,
+    )
+
+    for source in source_payloads:
+        lot = source["inventory"]
+        ProcessBatchSource.objects.create(
+            tenant=tenant,
+            batch=batch,
+            inventory=lot,
+            quantity=source["quantity"],
+            unit_type=source["unit_type"],
+        )
+        lot.unitsonhand = max(Decimal("0"), (lot.unitsonhand or 0) - source["quantity"])
+        lot.unitsavailable = max(Decimal("0"), (lot.unitsavailable or 0) - source["quantity"])
+        lot.save(update_fields=["unitsonhand", "unitsavailable"])
+
+    output_inventory = Inventory.objects.create(
+        tenant=tenant,
+        productid=sales_item.product.product_id,
+        desc=sales_item.description or sales_item.product.description or sales_item.product.item_name or sales_item.product.product_id,
+        vendorid=selected_lots[0].vendorid if selected_lots else "",
+        vendorlot=f"LOT-{batch.batch_number}-{sales_item.id}",
+        unittype=(sales_item.unit_type or selected_lots[0].unittype if selected_lots else "").strip(),
+        unitsonhand=requested_qty,
+        unitsavailable=requested_qty,
+        unitsin=requested_qty,
+        receivedate=timezone.now().date().isoformat(),
+        vendor_type=selected_lots[0].vendor_type if selected_lots else "",
+        purchase_order=selected_lots[0].purchase_order if selected_lots and hasattr(selected_lots[0], "purchase_order") else None,
+    )
+    ProcessBatchOutput.objects.create(
+        tenant=tenant,
+        batch=batch,
+        inventory=output_inventory,
+        product=sales_item.product,
+        quantity=requested_qty,
+        unit_type=sales_item.unit_type or output_inventory.unittype,
+        lot_id=output_inventory.vendorlot,
+        yield_percent=Decimal("100"),
+    )
+    SalesOrderAllocation.objects.create(
+        tenant=tenant,
+        sales_order_item=sales_item,
+        inventory=output_inventory,
+        quantity=requested_qty,
+        unit_type=sales_item.unit_type or output_inventory.unittype,
+        allocated_by=request.user,
+        allocated_by_name=request.user.get_full_name() or request.user.username,
+    )
+    sales_item.process_batch = batch
+    sales_item.save(update_fields=["process_batch"])
+    batch.calculate_yield()
+    batch.save(update_fields=["total_input_weight", "total_output_weight", "actual_yield_pct", "expected_yield_pct", "yield_variance_pct", "yield_flagged"])
+    return batch
 
 
 def _sales_item_spec(item):
@@ -570,6 +740,8 @@ def purchasing_order_create(request):
         po_number=po_number,
         vendor=vendor,
         vendor_name=vendor_name,
+        buyer=(request.user.get_full_name() or request.user.get_username() or "").strip(),
+        order_date=timezone.localdate(),
         created_by=request.user,
     )
     return JsonResponse({"id": order.id, "po_number": order.po_number})
@@ -628,16 +800,23 @@ def purchasing_order_update(request, order_id):
     order = get_object_or_404(PurchaseOrder.objects.filter(tenant=tenant), id=order_id)
     data = _parse_json(request)
 
-    # Allow reopening a closed/cancelled PO (status change only)
+    # Allow status corrections on locked POs without reopening them first.
     if order.order_status in ("closed", "cancelled"):
         new_status = (data.get("order_status") or "").strip()
+        new_receive_status = (data.get("receive_status") or "").strip()
+        updated_fields = []
         if new_status and new_status != order.order_status:
             order.order_status = new_status
-            order.save()
+            updated_fields.append("order_status")
+        if new_receive_status and new_receive_status != order.receive_status:
+            order.receive_status = new_receive_status
+            updated_fields.append("receive_status")
+        if updated_fields:
+            order.save(update_fields=updated_fields)
             return JsonResponse({"success": True})
         return JsonResponse({"error": "This purchase order is locked. Reopen it to make changes."}, status=400)
 
-    for field in ["buyer", "vendor_invoice_number", "qb_po_number", "notes", "order_status"]:
+    for field in ["buyer", "vendor_invoice_number", "qb_po_number", "notes", "order_status", "receive_status"]:
         if field in data:
             setattr(order, field, data.get(field) or "")
 
@@ -1088,7 +1267,6 @@ def processing_products(request):
     if error:
         return error
 
-    _ensure_products_for_inventory_lots(tenant)
     products = list(
         Product.objects.filter(tenant=tenant, is_active=True)
         .select_related("item_group")
@@ -1433,7 +1611,6 @@ def inventory_items(request):
     tenant, error = _require_tenant(request)
     if error:
         return error
-    _ensure_products_for_inventory_lots(tenant)
 
     items = Product.objects.filter(tenant=tenant).select_related("item_group")
     show = request.GET.get("show", "").strip()
@@ -1636,9 +1813,9 @@ def inventory_item_create(request):
     if not (product.description or product.item_name or product.friendly_name or product.qb_item_name):
         return JsonResponse({"error": "Please enter at least a name or description."}, status=400)
     if not product.product_id:
-        product.product_id = f"ITEM-{Product.objects.filter(tenant=tenant).count() + 1:04d}"
+        product.product_id = _next_product_id(tenant)
     product.save()
-    return JsonResponse({"success": True, "id": product.id})
+    return JsonResponse({"success": True, "id": product.id, "item": _product_to_dict(product)})
 
 
 @login_required
@@ -1653,7 +1830,7 @@ def inventory_item_update(request, item_id):
     data = _parse_json(request)
     _apply_product_payload(product, tenant, data)
     product.save()
-    return JsonResponse({"success": True, "id": product.id})
+    return JsonResponse({"success": True, "id": product.id, "item": _product_to_dict(product)})
 
 
 @login_required
@@ -1664,8 +1841,17 @@ def inventory_item_delete(request, item_id):
     if request.method != "POST":
         return JsonResponse({"error": "GET not allowed"}, status=405)
     product = get_object_or_404(Product.objects.filter(tenant=tenant), id=item_id)
-    product.delete()
-    return JsonResponse({"success": True})
+    try:
+        with transaction.atomic():
+            CustomerProfile.objects.filter(tenant=tenant, product=product).update(product=None)
+            PurchaseOrderItem.objects.filter(tenant=tenant, product=product).update(product=None)
+            SalesOrderItem.objects.filter(tenant=tenant, product=product).update(product=None)
+            ProcessBatchOutput.objects.filter(tenant=tenant, product=product).update(product=None)
+            ProductImage.objects.filter(product=product).delete()
+            product.delete()
+        return JsonResponse({"success": True})
+    except Exception as exc:
+        return JsonResponse({"error": f"Unable to delete this product right now: {exc}"}, status=400)
 
 
 @login_required
@@ -1935,6 +2121,9 @@ def sales_order_detail_api(request, order_id):
             "unit_price": _to_float(item.unit_price) or 0,
             "margin": item.margin if hasattr(item, "margin") else "",
             "amount": _to_float(item.amount) or 0,
+            "process_type": item.process_type or "",
+            "process_source_lot_ids": _selected_source_lot_ids({"process_source_lot_ids": item.process_source_lot_ids}),
+            "process_batch_id": item.process_batch_id,
         }
 
     return JsonResponse({
@@ -2001,6 +2190,9 @@ def sales_order_update(request, order_id):
     if "order_weight" in data:
         so.order_weight = data.get("order_weight") or None
 
+    if (so.order_status in ("open", "closed")) and not (so.qb_invoice_number or "").strip():
+        so.qb_invoice_number = so.order_number
+
     so.save()
     return JsonResponse({"success": True})
 
@@ -2035,8 +2227,15 @@ def sales_order_item_add(request, order_id):
         unit_type=(data.get("unit_type") or "").strip(),
         unit_price=data.get("unit_price") or None,
         amount=amount,
+        process_type=(data.get("process_type") or "").strip(),
+        process_source_lot_ids=",".join(str(lot_id) for lot_id in _selected_source_lot_ids(data)),
         sort_order=so.items.count(),
     )
+    try:
+        _create_processing_batch_for_sales_item(request, tenant, item, data)
+    except ValueError as exc:
+        item.delete()
+        return JsonResponse({"error": str(exc)}, status=400)
     return JsonResponse({"success": True, "id": item.id})
 
 
@@ -2051,6 +2250,8 @@ def sales_order_item_delete(request, order_id, item_id):
         SalesOrderItem.objects.filter(tenant=tenant, sales_order_id=order_id),
         id=item_id,
     )
+    if item.process_batch_id and item.process_batch:
+        _rollback_process_batch(item.process_batch)
     item.delete()
     return JsonResponse({"success": True})
 
@@ -2289,6 +2490,7 @@ def _apply_product_payload(product, tenant, data):
     product.unit_type = product.inventory_unit_of_measure or product.unit_type
     product.selling_unit_of_measure = (data.get("selling_unit_of_measure") or "").strip()
     product.buying_unit_of_measure = (data.get("buying_unit_of_measure") or "").strip()
+    product.raw_cost = data.get("raw_cost") or None
     product.list_price = data.get("list_price") or None
     product.wholesale_price = data.get("wholesale_price") or None
     product.habitat_production_method = (data.get("habitat_production_method") or "").strip()

@@ -66,7 +66,7 @@
     <div style="max-width:900px; margin:0 auto;">
     <div style="margin-bottom:1rem;">
         <a href="{% url 'purchases_page' %}" style="font-size:0.85rem; color:#2563eb; text-decoration:none;">
-            <i class="bi bi-arrow-left me-1"></i> Back to Purchases
+            <i class="bi bi-arrow-left me-1"></i> Back to Arrivals
         </a>
     </div>
 
@@ -74,20 +74,11 @@
         <div>
             <h2>{{ po.vendor_name }}</h2>
             <div class="meta">
-                <i class="bi bi-clipboard me-1"></i> New Purchase &middot;
-                <span class="badge-status badge-{{ po.order_status }}">{{ po.get_order_status_display }}</span>
+                <i class="bi bi-clipboard me-1"></i> Purchase
             </div>
         </div>
         <div style="display:flex; gap:0.5rem;">
-            {% if po.order_status == 'draft' %}
-            <button class="btn-inv-outline" onclick="withSpinner(this, () => saveDraft())">Save Draft</button>
-            <button class="btn-publish" onclick="withSpinner(this, () => publishPO())">Publish</button>
-            {% elif po.order_status == 'closed' or po.order_status == 'cancelled' %}
-            <button class="btn-inv-outline" onclick="withSpinner(this, () => reopenPO())"><i class="bi bi-unlock me-1"></i>Reopen</button>
-            {% else %}
             <button class="btn-inv-outline" onclick="withSpinner(this, () => saveChanges())">Save Changes</button>
-            <button class="btn-inv-outline" style="color:#dc2626; border-color:#dc2626;" onclick="withSpinner(this, () => closePO())"><i class="bi bi-check-circle me-1"></i>Close</button>
-            {% endif %}
         </div>
     </div>
 
@@ -102,22 +93,8 @@
                         <input type="text" id="po-buyer" value="{{ po.buyer }}">
                     </div>
                     <div class="info-item">
-                        <label>Vendor Invoice Number</label>
-                        <input type="text" id="po-invoice" value="{{ po.vendor_invoice_number }}">
-                    </div>
-                    <div class="info-item">
                         <label>Order Date</label>
                         <input type="date" id="po-order-date" value="{{ po.order_date|date:'Y-m-d' }}">
-                    </div>
-                </div>
-                <div class="info-grid" style="margin-top:1rem;">
-                    <div class="info-item">
-                        <label>Expected Receipt Date</label>
-                        <input type="date" id="po-expected-date" value="{{ po.expected_date|date:'Y-m-d' }}">
-                    </div>
-                    <div class="info-item">
-                        <label>QB PO #</label>
-                        <input type="text" id="po-qb" value="{{ po.qb_po_number }}">
                     </div>
                 </div>
             </div>
@@ -136,9 +113,8 @@
         <table class="items-table">
             <thead>
                 <tr>
-                    <th style="width:35%;">Item</th>
+                    <th style="width:45%;">Item</th>
                     <th style="width:30px;"></th>
-                    <th>Notes</th>
                     <th style="width:90px;">Unit</th>
                     <th style="width:100px;">Quantity</th>
                     <th style="width:100px;">Unit Price</th>
@@ -154,7 +130,8 @@
         </div>
 
         <div style="margin-top:1.5rem;">
-            <textarea class="notes-area" id="po-notes" rows="2" placeholder="Enter receiving note (Internal)">{{ po.notes }}</textarea>
+            <label for="po-notes" style="font-size:0.75rem; font-weight:600; color:#64748b; text-transform:uppercase; display:block; margin-bottom:6px;">Notes</label>
+            <textarea class="notes-area" id="po-notes" rows="4" placeholder="Enter notes">{{ po.notes }}</textarea>
         </div>
 
         <div class="totals-row">
@@ -170,14 +147,13 @@
             <div><span class="t-val" id="grandTotal" style="color:#dc2626; font-size:0.95rem;">$0.00</span></div>
         </div>
     </div>
-    <!-- Receive status summary (read-only, links to Receive page) -->
-    {% if po.order_status == 'open' or po.order_status == 'closed' %}
+    <!-- Receive status summary (read-only, links to Arrivals page) -->
     <div class="po-card" id="receivingCard">
         <div style="display:flex; justify-content:space-between; align-items:center;">
             <h5 style="margin:0;"><i class="bi bi-box-arrow-in-down me-1"></i>Receiving</h5>
             <div style="display:flex; align-items:center; gap:0.75rem;">
                 <span class="badge-status badge-{{ po.receive_status }}">{{ po.get_receive_status_display }}</span>
-                <a href="{% url 'receiving_page' %}" class="btn-inv-outline" style="padding:4px 12px; font-size:0.78rem;"><i class="bi bi-arrow-right me-1"></i>Go to Receive</a>
+                <a href="{% url 'purchases_page' %}" class="btn-inv-outline" style="padding:4px 12px; font-size:0.78rem;"><i class="bi bi-arrow-right me-1"></i>Open Arrivals</a>
             </div>
         </div>
         <table class="items-table" style="margin-top:0.75rem;">
@@ -192,7 +168,6 @@
             <tbody id="receivingTbody"></tbody>
         </table>
     </div>
-    {% endif %}
 
     </div>
 </div>
@@ -221,7 +196,6 @@
 {% block extra_js %}
 <script>
 const PO_ID = {{ po.id }};
-const PO_LOCKED = {% if po.order_status == 'closed' or po.order_status == 'cancelled' %}true{% else %}false{% endif %};
 let poData = null;
 let allProducts = [];
 let lineItems = []; // local state
@@ -230,15 +204,6 @@ const UNIT_OPTIONS = ['', 'Pcs', 'Lbs', 'Cs', 'Ea', 'Bag', 'Box', 'Tray', 'Doz']
 document.addEventListener('DOMContentLoaded', async () => {
     await loadProducts();
     await loadPODetail();
-    if (PO_LOCKED) {
-        document.querySelectorAll('#po-buyer, #po-invoice, #po-order-date, #po-expected-date, #po-qb, #po-notes').forEach(el => {
-            el.disabled = true;
-            el.style.background = '#f8fafc';
-            el.style.color = '#64748b';
-        });
-        document.getElementById('contactCard').style.pointerEvents = 'none';
-        document.querySelector('.add-links').style.display = 'none';
-    }
 });
 
 async function loadProducts() {
@@ -293,19 +258,6 @@ function renderItems() {
 
     tbody.innerHTML = lineItems.map((item, i) => {
         const isFee = item.item_type === 'fee';
-        if (PO_LOCKED) {
-            const name = isFee ? esc(item.description) : esc(item.description || item.product_id || '');
-            return `
-            <tr>
-                <td>${name}</td>
-                <td></td>
-                <td>${esc(item.notes)}</td>
-                <td>${isFee ? '' : esc(item.unit_type || '')}</td>
-                <td>${isFee ? '' : (item.quantity || '')}</td>
-                <td>${item.unit_price ? '$' + Number(item.unit_price).toFixed(2) : ''}</td>
-                <td style="text-align:right; font-weight:600;">$${(item.amount||0).toFixed(2)}</td>
-            </tr>`;
-        }
         return `
         <tr>
             <td>
@@ -319,7 +271,6 @@ function renderItems() {
                 }
             </td>
             <td><button class="del-btn" onclick="removeItem(${i})"><i class="bi bi-trash"></i></button></td>
-            <td><input type="text" value="${esc(item.notes)}" placeholder="Enter note" onchange="lineItems[${i}].notes=this.value;"></td>
             <td>${isFee ? '' : `<select class="item-select" data-unit-value="${esc(item.unit_type || '')}" onchange="lineItems[${i}].unit_type=this.value;">
                 ${unitOpts}
             </select>`}</td>
@@ -396,18 +347,15 @@ function recalc() {
     });
 }
 
-async function saveData(status) {
+async function saveData() {
     await fetch(`/api/purchasing/orders/${PO_ID}/update/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
         body: JSON.stringify({
             buyer: document.getElementById('po-buyer').value,
-            vendor_invoice_number: document.getElementById('po-invoice').value,
             order_date: document.getElementById('po-order-date').value || null,
-            expected_date: document.getElementById('po-expected-date').value || null,
-            qb_po_number: document.getElementById('po-qb').value,
             notes: document.getElementById('po-notes').value,
-            order_status: status,
+            order_status: 'open',
         }),
     });
 
@@ -427,44 +375,10 @@ async function saveData(status) {
     }
 }
 
-async function saveDraft() {
-    await saveData('draft');
-    alert('Draft saved.');
-    loadPODetail();
-}
-
-async function publishPO() {
-    await saveData('open');
-    alert('Purchase order published.');
-    location.reload();
-}
-
 async function saveChanges() {
-    await saveData('{{ po.order_status }}');
+    await saveData();
     alert('Changes saved.');
     loadPODetail();
-}
-
-async function closePO() {
-    if (!confirm('Close this purchase order? It will become read-only.')) return;
-    // Save current changes first, then close
-    await saveData('{{ po.order_status }}');
-    await fetch(`/api/purchasing/orders/${PO_ID}/update/`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
-        body: JSON.stringify({ order_status: 'closed' }),
-    });
-    location.reload();
-}
-
-async function reopenPO() {
-    if (!confirm('Reopen this purchase order for editing?')) return;
-    await fetch(`/api/purchasing/orders/${PO_ID}/update/`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
-        body: JSON.stringify({ order_status: 'open' }),
-    });
-    location.reload();
 }
 
 // ── Contact edit ────────────────────────────────────────────────

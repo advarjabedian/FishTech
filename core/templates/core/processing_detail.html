@@ -22,34 +22,6 @@
     text-transform: uppercase; padding: 8px 12px; border-bottom: 1px solid #e2e8f0;
 }
 .source-table td { padding: 8px 12px; border-bottom: 1px solid #f1f5f9; color: #334155; }
-.mini-kpis { display:flex; gap:0.75rem; flex-wrap:wrap; margin-bottom:1rem; }
-.mini-kpi {
-    background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:0.85rem 1rem;
-    min-width:160px;
-}
-.mini-kpi .label { font-size:0.72rem; color:#64748b; text-transform:uppercase; font-weight:700; }
-.mini-kpi .value { font-size:1.05rem; color:#0f172a; font-weight:700; margin-top:2px; }
-.balance-banner {
-    display: none;
-    margin-bottom: 1rem;
-    padding: 0.9rem 1rem;
-    border-radius: 10px;
-    font-size: 0.84rem;
-    font-weight: 600;
-}
-.balance-banner.warning {
-    display: block;
-    background: #fff7ed;
-    border: 1px solid #fdba74;
-    color: #c2410c;
-}
-.balance-banner.good {
-    display: block;
-    background: #ecfdf5;
-    border: 1px solid #86efac;
-    color: #166534;
-}
-
 </style>
 {% endblock %}
 
@@ -157,65 +129,6 @@
 
         <div class="detail-card">
             <h5>Waste & Byproduct</h5>
-            <div class="mini-kpis">
-                <div class="mini-kpi">
-                    <div class="label">Waste Qty</div>
-                    <div class="value" id="wasteQty">0</div>
-                </div>
-            <div class="mini-kpi">
-                <div class="label">Byproduct Qty</div>
-                <div class="value" id="byproductQty">0</div>
-                </div>
-                <div class="mini-kpi">
-                    <div class="label">Est. Value</div>
-                    <div class="value" id="wasteValue">$0.00</div>
-                </div>
-                <div class="mini-kpi">
-                    <div class="label">Unaccounted Qty</div>
-                    <div class="value" id="unaccountedQty">0</div>
-                </div>
-            </div>
-
-            <div id="balanceBanner" class="balance-banner"></div>
-            <div id="wasteError" class="alert alert-danger" style="display:none;"></div>
-
-            <div class="row g-3 mb-3">
-                <div class="col-md-3">
-                    <label class="form-label fw-semibold small">Type</label>
-                    <select id="w-entry-type" class="form-select"></select>
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label fw-semibold small">Category</label>
-                    <select id="w-category" class="form-select"></select>
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label fw-semibold small">Source Lot</label>
-                    <select id="w-source-lot" class="form-select"></select>
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label fw-semibold small">Quantity</label>
-                    <input id="w-quantity" type="number" step="0.01" min="0" class="form-control" placeholder="0.00">
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label fw-semibold small">Unit</label>
-                    <select id="w-unit-type" class="form-select"></select>
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label fw-semibold small">Estimated Value</label>
-                    <input id="w-estimated-value" type="number" step="0.01" min="0" class="form-control" placeholder="0.00">
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label fw-semibold small">Notes</label>
-                    <input id="w-notes" type="text" class="form-control" placeholder="Why was this discarded or retained?">
-                </div>
-            </div>
-
-            <div class="mb-3">
-                <button class="btn-inv-primary" onclick="saveWasteEntry()">
-                    <i class="bi bi-plus-circle me-1"></i> Log Entry
-                </button>
-            </div>
-
             <table class="source-table">
                 <thead>
                     <tr>
@@ -253,22 +166,8 @@
 {% block extra_js %}
 <script>
 const BATCH_ID = {{ batch.id }};
-let wasteSourceOptions = [];
-let batchAccounting = {
-    totalInputQty: 0,
-    totalOutputQty: 0,
-    accountedQty: 0,
-    unaccountedQty: 0,
-    defaultUnitType: '',
-    isBalanced: true,
-};
-const UNIT_OPTIONS = ['', 'Pcs', 'Lbs', 'Cs', 'Ea', 'Bag', 'Box', 'Tray', 'Doz'];
 
 document.addEventListener('DOMContentLoaded', () => { loadSources(); loadOutputs(); loadWasteEntries(); });
-
-function unitOptions(selected) {
-    return UNIT_OPTIONS.map(unit => `<option value="${esc(unit)}" ${unit === (selected || '') ? 'selected' : ''}>${esc(unit || 'Choose Unit')}</option>`).join('');
-}
 
 function detailName(name, spec) {
     return spec ? `${esc(name)}<div style="font-size:0.76rem; color:#94a3b8; font-weight:500;">${esc(spec)}</div>` : esc(name);
@@ -321,148 +220,23 @@ async function loadWasteEntries() {
     const data = await res.json();
     const tbody = document.getElementById('wasteTbody');
     const entries = data.entries || [];
-    wasteSourceOptions = data.source_options || [];
-
-    document.getElementById('wasteQty').textContent = Number(data.summary?.waste_qty || 0).toLocaleString(undefined, {maximumFractionDigits:2});
-    document.getElementById('byproductQty').textContent = Number(data.summary?.byproduct_qty || 0).toLocaleString(undefined, {maximumFractionDigits:2});
-    document.getElementById('wasteValue').textContent = '$' + Number(data.summary?.estimated_value || 0).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
-    batchAccounting = {
-        totalInputQty: Number(data.summary?.total_input_qty || 0),
-        totalOutputQty: Number(data.summary?.total_output_qty || 0),
-        accountedQty: Number(data.summary?.accounted_qty || 0),
-        unaccountedQty: Number(data.summary?.unaccounted_qty || 0),
-        defaultUnitType: data.summary?.default_unit_type || '',
-        isBalanced: Boolean(data.summary?.is_balanced),
-    };
-    document.getElementById('unaccountedQty').textContent =
-        Number(batchAccounting.unaccountedQty).toLocaleString(undefined, {maximumFractionDigits:2}) +
-        (batchAccounting.defaultUnitType ? ` ${batchAccounting.defaultUnitType}` : '');
-    updateBalanceUI();
-
-    document.getElementById('w-entry-type').innerHTML = (data.entry_types || []).map(opt =>
-        `<option value="${opt.value}">${esc(opt.label)}</option>`
-    ).join('');
-    document.getElementById('w-category').innerHTML = (data.categories || []).map(opt =>
-        `<option value="${opt.value}">${esc(opt.label)}</option>`
-    ).join('');
-
-    const sourceSelect = document.getElementById('w-source-lot');
-    const unitSelect = document.getElementById('w-unit-type');
-    unitSelect.innerHTML = unitOptions(unitSelect.value);
-    sourceSelect.innerHTML = '<option value="">Batch source lot</option>' + wasteSourceOptions.map(opt =>
-        `<option value="${opt.inventory_id}" data-unit="${esc(opt.unit_type)}">${esc(opt.lot_id)} • ${Number(opt.quantity).toLocaleString(undefined, {maximumFractionDigits:2})} ${esc(opt.unit_type)}</option>`
-    ).join('');
 
     if (!entries.length) {
         tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-3">No waste or byproduct logged yet.</td></tr>';
-    } else {
-        tbody.innerHTML = entries.map(entry => `
-            <tr>
-                <td>${esc(entry.created_at)}</td>
-                <td>${esc(entry.entry_type_display)}</td>
-                <td>${esc(entry.category_display)}</td>
-                <td>${esc(entry.source_lot_id || '--')}</td>
-                <td style="text-align:right; font-weight:600;">${Number(entry.quantity).toLocaleString(undefined, {maximumFractionDigits:2})} ${esc(entry.unit_type || '')}</td>
-                <td style="text-align:right;">${entry.estimated_value !== null ? '$' + Number(entry.estimated_value).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}) : '--'}</td>
-                <td>${esc(entry.notes || '--')}</td>
-            </tr>
-        `).join('');
-    }
-
-    sourceSelect.onchange = function() {
-        const unit = this.selectedOptions[0]?.dataset?.unit || '';
-        if (unit && !unitSelect.value) {
-            unitSelect.value = unit;
-        }
-    };
-
-    maybePrefillWasteForm();
-}
-
-function updateBalanceUI() {
-    const banner = document.getElementById('balanceBanner');
-    const nextBtn = document.querySelector('button[onclick="completeBatch()"]');
-    const remainder = Number(batchAccounting.unaccountedQty || 0);
-    const unit = batchAccounting.defaultUnitType ? ` ${batchAccounting.defaultUnitType}` : '';
-
-    if (Math.abs(remainder) < 0.0001) {
-        banner.className = 'balance-banner good';
-        banner.textContent = 'Batch is balanced. Input quantity matches output plus waste/byproduct.';
-        if (nextBtn) nextBtn.disabled = false;
         return;
     }
 
-    banner.className = 'balance-banner warning';
-    if (remainder > 0) {
-        banner.textContent = `There is ${remainder.toFixed(2)}${unit} still unaccounted for. Log it as waste or byproduct before completing this batch.`;
-    } else {
-        banner.textContent = `This batch is over-accounted by ${Math.abs(remainder).toFixed(2)}${unit}. Reduce waste/byproduct or outputs before completing.`;
-    }
-    if (nextBtn) nextBtn.disabled = true;
-}
-
-function maybePrefillWasteForm() {
-    const qtyInput = document.getElementById('w-quantity');
-    const unitInput = document.getElementById('w-unit-type');
-    const notesInput = document.getElementById('w-notes');
-    const currentQty = parseFloat(qtyInput.value || 0);
-    const remainder = Number(batchAccounting.unaccountedQty || 0);
-
-    if (currentQty > 0 || Math.abs(remainder) < 0.0001 || remainder < 0) return;
-
-    document.getElementById('w-entry-type').value = 'waste';
-    document.getElementById('w-category').value = 'trim';
-    if (wasteSourceOptions.length === 1 && !document.getElementById('w-source-lot').value) {
-        document.getElementById('w-source-lot').value = wasteSourceOptions[0].inventory_id;
-    }
-    qtyInput.value = remainder.toFixed(2);
-    if (!unitInput.value && batchAccounting.defaultUnitType) {
-        unitInput.value = batchAccounting.defaultUnitType;
-    }
-    if (!notesInput.value) {
-        notesInput.value = 'Suggested remainder from output yield';
-    }
-}
-
-function hideWasteError() {
-    const el = document.getElementById('wasteError');
-    el.style.display = 'none';
-    el.textContent = '';
-}
-
-async function saveWasteEntry() {
-    hideWasteError();
-
-    const payload = {
-        entry_type: document.getElementById('w-entry-type').value,
-        category: document.getElementById('w-category').value,
-        source_inventory_id: document.getElementById('w-source-lot').value || null,
-        quantity: document.getElementById('w-quantity').value,
-        unit_type: document.getElementById('w-unit-type').value.trim(),
-        estimated_value: document.getElementById('w-estimated-value').value,
-        notes: document.getElementById('w-notes').value.trim(),
-    };
-
-    const res = await fetch(`/api/processing/batches/${BATCH_ID}/waste/create/`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': getCookie('csrftoken'),
-        },
-        body: JSON.stringify(payload),
-    });
-    const data = await res.json();
-    if (!res.ok || data.error) {
-        const el = document.getElementById('wasteError');
-        el.style.display = '';
-        el.textContent = data.error || 'Unable to log waste entry.';
-        return;
-    }
-
-    document.getElementById('w-quantity').value = '';
-    document.getElementById('w-estimated-value').value = '';
-    document.getElementById('w-notes').value = '';
-    await loadWasteEntries();
+    tbody.innerHTML = entries.map(entry => `
+        <tr>
+            <td>${esc(entry.created_at)}</td>
+            <td>${esc(entry.entry_type_display)}</td>
+            <td>${esc(entry.category_display)}</td>
+            <td>${esc(entry.source_lot_id || '--')}</td>
+            <td style="text-align:right; font-weight:600;">${Number(entry.quantity).toLocaleString(undefined, {maximumFractionDigits:2})} ${esc(entry.unit_type || '')}</td>
+            <td style="text-align:right;">${entry.estimated_value !== null ? '$' + Number(entry.estimated_value).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}) : '--'}</td>
+            <td>${esc(entry.notes || '--')}</td>
+        </tr>
+    `).join('');
 }
 
 async function completeBatch() {
@@ -488,6 +262,5 @@ async function cancelBatch() {
     });
     location.reload();
 }
-
 </script>
 {% endblock %}

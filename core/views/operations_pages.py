@@ -27,15 +27,11 @@ def _tenant_page(template_name, extra_context=None):
 
 
 # ── Core workflow pages ──────────────────────────────────────────
-purchases_page = _tenant_page("core/purchases.html")
-receiving_page = _tenant_page("core/receiving.html")
+purchases_page = _tenant_page("core/arrivals.html")
+receiving_page = _tenant_page("core/arrivals.html")
 inventory_item_library = _tenant_page("core/inventory_item_library.html")
 processing_hub = _tenant_page("core/processing_hub.html")
 sales_orders_page = _tenant_page("core/sales_orders.html")
-shipping_hub = _tenant_page("core/shipping/shipping_log.html")
-shipping_picking = _tenant_page("core/shipping/picking.html")
-shipping_packing = _tenant_page("core/shipping/packing.html")
-shipping_loading = _tenant_page("core/shipping/loading.html")
 settings_page = _tenant_page("core/settings.html")
 vendor_list_page = _tenant_page("core/vendor_list.html")
 customer_list_page = _tenant_page("core/customer_list.html")
@@ -123,6 +119,26 @@ def sales_order_detail(request, order_id):
         "trace_lots": list(trace_lots.values()),
         "trace_pos": list(trace_pos.values()),
     })
+
+
+@login_required
+def shipping_hub(request):
+    return redirect("sales_orders_page")
+
+
+@login_required
+def shipping_picking(request):
+    return redirect("sales_orders_page")
+
+
+@login_required
+def shipping_packing(request):
+    return redirect("sales_orders_page")
+
+
+@login_required
+def shipping_loading(request):
+    return redirect("sales_orders_page")
 
 
 @login_required

@@ -1,30 +1,21 @@
 {% comment %}
 Reusable sidebar for the core processing workflow.
 Usage: {% include 'core/includes/sidebar.html' with active='purchase' %}
-Active values: dashboard, purchase, receive, inventory, process, sales, ship, settings
+Active values: dashboard, purchase, receive, inventory, sales, settings
 {% endcomment %}
 
 <div class="inv-sidebar">
     <a href="{% url 'operations_hub' %}" title="Dashboard" class="{% if active == 'dashboard' %}active{% endif %}" style="margin-bottom:0.5rem;">
         <i class="bi bi-grid-1x2"></i><span>Home</span>
     </a>
-    <a href="{% url 'purchases_page' %}" title="Purchase" class="{% if active == 'purchase' %}active{% endif %}">
-        <i class="bi bi-cart"></i><span>Purchase</span>
-    </a>
-    <a href="{% url 'receiving_page' %}" title="Receive" class="{% if active == 'receive' %}active{% endif %}">
-        <i class="bi bi-box-arrow-in-down"></i><span>Receive</span>
+    <a href="{% url 'purchases_page' %}" title="Arrivals" class="{% if active == 'purchase' or active == 'receive' %}active{% endif %}">
+        <i class="bi bi-truck"></i><span>Arrivals</span>
     </a>
     <a href="{% url 'inventory_item_library' %}" title="Products" class="{% if active == 'inventory' %}active{% endif %}">
         <i class="bi bi-box-seam"></i><span>Products</span>
     </a>
-    <a href="{% url 'processing_hub' %}" title="Process" class="{% if active == 'process' %}active{% endif %}">
-        <i class="bi bi-gear"></i><span>Process</span>
-    </a>
     <a href="{% url 'sales_orders_page' %}" title="Sales" class="{% if active == 'sales' %}active{% endif %}">
         <i class="bi bi-receipt"></i><span>Sales</span>
-    </a>
-    <a href="{% url 'shipping_hub' %}" title="Ship" class="{% if active == 'ship' %}active{% endif %}">
-        <i class="bi bi-truck"></i><span>Ship</span>
     </a>
     <a href="{% url 'trace_page' %}" title="Trace" class="{% if active == 'trace' %}active{% endif %}">
         <i class="bi bi-diagram-3"></i><span>Trace</span>

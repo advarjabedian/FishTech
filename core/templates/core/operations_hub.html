@@ -75,7 +75,7 @@
             <div class="stat-val" id="stat-inventory">--</div>
         </div>
         <div class="stat-card amber">
-            <div class="stat-label">Pending Shipments</div>
+            <div class="stat-label">Ready To Sell Lots</div>
             <div class="stat-val" id="stat-ship">--</div>
         </div>
         <div class="stat-card red">
@@ -86,11 +86,10 @@
 
     <!-- Quick actions -->
     <div class="qa-grid">
-        <a class="qa-card" href="{% url 'sales_orders_page' %}"><i class="bi bi-plus-circle"></i><div class="qa-label">New Sales Order</div></a>
-        <a class="qa-card" href="{% url 'purchases_page' %}"><i class="bi bi-cart-plus"></i><div class="qa-label">New Purchase</div></a>
-        <a class="qa-card" href="{% url 'receiving_page' %}"><i class="bi bi-box-arrow-in-down"></i><div class="qa-label">Receive Lot</div></a>
-        <a class="qa-card" href="{% url 'processing_hub' %}"><i class="bi bi-gear"></i><div class="qa-label">Start Processing</div></a>
-        <a class="qa-card" href="{% url 'shipping_packing' %}"><i class="bi bi-box"></i><div class="qa-label">Packing</div></a>
+        <a class="qa-card" href="{% url 'sales_orders_page' %}"><i class="bi bi-plus-circle"></i><div class="qa-label">New Sale</div></a>
+        <a class="qa-card" href="{% url 'purchases_page' %}"><i class="bi bi-truck"></i><div class="qa-label">Arrivals</div></a>
+        <a class="qa-card" href="{% url 'purchases_page' %}"><i class="bi bi-box-arrow-in-down"></i><div class="qa-label">Receive on Arrivals</div></a>
+        <a class="qa-card" href="{% url 'sales_orders_page' %}"><i class="bi bi-gear"></i><div class="qa-label">Sell + Process</div></a>
         <a class="qa-card" href="{% url 'inventory_item_library' %}"><i class="bi bi-box-seam"></i><div class="qa-label">Item Library</div></a>
     </div>
 
@@ -125,7 +124,7 @@
         <div class="dash-card">
             <div class="dash-card-header">
                 <h6>Recently Received</h6>
-                <a href="{% url 'receiving_page' %}">View All</a>
+                <a href="{% url 'purchases_page' %}">View All</a>
             </div>
             <table class="activity-table">
                 <thead><tr><th>Lot</th><th>Vendor</th><th>Product</th><th>Date</th><th style="text-align:right;">Qty</th></tr></thead>
@@ -133,14 +132,13 @@
             </table>
         </div>
 
-        <!-- Recent Processing -->
         <div class="dash-card">
             <div class="dash-card-header">
-                <h6>Recent Processing</h6>
-                <a href="{% url 'processing_hub' %}">View All</a>
+                <h6>Ready To Sell</h6>
+                <a href="{% url 'sales_orders_page' %}">View All</a>
             </div>
             <table class="activity-table">
-                <thead><tr><th>Batch</th><th>Product</th><th>Type</th><th>Status</th><th>Date</th></tr></thead>
+                <thead><tr><th>Order</th><th>Customer</th><th>Product</th><th>Status</th><th style="text-align:right;">Total</th></tr></thead>
                 <tbody id="recentProc"><tr><td colspan="5" class="text-center text-muted py-3">Loading...</td></tr></tbody>
             </table>
         </div>
@@ -161,12 +159,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
 async function loadStats() {
     try {
-        const r = await fetch('/api/operations/summary/');
-        if (!r.ok) { console.error('loadStats HTTP', r.status); return; }
-        const data = await r.json();
+        const [summaryRes, lotsRes] = await Promise.all([
+            fetch('/api/operations/summary/'),
+            fetch('/api/receiving/lots/?page_size=1'),
+        ]);
+        if (!summaryRes.ok) { console.error('loadStats HTTP', summaryRes.status); return; }
+        const data = await summaryRes.json();
+        const lotsData = lotsRes.ok ? await lotsRes.json() : {};
         document.getElementById('stat-sales').textContent = data.open_sales_orders ?? '--';
         document.getElementById('stat-inventory').textContent = data.items_in_stock ?? '--';
-        document.getElementById('stat-ship').textContent = data.pending_shipments ?? '--';
+        document.getElementById('stat-ship').textContent = lotsData.total ?? '--';
         document.getElementById('stat-po').textContent = data.open_purchase_orders ?? '--';
     } catch (e) { console.error('loadStats error', e); }
 }
@@ -221,18 +223,17 @@ async function loadRecentRecv() {
 
 async function loadRecentProc() {
     try {
-        const data = await fetch('/api/processing/batches/').then(r => r.json());
-        const batches = (data.batches || []).slice(0, 5);
-        const types = {fish_cutting:'Fish Cutting',commingle:'Commingle',renaming:'Renaming',freeze:'Freeze',lot_breaking:'Lot Breaking',shucking:'Shucking',wet_store:'Wet Store'};
-        document.getElementById('recentProc').innerHTML = batches.length ? batches.map(b => `
-            <tr style="cursor:pointer;" onclick="window.location='/processing/${b.id}/'">
-                <td style="font-weight:600;">${esc(b.batch_number)}</td>
-                <td>${esc(b.products || '')}</td>
-                <td>${esc(types[b.process_type] || b.process_type)}</td>
-                <td><span class="badge-sm badge-amber">${esc(b.status_display)}</span></td>
-                <td>${esc(b.started_at)}</td>
+        const data = await fetch('/api/sales/orders/?page_size=5').then(r => r.json());
+        const orders = data.orders || [];
+        document.getElementById('recentProc').innerHTML = orders.length ? orders.map(o => `
+            <tr style="cursor:pointer;" onclick="window.location='/sales/${o.id}/'">
+                <td style="font-weight:600;color:#2563eb;">${esc(o.order_number)}</td>
+                <td>${esc(o.customer_name)}</td>
+                <td>${esc(o.products || '')}</td>
+                <td><span class="badge-sm badge-blue">${esc(o.order_status_display)}</span></td>
+                <td style="text-align:right;">$${Number(o.total).toFixed(2)}</td>
             </tr>
-        `).join('') : '<tr><td colspan="5" class="text-center text-muted py-3">No batches yet.</td></tr>';
+        `).join('') : '<tr><td colspan="5" class="text-center text-muted py-3">No sales ready yet.</td></tr>';
     } catch {}
 }
 </script>

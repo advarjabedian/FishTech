@@ -936,6 +936,9 @@ class SalesOrderItem(TenantModel):
     unit_price = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
     margin = models.CharField(max_length=50, blank=True)
     amount = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    process_type = models.CharField(max_length=30, choices=C.PROCESS_TYPE_CHOICES, blank=True)
+    process_source_lot_ids = models.TextField(blank=True, help_text="Comma-separated inventory IDs selected as process sources")
+    process_batch = models.ForeignKey('ProcessBatch', on_delete=models.SET_NULL, null=True, blank=True, related_name='sales_items')
     sort_order = models.IntegerField(default=0)
 
     class Meta:
