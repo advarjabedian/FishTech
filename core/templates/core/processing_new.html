@@ -251,6 +251,7 @@ let allProducts = [];
 let searchTimeout;
 const PAGE_PARAMS = new URLSearchParams(window.location.search);
 const PREFILL_PRODUCT_ID = PAGE_PARAMS.get('product_id') || '';
+const PREFILL_LOT_ID = PAGE_PARAMS.get('lot_id') || '';
 const UNIT_OPTIONS = ['', 'Pcs', 'Lbs', 'Cs', 'Ea', 'Bag', 'Box', 'Tray', 'Doz'];
 
 const TYPE_HINTS = {
@@ -280,6 +281,13 @@ async function loadLots() {
     const res = await fetch(url);
     const data = await res.json();
     allLots = data.lots || [];
+    if (PREFILL_LOT_ID && !selectedLots[PREFILL_LOT_ID]) {
+        const prefilledLot = allLots.find(lot => String(lot.id) === String(PREFILL_LOT_ID));
+        if (prefilledLot) {
+            selectedLots[prefilledLot.id] = prefilledLot;
+            quantities[prefilledLot.id] = prefilledLot.on_hand;
+        }
+    }
     renderLots();
 }
 

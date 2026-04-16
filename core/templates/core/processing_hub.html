@@ -52,6 +52,56 @@
 
 /* ── Recent batches table top margin ──────────────────────────── */
 .inv-table-card { margin-top: 2rem; }
+.process-lot-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.86rem;
+}
+.process-lot-table th {
+    background: #f8fafc;
+    color: #64748b;
+    font-size: 0.73rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    padding: 10px 14px;
+    border-bottom: 1px solid #e2e8f0;
+    white-space: nowrap;
+}
+.process-lot-table td {
+    padding: 12px 14px;
+    border-bottom: 1px solid #f1f5f9;
+    color: #334155;
+    vertical-align: middle;
+}
+.process-row-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+}
+.process-row-btn {
+    border: 1px solid #dbeafe;
+    background: #eff6ff;
+    color: #2563eb;
+    border-radius: 999px;
+    padding: 0.35rem 0.75rem;
+    font-size: 0.76rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+.process-row-btn:hover {
+    background: #dbeafe;
+}
+.process-row-btn.commingle {
+    background: #ecfeff;
+    border-color: #a5f3fc;
+    color: #0891b2;
+}
+.process-row-btn.rename {
+    background: #f5f3ff;
+    border-color: #ddd6fe;
+    color: #7c3aed;
+}
 
 @media (max-width: 1400px) {
     .proc-grid {
@@ -116,6 +166,38 @@
         </a>
     </div>
 
+    <div class="inv-table-card">
+        <div style="padding: 14px 18px; border-bottom: 1px solid #f1f5f9;">
+            <h6 style="margin:0; font-weight:700; font-size:0.95rem;">Received Lots Ready To Process</h6>
+        </div>
+        <div class="inv-toolbar" style="padding: 8px 14px 0;">
+            <div class="inv-toolbar-left">
+                <input type="text" class="search-box" id="lotSearch" placeholder="Search received lots..." oninput="debounceLotSearch()">
+            </div>
+        </div>
+        <div style="overflow-x:auto;">
+            <table class="process-lot-table">
+                <thead>
+                    <tr>
+                        <th>Product</th>
+                        <th>Lot</th>
+                        <th>Received</th>
+                        <th style="text-align:right;">On Hand</th>
+                        <th>Unit</th>
+                        <th style="text-align:right;">Cost</th>
+                        <th style="text-align:right; width:260px;">Process</th>
+                    </tr>
+                </thead>
+                <tbody id="readyLotTbody">
+                    <tr><td colspan="7" class="text-center text-muted py-4">Loading received lots...</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="inv-pagination">
+            <span id="readyLotInfo">0 lots</span>
+        </div>
+    </div>
+
     <!-- Recent batches -->
     {% if not sale_mode %}
     <div class="inv-table-card">
@@ -166,8 +248,71 @@
 <script>
 let allBatches = [];
 let searchTimeout;
+let lotSearchTimeout;
+let readyLots = [];
 
-document.addEventListener('DOMContentLoaded', loadBatches);
+document.addEventListener('DOMContentLoaded', () => {
+    loadReadyLots();
+    {% if not sale_mode %}
+    loadBatches();
+    {% endif %}
+});
+
+function debounceLotSearch() {
+    clearTimeout(lotSearchTimeout);
+    lotSearchTimeout = setTimeout(loadReadyLots, 250);
+}
+
+async function loadReadyLots() {
+    const search = document.getElementById('lotSearch').value.trim();
+    let url = '/api/receiving/lots/?page_size=100';
+    if (search) {
+        url += `&search=${encodeURIComponent(search)}`;
+    }
+    try {
+        const res = await fetch(url);
+        const data = await res.json();
+        readyLots = (data.lots || []).filter(lot => Number(lot.on_hand || 0) > 0);
+        renderReadyLots();
+    } catch {
+        document.getElementById('readyLotTbody').innerHTML =
+            '<tr><td colspan="7" class="text-center text-muted py-4">Failed to load received lots.</td></tr>';
+        document.getElementById('readyLotInfo').textContent = '0 lots';
+    }
+}
+
+function renderReadyLots() {
+    const tbody = document.getElementById('readyLotTbody');
+    if (!readyLots.length) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">No received lots ready to process.</td></tr>';
+        document.getElementById('readyLotInfo').textContent = '0 lots';
+        return;
+    }
+
+    tbody.innerHTML = readyLots.map(lot => `
+        <tr>
+            <td style="font-weight:700; color:#0f172a;">${esc(lot.product_name || '--')}</td>
+            <td style="font-weight:600; color:#2563eb;">${esc(lot.trace_lot || '--')}</td>
+            <td>${esc(lot.receive_date || '--')}</td>
+            <td style="text-align:right; font-weight:700;">${Number(lot.on_hand || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</td>
+            <td>${esc(lot.unit_type || '')}</td>
+            <td style="text-align:right;">$${Number(lot.cost || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+            <td>
+                <div class="process-row-actions">
+                    <button class="process-row-btn" onclick="startProcessForLot('fish_cutting', ${lot.id})">Fish Cutting</button>
+                    <button class="process-row-btn commingle" onclick="startProcessForLot('commingle', ${lot.id})">Commingle</button>
+                    <button class="process-row-btn rename" onclick="startProcessForLot('renaming', ${lot.id})">Rename</button>
+                </div>
+            </td>
+        </tr>
+    `).join('');
+
+    document.getElementById('readyLotInfo').textContent = `${readyLots.length} lot${readyLots.length === 1 ? '' : 's'} ready to process`;
+}
+
+function startProcessForLot(processType, lotId) {
+    window.location.href = `/operations/processing/new/?type=${encodeURIComponent(processType)}&lot_id=${lotId}`;
+}
 
 async function loadBatches() {
     const status = document.getElementById('statusFilter').value;
