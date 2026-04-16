@@ -125,10 +125,11 @@ def _paginate(request, queryset, default_page_size=100):
 
 
 def _po_to_dict(order):
+    item_rows = [item for item in order.items.all() if item.item_type == "item"]
     expected = getattr(order, "expected_total", None)
     if expected is None:
-        expected = sum((item.quantity or 0) for item in order.items.all() if item.item_type == "item")
-    arrived = sum((item.received_quantity or 0) for item in order.items.all() if item.item_type == "item")
+        expected = sum((item.quantity or 0) for item in item_rows)
+    arrived = sum((item.received_quantity or 0) for item in item_rows)
     total = getattr(order, "order_total", None)
     if total is None:
         total = order.total or 0
@@ -137,15 +138,24 @@ def _po_to_dict(order):
         vendor_type = order.vendor.vendor_type or ""
     unit_types = sorted(set(filter(None, [
         (item.unit_type or (item.product.unit_type if item.product_id and item.product else ""))
-        for item in order.items.all() if item.item_type == "item"
+        for item in item_rows
     ])))
+    any_received = any((item.received_quantity or 0) > 0 for item in item_rows)
+    all_received = bool(item_rows) and all((item.received_quantity or 0) >= (item.quantity or 0) for item in item_rows)
+    derived_receive_status = "received" if all_received else ("partial" if any_received else "not_received")
+    receive_status = derived_receive_status if item_rows else order.receive_status
+    receive_status_display = {
+        "not_received": "Not Received",
+        "partial": "Partial",
+        "received": "Received",
+    }.get(receive_status, receive_status.replace("_", " ").title())
     return {
         "id": order.id,
         "po_number": order.po_number,
         "order_status": order.order_status,
         "order_status_display": order.get_order_status_display(),
-        "receive_status": order.receive_status,
-        "receive_status_display": order.get_receive_status_display(),
+        "receive_status": receive_status,
+        "receive_status_display": receive_status_display,
         "qb_po_number": order.qb_po_number,
         "vendor_name": order.vendor_name,
         "vendor_type": vendor_type,
@@ -864,6 +874,11 @@ def purchasing_order_item_add(request, order_id):
         amount=amount,
         sort_order=order.items.count(),
     )
+    all_items = order.items.filter(item_type="item")
+    all_received = all((item.received_quantity or 0) >= (item.quantity or 0) for item in all_items)
+    any_received = any((item.received_quantity or 0) > 0 for item in all_items)
+    order.receive_status = "received" if all_received and all_items.exists() else ("partial" if any_received else "not_received")
+    order.save(update_fields=["receive_status"])
     return JsonResponse({"success": True, "id": item.id})
 
 
