@@ -723,21 +723,14 @@ class Product(TenantModel):
         return self.description or f"{self.item_number} - {self.product_id}"
 
     def generate_item_name(self):
-        """Auto-generate item name from component fields like BlueTrace"""
-        parts = []
-        if self.item_group:
-            parts.append(self.item_group.name)
+        """Keep product naming clean and let units or pack live in dedicated fields."""
+        if self.description:
+            return self.description
         if self.friendly_name:
-            parts.append(self.friendly_name)
-        elif self.qb_item_name:
-            parts.append(self.qb_item_name)
-        if self.origin:
-            parts.append(self.origin)
-        if self.size_cull:
-            parts.append(self.size_cull)
-        if self.quantity_description:
-            parts.append(self.quantity_description)
-        return ' · '.join(parts) if parts else self.description
+            return self.friendly_name
+        if self.qb_item_name:
+            return self.qb_item_name
+        return self.product_id or ""
 
 
 

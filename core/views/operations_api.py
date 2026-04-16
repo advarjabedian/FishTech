@@ -154,10 +154,12 @@ def _po_to_dict(order):
 
 def _product_to_dict(product, totals=None):
     totals = totals or {}
+    display_name = product.description or product.item_name or product.friendly_name or product.qb_item_name or product.product_id
     return {
         "id": product.id,
         "product_id": product.product_id,
         "item_name": product.item_name or product.description or product.product_id,
+        "display_name": display_name,
         "item_group": product.item_group.name if product.item_group_id and product.item_group else "",
         "item_group_id": product.item_group_id,
         "qb_item_name": product.qb_item_name or "",
@@ -172,6 +174,8 @@ def _product_to_dict(product, totals=None):
         "brand": product.brand or "",
         "inventory_unit_of_measure": product.inventory_unit_of_measure or product.unit_type or "",
         "unit_type": product.inventory_unit_of_measure or product.unit_type or "",
+        "selling_unit_of_measure": product.selling_unit_of_measure or "",
+        "buying_unit_of_measure": product.buying_unit_of_measure or "",
         "list_price": _to_float(product.list_price),
         "wholesale_price": _to_float(product.wholesale_price),
         "habitat_production_method": product.habitat_production_method or "",
@@ -215,7 +219,13 @@ def _sales_item_name(item):
     if item.description:
         return item.description
     if item.product_id and item.product:
-        return item.product.item_name or item.product.description or item.product.product_id
+        return item.product.description or item.product.item_name or item.product.product_id
+    return ""
+
+
+def _sales_item_spec(item):
+    if item.product_id and item.product:
+        return " · ".join(filter(None, [item.product.quantity_description or "", item.product.size_cull or ""]))
     return ""
 
 
@@ -1155,15 +1165,24 @@ def processing_source_lots(request):
             Q(desc__icontains=search) | Q(vendorlot__icontains=search)
             | Q(vendorid__icontains=search) | Q(productid__icontains=search)
         )
+    product_ids = list({lot.productid for lot in lots if lot.productid})
+    product_map = {
+        product.product_id: product
+        for product in Product.objects.filter(tenant=tenant, product_id__in=product_ids)
+    }
     return JsonResponse({
         "lots": [
             {
                 "id": lot.id,
                 "lot_id": lot.vendorlot or f"LOT-{lot.id}",
                 "trace_lot": lot.vendorlot or f"LOT-{lot.id}",
-                "item_name": lot.desc or lot.productid or "",
+                "item_name": ((product_map.get(lot.productid).description or product_map.get(lot.productid).item_name) if product_map.get(lot.productid) else (lot.desc or lot.productid or "")),
                 "product_id": lot.productid or "",
-                "product": lot.desc or lot.productid or "",
+                "product": ((product_map.get(lot.productid).description or product_map.get(lot.productid).item_name) if product_map.get(lot.productid) else (lot.desc or lot.productid or "")),
+                "product_spec": " · ".join(filter(None, [
+                    (product_map.get(lot.productid).quantity_description if product_map.get(lot.productid) else ""),
+                    (product_map.get(lot.productid).size_cull if product_map.get(lot.productid) else ""),
+                ])),
                 "vendor": lot.vendorid or "",
                 "vendor_lot": lot.vendorlot or "",
                 "on_hand": _to_float(lot.unitsonhand) or 0,
@@ -1224,12 +1243,21 @@ def processing_batch_sources(request, batch_id):
         return error
     batch = get_object_or_404(ProcessBatch, id=batch_id, tenant=tenant)
     sources = batch.sources.select_related("inventory").all()
+    product_ids = list({s.inventory.productid for s in sources if s.inventory and s.inventory.productid})
+    product_map = {
+        product.product_id: product
+        for product in Product.objects.filter(tenant=tenant, product_id__in=product_ids)
+    }
     return JsonResponse({
         "sources": [
             {
                 "id": s.id,
                 "lot_id": s.inventory.vendorlot or f"LOT-{s.inventory_id}" if s.inventory else "--",
-                "item_name": (s.inventory.desc or s.inventory.productid or "") if s.inventory else "",
+                "item_name": (((product_map.get(s.inventory.productid).description or product_map.get(s.inventory.productid).item_name) if s.inventory and product_map.get(s.inventory.productid) else (s.inventory.desc or s.inventory.productid or "")) if s.inventory else ""),
+                "product_spec": " · ".join(filter(None, [
+                    (product_map.get(s.inventory.productid).quantity_description if s.inventory and product_map.get(s.inventory.productid) else ""),
+                    (product_map.get(s.inventory.productid).size_cull if s.inventory and product_map.get(s.inventory.productid) else ""),
+                ])),
                 "vendor": (s.inventory.vendorid or "") if s.inventory else "",
                 "quantity": float(s.quantity),
                 "unit_type": s.unit_type or "",
@@ -1251,8 +1279,9 @@ def processing_batch_outputs(request, batch_id):
             {
                 "id": o.id,
                 "lot_id": o.lot_id or (o.inventory.vendorlot if o.inventory else ""),
-                "product_name": (o.product.item_name if o.product else
+                "product_name": ((o.product.description or o.product.item_name) if o.product else
                                  (o.inventory.desc if o.inventory else "")),
+                "product_spec": (o.product.quantity_description or o.product.size_cull or "") if o.product else "",
                 "quantity": float(o.quantity),
                 "unit_type": o.unit_type or "",
                 "yield_percent": float(o.yield_percent) if o.yield_percent else None,
@@ -1898,10 +1927,11 @@ def sales_order_detail_api(request, order_id):
             "id": item.id,
             "item_type": item.item_type,
             "product_id": product_id,
-            "description": item.description or (item.product.item_name if item.product_id and item.product else ""),
+            "description": item.description or ((item.product.description or item.product.item_name) if item.product_id and item.product else ""),
+            "product_spec": _sales_item_spec(item),
             "notes": item.notes or "",
             "quantity": _to_float(item.quantity),
-            "unit_type": item.unit_type or (item.product.unit_type if item.product_id and item.product else ""),
+            "unit_type": item.unit_type or (item.product.inventory_unit_of_measure if item.product_id and item.product else ""),
             "unit_price": _to_float(item.unit_price) or 0,
             "margin": item.margin if hasattr(item, "margin") else "",
             "amount": _to_float(item.amount) or 0,
@@ -2049,7 +2079,8 @@ def sales_order_allocations(request, order_id):
         ]
         result_items.append({
             "item_id": item.id,
-            "item_name": item.description or (item.product.item_name if item.product else ""),
+            "item_name": item.description or ((item.product.description or item.product.item_name) if item.product else ""),
+            "product_spec": _sales_item_spec(item),
             "ordered_qty": ordered_qty,
             "allocated_qty": allocated_qty,
             "unit_type": item.unit_type or "",
@@ -2057,7 +2088,7 @@ def sales_order_allocations(request, order_id):
         })
         if allocated_qty < ordered_qty:
             shortages.append({
-                "item_name": item.description or (item.product.item_name if item.product else ""),
+                "item_name": item.description or ((item.product.description or item.product.item_name) if item.product else ""),
                 "short_qty": ordered_qty - allocated_qty,
             })
 
@@ -2192,7 +2223,7 @@ def processing_batches_create(request):
         # Determine product name for the output lot
         out_desc = ""
         if product:
-            out_desc = product.item_name or product.description or pid
+            out_desc = product.description or product.item_name or pid
         elif out.get("description"):
             out_desc = out["description"]
         elif first_source:
@@ -2256,6 +2287,8 @@ def _apply_product_payload(product, tenant, data):
     product.brand = (data.get("brand") or "").strip()
     product.inventory_unit_of_measure = (data.get("inventory_unit_of_measure") or "").strip()
     product.unit_type = product.inventory_unit_of_measure or product.unit_type
+    product.selling_unit_of_measure = (data.get("selling_unit_of_measure") or "").strip()
+    product.buying_unit_of_measure = (data.get("buying_unit_of_measure") or "").strip()
     product.list_price = data.get("list_price") or None
     product.wholesale_price = data.get("wholesale_price") or None
     product.habitat_production_method = (data.get("habitat_production_method") or "").strip()
@@ -2734,10 +2767,31 @@ def trace_lookup(request):
 
     # Search by sales order number
     sos_by_num = SalesOrder.objects.filter(tenant=tenant, order_number__icontains=q)
+    so_ids = set(sos_by_num.values_list("id", flat=True))
+    sales_product_ids = set()
+    sales_item_descriptions = set()
+    so_items = SalesOrderItem.objects.filter(
+        tenant=tenant,
+        sales_order__in=sos_by_num,
+        item_type="item",
+    ).select_related("product")
+    for item in so_items:
+        if item.product_id and item.product and item.product.product_id:
+            sales_product_ids.add(item.product.product_id)
+        elif item.description:
+            sales_item_descriptions.add(item.description.strip())
     so_allocs = SalesOrderAllocation.objects.filter(
         tenant=tenant, sales_order_item__sales_order__in=sos_by_num
     )
     lot_ids.update(so_allocs.values_list("inventory_id", flat=True))
+
+    # If the SO has no allocations yet, fall back to matching lots by ordered product.
+    if sales_product_ids or sales_item_descriptions:
+        matching_sales_lots = Inventory.objects.filter(tenant=tenant).filter(
+            Q(productid__in=sales_product_ids) |
+            Q(desc__in=sales_item_descriptions)
+        )
+        lot_ids.update(matching_sales_lots.values_list("id", flat=True))
 
     # Expand from POs → lots
     if po_ids:
@@ -2764,7 +2818,7 @@ def trace_lookup(request):
     all_allocs = SalesOrderAllocation.objects.filter(
         tenant=tenant, inventory_id__in=lot_ids
     ).select_related("sales_order_item__sales_order")
-    so_ids = set(a.sales_order_item.sales_order_id for a in all_allocs)
+    so_ids.update(a.sales_order_item.sales_order_id for a in all_allocs)
 
     # Build response
     purchase_orders = PurchaseOrder.objects.filter(tenant=tenant, id__in=po_ids).prefetch_related("items__product")

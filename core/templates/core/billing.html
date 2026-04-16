@@ -1,0 +1,361 @@
+{% extends 'core/base.html' %}
+{% block title %}Billing - FishTeck{% endblock %}
+
+{% block extra_css %}
+<style>
+    .billing-shell {
+        margin-left: 72px;
+        min-height: calc(100vh - 56px);
+        background: #f8fbff;
+        padding: 2rem 2.25rem 2.5rem;
+    }
+
+    .billing-wrap {
+        max-width: 980px;
+    }
+
+    .billing-kicker {
+        color: #2563eb;
+        font-size: 0.78rem;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        margin-bottom: 0.5rem;
+    }
+
+    .billing-head {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .billing-head h1 {
+        margin: 0;
+        color: #0f172a;
+        font-size: 2.25rem;
+        font-weight: 800;
+        letter-spacing: -0.04em;
+    }
+
+    .billing-head p {
+        margin: 0.35rem 0 0;
+        color: #64748b;
+        font-size: 1rem;
+    }
+
+    .billing-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        padding: 0.7rem 1rem;
+        border-radius: 999px;
+        border: 1px solid #bfdbfe;
+        background: #eff6ff;
+        color: #1d4ed8;
+        font-size: 0.9rem;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+
+    .billing-grid {
+        display: grid;
+        grid-template-columns: 1.25fr 0.95fr;
+        gap: 1.25rem;
+    }
+
+    .billing-card {
+        background: #fff;
+        border: 1px solid #dbe7f3;
+        border-radius: 22px;
+        box-shadow: 0 18px 42px rgba(37, 99, 235, 0.06);
+        overflow: hidden;
+    }
+
+    .billing-card-main {
+        padding: 1.6rem;
+    }
+
+    .pricing-band {
+        padding: 1.4rem 1.6rem;
+        border-bottom: 1px solid #e9f1f8;
+        background: linear-gradient(135deg, #eff6ff 0%, #f8fbff 100%);
+    }
+
+    .pricing-band .price {
+        display: flex;
+        align-items: baseline;
+        gap: 0.35rem;
+        color: #0f172a;
+        font-size: 3rem;
+        font-weight: 800;
+        letter-spacing: -0.05em;
+    }
+
+    .pricing-band .price small {
+        color: #64748b;
+        font-size: 1rem;
+        font-weight: 700;
+    }
+
+    .pricing-band p {
+        margin: 0.4rem 0 0;
+        color: #64748b;
+    }
+
+    .status-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.9rem;
+        margin-bottom: 1.25rem;
+    }
+
+    .status-box {
+        padding: 1rem 1.05rem;
+        border: 1px solid #e2e8f0;
+        border-radius: 16px;
+        background: #f8fbff;
+    }
+
+    .status-box label {
+        display: block;
+        color: #64748b;
+        font-size: 0.78rem;
+        font-weight: 800;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        margin-bottom: 0.35rem;
+    }
+
+    .status-box strong {
+        color: #0f172a;
+        font-size: 1.1rem;
+        font-weight: 800;
+    }
+
+    .billing-note {
+        padding: 1rem 1.05rem;
+        border-radius: 16px;
+        background: #f8fbff;
+        border: 1px solid #dbe7f3;
+        color: #475569;
+        line-height: 1.6;
+        margin-bottom: 1.15rem;
+    }
+
+    .billing-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.85rem;
+    }
+
+    .billing-btn {
+        border: none;
+        border-radius: 14px;
+        padding: 0.95rem 1.2rem;
+        font-size: 0.96rem;
+        font-weight: 800;
+        transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+    }
+
+    .billing-btn:hover {
+        transform: translateY(-1px);
+    }
+
+    .billing-btn-primary {
+        background: #2563eb;
+        color: #fff;
+        box-shadow: 0 10px 20px rgba(37, 99, 235, 0.2);
+    }
+
+    .billing-btn-primary:hover {
+        background: #1d4ed8;
+    }
+
+    .billing-btn-secondary {
+        background: #fff;
+        color: #1e3a5f;
+        border: 1px solid #cbd5e1;
+    }
+
+    .billing-list {
+        display: grid;
+        gap: 0.9rem;
+        padding: 1.6rem;
+    }
+
+    .billing-list-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.85rem;
+        padding: 1rem;
+        border: 1px solid #e2e8f0;
+        border-radius: 16px;
+        background: #fff;
+    }
+
+    .billing-list-item i {
+        width: 2rem;
+        height: 2rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 10px;
+        background: #eff6ff;
+        color: #2563eb;
+        font-size: 1rem;
+        flex-shrink: 0;
+    }
+
+    .billing-list-item strong {
+        display: block;
+        color: #0f172a;
+        font-size: 0.95rem;
+        margin-bottom: 0.2rem;
+    }
+
+    .billing-list-item span {
+        color: #64748b;
+        font-size: 0.88rem;
+        line-height: 1.55;
+    }
+
+    .billing-alert {
+        margin-bottom: 1rem;
+        border-radius: 16px;
+    }
+
+    @media (max-width: 980px) {
+        .billing-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @media (max-width: 720px) {
+        .billing-shell {
+            margin-left: 0;
+            padding: 1.2rem 1rem 2rem;
+        }
+
+        .billing-head {
+            flex-direction: column;
+        }
+
+        .status-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+{% include 'core/includes/sidebar.html' with active='settings' %}
+
+<div class="billing-shell">
+    <div class="billing-wrap">
+        <div class="billing-kicker">Billing</div>
+        <div class="billing-head">
+            <div>
+                <h1>{{ tenant.name }}</h1>
+                <p>Simple subscription billing for your facility. Start or manage the monthly FishTeck plan here.</p>
+            </div>
+            <div class="billing-pill">
+                <i class="bi bi-credit-card-2-front"></i>
+                {{ tenant.get_subscription_status_display }}
+            </div>
+        </div>
+
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert {% if message.tags == 'error' %}alert-danger{% else %}alert-success{% endif %} billing-alert">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <div class="billing-grid">
+            <div class="billing-card">
+                <div class="pricing-band">
+                    <div class="price">${{ monthly_price|floatformat:0 }} <small>/ month</small></div>
+                    <p>Flat monthly subscription for one FishTeck company workspace.</p>
+                </div>
+                <div class="billing-card-main">
+                    <div class="status-grid">
+                        <div class="status-box">
+                            <label>Subscription</label>
+                            <strong>{{ tenant.get_subscription_status_display }}</strong>
+                        </div>
+                        <div class="status-box">
+                            <label>Trial Days Left</label>
+                            <strong>{{ tenant.days_remaining_in_trial }}</strong>
+                        </div>
+                        <div class="status-box">
+                            <label>Stripe Customer</label>
+                            <strong>{% if tenant.stripe_customer_id %}Linked{% else %}Not Linked{% endif %}</strong>
+                        </div>
+                        <div class="status-box">
+                            <label>Access Gate</label>
+                            <strong>{% if billing_enforced %}Enabled{% else %}Off{% endif %}</strong>
+                        </div>
+                    </div>
+
+                    <div class="billing-note">
+                        {% if billing_ready %}
+                            {% if tenant.is_subscription_valid %}
+                                Your account currently has valid access. You can still open the Stripe billing portal to update the payment method or cancel later.
+                            {% else %}
+                                This account does not currently have an active paid subscription. Start checkout to put this tenant on the ${{ monthly_price|floatformat:0 }}/month plan.
+                            {% endif %}
+                        {% else %}
+                            Stripe keys are not configured yet. Add your Stripe environment variables first, then this page will start working without any extra setup.
+                        {% endif %}
+                    </div>
+
+                    <div class="billing-actions">
+                        <form method="post" action="{% url 'billing_checkout' %}">
+                            {% csrf_token %}
+                            <button type="submit" class="billing-btn billing-btn-primary" {% if not billing_ready %}disabled{% endif %}>
+                                Start ${{ monthly_price|floatformat:0 }}/Month Subscription
+                            </button>
+                        </form>
+
+                        <form method="post" action="{% url 'billing_portal' %}">
+                            {% csrf_token %}
+                            <button type="submit" class="billing-btn billing-btn-secondary" {% if not billing_ready or not tenant.stripe_customer_id %}disabled{% endif %}>
+                                Manage Billing
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <div class="billing-card">
+                <div class="billing-list">
+                    <div class="billing-list-item">
+                        <i class="bi bi-check2-circle"></i>
+                        <div>
+                            <strong>Minimal setup</strong>
+                            <span>One Stripe Checkout flow, one billing portal link, and one webhook endpoint. No separate pricing admin is required if you keep the default $600/month amount.</span>
+                        </div>
+                    </div>
+                    <div class="billing-list-item">
+                        <i class="bi bi-shield-lock"></i>
+                        <div>
+                            <strong>Optional enforcement</strong>
+                            <span>Turn on <code>ENFORCE_SUBSCRIPTION_BILLING=true</code> when you want expired tenants redirected here automatically.</span>
+                        </div>
+                    </div>
+                    <div class="billing-list-item">
+                        <i class="bi bi-plug"></i>
+                        <div>
+                            <strong>What to configure</strong>
+                            <span>Set <code>STRIPE_SECRET_KEY</code> and <code>STRIPE_WEBHOOK_SECRET</code>. You can optionally set <code>STRIPE_PRICE_ID</code>, or let FishTeck create the $600/month line item inline.</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

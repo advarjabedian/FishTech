@@ -198,7 +198,7 @@
                 </div>
                 <div class="col-md-3">
                     <label class="form-label fw-semibold small">Unit</label>
-                    <input id="w-unit-type" type="text" class="form-control" placeholder="Lbs, Each, Bags">
+                    <select id="w-unit-type" class="form-select"></select>
                 </div>
                 <div class="col-md-3">
                     <label class="form-label fw-semibold small">Estimated Value</label>
@@ -262,8 +262,17 @@ let batchAccounting = {
     defaultUnitType: '',
     isBalanced: true,
 };
+const UNIT_OPTIONS = ['', 'Pcs', 'Lbs', 'Cs', 'Ea', 'Bag', 'Box', 'Tray', 'Doz'];
 
 document.addEventListener('DOMContentLoaded', () => { loadSources(); loadOutputs(); loadWasteEntries(); });
+
+function unitOptions(selected) {
+    return UNIT_OPTIONS.map(unit => `<option value="${esc(unit)}" ${unit === (selected || '') ? 'selected' : ''}>${esc(unit || 'Choose Unit')}</option>`).join('');
+}
+
+function detailName(name, spec) {
+    return spec ? `${esc(name)}<div style="font-size:0.76rem; color:#94a3b8; font-weight:500;">${esc(spec)}</div>` : esc(name);
+}
 
 async function loadSources() {
     const res = await fetch(`/api/processing/batches/${BATCH_ID}/sources/`);
@@ -279,7 +288,7 @@ async function loadSources() {
     tbody.innerHTML = sources.map(s => `
         <tr>
             <td style="font-weight:600;">${esc(s.lot_id)}</td>
-            <td>${esc(s.item_name)}</td>
+            <td>${detailName(s.item_name || '--', s.product_spec || '')}</td>
             <td>${esc(s.vendor)}</td>
             <td style="text-align:right; font-weight:600;">${Number(s.quantity).toLocaleString(undefined, {maximumFractionDigits:2})} ${esc(s.unit_type)}</td>
         </tr>
@@ -300,7 +309,7 @@ async function loadOutputs() {
     tbody.innerHTML = outputs.map(o => `
         <tr>
             <td style="font-weight:600;">${esc(o.lot_id || '--')}</td>
-            <td>${esc(o.product_name || '--')}</td>
+            <td>${detailName(o.product_name || '--', o.product_spec || '')}</td>
             <td style="text-align:right; font-weight:600;">${Number(o.quantity).toLocaleString(undefined, {maximumFractionDigits:2})} ${esc(o.unit_type)}</td>
             <td style="text-align:right;">${o.yield_percent ? o.yield_percent + '%' : '--'}</td>
         </tr>
@@ -338,6 +347,8 @@ async function loadWasteEntries() {
     ).join('');
 
     const sourceSelect = document.getElementById('w-source-lot');
+    const unitSelect = document.getElementById('w-unit-type');
+    unitSelect.innerHTML = unitOptions(unitSelect.value);
     sourceSelect.innerHTML = '<option value="">Batch source lot</option>' + wasteSourceOptions.map(opt =>
         `<option value="${opt.inventory_id}" data-unit="${esc(opt.unit_type)}">${esc(opt.lot_id)} • ${Number(opt.quantity).toLocaleString(undefined, {maximumFractionDigits:2})} ${esc(opt.unit_type)}</option>`
     ).join('');
@@ -360,8 +371,8 @@ async function loadWasteEntries() {
 
     sourceSelect.onchange = function() {
         const unit = this.selectedOptions[0]?.dataset?.unit || '';
-        if (unit && !document.getElementById('w-unit-type').value) {
-            document.getElementById('w-unit-type').value = unit;
+        if (unit && !unitSelect.value) {
+            unitSelect.value = unit;
         }
     };
 

@@ -107,7 +107,7 @@
 }
 .item-editor-bottom {
     display: grid;
-    grid-template-columns: minmax(0, 1.7fr) minmax(0, 0.75fr) minmax(0, 0.9fr) minmax(0, 0.75fr) minmax(0, 0.95fr);
+    grid-template-columns: minmax(0, 1.45fr) minmax(0, 0.7fr) minmax(0, 0.75fr) minmax(0, 0.9fr) minmax(0, 0.75fr) minmax(0, 0.95fr);
     gap: 0.85rem;
     align-items: end;
     width: 100%;
@@ -115,6 +115,7 @@
 .item-editor-top > div,
 .item-editor-bottom > div { min-width: 0; }
 .item-field-label { display: block; font-size: 0.7rem; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 0.35rem; }
+.item-field-subtext { margin-top: 0.35rem; font-size: 0.76rem; color: #94a3b8; font-weight: 500; }
 .item-editor-input,
 .item-editor-select {
     width: 100%;
@@ -165,7 +166,7 @@
 }
 @media (max-width: 900px) {
     .item-editor-bottom {
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: 1fr 1fr 1fr;
     }
 }
 @media (max-width: 640px) {
@@ -438,6 +439,7 @@ let allProducts = [];
 let lineItems = [];
 let allocationData = null;
 let currentProductFilter = 'in_stock';
+const UNIT_OPTIONS = ['', 'Pcs', 'Lbs', 'Cs', 'Ea', 'Bag', 'Box', 'Tray', 'Doz'];
 
 document.addEventListener('DOMContentLoaded', async () => {
     await loadProducts();
@@ -468,8 +470,20 @@ async function loadProducts() {
         const bInStock = bOnHand > 0 ? 1 : 0;
         if (aInStock !== bInStock) return bInStock - aInStock;
         if (aOnHand !== bOnHand) return bOnHand - aOnHand;
-        return (a.item_name || '').localeCompare(b.item_name || '');
+        return productDisplayName(a).localeCompare(productDisplayName(b));
     });
+}
+
+function productDisplayName(product) {
+    return product.display_name || product.description || product.item_name || product.product_id || '';
+}
+
+function productSpec(product) {
+    return [product.quantity_description, product.size_cull].filter(Boolean).join(' · ');
+}
+
+function unitOptions(selected) {
+    return UNIT_OPTIONS.map(unit => `<option value="${esc(unit)}" ${unit === (selected || '') ? 'selected' : ''}>${esc(unit || 'Choose Unit')}</option>`).join('');
 }
 
 async function loadSODetail() {
@@ -504,6 +518,7 @@ async function loadSODetail() {
 
 function renderItems() {
     const tbody = document.getElementById('itemsTbody');
+    recalc(false);
 
     tbody.innerHTML = lineItems.map((item, i) => {
         const isFee = item.item_type === 'fee';
@@ -518,8 +533,11 @@ function renderItems() {
             : `<div class="item-margin-display">${esc(item.margin || 'No Data')}</div>`;
         const topControl = isFee
             ? `<input class="item-editor-input" type="text" value="${esc(item.description)}" placeholder="Fee description" onchange="lineItems[${i}].description=this.value; recalc();">`
-            : `<select class="item-editor-select" data-product-id="${esc(item.product_id)}" onchange="onItemSelect(${i}, this.value)"><option value="">Choose Item</option>${buildProductOptions(item.product_id)}</select>`;
+            : `<div><select class="item-editor-select" data-product-id="${esc(item.product_id)}" onchange="onItemSelect(${i}, this.value)"><option value="">Choose Item</option>${buildProductOptions(item.product_id)}</select>${item.product_spec ? `<div class="item-field-subtext">${esc(item.product_spec)}</div>` : ''}</div>`;
         const notesField = `<input class="item-editor-input" type="text" value="${esc(item.notes)}" placeholder="Enter note" onchange="lineItems[${i}].notes=this.value;">`;
+        const unitField = isFee
+            ? `<span style="font-size:0.8rem;color:#94a3b8;">--</span>`
+            : `<select class="item-editor-select" onchange="lineItems[${i}].unit_type=this.value">${unitOptions(item.unit_type)}</select>`;
         const priceField = `<input class="item-editor-input" type="number" step="0.01" value="${item.unit_price||''}" placeholder="$" onchange="lineItems[${i}].unit_price=parseFloat(this.value)||0; recalc();">`;
         return `
         <tr>
@@ -538,6 +556,10 @@ function renderItems() {
                             ${notesField}
                         </div>
                         <div>
+                            <span class="item-field-label">Unit</span>
+                            ${unitField}
+                        </div>
+                        <div>
                             <span class="item-field-label">Quantity</span>
                             ${qtyField}
                         </div>
@@ -551,7 +573,7 @@ function renderItems() {
                         </div>
                         <div>
                             <span class="item-field-label">Amount</span>
-                            <div class="item-amount-box">$${(item.amount||0).toFixed(2)}</div>
+                            <div class="item-amount-box" id="item-amount-${i}">$${(item.amount||0).toFixed(2)}</div>
                         </div>
                     </div>
                 </div>
@@ -565,12 +587,23 @@ function renderItems() {
     });
 
     updateProductFilterUI();
-    recalc();
 }
 
 function onItemSelect(idx, productId) {
     const p = allProducts.find(x => x.product_id === productId);
-    if (p) { lineItems[idx].product_id = productId; lineItems[idx].description = p.item_name; lineItems[idx].unit_type = p.unit_type; }
+    if (p) {
+        lineItems[idx].product_id = productId;
+        lineItems[idx].description = productDisplayName(p);
+        lineItems[idx].product_spec = productSpec(p);
+        lineItems[idx].unit_type = p.selling_unit_of_measure || p.inventory_unit_of_measure || p.unit_type || '';
+        renderItems();
+        return;
+    }
+    lineItems[idx].product_id = '';
+    lineItems[idx].description = '';
+    lineItems[idx].product_spec = '';
+    lineItems[idx].unit_type = '';
+    renderItems();
 }
 
 function setProductFilter(filterName) {
@@ -610,14 +643,17 @@ function formatQty(value) {
 
 function formatProductOptionLabel(product) {
     const onHand = Number(product.on_hand || 0);
-    const unit = product.unit_type || product.inventory_unit_of_measure || '';
+    const unit = product.selling_unit_of_measure || product.inventory_unit_of_measure || product.unit_type || '';
+    const baseName = productDisplayName(product);
+    const spec = productSpec(product);
+    const label = spec ? `${baseName} · ${spec}` : baseName;
     if (currentProductFilter === 'recent' && product.recently_processed) {
-        return `${product.item_name} (${onHand > 0 ? `${formatQty(onHand)} ${unit || 'units'} on hand, ` : ''}recently processed)`;
+        return `${label} (${onHand > 0 ? `${formatQty(onHand)} ${unit || 'units'} on hand, ` : ''}recently processed)`;
     }
     if (onHand > 0) {
-        return `${product.item_name} (${formatQty(onHand)} ${unit || 'units'} on hand)`;
+        return `${label} (${formatQty(onHand)} ${unit || 'units'} on hand)`;
     }
-    return `${product.item_name} (Out of stock)`;
+    return `${label} (Out of stock)`;
 }
 
 function updateProductFilterUI() {
@@ -664,7 +700,7 @@ function refreshHeaderStatusBadge() {
 }
 
 function addItemRow(type) {
-    lineItems.push({ id: null, item_type: type, product_id: '', description: type === 'fee' ? 'Fee' : '', notes: '', quantity: null, unit_type: '', unit_price: null, margin: '', amount: 0 });
+    lineItems.push({ id: null, item_type: type, product_id: '', description: type === 'fee' ? 'Fee' : '', product_spec: '', notes: '', quantity: null, unit_type: '', unit_price: null, margin: '', amount: 0 });
     renderItems();
 }
 
@@ -677,9 +713,11 @@ function removeItem(idx) {
 
 function recalc() {
     let itemSub = 0, feeSub = 0;
-    lineItems.forEach(item => {
+    lineItems.forEach((item, idx) => {
         if (item.item_type === 'fee') { item.amount = parseFloat(item.unit_price) || 0; feeSub += item.amount; }
         else { item.amount = (parseFloat(item.quantity) || 0) * (parseFloat(item.unit_price) || 0); itemSub += item.amount; }
+        const amountEl = document.getElementById(`item-amount-${idx}`);
+        if (amountEl) amountEl.textContent = '$' + (item.amount || 0).toFixed(2);
     });
     document.getElementById('itemSubtotal').textContent = '$' + itemSub.toFixed(2);
     document.getElementById('feeSubtotal').textContent = '$' + feeSub.toFixed(2);
@@ -725,9 +763,12 @@ async function loadPackedLots() {
         const lotText = (item.lots || []).length
             ? item.lots.map(lot => `${esc(lot.lot_id)} (${Number(lot.quantity).toLocaleString(undefined, {maximumFractionDigits:2})} ${esc(lot.unit_type)})`).join('<br>')
             : '--';
+        const itemInfo = item.product_spec
+            ? `${esc(item.item_name)}<div class="fifo-note">${esc(item.product_spec)}</div><div class="fifo-note">${(item.lots || []).length ? `${item.lots.length} lot allocation(s)` : 'Not allocated yet'}</div>`
+            : `${esc(item.item_name)}<div class="fifo-note">${(item.lots || []).length ? `${item.lots.length} lot allocation(s)` : 'Not allocated yet'}</div>`;
 
         return `<tr>
-            <td><a href="#">${esc(item.item_name)}</a><div class="fifo-note">${(item.lots || []).length ? `${item.lots.length} lot allocation(s)` : 'Not allocated yet'}</div></td>
+            <td><a href="#">${itemInfo}</a></td>
             <td>${lotText}</td>
             <td>${orderedQty} ${esc(item.unit_type)}</td>
             <td>${packedQty} ${esc(item.unit_type)}</td>

@@ -1,0 +1,392 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Platform Billing - FishTeck{% endblock %}
+
+{% block extra_css %}
+<style>
+    .admin-shell {
+        min-height: calc(100vh - 56px);
+        background: #f6faff;
+        padding: 2rem;
+    }
+
+    .admin-wrap {
+        max-width: 1380px;
+        margin: 0 auto;
+    }
+
+    .admin-head {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .admin-head h1 {
+        margin: 0;
+        color: #0f172a;
+        font-size: 2.2rem;
+        font-weight: 800;
+        letter-spacing: -0.04em;
+    }
+
+    .admin-head p {
+        margin: 0.45rem 0 0;
+        color: #64748b;
+        font-size: 1rem;
+    }
+
+    .admin-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem 1rem;
+        border-radius: 999px;
+        font-size: 0.92rem;
+        font-weight: 700;
+        border: 1px solid #cbd5e1;
+        background: #fff;
+        color: #334155;
+        white-space: nowrap;
+    }
+
+    .admin-metrics {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 1rem;
+        margin-bottom: 1.4rem;
+    }
+
+    .metric-card {
+        background: #fff;
+        border: 1px solid #dbe7f3;
+        border-radius: 20px;
+        padding: 1.2rem 1.25rem;
+        box-shadow: 0 14px 30px rgba(37, 99, 235, 0.06);
+    }
+
+    .metric-label {
+        color: #64748b;
+        font-size: 0.78rem;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        margin-bottom: 0.45rem;
+    }
+
+    .metric-value {
+        color: #0f172a;
+        font-size: 2rem;
+        font-weight: 800;
+        letter-spacing: -0.04em;
+    }
+
+    .metric-sub {
+        margin-top: 0.35rem;
+        color: #64748b;
+        font-size: 0.9rem;
+    }
+
+    .admin-card {
+        background: #fff;
+        border: 1px solid #dbe7f3;
+        border-radius: 22px;
+        box-shadow: 0 14px 30px rgba(37, 99, 235, 0.06);
+        overflow: hidden;
+    }
+
+    .admin-card-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 1.15rem 1.25rem;
+        border-bottom: 1px solid #e8eff7;
+        background: linear-gradient(180deg, #fbfdff 0%, #f3f8ff 100%);
+    }
+
+    .admin-card-head h2 {
+        margin: 0;
+        color: #0f172a;
+        font-size: 1.15rem;
+        font-weight: 800;
+    }
+
+    .admin-card-head p {
+        margin: 0.2rem 0 0;
+        color: #64748b;
+        font-size: 0.9rem;
+    }
+
+    .stripe-note {
+        font-size: 0.9rem;
+        font-weight: 700;
+        color: #2563eb;
+    }
+
+    .stripe-note.off {
+        color: #b45309;
+    }
+
+    .admin-table-wrap {
+        overflow-x: auto;
+    }
+
+    .admin-table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 1120px;
+    }
+
+    .admin-table thead th {
+        padding: 0.9rem 1rem;
+        background: #f8fbff;
+        color: #64748b;
+        font-size: 0.77rem;
+        font-weight: 800;
+        letter-spacing: 0.07em;
+        text-transform: uppercase;
+        border-bottom: 1px solid #e8eff7;
+    }
+
+    .admin-table tbody td {
+        padding: 1rem;
+        border-bottom: 1px solid #edf2f7;
+        color: #1e293b;
+        font-size: 0.92rem;
+        vertical-align: middle;
+    }
+
+    .admin-table tbody tr:hover {
+        background: #fbfdff;
+    }
+
+    .tenant-name {
+        font-size: 1rem;
+        font-weight: 800;
+        color: #0f172a;
+    }
+
+    .tenant-meta {
+        margin-top: 0.2rem;
+        color: #64748b;
+        font-size: 0.84rem;
+    }
+
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 102px;
+        padding: 0.38rem 0.7rem;
+        border-radius: 999px;
+        font-size: 0.78rem;
+        font-weight: 800;
+        text-transform: capitalize;
+    }
+
+    .status-active { background: #dcfce7; color: #15803d; }
+    .status-trialing { background: #dbeafe; color: #1d4ed8; }
+    .status-past_due { background: #fef3c7; color: #b45309; }
+    .status-canceled { background: #e5e7eb; color: #4b5563; }
+    .status-unpaid { background: #fee2e2; color: #b91c1c; }
+    .status-default { background: #e2e8f0; color: #334155; }
+
+    .money {
+        font-weight: 800;
+        color: #0f172a;
+    }
+
+    .money-sub {
+        display: block;
+        margin-top: 0.18rem;
+        color: #64748b;
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+
+    .admin-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        color: #2563eb;
+        text-decoration: none;
+        font-weight: 700;
+    }
+
+    .admin-link:hover {
+        color: #1d4ed8;
+    }
+
+    .muted {
+        color: #94a3b8;
+    }
+
+    .admin-alert {
+        margin-bottom: 1rem;
+        border-radius: 16px;
+    }
+
+    @media (max-width: 1100px) {
+        .admin-metrics {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+
+    @media (max-width: 700px) {
+        .admin-shell {
+            padding: 1rem;
+        }
+
+        .admin-head {
+            flex-direction: column;
+        }
+
+        .admin-metrics {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="admin-shell">
+    <div class="admin-wrap">
+        <div class="admin-head">
+            <div>
+                <h1>Platform Billing</h1>
+                <p>Track tenant subscriptions, last payments, and total Stripe collections without dropping into Django admin.</p>
+            </div>
+            <div class="admin-pill">
+                <i class="bi bi-buildings"></i>
+                {{ total_tenants }} tenant{{ total_tenants|pluralize }}
+            </div>
+        </div>
+
+        {% if stripe_error %}
+            <div class="alert alert-warning admin-alert">
+                Stripe is configured but the dashboard could not pull payment history right now: {{ stripe_error }}
+            </div>
+        {% endif %}
+
+        <div class="admin-metrics">
+            <div class="metric-card">
+                <div class="metric-label">Total Tenants</div>
+                <div class="metric-value">{{ total_tenants }}</div>
+                <div class="metric-sub">{{ active_subscriptions }} active subscriptions</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Collected This Month</div>
+                <div class="metric-value">${{ monthly_revenue|floatformat:2 }}</div>
+                <div class="metric-sub">Paid invoices in the current month</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Collected Lifetime</div>
+                <div class="metric-value">${{ total_revenue|floatformat:2 }}</div>
+                <div class="metric-sub">Across all Stripe-linked tenants</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Stripe Balance</div>
+                <div class="metric-value">
+                    {% if stripe_balance %}
+                        ${{ stripe_balance.available|floatformat:2 }}
+                    {% else %}
+                        --
+                    {% endif %}
+                </div>
+                <div class="metric-sub">
+                    {% if stripe_balance %}
+                        Pending ${{ stripe_balance.pending|floatformat:2 }}
+                    {% elif stripe_connected %}
+                        Connected, no balance returned
+                    {% else %}
+                        Stripe not configured
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="admin-card">
+            <div class="admin-card-head">
+                <div>
+                    <h2>Tenant Billing Overview</h2>
+                    <p>Each tenant’s subscription state plus the latest Stripe payment info we can find.</p>
+                </div>
+                <div class="stripe-note {% if not stripe_connected %}off{% endif %}">
+                    {% if stripe_connected %}Stripe connected{% else %}Stripe not configured{% endif %}
+                </div>
+            </div>
+
+            <div class="admin-table-wrap">
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Tenant</th>
+                            <th>Status</th>
+                            <th>Users</th>
+                            <th>Trial Ends</th>
+                            <th>Last Paid</th>
+                            <th>Total Paid</th>
+                            <th>This Month</th>
+                            <th>Invoices</th>
+                            <th>Stripe</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for tenant in tenants %}
+                            <tr>
+                                <td>
+                                    <div class="tenant-name">{{ tenant.name }}</div>
+                                    <div class="tenant-meta">{{ tenant.subdomain }}</div>
+                                </td>
+                                <td>
+                                    <span class="status-badge {% if tenant.subscription_status == 'active' %}status-active{% elif tenant.subscription_status == 'trialing' %}status-trialing{% elif tenant.subscription_status == 'past_due' %}status-past_due{% elif tenant.subscription_status == 'canceled' %}status-canceled{% elif tenant.subscription_status == 'unpaid' %}status-unpaid{% else %}status-default{% endif %}">
+                                        {{ tenant.get_subscription_status_display }}
+                                    </span>
+                                </td>
+                                <td>{{ tenant.user_count }}</td>
+                                <td>
+                                    {% if tenant.trial_ends_at %}
+                                        {{ tenant.trial_ends_at|date:"M d, Y" }}
+                                    {% else %}
+                                        <span class="muted">--</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if tenant.last_paid_at %}
+                                        {{ tenant.last_paid_at|date:"M d, Y" }}
+                                        <span class="money-sub">{{ tenant.last_paid_at|date:"g:i A" }}</span>
+                                    {% else %}
+                                        <span class="muted">No payment found</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="money">${{ tenant.total_paid|floatformat:2 }}</span>
+                                </td>
+                                <td>
+                                    <span class="money">${{ tenant.this_month_paid|floatformat:2 }}</span>
+                                </td>
+                                <td>{{ tenant.paid_invoice_count }}</td>
+                                <td>
+                                    {% if tenant.stripe_customer_id %}
+                                        <a class="admin-link" href="https://dashboard.stripe.com/customers/{{ tenant.stripe_customer_id }}" target="_blank" rel="noopener noreferrer">
+                                            <i class="bi bi-box-arrow-up-right"></i> Customer
+                                        </a>
+                                    {% else %}
+                                        <span class="muted">Not linked</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="9" class="muted">No tenants found.</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

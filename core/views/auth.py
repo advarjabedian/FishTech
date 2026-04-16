@@ -1,8 +1,14 @@
+from collections import defaultdict
+from datetime import timezone as dt_timezone
+
+from django.conf import settings
+from django.db.models import Count
 from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+from django.utils import timezone
 from core.models import TenantUser, Tenant
 
 def login_view(request):
@@ -26,8 +32,8 @@ def login_view(request):
                 
                 login(request, user)
                 
-                # Redirect to next or HACCP dashboard
-                next_url = request.GET.get('next', 'haccp')
+                # Redirect to next or Operations dashboard
+                next_url = request.GET.get('next', 'operations_hub')
                 return redirect(next_url)
             except TenantUser.DoesNotExist:
                 messages.error(request, 'User not associated with any tenant.')
@@ -64,10 +70,106 @@ def operations_hub(request):
 
 @login_required
 def platform_admin_redirect(request):
-    """Redirect superusers to Django admin"""
+    """Platform admin dashboard for tenant billing oversight."""
     if not request.user.is_superuser:
         return redirect('home')
-    return redirect('admin:index')
+
+    tenants = list(
+        Tenant.objects.annotate(user_count=Count('tenantuser'))
+        .order_by('name')
+    )
+
+    billing_by_customer = defaultdict(lambda: {
+        'last_paid_at': None,
+        'total_paid': 0.0,
+        'paid_invoice_count': 0,
+        'this_month_paid': 0.0,
+    })
+    stripe_connected = bool(settings.STRIPE_SECRET_KEY)
+    stripe_error = ""
+    stripe_balance = None
+
+    if stripe_connected:
+        try:
+            import stripe
+
+            stripe.api_key = settings.STRIPE_SECRET_KEY
+
+            invoices = stripe.Invoice.list(limit=100, status='paid')
+            for invoice in invoices.auto_paging_iter():
+                customer_id = getattr(invoice, 'customer', None)
+                if not customer_id:
+                    continue
+
+                amount_paid = (getattr(invoice, 'amount_paid', 0) or 0) / 100
+                paid_at_ts = getattr(getattr(invoice, 'status_transitions', None), 'paid_at', None)
+                paid_at = None
+                if paid_at_ts:
+                    from django.utils import timezone
+                    paid_at = timezone.datetime.fromtimestamp(paid_at_ts, tz=dt_timezone.utc)
+
+                summary = billing_by_customer[customer_id]
+                summary['total_paid'] += amount_paid
+                summary['paid_invoice_count'] += 1
+
+                if paid_at and (summary['last_paid_at'] is None or paid_at > summary['last_paid_at']):
+                    summary['last_paid_at'] = paid_at
+
+                if paid_at and paid_at.year == timezone.now().year and paid_at.month == timezone.now().month:
+                    summary['this_month_paid'] += amount_paid
+
+            try:
+                balance = stripe.Balance.retrieve()
+                available = sum(item.amount for item in getattr(balance, 'available', [])) / 100
+                pending = sum(item.amount for item in getattr(balance, 'pending', [])) / 100
+                stripe_balance = {
+                    'available': available,
+                    'pending': pending,
+                }
+            except Exception:
+                stripe_balance = None
+        except Exception as exc:
+            stripe_error = str(exc)
+
+    active_subscriptions = 0
+    trialing = 0
+    past_due = 0
+    canceled = 0
+    total_revenue = 0.0
+    monthly_revenue = 0.0
+
+    for tenant in tenants:
+        billing = billing_by_customer.get(tenant.stripe_customer_id, {})
+        tenant.last_paid_at = billing.get('last_paid_at')
+        tenant.total_paid = billing.get('total_paid', 0.0)
+        tenant.this_month_paid = billing.get('this_month_paid', 0.0)
+        tenant.paid_invoice_count = billing.get('paid_invoice_count', 0)
+
+        total_revenue += tenant.total_paid
+        monthly_revenue += tenant.this_month_paid
+
+        if tenant.subscription_status == 'active':
+            active_subscriptions += 1
+        elif tenant.subscription_status == 'trialing':
+            trialing += 1
+        elif tenant.subscription_status == 'past_due':
+            past_due += 1
+        elif tenant.subscription_status == 'canceled':
+            canceled += 1
+
+    return render(request, 'core/platform_admin_billing.html', {
+        'tenants': tenants,
+        'total_tenants': len(tenants),
+        'active_subscriptions': active_subscriptions,
+        'trialing': trialing,
+        'past_due': past_due,
+        'canceled': canceled,
+        'total_revenue': round(total_revenue, 2),
+        'monthly_revenue': round(monthly_revenue, 2),
+        'stripe_connected': stripe_connected,
+        'stripe_error': stripe_error,
+        'stripe_balance': stripe_balance,
+    })
 
 
 def register_view(request):

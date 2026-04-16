@@ -139,6 +139,7 @@
                     <th style="width:35%;">Item</th>
                     <th style="width:30px;"></th>
                     <th>Notes</th>
+                    <th style="width:90px;">Unit</th>
                     <th style="width:100px;">Quantity</th>
                     <th style="width:100px;">Unit Price</th>
                     <th style="width:100px; text-align:right;">Amount</th>
@@ -224,6 +225,7 @@ const PO_LOCKED = {% if po.order_status == 'closed' or po.order_status == 'cance
 let poData = null;
 let allProducts = [];
 let lineItems = []; // local state
+const UNIT_OPTIONS = ['', 'Pcs', 'Lbs', 'Cs', 'Ea', 'Bag', 'Box', 'Tray', 'Doz'];
 
 document.addEventListener('DOMContentLoaded', async () => {
     await loadProducts();
@@ -285,8 +287,9 @@ function renderReceiving(items) {
 function renderItems() {
     const tbody = document.getElementById('itemsTbody');
     const productOpts = allProducts.map(p =>
-        `<option value="${esc(p.product_id)}">${esc(p.item_name)}</option>`
+        `<option value="${esc(p.product_id)}">${esc(getPurchaseItemLabel(p))}</option>`
     ).join('');
+    const unitOpts = UNIT_OPTIONS.map(unit => `<option value="${esc(unit)}">${esc(unit || 'Unit')}</option>`).join('');
 
     tbody.innerHTML = lineItems.map((item, i) => {
         const isFee = item.item_type === 'fee';
@@ -297,6 +300,7 @@ function renderItems() {
                 <td>${name}</td>
                 <td></td>
                 <td>${esc(item.notes)}</td>
+                <td>${isFee ? '' : esc(item.unit_type || '')}</td>
                 <td>${isFee ? '' : (item.quantity || '')}</td>
                 <td>${item.unit_price ? '$' + Number(item.unit_price).toFixed(2) : ''}</td>
                 <td style="text-align:right; font-weight:600;">$${(item.amount||0).toFixed(2)}</td>
@@ -316,6 +320,9 @@ function renderItems() {
             </td>
             <td><button class="del-btn" onclick="removeItem(${i})"><i class="bi bi-trash"></i></button></td>
             <td><input type="text" value="${esc(item.notes)}" placeholder="Enter note" onchange="lineItems[${i}].notes=this.value;"></td>
+            <td>${isFee ? '' : `<select class="item-select" data-unit-value="${esc(item.unit_type || '')}" onchange="lineItems[${i}].unit_type=this.value;">
+                ${unitOpts}
+            </select>`}</td>
             <td>${isFee ? '' : `<input type="number" step="0.01" value="${item.quantity||''}" onchange="lineItems[${i}].quantity=parseFloat(this.value)||0; recalc();">`}</td>
             <td><input type="number" step="0.01" value="${item.unit_price||''}" placeholder="$" onchange="lineItems[${i}].unit_price=parseFloat(this.value)||0; recalc();"></td>
             <td style="text-align:right; font-weight:600;">$${(item.amount||0).toFixed(2)}</td>
@@ -326,16 +333,24 @@ function renderItems() {
     tbody.querySelectorAll('.item-select[data-product-id]').forEach(sel => {
         if (sel.dataset.productId) sel.value = sel.dataset.productId;
     });
+    tbody.querySelectorAll('.item-select[data-unit-value]').forEach(sel => {
+        if (sel.dataset.unitValue) sel.value = sel.dataset.unitValue;
+    });
 
     recalc();
+}
+
+function getPurchaseItemLabel(product) {
+    return (product.description || product.item_name || product.product_id || '').trim();
 }
 
 function onItemSelect(idx, productId) {
     const p = allProducts.find(x => x.product_id === productId);
     if (p) {
         lineItems[idx].product_id = productId;
-        lineItems[idx].description = p.item_name;
-        lineItems[idx].unit_type = p.unit_type;
+        lineItems[idx].description = getPurchaseItemLabel(p);
+        if (!lineItems[idx].unit_type) lineItems[idx].unit_type = p.unit_type || '';
+        renderItems();
     }
 }
 

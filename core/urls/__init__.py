@@ -5,6 +5,7 @@ from ..views.auth import (
     register_view,
     platform_admin_redirect,
 )
+from ..views.billing import billing_checkout, billing_page, billing_portal, stripe_webhook
 from .haccp import (
     urlpatterns as haccp_urls,
     api_urlpatterns as haccp_api_urls,
@@ -21,6 +22,10 @@ urlpatterns = [
     path('register/', register_view, name='register'),
     path('logout/', logout_view, name='logout'),
     path('platform-admin/', platform_admin_redirect, name='platform_admin'),
+    path('billing/', billing_page, name='billing_page'),
+    path('billing/checkout/', billing_checkout, name='billing_checkout'),
+    path('billing/portal/', billing_portal, name='billing_portal'),
+    path('api/billing/webhook/', stripe_webhook, name='stripe_webhook'),
 
     path('haccp/', include(haccp_urls)),
     path('api/haccp/', include(haccp_api_urls)),

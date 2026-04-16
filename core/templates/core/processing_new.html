@@ -249,6 +249,7 @@ let quantities = {};     // inv.id -> number
 let outputItems = [];    // [{product_id, product_name, quantity, unit_type, yield_percent, lot_id}]
 let allProducts = [];
 let searchTimeout;
+const UNIT_OPTIONS = ['', 'Pcs', 'Lbs', 'Cs', 'Ea', 'Bag', 'Box', 'Tray', 'Doz'];
 
 const TYPE_HINTS = {
     fish_cutting: '<i class="bi bi-scissors"></i> <strong>Fish Cutting:</strong> Source whole fish will be cut into portions. Define the output product(s) and expected yield %.',
@@ -283,6 +284,31 @@ async function loadProducts() {
     allProducts = data.products || [];
 }
 
+function formatSpec(spec) {
+    return spec ? `<div class="lot-meta">${esc(spec)}</div>` : '';
+}
+
+function lotDisplayName(lot) {
+    return lot.item_name || lot.display_name || lot.product || 'Unknown Product';
+}
+
+function productDisplayName(product) {
+    return product.display_name || product.description || product.item_name || product.product_id || '';
+}
+
+function productSpec(product) {
+    return [product.quantity_description, product.size_cull].filter(Boolean).join(' · ');
+}
+
+function productOptionLabel(product) {
+    const spec = productSpec(product);
+    return spec ? `${productDisplayName(product)} · ${spec}` : productDisplayName(product);
+}
+
+function unitOptions(selected) {
+    return UNIT_OPTIONS.map(unit => `<option value="${esc(unit)}" ${unit === (selected || '') ? 'selected' : ''}>${esc(unit || 'Choose Unit')}</option>`).join('');
+}
+
 function renderLots() {
     const container = document.getElementById('lotList');
     document.getElementById('lotCount').textContent = allLots.length + ' lots';
@@ -296,7 +322,8 @@ function renderLots() {
         <div class="lot-card ${selectedLots[lot.id] ? 'selected' : ''}" onclick="toggleLot(${lot.id})">
             <div class="lot-check">${selectedLots[lot.id] ? '<i class="bi bi-check"></i>' : ''}</div>
             <div class="lot-info">
-                <div class="lot-name">${esc(lot.item_name || lot.product || 'Unknown Product')}</div>
+                <div class="lot-name">${esc(lotDisplayName(lot))}</div>
+                ${formatSpec(lot.product_spec)}
                 <div class="lot-meta">
                     <span style="font-weight:600; color:#0ea5e9;">${esc(lot.lot_id || lot.trace_lot)}</span>
                     &middot; ${esc(lot.vendor || '--')}
@@ -357,7 +384,7 @@ function goNext() {
             const q = parseFloat(quantities[id]) || 0;
             if (q <= 0) { alert('Please enter a valid quantity for all selected lots.'); return; }
             if (q > selectedLots[id].on_hand) {
-                alert(`Quantity for "${selectedLots[id].item_name}" exceeds available (${selectedLots[id].on_hand}).`);
+                alert(`Quantity for "${lotDisplayName(selectedLots[id])}" exceeds available (${selectedLots[id].on_hand}).`);
                 return;
             }
         }
@@ -404,7 +431,8 @@ function renderQtyCards() {
                 <div style="font-size:0.72rem; color:#64748b; text-transform:uppercase; font-weight:600; margin-bottom:4px;">
                     Source Lot ${i + 1} of ${ids.length}
                 </div>
-                <div class="lot-label">${esc(lot.item_name)}</div>
+                <div class="lot-label">${esc(lotDisplayName(lot))}</div>
+                ${lot.product_spec ? `<div class="lot-sub" style="margin-bottom:0.35rem;">${esc(lot.product_spec)}</div>` : ''}
                 <div class="lot-sub">
                     ${esc(lot.vendor || '')} / ${esc(lot.lot_id)}
                     &middot; On hand: <strong>${fmt(lot.on_hand)} ${esc(lot.unit_type)}</strong>
@@ -454,7 +482,7 @@ function initOutputStep() {
             const firstLot = selectedLots[Object.keys(selectedLots)[0]];
             outputItems.push({
                 product_id: firstLot ? firstLot.product_id : '',
-                product_name: firstLot ? firstLot.item_name : '',
+                product_name: firstLot ? lotDisplayName(firstLot) : '',
                 quantity: totalQty,
                 unit_type: unitType,
                 yield_percent: 100,
@@ -480,7 +508,7 @@ function renderOutputCards() {
     const container = document.getElementById('outputCards');
     const totalQty = getTotalSourceQty();
     const productOptions = allProducts.map(p =>
-        `<option value="${esc(p.product_id)}">${esc(p.item_name)}</option>`
+        `<option value="${esc(p.product_id)}">${esc(productOptionLabel(p))}</option>`
     ).join('');
 
     container.innerHTML = outputItems.map((out, i) => {
@@ -497,7 +525,7 @@ function renderOutputCards() {
             <div class="form-row">
                 <div class="form-group">
                     <label>Output Product</label>
-                    <select onchange="outputItems[${i}].product_id=this.value; outputItems[${i}].product_name=this.options[this.selectedIndex].text;">
+                    <select onchange="setOutputProduct(${i}, this)">
                         <option value="">Same as source</option>
                         ${productOptions}
                     </select>
@@ -519,7 +547,9 @@ function renderOutputCards() {
                 </div>
                 <div class="form-group" style="max-width:140px;">
                     <label>Unit</label>
-                    <input type="text" value="${esc(out.unit_type)}" oninput="outputItems[${i}].unit_type=this.value">
+                    <select onchange="outputItems[${i}].unit_type=this.value">
+                        ${unitOptions(out.unit_type)}
+                    </select>
                 </div>
             </div>
 
@@ -547,6 +577,19 @@ function updateOutputYield(idx, val) {
     const qtyInput = document.getElementById('out-qty-' + idx);
     if (qtyInput) qtyInput.value = outputItems[idx].quantity;
     renderOutputCards();
+}
+
+function setOutputProduct(idx, selectEl) {
+    const option = selectEl.selectedOptions[0];
+    outputItems[idx].product_id = selectEl.value;
+    outputItems[idx].product_name = option ? option.text : '';
+    if (selectEl.value) {
+        const product = allProducts.find(p => p.product_id === selectEl.value);
+        if (product && !outputItems[idx].unit_type) {
+            outputItems[idx].unit_type = product.inventory_unit_of_measure || product.selling_unit_of_measure || product.buying_unit_of_measure || outputItems[idx].unit_type;
+            renderOutputCards();
+        }
+    }
 }
 
 function addOutput() {
@@ -596,7 +639,7 @@ function renderSummary() {
         totalIn += q;
         html += `<tr style="border-bottom:1px solid #f1f5f9;">
             <td style="padding:6px 8px;">${esc(lot.lot_id)}</td>
-            <td style="padding:6px 8px;">${esc(lot.item_name)}</td>
+            <td style="padding:6px 8px;">${esc(lotDisplayName(lot))}${lot.product_spec ? `<div style="font-size:0.76rem; color:#94a3b8; font-weight:500;">${esc(lot.product_spec)}</div>` : ''}</td>
             <td style="padding:6px 8px; text-align:right; font-weight:600;">${fmt(q)} ${esc(lot.unit_type)}</td>
         </tr>`;
     });

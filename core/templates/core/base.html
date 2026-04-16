@@ -85,6 +85,8 @@
                     {{ request.tenant.name }}
                 </a>
                 <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="tenantDropdown">
+                    <li><a class="dropdown-item" href="{% url 'billing_page' %}">Billing</a></li>
+                    <li><hr class="dropdown-divider"></li>
                     <li><a class="dropdown-item" href="{% url 'logout' %}">Logout</a></li>
                 </ul>
             </div>

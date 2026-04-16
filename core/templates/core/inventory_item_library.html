@@ -279,7 +279,8 @@
                 <thead>
                     <tr>
                         <th style="width:30px;"></th>
-                        <th>Item Name</th>
+                        <th>Product</th>
+                        <th>Units</th>
                         <th>SKU</th>
                         <th>Expected</th>
                         <th>Allocated</th>
@@ -290,7 +291,7 @@
                     </tr>
                 </thead>
                 <tbody id="itemsTbody">
-                    <tr><td colspan="9" class="text-center text-muted py-4">Loading...</td></tr>
+                    <tr><td colspan="10" class="text-center text-muted py-4">Loading...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -358,9 +359,9 @@
         </div>
 
         <div class="form-group-inv">
-            <label class="form-label-inv">Quantity Description</label>
+            <label class="form-label-inv">Pack / Size</label>
             <select class="form-control-inv" id="ff-qty-desc">
-                <option value="">Choose Quantity Description</option>
+                <option value="">Choose Pack / Size</option>
             </select>
         </div>
 
@@ -452,9 +453,9 @@
         </div>
 
         <div class="form-group-inv">
-            <label class="form-label-inv">Item Name</label>
+            <label class="form-label-inv">Display Name</label>
             <input type="text" class="form-control-inv" id="f-item-name" disabled placeholder="Auto-generated">
-            <span class="form-hint">Naming method is AUTOMATIC. Name will appear as the form is completed.</span>
+            <span class="form-hint">This now stays clean and description-first. Units and pack details live in their own fields below.</span>
         </div>
 
         <div class="form-group-inv">
@@ -468,8 +469,9 @@
         </div>
 
         <div class="form-group-inv">
-            <label class="form-label-inv">Item Description</label>
+            <label class="form-label-inv">Product Description</label>
             <textarea class="form-control-inv" id="f-description" rows="2"></textarea>
+            <span class="form-hint">Use the base item name here, like "Atlantic Salmon" or "Maine Lobster Tail".</span>
         </div>
 
         <div class="form-group-inv">
@@ -506,8 +508,9 @@
         <hr class="my-3">
 
         <div class="form-group-inv">
-            <label class="form-label-inv">Quantity Description</label>
-            <input type="text" class="form-control-inv" id="f-qty-desc" placeholder="e.g. Bag, Box, Case" oninput="updatePreviewName()">
+            <label class="form-label-inv">Pack / Size</label>
+            <input type="text" class="form-control-inv" id="f-qty-desc" placeholder="e.g. 25 lb, 6 oz tail, U/10">
+            <span class="form-hint">Put pack size or spec here instead of inside the product description.</span>
         </div>
 
         <div class="form-group-inv">
@@ -541,7 +544,7 @@
         </div>
 
         <hr class="my-3">
-        <h6 class="fw-bold mb-3">Inventory Quantity</h6>
+        <h6 class="fw-bold mb-3">Units of Measure</h6>
 
         <div class="form-group-inv">
             <label class="form-label-inv">Inventory Unit of Measure</label>
@@ -558,6 +561,41 @@
                 <option value="Gallons">Gallons</option>
             </select>
             <span class="form-hint">Choose the inventory unit of measure to determine how the item is stocked.</span>
+        </div>
+
+        <div class="row g-3">
+            <div class="col-6">
+                <div class="form-group-inv">
+                    <label class="form-label-inv">Buying Unit</label>
+                    <select class="form-control-inv" id="f-buy-uom">
+                        <option value="">Choose Buying Unit</option>
+                        <option value="Pcs">Pcs</option>
+                        <option value="Lbs">Lbs</option>
+                        <option value="Cs">Cs</option>
+                        <option value="Ea">Ea</option>
+                        <option value="Bag">Bag</option>
+                        <option value="Box">Box</option>
+                        <option value="Tray">Tray</option>
+                        <option value="Doz">Doz</option>
+                    </select>
+                </div>
+            </div>
+            <div class="col-6">
+                <div class="form-group-inv">
+                    <label class="form-label-inv">Selling Unit</label>
+                    <select class="form-control-inv" id="f-sell-uom">
+                        <option value="">Choose Selling Unit</option>
+                        <option value="Pcs">Pcs</option>
+                        <option value="Lbs">Lbs</option>
+                        <option value="Cs">Cs</option>
+                        <option value="Ea">Ea</option>
+                        <option value="Bag">Bag</option>
+                        <option value="Box">Box</option>
+                        <option value="Tray">Tray</option>
+                        <option value="Doz">Doz</option>
+                    </select>
+                </div>
+            </div>
         </div>
 
         <div class="form-group-inv">
@@ -743,7 +781,7 @@ function applyClientFilters() {
 function populateFilterDropdowns() {
     const unique = (arr, key) => [...new Set(arr.map(i => i[key]).filter(Boolean))].sort();
     populateSelect('ff-department', 'Choose Department', unique(allItems, 'department'));
-    populateSelect('ff-qty-desc', 'Choose Quantity Description', unique(allItems, 'quantity_description'));
+    populateSelect('ff-qty-desc', 'Choose Pack / Size', unique(allItems, 'quantity_description'));
     populateSelect('ff-upc', 'Choose UPC', unique(allItems, 'upc'));
     populateSelect('ff-size-cull', 'Choose Size/Cull', unique(allItems, 'size_cull'));
     populateSelect('ff-sku', 'Choose SKU or Internal Code', unique(allItems, 'sku'));
@@ -816,7 +854,7 @@ function renderTable() {
     document.getElementById('itemCount').textContent = filteredItems.length + ' items';
 
     if (!page.length) {
-        tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted py-4">No items found.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="10" class="text-center text-muted py-4">No items found.</td></tr>';
         document.getElementById('paginationInfo').textContent = 'No items';
         document.getElementById('paginationBtns').innerHTML = '';
         return;
@@ -827,7 +865,15 @@ function renderTable() {
             <td class="actions-cell" onclick="event.stopPropagation();">
                 <button onclick="openEditPanel(${item.id})" title="Edit"><i class="bi bi-pencil-square"></i></button>
             </td>
-            <td class="item-name">${esc(item.item_name)}</td>
+            <td class="item-name">
+                <div>${esc(item.display_name || item.item_name)}</div>
+                <div style="font-size:0.76rem; color:#94a3b8; font-weight:500;">${esc(formatProductSpec(item))}</div>
+            </td>
+            <td style="font-size:0.8rem;">
+                <div><strong>Buy:</strong> ${esc(item.buying_unit_of_measure || '--')}</div>
+                <div><strong>Inv:</strong> ${esc(item.inventory_unit_of_measure || item.unit_type || '--')}</div>
+                <div><strong>Sell:</strong> ${esc(item.selling_unit_of_measure || '--')}</div>
+            </td>
             <td>${esc(item.sku || '--')}</td>
             <td>${fmt(item.expected)} ${esc(item.unit_type)}</td>
             <td>${fmt(item.allocated)} ${esc(item.unit_type)}</td>
@@ -867,6 +913,10 @@ function renderTable() {
 
 function goPage(p) { currentPage = p; renderTable(); }
 function goToItem(id) { window.location.href = '/operations/inventory/' + id + '/'; }
+function formatProductSpec(item) {
+    const parts = [item.quantity_description, item.size_cull].filter(Boolean);
+    return parts.length ? parts.join(' · ') : '--';
+}
 // ── Panel ───────────────────────────────────────────────────────
 
 function openPanel() {
@@ -894,6 +944,8 @@ function openEditPanel(id) {
     document.getElementById('f-origin').value = item.country_of_origin || item.origin || '';
     document.getElementById('f-brand').value = item.brand || '';
     document.getElementById('f-uom').value = item.inventory_unit_of_measure || '';
+    document.getElementById('f-buy-uom').value = item.buying_unit_of_measure || '';
+    document.getElementById('f-sell-uom').value = item.selling_unit_of_measure || '';
     document.getElementById('f-list-price').value = item.list_price || '';
     document.getElementById('f-wholesale-price').value = item.wholesale_price || '';
     document.getElementById('f-habitat').value = item.habitat_production_method || '';
@@ -914,7 +966,7 @@ function closePanel() {
 function clearForm() {
     const ids = ['f-group','f-item-name','f-qb-name','f-friendly-name','f-description',
                  'f-size-cull','f-sku','f-tasting-notes','f-qty-desc','f-origin',
-                 'f-brand','f-uom','f-list-price','f-wholesale-price',
+                 'f-brand','f-uom','f-buy-uom','f-sell-uom','f-list-price','f-wholesale-price',
                  'f-habitat','f-species','f-department','f-upc'];
     ids.forEach(id => {
         const el = document.getElementById(id);
@@ -926,18 +978,12 @@ function clearForm() {
 
 function updatePreviewName() {
     const parts = [];
-    const groupSel = document.getElementById('f-group');
-    if (groupSel.value) parts.push(groupSel.options[groupSel.selectedIndex].text);
+    const description = document.getElementById('f-description').value.trim();
+    if (description) parts.push(description);
     const friendly = document.getElementById('f-friendly-name').value.trim();
     const qb = document.getElementById('f-qb-name').value.trim();
-    if (friendly) parts.push(friendly);
-    else if (qb) parts.push(qb);
-    const origin = document.getElementById('f-origin').value;
-    if (origin) parts.push(origin);
-    const size = document.getElementById('f-size-cull').value;
-    if (size) parts.push(size);
-    const qty = document.getElementById('f-qty-desc').value.trim();
-    if (qty) parts.push(qty);
+    if (!parts.length && friendly) parts.push(friendly);
+    else if (!parts.length && qb) parts.push(qb);
     document.getElementById('f-item-name').value = parts.length ? parts.join(' \u00b7 ') : '';
 }
 
@@ -957,6 +1003,8 @@ async function saveItem() {
         country_of_origin: document.getElementById('f-origin').value,
         brand: document.getElementById('f-brand').value.trim(),
         inventory_unit_of_measure: document.getElementById('f-uom').value,
+        buying_unit_of_measure: document.getElementById('f-buy-uom').value,
+        selling_unit_of_measure: document.getElementById('f-sell-uom').value,
         list_price: document.getElementById('f-list-price').value || null,
         wholesale_price: document.getElementById('f-wholesale-price').value || null,
         habitat_production_method: document.getElementById('f-habitat').value,
