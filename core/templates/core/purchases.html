@@ -69,6 +69,233 @@
     flex: 1; background: #fff; color: #374151; border: 1px solid #d1d5db; border-radius: 8px;
     padding: 10px; font-size: 0.9rem; font-weight: 600; cursor: pointer;
 }
+
+/* Vendor manager modal */
+.vendor-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.45);
+    z-index: 1070;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+}
+.vendor-modal-overlay.open { display: flex; }
+.vendor-modal {
+    width: min(1120px, 96vw);
+    max-height: calc(100vh - 3rem);
+    background: #fff;
+    border-radius: 18px;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(15, 23, 42, 0.24);
+    display: flex;
+    flex-direction: column;
+}
+.vendor-modal-header {
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid #e2e8f0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+.vendor-modal-title h4 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #0f172a;
+}
+.vendor-modal-title span {
+    font-size: 0.82rem;
+    color: #64748b;
+}
+.vendor-modal-close {
+    width: 36px;
+    height: 36px;
+    border-radius: 999px;
+    border: 1px solid #cbd5e1;
+    background: #fff;
+    color: #475569;
+    cursor: pointer;
+}
+.vendor-modal-toolbar {
+    padding: 1rem 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    border-bottom: 1px solid #e2e8f0;
+    background: #f8fafc;
+}
+.vendor-modal-search {
+    width: 280px;
+    max-width: 100%;
+    border: 1px solid #d1d5db;
+    border-radius: 10px;
+    padding: 8px 12px;
+    font-size: 0.9rem;
+}
+.vendor-modal-search:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.12);
+}
+.vendor-modal-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+.vendor-modal-body {
+    padding: 1.25rem;
+    overflow: auto;
+}
+.vendor-manager-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.4fr) minmax(320px, 0.9fr);
+    gap: 1rem;
+    align-items: start;
+}
+.vendor-card {
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    background: #fff;
+    overflow: hidden;
+}
+.vendor-card-header {
+    padding: 1rem 1rem 0.75rem;
+    border-bottom: 1px solid #f1f5f9;
+}
+.vendor-card-header h5 {
+    margin: 0;
+    font-size: 0.98rem;
+    font-weight: 700;
+    color: #0f172a;
+}
+.vendor-card-header p {
+    margin: 0.25rem 0 0;
+    font-size: 0.8rem;
+    color: #64748b;
+}
+.vendor-table-wrap {
+    overflow: auto;
+    max-height: 60vh;
+}
+.vendor-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+}
+.vendor-table th {
+    padding: 10px 12px;
+    background: #f8fafc;
+    color: #64748b;
+    font-size: 0.74rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    border-bottom: 1px solid #e2e8f0;
+    white-space: nowrap;
+}
+.vendor-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid #f1f5f9;
+    color: #334155;
+    vertical-align: middle;
+}
+.vendor-table tr.vendor-row { cursor: pointer; }
+.vendor-table tr.vendor-row:hover { background: #f8fbff; }
+.vendor-table tr.vendor-row.active { background: #eff6ff; }
+.vendor-name-cell {
+    font-weight: 600;
+    color: #0f172a;
+}
+.vendor-type-badge {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    padding: 2px 10px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    background: #e2e8f0;
+    color: #475569;
+}
+.vendor-type-badge.Dealer { background: #dbeafe; color: #1d4ed8; }
+.vendor-type-badge.Exporter { background: #fef3c7; color: #92400e; }
+.vendor-type-badge.Harvester { background: #d1fae5; color: #047857; }
+.vendor-type-badge.Distributor { background: #ede9fe; color: #6d28d9; }
+.vendor-table-empty {
+    padding: 2rem 1rem;
+    text-align: center;
+    color: #64748b;
+}
+.vendor-form {
+    padding: 1rem;
+}
+.vendor-form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.85rem;
+}
+.vendor-form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+.vendor-form-group.full { grid-column: 1 / -1; }
+.vendor-form-group label {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #1e293b;
+}
+.vendor-form-group input,
+.vendor-form-group select {
+    width: 100%;
+    border: 1px solid #d1d5db;
+    border-radius: 10px;
+    padding: 9px 12px;
+    font-size: 0.9rem;
+}
+.vendor-form-group input:focus,
+.vendor-form-group select:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.12);
+}
+.vendor-form-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1rem;
+}
+.vendor-inline-error {
+    display: none;
+    margin-top: 0.85rem;
+    padding: 0.75rem 0.9rem;
+    border-radius: 10px;
+    background: #fef2f2;
+    color: #b91c1c;
+    font-size: 0.82rem;
+}
+@media (max-width: 900px) {
+    .vendor-manager-layout {
+        grid-template-columns: 1fr;
+    }
+    .vendor-table-wrap {
+        max-height: 42vh;
+    }
+}
+@media (max-width: 640px) {
+    .vendor-form-grid {
+        grid-template-columns: 1fr;
+    }
+    .vendor-modal {
+        width: 100%;
+        max-height: calc(100vh - 1rem);
+    }
+    .vendor-modal-overlay {
+        padding: 0.5rem;
+    }
+}
 </style>
 {% endblock %}
 
@@ -86,6 +313,7 @@
         <div style="display:flex; gap:0.5rem;">
             <a href="/api/purchasing/orders/export/" class="btn-inv-outline"><i class="bi bi-download me-1"></i>Export</a>
             <button class="btn-inv-outline" onclick="openImportCSV('/api/purchasing/orders/import/', () => loadOrders(), ['po_number','vendor_name','order_status','receive_status','qb_po_number','buyer','vendor_invoice_number','order_date','expected_date','notes'])"><i class="bi bi-upload me-1"></i>Import</button>
+            <button class="btn-inv-outline" onclick="openVendorManager()"><i class="bi bi-building me-1"></i>Vendors</button>
             <button class="btn-inv-primary" onclick="openNewPO()"><i class="bi bi-plus me-1"></i>New Purchase</button>
         </div>
     </div>
@@ -218,6 +446,125 @@
     </div>
 </div>
 
+<!-- Vendor manager modal -->
+<div class="vendor-modal-overlay" id="vendorManagerOverlay" onclick="closeVendorManager()">
+    <div class="vendor-modal" onclick="event.stopPropagation()">
+        <div class="vendor-modal-header">
+            <div class="vendor-modal-title">
+                <h4>Vendors</h4>
+                <span id="vendorManagerCount">0 vendors</span>
+            </div>
+            <button class="vendor-modal-close" onclick="closeVendorManager()"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <div class="vendor-modal-toolbar">
+            <input type="text" id="vendorManagerSearch" class="vendor-modal-search" placeholder="Search vendors..." oninput="debounceVendorSearch()">
+            <div class="vendor-modal-actions">
+                <button class="btn-inv-outline" onclick="resetVendorForm()"><i class="bi bi-arrow-counterclockwise me-1"></i>Clear</button>
+                <button class="btn-inv-primary" onclick="startNewVendor()"><i class="bi bi-plus me-1"></i>Add Vendor</button>
+            </div>
+        </div>
+        <div class="vendor-modal-body">
+            <div class="vendor-manager-layout">
+                <div class="vendor-card">
+                    <div class="vendor-card-header">
+                        <h5>Vendor List</h5>
+                        <p>Select a vendor to edit it, or create a new one on the right.</p>
+                    </div>
+                    <div class="vendor-table-wrap">
+                        <table class="vendor-table">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Type</th>
+                                    <th>Phone</th>
+                                    <th>Email</th>
+                                    <th style="width:40px;"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="vendorManagerTbody">
+                                <tr><td colspan="5" class="vendor-table-empty">Loading vendors...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="vendor-card">
+                    <div class="vendor-card-header">
+                        <h5 id="vendorFormTitle">Add Vendor</h5>
+                        <p>Changes save directly to your vendors table.</p>
+                    </div>
+                    <div class="vendor-form">
+                        <input type="hidden" id="vendor-edit-id">
+                        <div class="vendor-form-grid">
+                            <div class="vendor-form-group">
+                                <label for="vendor-f-type">Type</label>
+                                <select id="vendor-f-type">
+                                    <option value="">Choose Type</option>
+                                    <option value="Dealer">Dealer</option>
+                                    <option value="Exporter">Exporter</option>
+                                    <option value="Harvester">Harvester</option>
+                                    <option value="Importer">Importer</option>
+                                    <option value="Processor">Processor</option>
+                                    <option value="Distributor">Distributor</option>
+                                </select>
+                            </div>
+                            <div class="vendor-form-group">
+                                <label for="vendor-f-name">Company Name</label>
+                                <input type="text" id="vendor-f-name">
+                            </div>
+                            <div class="vendor-form-group">
+                                <label for="vendor-f-contact">Contact Name</label>
+                                <input type="text" id="vendor-f-contact">
+                            </div>
+                            <div class="vendor-form-group">
+                                <label for="vendor-f-cert">Cert</label>
+                                <input type="text" id="vendor-f-cert">
+                            </div>
+                            <div class="vendor-form-group">
+                                <label for="vendor-f-phone">Phone</label>
+                                <input type="text" id="vendor-f-phone">
+                            </div>
+                            <div class="vendor-form-group">
+                                <label for="vendor-f-ext">Extension</label>
+                                <input type="text" id="vendor-f-ext">
+                            </div>
+                            <div class="vendor-form-group">
+                                <label for="vendor-f-fax">Fax</label>
+                                <input type="text" id="vendor-f-fax">
+                            </div>
+                            <div class="vendor-form-group">
+                                <label for="vendor-f-billing-email">Billing Email</label>
+                                <input type="email" id="vendor-f-billing-email">
+                            </div>
+                            <div class="vendor-form-group full">
+                                <label for="vendor-f-address">Street Address</label>
+                                <input type="text" id="vendor-f-address">
+                            </div>
+                            <div class="vendor-form-group">
+                                <label for="vendor-f-city">City</label>
+                                <input type="text" id="vendor-f-city">
+                            </div>
+                            <div class="vendor-form-group">
+                                <label for="vendor-f-state">State</label>
+                                <input type="text" id="vendor-f-state" maxlength="2">
+                            </div>
+                            <div class="vendor-form-group">
+                                <label for="vendor-f-zip">Zip Code</label>
+                                <input type="text" id="vendor-f-zip">
+                            </div>
+                        </div>
+                        <div id="vendorFormError" class="vendor-inline-error"></div>
+                        <div class="vendor-form-actions">
+                            <button class="btn-inv-primary" onclick="saveVendorFromPurchases()" style="flex:1;">Save Vendor</button>
+                            <button class="btn-inv-outline" onclick="resetVendorForm()">Cancel</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block extra_js %}
@@ -228,6 +575,10 @@ let totalItems = 0;
 const PAGE_SIZE = 100;
 let searchTimeout;
 let activeFilters = {};
+let vendorManagerSearchTimeout;
+let vendorManagerAll = [];
+let vendorManagerFiltered = [];
+let selectedVendorId = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     loadOrders();
@@ -399,6 +750,196 @@ async function createPO() {
     const data = await res.json();
     if (data.error) { alert(data.error); return; }
     window.location.href = '/operations/purchases/' + data.id + '/';
+}
+
+async function openVendorManager() {
+    document.getElementById('vendorManagerOverlay').classList.add('open');
+    await loadVendorManager();
+    if (!selectedVendorId) startNewVendor();
+}
+
+function closeVendorManager() {
+    document.getElementById('vendorManagerOverlay').classList.remove('open');
+}
+
+async function loadVendorManager() {
+    const res = await fetch('/api/vendors/list/');
+    const data = await res.json();
+    vendorManagerAll = data.vendors || [];
+    applyVendorManagerFilters(false);
+}
+
+function debounceVendorSearch() {
+    clearTimeout(vendorManagerSearchTimeout);
+    vendorManagerSearchTimeout = setTimeout(() => applyVendorManagerFilters(true), 250);
+}
+
+function applyVendorManagerFilters(resetSelection = true) {
+    const search = (document.getElementById('vendorManagerSearch')?.value || '').trim().toLowerCase();
+    vendorManagerFiltered = vendorManagerAll.filter(v => {
+        if (!search) return true;
+        return [v.name, v.contact_name, v.phone, v.billing_email, v.email, v.vendor_type]
+            .filter(Boolean)
+            .some(value => value.toLowerCase().includes(search));
+    });
+
+    if (resetSelection && selectedVendorId && !vendorManagerFiltered.some(v => v.id === selectedVendorId)) {
+        selectedVendorId = null;
+    }
+
+    renderVendorManagerTable();
+}
+
+function renderVendorManagerTable() {
+    const tbody = document.getElementById('vendorManagerTbody');
+    document.getElementById('vendorManagerCount').textContent = `${vendorManagerFiltered.length} vendor${vendorManagerFiltered.length === 1 ? '' : 's'}`;
+
+    if (!vendorManagerFiltered.length) {
+        tbody.innerHTML = '<tr><td colspan="5" class="vendor-table-empty">No vendors match your search.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = vendorManagerFiltered.map(v => `
+        <tr class="vendor-row ${selectedVendorId === v.id ? 'active' : ''}" onclick="editVendorFromManager(${v.id})">
+            <td class="vendor-name-cell">${esc(v.name)}</td>
+            <td>${v.vendor_type ? `<span class="vendor-type-badge ${esc(v.vendor_type)}">${esc(v.vendor_type)}</span>` : '--'}</td>
+            <td>${esc(v.phone || '--')}${v.phone_extension ? ` x${esc(v.phone_extension)}` : ''}</td>
+            <td>${esc(v.billing_email || v.email || '--')}</td>
+            <td onclick="event.stopPropagation();">
+                <button class="del-btn" title="Delete" onclick="deleteRecord('/api/vendors/${v.id}/delete/', 'Delete vendor ${esc(v.name)}? This cannot be undone.', async () => { await handleVendorDeleted(${v.id}); })"><i class="bi bi-trash"></i></button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function startNewVendor() {
+    selectedVendorId = null;
+    resetVendorForm();
+}
+
+function editVendorFromManager(id) {
+    const vendor = vendorManagerAll.find(item => item.id === id);
+    if (!vendor) return;
+
+    selectedVendorId = id;
+    document.getElementById('vendorFormTitle').textContent = 'Edit Vendor';
+    document.getElementById('vendor-edit-id').value = vendor.id;
+    document.getElementById('vendor-f-type').value = vendor.vendor_type || '';
+    document.getElementById('vendor-f-name').value = vendor.name || '';
+    document.getElementById('vendor-f-contact').value = vendor.contact_name || '';
+    document.getElementById('vendor-f-cert').value = vendor.cert || '';
+    document.getElementById('vendor-f-phone').value = vendor.phone || '';
+    document.getElementById('vendor-f-ext').value = vendor.phone_extension || '';
+    document.getElementById('vendor-f-fax').value = vendor.fax || '';
+    document.getElementById('vendor-f-billing-email').value = vendor.billing_email || vendor.email || '';
+    document.getElementById('vendor-f-address').value = vendor.mailing_address || vendor.address || '';
+    document.getElementById('vendor-f-city').value = vendor.mailing_city || vendor.city || '';
+    document.getElementById('vendor-f-state').value = vendor.mailing_state || vendor.state || '';
+    document.getElementById('vendor-f-zip').value = vendor.mailing_zipcode || vendor.zipcode || '';
+    hideVendorFormError();
+    renderVendorManagerTable();
+}
+
+function resetVendorForm() {
+    selectedVendorId = null;
+    document.getElementById('vendorFormTitle').textContent = 'Add Vendor';
+    document.getElementById('vendor-edit-id').value = '';
+    [
+        'vendor-f-type', 'vendor-f-name', 'vendor-f-contact', 'vendor-f-cert', 'vendor-f-phone',
+        'vendor-f-ext', 'vendor-f-fax', 'vendor-f-billing-email', 'vendor-f-address',
+        'vendor-f-city', 'vendor-f-state', 'vendor-f-zip'
+    ].forEach(id => {
+        document.getElementById(id).value = '';
+    });
+    hideVendorFormError();
+    renderVendorManagerTable();
+}
+
+function hideVendorFormError() {
+    const errorEl = document.getElementById('vendorFormError');
+    errorEl.style.display = 'none';
+    errorEl.textContent = '';
+}
+
+function showVendorFormError(message) {
+    const errorEl = document.getElementById('vendorFormError');
+    errorEl.textContent = message;
+    errorEl.style.display = 'block';
+}
+
+async function saveVendorFromPurchases() {
+    const vendorId = document.getElementById('vendor-edit-id').value;
+    const payload = {
+        name: document.getElementById('vendor-f-name').value.trim(),
+        contact_name: document.getElementById('vendor-f-contact').value.trim(),
+        vendor_type: document.getElementById('vendor-f-type').value,
+        cert: document.getElementById('vendor-f-cert').value.trim(),
+        phone: document.getElementById('vendor-f-phone').value.trim(),
+        phone_extension: document.getElementById('vendor-f-ext').value.trim(),
+        fax: document.getElementById('vendor-f-fax').value.trim(),
+        billing_email: document.getElementById('vendor-f-billing-email').value.trim(),
+        email: document.getElementById('vendor-f-billing-email').value.trim(),
+        mailing_address: document.getElementById('vendor-f-address').value.trim(),
+        address: document.getElementById('vendor-f-address').value.trim(),
+        mailing_city: document.getElementById('vendor-f-city').value.trim(),
+        city: document.getElementById('vendor-f-city').value.trim(),
+        mailing_state: document.getElementById('vendor-f-state').value.trim(),
+        state: document.getElementById('vendor-f-state').value.trim(),
+        mailing_zipcode: document.getElementById('vendor-f-zip').value.trim(),
+        zipcode: document.getElementById('vendor-f-zip').value.trim(),
+    };
+
+    if (!payload.name) {
+        showVendorFormError('Company name is required.');
+        return;
+    }
+
+    const url = vendorId ? `/api/vendors/${vendorId}/update/` : '/api/vendors/create/';
+
+    try {
+        const res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+            body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        if (!res.ok || data.error) {
+            showVendorFormError(data.error || 'Failed to save vendor.');
+            return;
+        }
+
+        const vendorName = payload.name;
+        await loadVendorManager();
+        await loadVendors();
+        const matchedVendor = vendorManagerAll.find(v => (v.name || '').toLowerCase() === vendorName.toLowerCase());
+        if (matchedVendor) {
+            selectedVendorId = matchedVendor.id;
+            editVendorFromManager(matchedVendor.id);
+        } else {
+            startNewVendor();
+        }
+        document.getElementById('new-vendor').value = vendorName;
+    } catch (error) {
+        showVendorFormError('Failed to save vendor.');
+    }
+}
+
+async function handleVendorDeleted(vendorId) {
+    if (selectedVendorId === vendorId) {
+        selectedVendorId = null;
+        resetVendorForm();
+    }
+    await loadVendorManager();
+    await loadVendors();
+
+    const newVendorSelect = document.getElementById('new-vendor');
+    const filterVendorSelect = document.getElementById('ff-vendor');
+    if (newVendorSelect && ![...newVendorSelect.options].some(opt => opt.value === newVendorSelect.value)) {
+        newVendorSelect.value = '';
+    }
+    if (filterVendorSelect && ![...filterVendorSelect.options].some(opt => opt.value === filterVendorSelect.value)) {
+        filterVendorSelect.value = '';
+    }
 }
 
 </script>

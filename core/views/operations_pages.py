@@ -38,6 +38,7 @@ shipping_packing = _tenant_page("core/shipping/packing.html")
 shipping_loading = _tenant_page("core/shipping/loading.html")
 settings_page = _tenant_page("core/settings.html")
 vendor_list_page = _tenant_page("core/vendor_list.html")
+customer_list_page = _tenant_page("core/customer_list.html")
 trace_page = _tenant_page("core/trace.html")
 
 # ── Compliance / HACCP ───────────────────────────────────────────

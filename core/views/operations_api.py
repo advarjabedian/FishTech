@@ -1604,8 +1604,76 @@ def sales_customers(request):
         return error
     customers = Customer.objects.filter(tenant=tenant).order_by("name")
     return JsonResponse({
-        "customers": [{"id": c.id, "name": c.name} for c in customers]
+        "customers": [
+            {
+                "id": c.id,
+                "name": c.name,
+                "contact_name": c.contact_name or "",
+                "email": c.email or "",
+                "phone": c.phone or "",
+                "address": c.address or "",
+                "city": c.city or "",
+                "state": c.state or "",
+                "zipcode": c.zipcode or "",
+                "ship_address": c.ship_address or "",
+                "ship_city": c.ship_city or "",
+                "ship_state": c.ship_state or "",
+                "ship_zipcode": c.ship_zipcode or "",
+            }
+            for c in customers
+        ]
     })
+
+
+@login_required
+@require_POST
+def customer_create(request):
+    tenant, error = _require_tenant(request)
+    if error:
+        return error
+    data = _parse_json(request)
+    name = (data.get("name") or "").strip()
+    if not name:
+        return JsonResponse({"error": "Customer name is required."}, status=400)
+    last = Customer.objects.filter(tenant=tenant).order_by("-customer_id").first()
+    next_id = (last.customer_id + 1) if last else 1
+    c = Customer.objects.create(tenant=tenant, customer_id=next_id, name=name)
+    for field in ["contact_name", "email", "phone", "address", "city", "state", "zipcode",
+                   "ship_address", "ship_city", "ship_state", "ship_zipcode"]:
+        val = data.get(field)
+        if val is not None:
+            setattr(c, field, val.strip())
+    c.save()
+    return JsonResponse({"success": True, "id": c.id})
+
+
+@login_required
+def customer_update(request, customer_id):
+    tenant, error = _require_tenant(request)
+    if error:
+        return error
+    if request.method != "POST":
+        return JsonResponse({"error": "POST required"}, status=405)
+    c = get_object_or_404(Customer.objects.filter(tenant=tenant), id=customer_id)
+    data = _parse_json(request)
+    for field in ["name", "contact_name", "email", "phone", "address", "city", "state", "zipcode",
+                   "ship_address", "ship_city", "ship_state", "ship_zipcode"]:
+        val = data.get(field)
+        if val is not None:
+            setattr(c, field, val.strip())
+    c.save()
+    return JsonResponse({"success": True})
+
+
+@login_required
+@require_POST
+def customer_delete(request, customer_id):
+    tenant, error = _require_tenant(request)
+    if error:
+        return error
+    c = get_object_or_404(Customer.objects.filter(tenant=tenant), id=customer_id)
+    c.delete()
+    return JsonResponse({"success": True})
 
 
 @login_required

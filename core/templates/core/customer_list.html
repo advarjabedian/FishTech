@@ -1,0 +1,224 @@
+{% extends 'core/base.html' %}
+{% block title %}Customers - FishTeck{% endblock %}
+
+{% block extra_css %}
+<style>
+.cust-panel { position: fixed; right: -420px; top: 56px; width: 420px; height: calc(100vh - 56px); background: #fff; box-shadow: -4px 0 24px rgba(0,0,0,0.1); z-index: 1050; transition: right 0.25s; overflow-y: auto; }
+.cust-panel.open { right: 0; }
+.cust-panel-header { padding: 1.25rem 1.5rem; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; }
+.cust-panel-header h4 { margin: 0; font-size: 1.1rem; font-weight: 700; }
+.cust-panel-body { padding: 1.25rem 1.5rem; }
+.cust-panel-footer { padding: 1rem 1.5rem; border-top: 1px solid #e5e7eb; display: flex; gap: 0.5rem; }
+.cust-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.15); z-index: 1040; display: none; }
+.cust-overlay.open { display: block; }
+.fg { margin-bottom: 1rem; }
+.fg label { font-size: 0.78rem; font-weight: 600; color: #64748b; display: block; margin-bottom: 3px; }
+.fg input { width: 100%; border: 1px solid #d1d5db; border-radius: 8px; padding: 8px 12px; font-size: 0.85rem; }
+.fg input:focus { border-color: #2563eb; outline: none; box-shadow: 0 0 0 3px rgba(37,99,235,0.12); }
+.fg-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+{% include 'core/includes/sidebar.html' with active='customers' %}
+
+<div class="inv-main">
+    <div class="inv-header">
+        <div>
+            <h2><i class="bi bi-people me-2" style="color:#2563eb;"></i>Customers</h2>
+            <span class="sub" id="custCount">0 Customers</span>
+        </div>
+        <div style="display:flex; gap:0.5rem;">
+            <button class="btn-inv-primary" onclick="openPanel()">
+                <i class="bi bi-plus-circle me-1"></i> Add Customer
+            </button>
+        </div>
+    </div>
+
+    <div class="inv-toolbar">
+        <div class="inv-toolbar-left">
+            <input type="text" class="search-box" id="searchBox" placeholder="Search..." oninput="filterCustomers()">
+        </div>
+    </div>
+
+    <div class="inv-table-card">
+        <div style="overflow-x:auto;">
+            <table class="inv-table">
+                <thead>
+                    <tr>
+                        <th style="width:30px;"></th>
+                        <th>Name</th>
+                        <th>Contact</th>
+                        <th>Phone</th>
+                        <th>Email</th>
+                        <th>City</th>
+                        <th>State</th>
+                        <th style="width:40px;"></th>
+                    </tr>
+                </thead>
+                <tbody id="custTbody">
+                    <tr><td colspan="8" class="text-center text-muted py-4">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Slide panel -->
+<div class="cust-overlay" id="custOverlay" onclick="closePanel()"></div>
+<div class="cust-panel" id="custPanel">
+    <div class="cust-panel-header">
+        <h4 id="panelTitle">Add Customer</h4>
+        <button onclick="closePanel()" style="background:none; border:none; font-size:1.2rem; color:#64748b; cursor:pointer;"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <div class="cust-panel-body">
+        <input type="hidden" id="editId" value="">
+        <div class="fg"><label>Name *</label><input type="text" id="f-name"></div>
+        <div class="fg"><label>Contact Name</label><input type="text" id="f-contact"></div>
+        <div class="fg-row">
+            <div class="fg"><label>Phone</label><input type="text" id="f-phone"></div>
+            <div class="fg"><label>Email</label><input type="email" id="f-email"></div>
+        </div>
+        <h6 style="font-size:0.82rem; font-weight:700; margin:1.25rem 0 0.75rem; color:#1e293b;">Billing Address</h6>
+        <div class="fg"><label>Address</label><input type="text" id="f-address"></div>
+        <div class="fg-row">
+            <div class="fg"><label>City</label><input type="text" id="f-city"></div>
+            <div class="fg"><label>State</label><input type="text" id="f-state" maxlength="2"></div>
+        </div>
+        <div class="fg"><label>Zip</label><input type="text" id="f-zip"></div>
+        <h6 style="font-size:0.82rem; font-weight:700; margin:1.25rem 0 0.75rem; color:#1e293b;">Shipping Address</h6>
+        <div class="fg"><label>Address</label><input type="text" id="f-ship-address"></div>
+        <div class="fg-row">
+            <div class="fg"><label>City</label><input type="text" id="f-ship-city"></div>
+            <div class="fg"><label>State</label><input type="text" id="f-ship-state" maxlength="2"></div>
+        </div>
+        <div class="fg"><label>Zip</label><input type="text" id="f-ship-zip"></div>
+    </div>
+    <div class="cust-panel-footer">
+        <button class="btn-inv-primary" onclick="withSpinner(this, () => saveCustomer())" style="flex:1;">Save</button>
+        <button class="btn-inv-outline" onclick="closePanel()">Cancel</button>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let allCustomers = [];
+
+document.addEventListener('DOMContentLoaded', loadCustomers);
+
+async function loadCustomers() {
+    const res = await fetch('/api/sales/customers/');
+    const data = await res.json();
+    allCustomers = data.customers || [];
+    renderTable();
+}
+
+function filterCustomers() {
+    renderTable();
+}
+
+function renderTable() {
+    const search = (document.getElementById('searchBox').value || '').toLowerCase();
+    const filtered = search
+        ? allCustomers.filter(c => (c.name + c.contact_name + c.email + c.phone + c.city + c.state).toLowerCase().includes(search))
+        : allCustomers;
+
+    document.getElementById('custCount').textContent = filtered.length + ' Customers';
+    const tbody = document.getElementById('custTbody');
+
+    if (!filtered.length) {
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">No customers found.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = filtered.map(c => `
+        <tr onclick="openEditPanel(${c.id})">
+            <td onclick="event.stopPropagation();">
+                <button class="btn btn-sm" onclick="openEditPanel(${c.id})" style="background:none;border:none;color:#94a3b8;padding:2px;">
+                    <i class="bi bi-pencil-square"></i>
+                </button>
+            </td>
+            <td style="font-weight:600;">${esc(c.name)}</td>
+            <td>${esc(c.contact_name || '--')}</td>
+            <td>${esc(c.phone || '--')}</td>
+            <td>${esc(c.email || '--')}</td>
+            <td>${esc(c.city || '--')}</td>
+            <td>${esc(c.state || '--')}</td>
+            <td onclick="event.stopPropagation();"><button class="del-btn" title="Delete" onclick="deleteRecord('/api/sales/customers/${c.id}/delete/', 'Delete customer ${esc(c.name)}?', () => loadCustomers())"><i class="bi bi-trash"></i></button></td>
+        </tr>
+    `).join('');
+}
+
+function openPanel() {
+    document.getElementById('editId').value = '';
+    document.getElementById('panelTitle').textContent = 'Add Customer';
+    ['f-name','f-contact','f-phone','f-email','f-address','f-city','f-state','f-zip','f-ship-address','f-ship-city','f-ship-state','f-ship-zip'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('custOverlay').classList.add('open');
+    document.getElementById('custPanel').classList.add('open');
+}
+
+function openEditPanel(id) {
+    const c = allCustomers.find(x => x.id === id);
+    if (!c) return;
+    document.getElementById('editId').value = id;
+    document.getElementById('panelTitle').textContent = 'Edit Customer';
+    document.getElementById('f-name').value = c.name || '';
+    document.getElementById('f-contact').value = c.contact_name || '';
+    document.getElementById('f-phone').value = c.phone || '';
+    document.getElementById('f-email').value = c.email || '';
+    document.getElementById('f-address').value = c.address || '';
+    document.getElementById('f-city').value = c.city || '';
+    document.getElementById('f-state').value = c.state || '';
+    document.getElementById('f-zip').value = c.zipcode || '';
+    document.getElementById('f-ship-address').value = c.ship_address || '';
+    document.getElementById('f-ship-city').value = c.ship_city || '';
+    document.getElementById('f-ship-state').value = c.ship_state || '';
+    document.getElementById('f-ship-zip').value = c.ship_zipcode || '';
+    document.getElementById('custOverlay').classList.add('open');
+    document.getElementById('custPanel').classList.add('open');
+}
+
+function closePanel() {
+    document.getElementById('custOverlay').classList.remove('open');
+    document.getElementById('custPanel').classList.remove('open');
+}
+
+async function saveCustomer() {
+    const name = document.getElementById('f-name').value.trim();
+    if (!name) { alert('Name is required.'); return; }
+
+    const payload = {
+        name,
+        contact_name: document.getElementById('f-contact').value.trim(),
+        phone: document.getElementById('f-phone').value.trim(),
+        email: document.getElementById('f-email').value.trim(),
+        address: document.getElementById('f-address').value.trim(),
+        city: document.getElementById('f-city').value.trim(),
+        state: document.getElementById('f-state').value.trim(),
+        zipcode: document.getElementById('f-zip').value.trim(),
+        ship_address: document.getElementById('f-ship-address').value.trim(),
+        ship_city: document.getElementById('f-ship-city').value.trim(),
+        ship_state: document.getElementById('f-ship-state').value.trim(),
+        ship_zipcode: document.getElementById('f-ship-zip').value.trim(),
+    };
+
+    const editId = document.getElementById('editId').value;
+    const url = editId ? `/api/sales/customers/${editId}/update/` : '/api/sales/customers/create/';
+
+    const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+        body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+        const err = await res.json();
+        alert(err.error || 'Failed to save.');
+        return;
+    }
+    closePanel();
+    await loadCustomers();
+}
+</script>
+{% endblock %}

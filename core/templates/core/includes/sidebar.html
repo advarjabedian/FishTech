@@ -32,6 +32,12 @@ Active values: dashboard, purchase, receive, inventory, process, sales, ship, se
 
     <div style="flex:1;"></div>
 
+    <a href="{% url 'vendor_list_page' %}" title="Vendors" class="{% if active == 'vendors' %}active{% endif %}">
+        <i class="bi bi-building"></i><span>Vendors</span>
+    </a>
+    <a href="{% url 'customer_list_page' %}" title="Customers" class="{% if active == 'customers' %}active{% endif %}">
+        <i class="bi bi-people"></i><span>Customers</span>
+    </a>
     <a href="{% url 'settings_page' %}" title="Settings" class="{% if active == 'settings' %}active{% endif %}" style="margin-bottom:0.5rem;">
         <i class="bi bi-gear-fill"></i><span>Settings</span>
     </a>

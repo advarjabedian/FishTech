@@ -7,6 +7,7 @@ from ..views.operations_reports import (
 )
 from ..views.operations_pages import (
     compliance_hub,
+    customer_list_page,
     inventory_item_detail_page,
     inventory_item_library,
     operations_admin,
@@ -44,6 +45,7 @@ urlpatterns = [
     path('shipping/loading/', shipping_loading, name='shipping_loading'),
     path('settings/', settings_page, name='settings_page'),
     path('vendors/', vendor_list_page, name='vendor_list_page'),
+    path('customers/', customer_list_page, name='customer_list_page'),
     path('trace/', trace_page, name='trace_page'),
     path('compliance/', compliance_hub, name='compliance_hub'),
     path('compliance/dashboard/', operations_dashboard, name='operations_dashboard'),
