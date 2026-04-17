@@ -180,7 +180,7 @@
 
     <div class="dash-card">
         <div class="dash-card-header">
-            <h6>Processed And Sold</h6>
+            <h6>Sold</h6>
             <a href="{% url 'processing_hub' %}">View All</a>
         </div>
         <table class="activity-table">
@@ -286,7 +286,7 @@ async function loadProcessedSold() {
                 <td style="text-align:right;">$${Number(row.amount || 0).toFixed(2)}</td>
                 <td style="text-align:right;">${row.order_id ? `<a href="/operations/processing/?edit_sale=${row.batch_id}:${row.order_id}">Edit</a>` : `<a href="/operations/processing/">View</a>`}</td>
             </tr>
-        `).join('') : '<tr><td colspan="8" class="text-center text-muted py-3">No processed sales yet.</td></tr>';
+        `).join('') : '<tr><td colspan="8" class="text-center text-muted py-3">No sold rows yet.</td></tr>';
     } catch (error) {
         console.error('loadProcessedSold error', error);
     }
