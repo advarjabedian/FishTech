@@ -3,7 +3,12 @@ import io
 import json
 from decimal import Decimal
 
+import stripe
+from django.apps import apps
+from django.conf import settings
+from django.contrib.auth.models import User as DjangoUser
 from django.contrib.auth.decorators import login_required
+from django.db import transaction
 from django.db.models import Q, Sum
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404
@@ -21,9 +26,10 @@ from core.models import (
     ProcessBatchSource,
     ProcessBatchWaste,
     Product,
+    ProductImage,
     PurchaseOrder,
     PurchaseOrderItem,
-    ReceivingQualityCheck,
+    CustomerProfile,
     SalesOrder,
     SalesOrderAllocation,
     SalesOrderItem,
@@ -43,13 +49,58 @@ def _require_tenant(request):
     return tenant, None
 
 
-def _lot_qc_status(lot):
-    try:
-        return lot.quality_check.status
-    except Exception:
-        return "pending"
+def _require_tenant_admin(request, tenant):
+    tenant_user = TenantUser.objects.filter(tenant=tenant, user=request.user).first()
+    if not tenant_user or not tenant_user.is_admin:
+        return JsonResponse({"error": "Admin access is required."}, status=403)
+    return None
 
 
+def _sync_purchase_order_receive_status(order):
+    if not order:
+        return
+
+    all_items = order.items.filter(item_type="item")
+    all_received = all((_to_float(item.remaining_quantity) or 0) <= 0 for item in all_items)
+    any_received = any((_to_float(item.received_quantity) or 0) > 0 for item in all_items)
+    if all_received:
+        receive_status = "received"
+    elif any_received:
+        receive_status = "partial"
+    else:
+        receive_status = "not_received"
+    order.receive_status = receive_status
+    order.save(update_fields=["receive_status"])
+
+
+def _editable_operational_models():
+    excluded = {"Tenant", "TenantUser", "User"}
+    models = []
+    for model in apps.get_app_config("core").get_models():
+        if model.__name__ in excluded:
+            continue
+        if any(field.name == "tenant" for field in model._meta.fields):
+            models.append(model)
+    return models
+
+
+def _restore_and_delete_process_batch(batch):
+    tenant = batch.tenant
+
+    for source in batch.sources.select_related("inventory").all():
+        if source.inventory_id and source.inventory:
+            source.inventory.unitsonhand = (source.inventory.unitsonhand or 0) + source.quantity
+            source.inventory.save(update_fields=["unitsonhand"])
+
+    output_inventory_ids = [output.inventory_id for output in batch.outputs.all() if output.inventory_id]
+    if output_inventory_ids:
+        SalesOrderAllocation.objects.filter(tenant=tenant, inventory_id__in=output_inventory_ids).delete()
+        Inventory.objects.filter(tenant=tenant, id__in=output_inventory_ids).delete()
+
+    batch.sources.all().delete()
+    batch.outputs.all().delete()
+    batch.waste_entries.all().delete()
+    batch.delete()
 def _to_float(value):
     if value in (None, ""):
         return None
@@ -111,6 +162,75 @@ def _ensure_products_for_inventory_lots(tenant):
         existing_product_ids.add(product_id)
 
 
+def _normalize_product_lookup(value):
+    return " ".join(str(value or "").strip().lower().split())
+
+
+def _build_product_lookup_maps(products):
+    products_by_id = {}
+    products_by_name = {}
+
+    for product in products:
+        product_id_key = _normalize_product_lookup(product.product_id)
+        if product_id_key:
+            products_by_id[product_id_key] = product
+
+        for candidate in [
+            product.description,
+            product.item_name,
+            product.friendly_name,
+            product.qb_item_name,
+        ]:
+            name_key = _normalize_product_lookup(candidate)
+            if name_key and name_key not in products_by_name:
+                products_by_name[name_key] = product
+
+    return products_by_id, products_by_name
+
+
+def _resolve_product_from_values(products_by_id, products_by_name, *values):
+    for value in values:
+        lookup_key = _normalize_product_lookup(value)
+        if not lookup_key:
+            continue
+        if lookup_key in products_by_id:
+            return products_by_id[lookup_key]
+        if lookup_key in products_by_name:
+            return products_by_name[lookup_key]
+    return None
+
+
+def _resolve_product_for_lot(lot, products_by_id, products_by_name):
+    po_item = getattr(lot, "po_item", None)
+    if po_item and po_item.product_id and po_item.product:
+        return po_item.product
+    return _resolve_product_from_values(
+        products_by_id,
+        products_by_name,
+        lot.productid,
+        lot.desc,
+    )
+
+
+def _inventory_totals_by_product(products, lots):
+    totals_by_product_id = {
+        product.id: {"expected": 0, "allocated": 0, "on_hand": 0}
+        for product in products
+    }
+    products_by_id, products_by_name = _build_product_lookup_maps(products)
+
+    for lot in lots:
+        product = _resolve_product_for_lot(lot, products_by_id, products_by_name)
+        if not product:
+            continue
+        totals = totals_by_product_id.setdefault(product.id, {"expected": 0, "allocated": 0, "on_hand": 0})
+        totals["expected"] += _to_float(lot.unitsin) or 0
+        totals["allocated"] += _to_float(lot.unitsallocated) or 0
+        totals["on_hand"] += _to_float(lot.unitsonhand) or 0
+
+    return totals_by_product_id, products_by_id, products_by_name
+
+
 def _paginate(request, queryset, default_page_size=100):
     page = max(int(request.GET.get("page", 1) or 1), 1)
     page_size = max(int(request.GET.get("page_size", default_page_size) or default_page_size), 1)
@@ -121,28 +241,45 @@ def _paginate(request, queryset, default_page_size=100):
 
 
 def _po_to_dict(order):
+    item_rows = [item for item in order.items.all() if item.item_type == "item"]
     expected = getattr(order, "expected_total", None)
     if expected is None:
-        expected = sum((item.quantity or 0) for item in order.items.all() if item.item_type == "item")
+        expected = sum((item.quantity or 0) for item in item_rows)
+    arrived = sum((item.received_quantity or 0) for item in item_rows)
     total = getattr(order, "order_total", None)
     if total is None:
         total = order.total or 0
     vendor_type = ""
     if order.vendor_id and order.vendor:
         vendor_type = order.vendor.vendor_type or ""
+    unit_types = sorted(set(filter(None, [
+        (item.unit_type or (item.product.unit_type if item.product_id and item.product else ""))
+        for item in item_rows
+    ])))
+    any_received = any((item.received_quantity or 0) > 0 for item in item_rows)
+    all_received = bool(item_rows) and all((item.received_quantity or 0) >= (item.quantity or 0) for item in item_rows)
+    derived_receive_status = "received" if all_received else ("partial" if any_received else "not_received")
+    receive_status = derived_receive_status if item_rows else order.receive_status
+    receive_status_display = {
+        "not_received": "Not Received",
+        "partial": "Partial",
+        "received": "Received",
+    }.get(receive_status, receive_status.replace("_", " ").title())
     return {
         "id": order.id,
         "po_number": order.po_number,
         "order_status": order.order_status,
         "order_status_display": order.get_order_status_display(),
-        "receive_status": order.receive_status,
-        "receive_status_display": order.get_receive_status_display(),
+        "receive_status": receive_status,
+        "receive_status_display": receive_status_display,
         "qb_po_number": order.qb_po_number,
         "vendor_name": order.vendor_name,
         "vendor_type": vendor_type,
         "buyer": order.buyer,
         "total": _to_float(total) or 0,
         "expected": _to_float(expected) or 0,
+        "arrived": _to_float(arrived) or 0,
+        "unit_type": ", ".join(unit_types) or "",
         "order_date": _date_str(order.order_date),
         "expected_date": _date_str(order.expected_date),
         "products": ", ".join(sorted(set(filter(None, (
@@ -154,10 +291,12 @@ def _po_to_dict(order):
 
 def _product_to_dict(product, totals=None):
     totals = totals or {}
+    display_name = product.description or product.item_name or product.friendly_name or product.qb_item_name or product.product_id
     return {
         "id": product.id,
         "product_id": product.product_id,
         "item_name": product.item_name or product.description or product.product_id,
+        "display_name": display_name,
         "item_group": product.item_group.name if product.item_group_id and product.item_group else "",
         "item_group_id": product.item_group_id,
         "qb_item_name": product.qb_item_name or "",
@@ -172,6 +311,9 @@ def _product_to_dict(product, totals=None):
         "brand": product.brand or "",
         "inventory_unit_of_measure": product.inventory_unit_of_measure or product.unit_type or "",
         "unit_type": product.inventory_unit_of_measure or product.unit_type or "",
+        "selling_unit_of_measure": product.selling_unit_of_measure or "",
+        "buying_unit_of_measure": product.buying_unit_of_measure or "",
+        "raw_cost": _to_float(product.raw_cost),
         "list_price": _to_float(product.list_price),
         "wholesale_price": _to_float(product.wholesale_price),
         "habitat_production_method": product.habitat_production_method or "",
@@ -183,6 +325,21 @@ def _product_to_dict(product, totals=None):
         "allocated": _to_float(totals.get("allocated")) or 0,
         "on_hand": _to_float(totals.get("on_hand")) or 0,
     }
+
+
+def _next_product_id(tenant):
+    existing_ids = Product.objects.filter(tenant=tenant).values_list("product_id", flat=True)
+    highest = 0
+    for value in existing_ids:
+        if not value:
+            continue
+        value = str(value).strip()
+        if not value.startswith("ITEM-"):
+            continue
+        suffix = value[5:]
+        if suffix.isdigit():
+            highest = max(highest, int(suffix))
+    return f"ITEM-{highest + 1:04d}"
 
 
 def _sales_order_total(order):
@@ -215,7 +372,165 @@ def _sales_item_name(item):
     if item.description:
         return item.description
     if item.product_id and item.product:
-        return item.product.item_name or item.product.description or item.product.product_id
+        return item.product.description or item.product.item_name or item.product.product_id
+    return ""
+
+
+def _selected_source_lot_ids(data):
+    raw = data.get("process_source_lot_ids")
+    if raw in (None, ""):
+        return []
+    if isinstance(raw, list):
+        values = raw
+    else:
+        values = str(raw).split(",")
+    lot_ids = []
+    for value in values:
+        try:
+            lot_ids.append(int(str(value).strip()))
+        except Exception:
+            continue
+    return list(dict.fromkeys(lot_ids))
+
+
+def _normalize_process_type(value):
+    process_type = (value or "").strip()
+    if not process_type:
+        return ""
+    if process_type != "fish_cutting":
+        raise ValueError("Only fish cutting is supported.")
+    return process_type
+
+
+def _rollback_process_batch(batch):
+    source_rows = list(batch.sources.select_related("inventory").all())
+    output_inventory_ids = [output.inventory_id for output in batch.outputs.all() if output.inventory_id]
+
+    for source in source_rows:
+        if not source.inventory_id or not source.inventory:
+            continue
+        source.inventory.unitsonhand = (source.inventory.unitsonhand or 0) + (source.quantity or 0)
+        source.inventory.unitsavailable = (source.inventory.unitsavailable or 0) + (source.quantity or 0)
+        source.inventory.save(update_fields=["unitsonhand", "unitsavailable"])
+
+    if output_inventory_ids:
+        Inventory.objects.filter(id__in=output_inventory_ids).delete()
+
+    batch.delete()
+
+
+def _create_processing_batch_for_sales_item(request, tenant, sales_item, data):
+    process_type = _normalize_process_type(data.get("process_type"))
+    if not process_type or sales_item.item_type != "item":
+        return None
+
+    lot_ids = _selected_source_lot_ids(data)
+    if not lot_ids:
+        raise ValueError("Choose at least one source lot for processed sales items.")
+
+    requested_qty = Decimal(str(sales_item.quantity or 0))
+    if requested_qty <= 0:
+        raise ValueError("Processed sales items need a quantity greater than zero.")
+    if not sales_item.product_id or not sales_item.product or not sales_item.product.product_id:
+        raise ValueError("Choose a product before processing this sales item.")
+
+    lot_map = {
+        lot.id: lot for lot in Inventory.objects.filter(tenant=tenant, id__in=lot_ids, unitsonhand__gt=0)
+    }
+    selected_lots = [lot_map[lot_id] for lot_id in lot_ids if lot_id in lot_map]
+    if not selected_lots:
+        raise ValueError("Selected source lots are not available.")
+
+    remaining = requested_qty
+    source_payloads = []
+    for lot in selected_lots:
+        available = Decimal(str(lot.unitsonhand or 0))
+        if available <= 0:
+            continue
+        take = min(available, remaining)
+        if take <= 0:
+            continue
+        source_payloads.append({
+            "inventory": lot,
+            "quantity": take,
+            "unit_type": (lot.unittype or sales_item.unit_type or "").strip(),
+        })
+        remaining -= take
+        if remaining <= 0:
+            break
+
+    if remaining > 0:
+        raise ValueError("Not enough quantity in the selected source lots to cover this sale.")
+
+    last = ProcessBatch.objects.filter(tenant=tenant).order_by("-id").first()
+    next_num = (last.id + 1) if last else 1
+    batch_number = f"PB-{next_num:04d}"
+    batch = ProcessBatch.objects.create(
+        tenant=tenant,
+        batch_number=batch_number,
+        process_type=process_type,
+        status="completed",
+        completed_at=timezone.now(),
+        notes=f"Created from sales order {sales_item.sales_order.order_number}",
+        created_by=request.user,
+    )
+
+    for source in source_payloads:
+        lot = source["inventory"]
+        ProcessBatchSource.objects.create(
+            tenant=tenant,
+            batch=batch,
+            inventory=lot,
+            quantity=source["quantity"],
+            unit_type=source["unit_type"],
+        )
+        lot.unitsonhand = max(Decimal("0"), (lot.unitsonhand or 0) - source["quantity"])
+        lot.unitsavailable = max(Decimal("0"), (lot.unitsavailable or 0) - source["quantity"])
+        lot.save(update_fields=["unitsonhand", "unitsavailable"])
+
+    output_inventory = Inventory.objects.create(
+        tenant=tenant,
+        productid=sales_item.product.product_id,
+        desc=sales_item.description or sales_item.product.description or sales_item.product.item_name or sales_item.product.product_id,
+        vendorid=selected_lots[0].vendorid if selected_lots else "",
+        vendorlot=f"LOT-{batch.batch_number}-{sales_item.id}",
+        unittype=(sales_item.unit_type or selected_lots[0].unittype if selected_lots else "").strip(),
+        unitsonhand=requested_qty,
+        unitsavailable=requested_qty,
+        unitsin=requested_qty,
+        receivedate=timezone.now().date().isoformat(),
+        vendor_type=selected_lots[0].vendor_type if selected_lots else "",
+        purchase_order=selected_lots[0].purchase_order if selected_lots and hasattr(selected_lots[0], "purchase_order") else None,
+    )
+    ProcessBatchOutput.objects.create(
+        tenant=tenant,
+        batch=batch,
+        inventory=output_inventory,
+        product=sales_item.product,
+        quantity=requested_qty,
+        unit_type=sales_item.unit_type or output_inventory.unittype,
+        lot_id=output_inventory.vendorlot,
+        yield_percent=Decimal("100"),
+    )
+    SalesOrderAllocation.objects.create(
+        tenant=tenant,
+        sales_order_item=sales_item,
+        inventory=output_inventory,
+        quantity=requested_qty,
+        unit_type=sales_item.unit_type or output_inventory.unittype,
+        allocated_by=request.user,
+        allocated_by_name=request.user.get_full_name() or request.user.username,
+    )
+    sales_item.process_batch = batch
+    sales_item.save(update_fields=["process_batch"])
+    batch.calculate_yield()
+    batch.save(update_fields=["total_input_weight", "total_output_weight", "actual_yield_pct", "expected_yield_pct", "yield_variance_pct", "yield_flagged"])
+    return batch
+
+
+def _sales_item_spec(item):
+    if item.product_id and item.product:
+        return " · ".join(filter(None, [item.product.quantity_description or "", item.product.size_cull or ""]))
     return ""
 
 
@@ -246,24 +561,6 @@ def _po_item_to_dict(item):
         "unit_type": item.unit_type or (item.product.unit_type if item.product_id and item.product else ""),
         "unit_price": _to_float(item.unit_price) or 0,
         "amount": _to_float(item.amount) or 0,
-    }
-
-
-def _quality_to_dict(check):
-    if not check:
-        return None
-    return {
-        "freshness_score": check.freshness_score,
-        "appearance_ok": check.appearance_ok,
-        "odor_ok": check.odor_ok,
-        "texture_ok": check.texture_ok,
-        "packaging_ok": check.packaging_ok,
-        "temp_ok": check.temp_ok,
-        "status": check.status,
-        "status_display": check.get_status_display(),
-        "notes": check.notes or "",
-        "checked_by": check.checked_by_name or (check.checked_by.get_username() if check.checked_by else ""),
-        "checked_at": check.checked_at.strftime("%Y-%m-%d %I:%M %p") if check.checked_at else "",
     }
 
 
@@ -359,14 +656,18 @@ def operations_summary(request):
 
     sales = SalesOrder.objects.filter(tenant=tenant)
     purchases = PurchaseOrder.objects.filter(tenant=tenant)
-    inventory = Inventory.objects.filter(tenant=tenant, unitsonhand__gt=0)
+    sold_output_inventory_ids = list(
+        ProcessBatchOutput.objects.filter(tenant=tenant, inventory__isnull=False).values_list("inventory_id", flat=True)
+    )
 
     return JsonResponse(
         {
-            "open_sales_orders": sales.filter(order_status__in=["open", "needs_review"]).count(),
-            "pending_shipments": sales.exclude(order_status__in=["closed", "cancelled"]).exclude(packed_status="packed").count(),
-            "open_purchase_orders": purchases.filter(order_status__in=["open", "draft"]).count(),
-            "items_in_stock": inventory.values("productid").exclude(productid="").distinct().count(),
+            "expected_arrivals_count": purchases.exclude(order_status="cancelled").exclude(receive_status="received").count(),
+            "arrived_count": purchases.filter(receive_status__in=["partial", "received"]).count(),
+            "sold_count": SalesOrderAllocation.objects.filter(
+                tenant=tenant,
+                inventory_id__in=sold_output_inventory_ids,
+            ).count(),
         }
     )
 
@@ -560,6 +861,8 @@ def purchasing_order_create(request):
         po_number=po_number,
         vendor=vendor,
         vendor_name=vendor_name,
+        buyer=(request.user.get_full_name() or request.user.get_username() or "").strip(),
+        order_date=timezone.localdate(),
         created_by=request.user,
     )
     return JsonResponse({"id": order.id, "po_number": order.po_number})
@@ -618,16 +921,23 @@ def purchasing_order_update(request, order_id):
     order = get_object_or_404(PurchaseOrder.objects.filter(tenant=tenant), id=order_id)
     data = _parse_json(request)
 
-    # Allow reopening a closed/cancelled PO (status change only)
+    # Allow status corrections on locked POs without reopening them first.
     if order.order_status in ("closed", "cancelled"):
         new_status = (data.get("order_status") or "").strip()
+        new_receive_status = (data.get("receive_status") or "").strip()
+        updated_fields = []
         if new_status and new_status != order.order_status:
             order.order_status = new_status
-            order.save()
+            updated_fields.append("order_status")
+        if new_receive_status and new_receive_status != order.receive_status:
+            order.receive_status = new_receive_status
+            updated_fields.append("receive_status")
+        if updated_fields:
+            order.save(update_fields=updated_fields)
             return JsonResponse({"success": True})
         return JsonResponse({"error": "This purchase order is locked. Reopen it to make changes."}, status=400)
 
-    for field in ["buyer", "vendor_invoice_number", "qb_po_number", "notes", "order_status"]:
+    for field in ["buyer", "vendor_invoice_number", "qb_po_number", "notes", "order_status", "receive_status"]:
         if field in data:
             setattr(order, field, data.get(field) or "")
 
@@ -669,11 +979,17 @@ def purchasing_order_item_add(request, order_id):
         description=(data.get("description") or "").strip(),
         notes=(data.get("notes") or "").strip(),
         quantity=data.get("quantity") or None,
+        received_quantity=data.get("received_qty") or data.get("received_quantity") or 0,
         unit_type=(data.get("unit_type") or "").strip(),
         unit_price=data.get("unit_price") or None,
         amount=amount,
         sort_order=order.items.count(),
     )
+    all_items = order.items.filter(item_type="item")
+    all_received = all((item.received_quantity or 0) >= (item.quantity or 0) for item in all_items)
+    any_received = any((item.received_quantity or 0) > 0 for item in all_items)
+    order.receive_status = "received" if all_received and all_items.exists() else ("partial" if any_received else "not_received")
+    order.save(update_fields=["receive_status"])
     return JsonResponse({"success": True, "id": item.id})
 
 
@@ -790,7 +1106,7 @@ def receiving_lots(request):
     if error:
         return error
 
-    lots = Inventory.objects.filter(tenant=tenant).select_related("purchase_order", "quality_check")
+    lots = Inventory.objects.filter(tenant=tenant).select_related("purchase_order")
 
     search = request.GET.get("search", "").strip()
     if search:
@@ -833,7 +1149,6 @@ def receiving_lots(request):
                     "cost": _to_float(lot.actualcost),
                     "on_hand": _to_float(lot.unitsonhand) or 0,
                     "unit_type": lot.unittype or "",
-                    "qc_status": _lot_qc_status(lot),
                 }
                 for lot in paged
             ],
@@ -849,11 +1164,10 @@ def receiving_lot_detail(request, lot_id):
         return error
 
     lot = get_object_or_404(
-        Inventory.objects.filter(tenant=tenant).select_related("purchase_order", "po_item", "quality_check"),
+        Inventory.objects.filter(tenant=tenant).select_related("purchase_order", "po_item"),
         id=lot_id,
     )
     vendor = Vendor.objects.filter(tenant=tenant, name=lot.vendorid).first()
-    qc = getattr(lot, "quality_check", None)
 
     # Traceability links
     batch_sources = ProcessBatchSource.objects.filter(tenant=tenant, inventory=lot).select_related("batch")
@@ -881,10 +1195,6 @@ def receiving_lot_detail(request, lot_id):
             "location": lot.location or "",
             "origin": lot.origin or "",
             "cost": _to_float(lot.actualcost),
-            "quality_check": _quality_to_dict(qc),
-            "quality_status_choices": [
-                {"value": value, "label": label} for value, label in ReceivingQualityCheck.STATUS_CHOICES
-            ],
             "po_id": lot.purchase_order_id,
             "po_number": lot.purchase_order.po_number if lot.purchase_order_id and lot.purchase_order else (lot.poid or ""),
             "po_items": [
@@ -907,34 +1217,63 @@ def receiving_lot_detail(request, lot_id):
 
 
 @login_required
-def receiving_lot_quality(request, lot_id):
+def receiving_lot_update(request, lot_id):
     tenant, error = _require_tenant(request)
     if error:
         return error
     if request.method != "POST":
         return JsonResponse({"error": "GET not allowed"}, status=405)
 
-    lot = get_object_or_404(Inventory.objects.filter(tenant=tenant), id=lot_id)
+    lot = get_object_or_404(Inventory.objects.filter(tenant=tenant).select_related("purchase_order", "po_item"), id=lot_id)
     data = _parse_json(request)
-    quality_check, _ = ReceivingQualityCheck.objects.get_or_create(
-        tenant=tenant,
-        inventory=lot,
-        defaults={"checked_by": request.user, "checked_by_name": request.user.get_username()},
-    )
 
-    quality_check.freshness_score = int(data.get("freshness_score") or 0)
-    quality_check.status = (data.get("status") or "pass").strip() or "pass"
-    quality_check.appearance_ok = bool(data.get("appearance_ok"))
-    quality_check.odor_ok = bool(data.get("odor_ok"))
-    quality_check.texture_ok = bool(data.get("texture_ok"))
-    quality_check.packaging_ok = bool(data.get("packaging_ok"))
-    quality_check.temp_ok = bool(data.get("temp_ok"))
-    quality_check.notes = (data.get("notes") or "").strip()
-    quality_check.checked_by = request.user
-    quality_check.checked_by_name = request.user.get_username()
-    quality_check.save()
+    if "product_name" in data:
+        product_name = (data.get("product_name") or "").strip()
+        if product_name:
+            lot.desc = product_name
+            if not (lot.productid or "").strip():
+                lot.productid = product_name
 
-    return JsonResponse({"success": True, "quality_check": _quality_to_dict(quality_check)})
+    if "vendor" in data:
+        lot.vendorid = (data.get("vendor") or "").strip()
+    if "receive_date" in data:
+        lot.receivedate = (data.get("receive_date") or "").strip()
+    if "unit_type" in data:
+        lot.unittype = (data.get("unit_type") or "").strip()
+    if "cost" in data:
+        lot.actualcost = data.get("cost") or None
+
+    previous_unitsin = Decimal(str(lot.unitsin or 0))
+    previous_unitsonhand = Decimal(str(lot.unitsonhand or 0))
+
+    if "incoming" in data:
+        incoming = Decimal(str(_to_float(data.get("incoming")) or 0))
+        if incoming < 0:
+            return JsonResponse({"error": "Incoming quantity cannot be negative."}, status=400)
+        lot.unitsin = incoming
+        if lot.po_item_id and lot.po_item:
+            lot.po_item.received_quantity = max(
+                Decimal("0"),
+                Decimal(str(lot.po_item.received_quantity or 0)) + (incoming - previous_unitsin),
+            )
+            lot.po_item.save(update_fields=["received_quantity"])
+
+    if "on_hand" in data:
+        on_hand = Decimal(str(_to_float(data.get("on_hand")) or 0))
+        if on_hand < 0:
+            return JsonResponse({"error": "On hand quantity cannot be negative."}, status=400)
+        lot.unitsonhand = on_hand
+        lot.unitsavailable = on_hand
+    elif "incoming" in data and previous_unitsonhand == previous_unitsin:
+        lot.unitsonhand = lot.unitsin
+        lot.unitsavailable = lot.unitsin
+
+    lot.save()
+
+    if lot.purchase_order_id and lot.purchase_order:
+        _sync_purchase_order_receive_status(lot.purchase_order)
+
+    return JsonResponse({"success": True})
 
 
 @login_required
@@ -994,18 +1333,50 @@ def receiving_lot_create(request):
             po_number = purchase_order.po_number
     po_item_id = data.get("po_item_id")
     if po_item_id:
-        po_item = PurchaseOrderItem.objects.filter(tenant=tenant, id=po_item_id).first()
+        po_item = PurchaseOrderItem.objects.filter(tenant=tenant, id=po_item_id).select_related("product").first()
+
+    product = None
+    if po_item and po_item.product_id and po_item.product:
+        product = po_item.product
+    else:
+        product_candidates = list(Product.objects.filter(tenant=tenant))
+        products_by_id, products_by_name = _build_product_lookup_maps(product_candidates)
+        product = _resolve_product_from_values(products_by_id, products_by_name, product_id, description)
+
+    if not product and (product_id or description):
+        item_name = (description or product_id).strip()
+        product = Product.objects.create(
+            tenant=tenant,
+            is_active=True,
+            product_id=_next_product_id(tenant),
+            description=item_name,
+            item_name=item_name,
+            unit_type=((data.get("unit_type") or "").strip() or (po_item.unit_type if po_item else "")),
+        )
+
+    resolved_product_id = (product.product_id if product else (product_id or description)).strip()
+    resolved_description = (
+        (product.description or product.item_name or product.friendly_name or product.qb_item_name or product.product_id)
+        if product
+        else (description or product_id)
+    ).strip()
+    resolved_unit_type = (
+        (data.get("unit_type") or "").strip()
+        or (po_item.unit_type if po_item else "")
+        or (product.inventory_unit_of_measure if product and product.inventory_unit_of_measure else "")
+        or (product.unit_type if product else "")
+    ).strip()
 
     receive_time = (data.get("receive_time") or "").strip() or _time_str(timezone.localtime().time())
 
     lot = Inventory.objects.create(
         tenant=tenant,
-        productid=product_id or description,
-        desc=(Product.objects.filter(tenant=tenant, product_id=product_id).values_list("item_name", flat=True).first() if product_id else None) or description or product_id,
+        productid=resolved_product_id,
+        desc=resolved_description,
         vendorid=(data.get("vendor") or "").strip(),
         vendorlot=f"LOT-{timezone.now().strftime('%Y%m%d')}-{Inventory.objects.filter(tenant=tenant).count() + 1}",
         actualcost=data.get("cost") or None,
-        unittype=(data.get("unit_type") or "").strip(),
+        unittype=resolved_unit_type,
         unitsonhand=quantity,
         unitsavailable=quantity,
         unitsin=quantity,
@@ -1019,55 +1390,11 @@ def receiving_lot_create(request):
         vendor_type=(data.get("vendor_type") or "").strip(),
     )
 
-    if lot.productid and not Product.objects.filter(tenant=tenant, product_id=lot.productid).exists():
-        item_name = (lot.desc or lot.productid).strip()
-        Product.objects.create(
-            tenant=tenant,
-            is_active=True,
-            product_id=lot.productid,
-            description=item_name,
-            item_name=item_name,
-            unit_type=(lot.unittype or "").strip(),
-        )
-
     if po_item:
         po_item.received_quantity = (po_item.received_quantity or 0) + Decimal(str(quantity))
         po_item.save(update_fields=["received_quantity"])
         if purchase_order:
-            # Check all items on the PO to determine overall receive status
-            all_items = purchase_order.items.filter(item_type="item")
-            all_received = all((_to_float(i.remaining_quantity) or 0) <= 0 for i in all_items)
-            any_received = any((_to_float(i.received_quantity) or 0) > 0 for i in all_items)
-            if all_received:
-                receive_status = "received"
-            elif any_received:
-                receive_status = "partial"
-            else:
-                receive_status = "not_received"
-            purchase_order.receive_status = receive_status
-            purchase_order.save(update_fields=["receive_status"])
-
-    quality_data = data.get("quality_check") or {}
-    quality_check, _ = ReceivingQualityCheck.objects.get_or_create(
-        tenant=tenant,
-        inventory=lot,
-        defaults={
-            "checked_by": request.user,
-            "checked_by_name": request.user.get_username(),
-        },
-    )
-    if quality_data:
-        quality_check.freshness_score = int(quality_data.get("freshness_score") or 0)
-        quality_check.appearance_ok = bool(quality_data.get("appearance_ok"))
-        quality_check.odor_ok = bool(quality_data.get("odor_ok"))
-        quality_check.texture_ok = bool(quality_data.get("texture_ok"))
-        quality_check.packaging_ok = bool(quality_data.get("packaging_ok"))
-        quality_check.temp_ok = bool(quality_data.get("temp_ok"))
-        quality_check.status = (quality_data.get("status") or "pass").strip() or "pass"
-        quality_check.notes = (quality_data.get("notes") or "").strip()
-        quality_check.checked_by = request.user
-        quality_check.checked_by_name = request.user.get_username()
-        quality_check.save()
+            _sync_purchase_order_receive_status(purchase_order)
 
     return JsonResponse({"success": True, "id": lot.id})
 
@@ -1078,28 +1405,17 @@ def processing_products(request):
     if error:
         return error
 
-    _ensure_products_for_inventory_lots(tenant)
     products = list(
         Product.objects.filter(tenant=tenant, is_active=True)
         .select_related("item_group")
         .order_by("sort_order", "description")[:1000]
     )
+    inventory_lots = list(
+        Inventory.objects.filter(tenant=tenant)
+        .select_related("po_item__product")
+    )
+    inventory_totals, _, _ = _inventory_totals_by_product(products, inventory_lots)
     product_ids = [product.product_id for product in products if product.product_id]
-    inventory_totals = {
-        row["productid"]: row
-        for row in Inventory.objects.filter(
-            tenant=tenant,
-            productid__in=product_ids,
-        ).filter(
-            Q(quality_check__status="pass") | Q(quality_check__isnull=True)
-        )
-        .values("productid")
-        .annotate(
-            expected=Sum("unitsin"),
-            allocated=Sum("unitsallocated"),
-            on_hand=Sum("unitsonhand"),
-        )
-    }
     recent_cutoff = timezone.now() - timezone.timedelta(days=14)
     recent_processed = {}
     outputs = (
@@ -1125,7 +1441,7 @@ def processing_products(request):
         {
             "products": [
                 {
-                    **_product_to_dict(product, inventory_totals.get(product.product_id)),
+                    **_product_to_dict(product, inventory_totals.get(product.id)),
                     "pack_size": _to_float(product.pack_size),
                     "default_price": _to_float(product.default_price),
                     "recently_processed": (recent_processed.get(product.product_id) or {}).get("recently_processed", False),
@@ -1139,7 +1455,7 @@ def processing_products(request):
 
 @login_required
 def processing_source_lots(request):
-    """Return inventory lots available for processing (passed QC, on-hand > 0)."""
+    """Return original received inventory lots available for processing."""
     tenant, error = _require_tenant(request)
     if error:
         return error
@@ -1147,34 +1463,188 @@ def processing_source_lots(request):
         tenant=tenant,
         unitsonhand__gt=0,
     ).filter(
-        Q(quality_check__status="pass") | Q(quality_check__isnull=True)
-    ).select_related("quality_check").order_by("-id")
+        Q(purchase_order__isnull=False) | ~Q(poid="")
+    ).select_related("po_item__product").order_by("-id")
     search = request.GET.get("search", "").strip()
     if search:
         lots = lots.filter(
             Q(desc__icontains=search) | Q(vendorlot__icontains=search)
             | Q(vendorid__icontains=search) | Q(productid__icontains=search)
         )
+    products_by_id, products_by_name = _build_product_lookup_maps(
+        list(Product.objects.filter(tenant=tenant, is_active=True))
+    )
     return JsonResponse({
         "lots": [
             {
                 "id": lot.id,
                 "lot_id": lot.vendorlot or f"LOT-{lot.id}",
                 "trace_lot": lot.vendorlot or f"LOT-{lot.id}",
-                "item_name": lot.desc or lot.productid or "",
-                "product_id": lot.productid or "",
-                "product": lot.desc or lot.productid or "",
+                "item_name": ((resolved_product.description or resolved_product.item_name) if resolved_product else (lot.desc or lot.productid or "")),
+                "product_id": (resolved_product.product_id if resolved_product else (lot.productid or "")),
+                "product": ((resolved_product.description or resolved_product.item_name) if resolved_product else (lot.desc or lot.productid or "")),
+                "product_spec": " · ".join(filter(None, [
+                    (resolved_product.quantity_description if resolved_product else ""),
+                    (resolved_product.size_cull if resolved_product else ""),
+                ])),
                 "vendor": lot.vendorid or "",
                 "vendor_lot": lot.vendorlot or "",
+                "incoming": _to_float(lot.unitsin) or 0,
                 "on_hand": _to_float(lot.unitsonhand) or 0,
                 "unit_type": lot.unittype or "",
+                "cost": _to_float(lot.actualcost) or 0,
                 "location": lot.location or "",
                 "origin": lot.origin or "",
                 "receive_date": lot.receivedate or "",
             }
             for lot in lots
+            for resolved_product in [_resolve_product_for_lot(lot, products_by_id, products_by_name)]
         ]
     })
+
+
+@login_required
+def processing_sold_results(request):
+    tenant, error = _require_tenant(request)
+    if error:
+        return error
+
+    outputs = list(
+        ProcessBatchOutput.objects.filter(tenant=tenant, inventory__isnull=False)
+        .select_related("inventory", "batch", "product")
+        .order_by("-id")
+    )
+    if not outputs:
+        return JsonResponse({"results": []})
+
+    output_by_inventory = {output.inventory_id: output for output in outputs if output.inventory_id}
+    batch_ids = {output.batch_id for output in outputs if output.batch_id}
+
+    source_map = {}
+    for source in ProcessBatchSource.objects.filter(tenant=tenant, batch_id__in=batch_ids).select_related("inventory"):
+        source_map.setdefault(source.batch_id, []).append(source)
+
+    allocs = (
+        SalesOrderAllocation.objects.filter(tenant=tenant, inventory_id__in=output_by_inventory.keys())
+        .select_related("inventory", "sales_order_item__sales_order", "sales_order_item__product")
+        .order_by("-created_at", "-id")
+    )
+
+    results = []
+    for alloc in allocs:
+        output = output_by_inventory.get(alloc.inventory_id)
+        if not output or not alloc.sales_order_item_id or not alloc.sales_order_item.sales_order_id:
+            continue
+
+        sales_item = alloc.sales_order_item
+        order = sales_item.sales_order
+        batch_sources = source_map.get(output.batch_id, [])
+        source_lots = ", ".join(
+            dict.fromkeys(
+                (src.inventory.vendorlot or f"LOT-{src.inventory_id}")
+                for src in batch_sources if src.inventory_id and src.inventory
+            )
+        ) or (alloc.inventory.vendorlot or f"LOT-{alloc.inventory_id}")
+        source_product = ", ".join(
+            dict.fromkeys(
+                (src.inventory.desc or src.inventory.productid or "")
+                for src in batch_sources if src.inventory_id and src.inventory
+            )
+        ) or (alloc.inventory.desc or alloc.inventory.productid or "")
+
+        sold_qty = Decimal(str(alloc.quantity or 0))
+        unit_price = Decimal(str(sales_item.unit_price or 0))
+        results.append(
+            {
+                "id": alloc.id,
+                "batch_id": output.batch_id,
+                "order_id": order.id,
+                "sales_item_id": sales_item.id,
+                "product": sales_item.description or ((sales_item.product.description or sales_item.product.item_name) if sales_item.product_id and sales_item.product else (alloc.inventory.desc or alloc.inventory.productid or "")),
+                "source_product": source_product,
+                "source_lot": source_lots,
+                "sold_qty": _to_float(sold_qty) or 0,
+                "unit_type": alloc.unit_type or sales_item.unit_type or alloc.inventory.unittype or "",
+                "customer_name": order.customer_name or "",
+                "unit_price": _to_float(unit_price) or 0,
+                "amount": _to_float(sold_qty * unit_price) or 0,
+                "order_number": order.order_number or "",
+                "sold_at": _date_str(order.order_date),
+            }
+        )
+
+    return JsonResponse({"results": results})
+
+
+@login_required
+def processing_sold_result_update(request, batch_id, order_id):
+    tenant, error = _require_tenant(request)
+    if error:
+        return error
+    if request.method != "POST":
+        return JsonResponse({"error": "GET not allowed"}, status=405)
+
+    batch = get_object_or_404(
+        ProcessBatch.objects.filter(tenant=tenant).prefetch_related("outputs__inventory"),
+        id=batch_id,
+    )
+    order = get_object_or_404(SalesOrder.objects.filter(tenant=tenant), id=order_id)
+    sales_item = get_object_or_404(
+        SalesOrderItem.objects.filter(tenant=tenant, sales_order=order, process_batch=batch),
+        item_type="item",
+    )
+
+    allocation = SalesOrderAllocation.objects.filter(
+        tenant=tenant,
+        sales_order_item=sales_item,
+    ).select_related("inventory").first()
+    output = batch.outputs.select_related("inventory").first()
+    data = _parse_json(request)
+
+    if "customer_name" in data:
+        customer_name = (data.get("customer_name") or "").strip()
+        order.customer_name = customer_name
+        order.customer = Customer.objects.filter(tenant=tenant, name__iexact=customer_name).first() if customer_name else None
+    if "sold_at" in data:
+        order.order_date = data.get("sold_at") or None
+    order.save()
+
+    quantity = Decimal(str(data.get("sold_qty") if "sold_qty" in data else (sales_item.quantity or 0)))
+    if quantity <= 0:
+        return JsonResponse({"error": "Sold quantity must be greater than zero."}, status=400)
+
+    unit_type = (data.get("unit_type") if "unit_type" in data else sales_item.unit_type or "").strip()
+    unit_price = Decimal(str(data.get("unit_price") if "unit_price" in data else (sales_item.unit_price or 0)))
+    description = (data.get("product") if "product" in data else sales_item.description or "").strip()
+
+    sales_item.description = description
+    sales_item.quantity = quantity
+    sales_item.unit_type = unit_type
+    sales_item.unit_price = unit_price
+    sales_item.amount = quantity * unit_price
+    sales_item.save(update_fields=["description", "quantity", "unit_type", "unit_price", "amount"])
+
+    if allocation:
+        allocation.quantity = quantity
+        allocation.unit_type = unit_type
+        allocation.save(update_fields=["quantity", "unit_type"])
+
+    if output:
+        output.quantity = quantity
+        output.unit_type = unit_type
+        output.save(update_fields=["quantity", "unit_type"])
+        if output.inventory_id and output.inventory:
+            output.inventory.desc = description or output.inventory.desc
+            output.inventory.unittype = unit_type
+            output.inventory.unitsonhand = quantity
+            output.inventory.unitsavailable = quantity
+            output.inventory.unitsin = quantity
+            output.inventory.save(update_fields=["desc", "unittype", "unitsonhand", "unitsavailable", "unitsin"])
+
+    batch.calculate_yield()
+    batch.save(update_fields=["total_input_weight", "total_output_weight", "actual_yield_pct", "expected_yield_pct", "yield_variance_pct", "yield_flagged"])
+
+    return JsonResponse({"success": True})
 
 
 @login_required
@@ -1224,12 +1694,21 @@ def processing_batch_sources(request, batch_id):
         return error
     batch = get_object_or_404(ProcessBatch, id=batch_id, tenant=tenant)
     sources = batch.sources.select_related("inventory").all()
+    product_ids = list({s.inventory.productid for s in sources if s.inventory and s.inventory.productid})
+    product_map = {
+        product.product_id: product
+        for product in Product.objects.filter(tenant=tenant, product_id__in=product_ids)
+    }
     return JsonResponse({
         "sources": [
             {
                 "id": s.id,
                 "lot_id": s.inventory.vendorlot or f"LOT-{s.inventory_id}" if s.inventory else "--",
-                "item_name": (s.inventory.desc or s.inventory.productid or "") if s.inventory else "",
+                "item_name": (((product_map.get(s.inventory.productid).description or product_map.get(s.inventory.productid).item_name) if s.inventory and product_map.get(s.inventory.productid) else (s.inventory.desc or s.inventory.productid or "")) if s.inventory else ""),
+                "product_spec": " · ".join(filter(None, [
+                    (product_map.get(s.inventory.productid).quantity_description if s.inventory and product_map.get(s.inventory.productid) else ""),
+                    (product_map.get(s.inventory.productid).size_cull if s.inventory and product_map.get(s.inventory.productid) else ""),
+                ])),
                 "vendor": (s.inventory.vendorid or "") if s.inventory else "",
                 "quantity": float(s.quantity),
                 "unit_type": s.unit_type or "",
@@ -1251,8 +1730,9 @@ def processing_batch_outputs(request, batch_id):
             {
                 "id": o.id,
                 "lot_id": o.lot_id or (o.inventory.vendorlot if o.inventory else ""),
-                "product_name": (o.product.item_name if o.product else
+                "product_name": ((o.product.description or o.product.item_name) if o.product else
                                  (o.inventory.desc if o.inventory else "")),
+                "product_spec": (o.product.quantity_description or o.product.size_cull or "") if o.product else "",
                 "quantity": float(o.quantity),
                 "unit_type": o.unit_type or "",
                 "yield_percent": float(o.yield_percent) if o.yield_percent else None,
@@ -1404,7 +1884,6 @@ def inventory_items(request):
     tenant, error = _require_tenant(request)
     if error:
         return error
-    _ensure_products_for_inventory_lots(tenant)
 
     items = Product.objects.filter(tenant=tenant).select_related("item_group")
     show = request.GET.get("show", "").strip()
@@ -1425,56 +1904,13 @@ def inventory_items(request):
         )
 
     items = list(items.order_by("sort_order", "description")[:1000])
-    product_ids = [item.product_id for item in items if item.product_id]
-    # Only count lots that passed QC toward inventory totals
-    inventory_totals = {
-        row["productid"]: row
-        for row in Inventory.objects.filter(
-            tenant=tenant, productid__in=product_ids
-        ).filter(
-            Q(quality_check__status="pass") | Q(quality_check__isnull=True)
-        )
-        .values("productid")
-        .annotate(
-            expected=Sum("unitsin"),
-            allocated=Sum("unitsallocated"),
-            on_hand=Sum("unitsonhand"),
-        )
-    }
-
-    return JsonResponse({"items": [_product_to_dict(item, inventory_totals.get(item.product_id)) for item in items]})
-
-
-@login_required
-def inventory_rejected_lots(request):
-    """Return lots that failed QC (hold or reject status)."""
-    tenant, error = _require_tenant(request)
-    if error:
-        return error
-    lots = (
-        Inventory.objects.filter(tenant=tenant, quality_check__status__in=["hold", "reject"])
-        .select_related("quality_check")
-        .order_by("-id")
+    inventory_lots = list(
+        Inventory.objects.filter(tenant=tenant)
+        .select_related("po_item__product")
     )
-    return JsonResponse({
-        "lots": [
-            {
-                "id": lot.id,
-                "trace_lot": lot.vendorlot or f"LOT-{lot.id}",
-                "product": lot.desc or lot.productid or "",
-                "vendor": lot.vendorid or "",
-                "receive_date": lot.receivedate or "",
-                "on_hand": _to_float(lot.unitsonhand) or 0,
-                "unit_type": lot.unittype or "",
-                "qc_status": lot.quality_check.status,
-                "qc_notes": lot.quality_check.notes or "",
-                "checked_at": lot.quality_check.checked_at.strftime("%Y-%m-%d %H:%M") if lot.quality_check.checked_at else "",
-            }
-            for lot in lots
-        ]
-    })
+    inventory_totals, _, _ = _inventory_totals_by_product(items, inventory_lots)
 
-
+    return JsonResponse({"items": [_product_to_dict(item, inventory_totals.get(item.id)) for item in items]})
 @login_required
 def inventory_item_lots(request, item_id):
     """Return inventory lots for a product, with aggregate totals."""
@@ -1484,8 +1920,6 @@ def inventory_item_lots(request, item_id):
     product = get_object_or_404(Product, id=item_id, tenant=tenant)
     lots = Inventory.objects.filter(
         tenant=tenant, productid=product.product_id
-    ).filter(
-        Q(quality_check__status="pass") | Q(quality_check__isnull=True)
     ).order_by("-id")
     total_expected = 0
     total_allocated = 0
@@ -1607,9 +2041,9 @@ def inventory_item_create(request):
     if not (product.description or product.item_name or product.friendly_name or product.qb_item_name):
         return JsonResponse({"error": "Please enter at least a name or description."}, status=400)
     if not product.product_id:
-        product.product_id = f"ITEM-{Product.objects.filter(tenant=tenant).count() + 1:04d}"
+        product.product_id = _next_product_id(tenant)
     product.save()
-    return JsonResponse({"success": True, "id": product.id})
+    return JsonResponse({"success": True, "id": product.id, "item": _product_to_dict(product)})
 
 
 @login_required
@@ -1624,7 +2058,7 @@ def inventory_item_update(request, item_id):
     data = _parse_json(request)
     _apply_product_payload(product, tenant, data)
     product.save()
-    return JsonResponse({"success": True, "id": product.id})
+    return JsonResponse({"success": True, "id": product.id, "item": _product_to_dict(product)})
 
 
 @login_required
@@ -1635,8 +2069,17 @@ def inventory_item_delete(request, item_id):
     if request.method != "POST":
         return JsonResponse({"error": "GET not allowed"}, status=405)
     product = get_object_or_404(Product.objects.filter(tenant=tenant), id=item_id)
-    product.delete()
-    return JsonResponse({"success": True})
+    try:
+        with transaction.atomic():
+            CustomerProfile.objects.filter(tenant=tenant, product=product).update(product=None)
+            PurchaseOrderItem.objects.filter(tenant=tenant, product=product).update(product=None)
+            SalesOrderItem.objects.filter(tenant=tenant, product=product).update(product=None)
+            ProcessBatchOutput.objects.filter(tenant=tenant, product=product).update(product=None)
+            ProductImage.objects.filter(product=product).delete()
+            product.delete()
+        return JsonResponse({"success": True})
+    except Exception as exc:
+        return JsonResponse({"error": f"Unable to delete this product right now: {exc}"}, status=400)
 
 
 @login_required
@@ -1720,6 +2163,8 @@ def settings_users(request):
                         f"{tenant_user.user.first_name} {tenant_user.user.last_name}".strip()
                         or tenant_user.user.get_username()
                     ),
+                    "first_name": tenant_user.user.first_name or "",
+                    "last_name": tenant_user.user.last_name or "",
                     "email": tenant_user.user.email or "",
                     "username": tenant_user.user.get_username(),
                     "is_admin": tenant_user.is_admin,
@@ -1728,7 +2173,166 @@ def settings_users(request):
                 for tenant_user in tenant_users
             ]
         }
-    )
+      )
+
+
+@login_required
+@require_POST
+def settings_billing_checkout(request):
+    tenant, error = _require_tenant(request)
+    if error:
+        return error
+    admin_error = _require_tenant_admin(request, tenant)
+    if admin_error:
+        return admin_error
+
+    secret_key = getattr(settings, "STRIPE_SECRET_KEY", "").strip()
+    price_id = getattr(settings, "STRIPE_PRICE_ID", "").strip()
+    if not secret_key or not price_id:
+        return JsonResponse({"error": "Stripe billing is not configured."}, status=400)
+
+    stripe.api_key = secret_key
+    success_url = request.build_absolute_uri("/operations/settings/?billing=success")
+    cancel_url = request.build_absolute_uri("/operations/settings/?billing=cancelled")
+
+    try:
+        checkout_session = stripe.checkout.Session.create(
+            mode="subscription",
+            line_items=[{"price": price_id, "quantity": 1}],
+            success_url=success_url,
+            cancel_url=cancel_url,
+            customer_email=(request.user.email or None),
+            metadata={
+                "tenant_id": str(tenant.id),
+                "tenant_name": getattr(tenant, "name", "") or "",
+                "user_id": str(request.user.id),
+            },
+        )
+    except Exception as exc:
+        return JsonResponse({"error": f"Unable to start Stripe checkout: {exc}"}, status=400)
+
+    return JsonResponse({"url": checkout_session.url})
+
+
+@login_required
+@require_POST
+def settings_reset_operational_data(request):
+    tenant, error = _require_tenant(request)
+    if error:
+        return error
+    admin_error = _require_tenant_admin(request, tenant)
+    if admin_error:
+        return admin_error
+
+    deleted_summary = {}
+    with transaction.atomic():
+        for model in _editable_operational_models():
+            count = model.all_objects.filter(tenant=tenant).count() if hasattr(model, "all_objects") else model.objects.filter(tenant=tenant).count()
+            if not count:
+                continue
+            queryset = model.all_objects.filter(tenant=tenant) if hasattr(model, "all_objects") else model.objects.filter(tenant=tenant)
+            queryset.delete()
+            deleted_summary[model.__name__] = count
+
+    return JsonResponse({"success": True, "deleted": deleted_summary})
+
+
+@login_required
+@require_POST
+def settings_user_create(request):
+    tenant, error = _require_tenant(request)
+    if error:
+        return error
+    admin_error = _require_tenant_admin(request, tenant)
+    if admin_error:
+        return admin_error
+
+    data = _parse_json(request)
+    username = (data.get("username") or "").strip()
+    email = (data.get("email") or "").strip()
+    first_name = (data.get("first_name") or "").strip()
+    last_name = (data.get("last_name") or "").strip()
+    password = (data.get("password") or "").strip()
+    is_admin = bool(data.get("is_admin"))
+    is_active = data.get("is_active")
+    is_active = True if is_active is None else bool(is_active)
+
+    if not username:
+        return JsonResponse({"error": "Username is required."}, status=400)
+    if not password:
+        return JsonResponse({"error": "Password is required."}, status=400)
+    if DjangoUser.objects.filter(username__iexact=username).exists():
+        return JsonResponse({"error": "That username is already in use."}, status=400)
+
+    with transaction.atomic():
+        user = DjangoUser.objects.create_user(
+            username=username,
+            email=email,
+            password=password,
+            first_name=first_name,
+            last_name=last_name,
+            is_active=is_active,
+        )
+        TenantUser.objects.create(user=user, tenant=tenant, is_admin=is_admin)
+
+    return JsonResponse({"success": True})
+
+
+@login_required
+@require_POST
+def settings_user_update(request, user_id):
+    tenant, error = _require_tenant(request)
+    if error:
+        return error
+    admin_error = _require_tenant_admin(request, tenant)
+    if admin_error:
+        return admin_error
+
+    tenant_user = get_object_or_404(TenantUser.objects.select_related("user"), tenant=tenant, user_id=user_id)
+    data = _parse_json(request)
+    user = tenant_user.user
+
+    username = (data.get("username") or user.username).strip()
+    email = (data.get("email") or "").strip()
+    first_name = (data.get("first_name") or "").strip()
+    last_name = (data.get("last_name") or "").strip()
+    password = (data.get("password") or "").strip()
+
+    username_taken = DjangoUser.objects.filter(username__iexact=username).exclude(id=user.id).exists()
+    if username_taken:
+        return JsonResponse({"error": "That username is already in use."}, status=400)
+
+    user.username = username
+    user.email = email
+    user.first_name = first_name
+    user.last_name = last_name
+    user.is_active = bool(data.get("is_active"))
+    if password:
+        user.set_password(password)
+    user.save()
+
+    tenant_user.is_admin = bool(data.get("is_admin"))
+    tenant_user.save(update_fields=["is_admin"])
+
+    return JsonResponse({"success": True})
+
+
+@login_required
+@require_POST
+def settings_user_delete(request, user_id):
+    tenant, error = _require_tenant(request)
+    if error:
+        return error
+    admin_error = _require_tenant_admin(request, tenant)
+    if admin_error:
+        return admin_error
+
+    tenant_user = get_object_or_404(TenantUser.objects.select_related("user"), tenant=tenant, user_id=user_id)
+    if tenant_user.user_id == request.user.id:
+        return JsonResponse({"error": "You cannot delete your own user from Settings."}, status=400)
+
+    tenant_user.user.delete()
+    return JsonResponse({"success": True})
 
 
 @login_required
@@ -1898,13 +2502,17 @@ def sales_order_detail_api(request, order_id):
             "id": item.id,
             "item_type": item.item_type,
             "product_id": product_id,
-            "description": item.description or (item.product.item_name if item.product_id and item.product else ""),
+            "description": item.description or ((item.product.description or item.product.item_name) if item.product_id and item.product else ""),
+            "product_spec": _sales_item_spec(item),
             "notes": item.notes or "",
             "quantity": _to_float(item.quantity),
-            "unit_type": item.unit_type or (item.product.unit_type if item.product_id and item.product else ""),
+            "unit_type": item.unit_type or (item.product.inventory_unit_of_measure if item.product_id and item.product else ""),
             "unit_price": _to_float(item.unit_price) or 0,
             "margin": item.margin if hasattr(item, "margin") else "",
             "amount": _to_float(item.amount) or 0,
+            "process_type": item.process_type or "",
+            "process_source_lot_ids": _selected_source_lot_ids({"process_source_lot_ids": item.process_source_lot_ids}),
+            "process_batch_id": item.process_batch_id,
         }
 
     return JsonResponse({
@@ -1971,6 +2579,9 @@ def sales_order_update(request, order_id):
     if "order_weight" in data:
         so.order_weight = data.get("order_weight") or None
 
+    if (so.order_status in ("open", "closed")) and not (so.qb_invoice_number or "").strip():
+        so.qb_invoice_number = so.order_number
+
     so.save()
     return JsonResponse({"success": True})
 
@@ -2005,8 +2616,15 @@ def sales_order_item_add(request, order_id):
         unit_type=(data.get("unit_type") or "").strip(),
         unit_price=data.get("unit_price") or None,
         amount=amount,
+        process_type=_normalize_process_type(data.get("process_type")),
+        process_source_lot_ids=",".join(str(lot_id) for lot_id in _selected_source_lot_ids(data)),
         sort_order=so.items.count(),
     )
+    try:
+        _create_processing_batch_for_sales_item(request, tenant, item, data)
+    except ValueError as exc:
+        item.delete()
+        return JsonResponse({"error": str(exc)}, status=400)
     return JsonResponse({"success": True, "id": item.id})
 
 
@@ -2021,6 +2639,8 @@ def sales_order_item_delete(request, order_id, item_id):
         SalesOrderItem.objects.filter(tenant=tenant, sales_order_id=order_id),
         id=item_id,
     )
+    if item.process_batch_id and item.process_batch:
+        _rollback_process_batch(item.process_batch)
     item.delete()
     return JsonResponse({"success": True})
 
@@ -2049,7 +2669,8 @@ def sales_order_allocations(request, order_id):
         ]
         result_items.append({
             "item_id": item.id,
-            "item_name": item.description or (item.product.item_name if item.product else ""),
+            "item_name": item.description or ((item.product.description or item.product.item_name) if item.product else ""),
+            "product_spec": _sales_item_spec(item),
             "ordered_qty": ordered_qty,
             "allocated_qty": allocated_qty,
             "unit_type": item.unit_type or "",
@@ -2057,7 +2678,7 @@ def sales_order_allocations(request, order_id):
         })
         if allocated_qty < ordered_qty:
             shortages.append({
-                "item_name": item.description or (item.product.item_name if item.product else ""),
+                "item_name": item.description or ((item.product.description or item.product.item_name) if item.product else ""),
                 "short_qty": ordered_qty - allocated_qty,
             })
 
@@ -2137,7 +2758,10 @@ def processing_batches_create(request):
     if error:
         return error
     data = json.loads(request.body)
-    process_type = (data.get("process_type") or "").strip()
+    try:
+        process_type = _normalize_process_type(data.get("process_type"))
+    except ValueError as exc:
+        return JsonResponse({"error": str(exc)}, status=400)
     if not process_type:
         return JsonResponse({"error": "Process type is required."}, status=400)
     # Auto-generate batch number
@@ -2192,7 +2816,7 @@ def processing_batches_create(request):
         # Determine product name for the output lot
         out_desc = ""
         if product:
-            out_desc = product.item_name or product.description or pid
+            out_desc = product.description or product.item_name or pid
         elif out.get("description"):
             out_desc = out["description"]
         elif first_source:
@@ -2256,6 +2880,9 @@ def _apply_product_payload(product, tenant, data):
     product.brand = (data.get("brand") or "").strip()
     product.inventory_unit_of_measure = (data.get("inventory_unit_of_measure") or "").strip()
     product.unit_type = product.inventory_unit_of_measure or product.unit_type
+    product.selling_unit_of_measure = (data.get("selling_unit_of_measure") or "").strip()
+    product.buying_unit_of_measure = (data.get("buying_unit_of_measure") or "").strip()
+    product.raw_cost = data.get("raw_cost") or None
     product.list_price = data.get("list_price") or None
     product.wholesale_price = data.get("wholesale_price") or None
     product.habitat_production_method = (data.get("habitat_production_method") or "").strip()
@@ -2734,14 +3361,40 @@ def trace_lookup(request):
 
     # Search by sales order number
     sos_by_num = SalesOrder.objects.filter(tenant=tenant, order_number__icontains=q)
+    so_ids = set(sos_by_num.values_list("id", flat=True))
+    sales_product_ids = set()
+    sales_item_descriptions = set()
+    so_items = SalesOrderItem.objects.filter(
+        tenant=tenant,
+        sales_order__in=sos_by_num,
+        item_type="item",
+    ).select_related("product")
+    for item in so_items:
+        if item.product_id and item.product and item.product.product_id:
+            sales_product_ids.add(item.product.product_id)
+        elif item.description:
+            sales_item_descriptions.add(item.description.strip())
     so_allocs = SalesOrderAllocation.objects.filter(
         tenant=tenant, sales_order_item__sales_order__in=sos_by_num
     )
     lot_ids.update(so_allocs.values_list("inventory_id", flat=True))
 
+    # If the SO has no allocations yet, fall back to matching lots by ordered product.
+    if sales_product_ids or sales_item_descriptions:
+        matching_sales_lots = Inventory.objects.filter(tenant=tenant).filter(
+            Q(productid__in=sales_product_ids) |
+            Q(desc__in=sales_item_descriptions)
+        )
+        lot_ids.update(matching_sales_lots.values_list("id", flat=True))
+
     # Expand from POs → lots
     if po_ids:
-        po_lots = Inventory.objects.filter(tenant=tenant, purchase_order_id__in=po_ids)
+        po_numbers = set(
+            PurchaseOrder.objects.filter(tenant=tenant, id__in=po_ids).values_list("po_number", flat=True)
+        )
+        po_lots = Inventory.objects.filter(tenant=tenant).filter(
+            Q(purchase_order_id__in=po_ids) | Q(poid__in=po_numbers)
+        )
         lot_ids.update(po_lots.values_list("id", flat=True))
 
     # Now build the full chain from all discovered lots
@@ -2750,6 +3403,10 @@ def trace_lookup(request):
     for lot in all_lots:
         if lot.purchase_order_id:
             po_ids.add(lot.purchase_order_id)
+        elif lot.poid:
+            matched_po = PurchaseOrder.objects.filter(tenant=tenant, po_number=lot.poid).values_list("id", flat=True).first()
+            if matched_po:
+                po_ids.add(matched_po)
 
     # Expand lots → processing batches (forward)
     batch_sources = ProcessBatchSource.objects.filter(tenant=tenant, inventory_id__in=lot_ids).select_related("batch")
@@ -2764,7 +3421,7 @@ def trace_lookup(request):
     all_allocs = SalesOrderAllocation.objects.filter(
         tenant=tenant, inventory_id__in=lot_ids
     ).select_related("sales_order_item__sales_order")
-    so_ids = set(a.sales_order_item.sales_order_id for a in all_allocs)
+    so_ids.update(a.sales_order_item.sales_order_id for a in all_allocs)
 
     # Build response
     purchase_orders = PurchaseOrder.objects.filter(tenant=tenant, id__in=po_ids).prefetch_related("items__product")
@@ -2932,10 +3589,26 @@ def processing_batch_delete(request, batch_id):
     if error:
         return error
     batch = get_object_or_404(ProcessBatch.objects.filter(tenant=tenant), id=batch_id)
-    batch.sources.all().delete()
-    batch.outputs.all().delete()
-    batch.waste_entries.all().delete()
-    batch.delete()
+    _restore_and_delete_process_batch(batch)
+    return JsonResponse({"success": True})
+
+
+@login_required
+@require_POST
+def processing_sold_result_delete(request, batch_id, order_id):
+    tenant, error = _require_tenant(request)
+    if error:
+        return error
+
+    batch = get_object_or_404(ProcessBatch.objects.filter(tenant=tenant), id=batch_id)
+    so = get_object_or_404(SalesOrder.objects.filter(tenant=tenant), id=order_id)
+
+    with transaction.atomic():
+        SalesOrderAllocation.objects.filter(tenant=tenant, sales_order_item__sales_order=so).delete()
+        so.items.all().delete()
+        so.delete()
+        _restore_and_delete_process_batch(batch)
+
     return JsonResponse({"success": True})
 
 

@@ -1,0 +1,699 @@
+{% extends 'core/base.html' %}
+{% block title %}Arrivals - FishTeck{% endblock %}
+
+{% block extra_css %}
+<style>
+.coming-toolbar {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+}
+.coming-toolbar-left,
+.coming-toolbar-right {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+.coming-filter,
+.coming-input {
+    border: 1px solid #d1d5db;
+    border-radius: 10px;
+    padding: 9px 12px;
+    font-size: 0.85rem;
+    background: #fff;
+}
+.coming-filter:focus,
+.coming-input:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+.coming-product {
+    max-width: 280px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.coming-actions {
+    display: flex;
+    gap: 0.4rem;
+    justify-content: flex-end;
+    align-items: center;
+}
+.coming-actions .btn-inv-outline,
+.coming-actions .btn-inv-primary,
+.coming-actions .del-btn {
+    white-space: nowrap;
+}
+.coming-actions .btn-inv-outline,
+.coming-actions .btn-inv-primary {
+    padding: 5px 10px;
+    font-size: 0.76rem;
+}
+.coming-empty {
+    text-align: center;
+    color: #64748b;
+    padding: 3rem 1rem;
+}
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.45);
+    z-index: 1060;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+.modal-overlay.open { display: flex; }
+.modal-card {
+    width: min(520px, 96vw);
+    background: #fff;
+    border-radius: 18px;
+    box-shadow: 0 20px 60px rgba(15, 23, 42, 0.24);
+    overflow: hidden;
+}
+.modal-header {
+    padding: 1rem 1.25rem;
+    background: #2563eb;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+.modal-header h5 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 700;
+}
+.modal-close {
+    width: 36px;
+    height: 36px;
+    border-radius: 999px;
+    border: none;
+    background: rgba(255,255,255,0.18);
+    color: #fff;
+    cursor: pointer;
+}
+.modal-body {
+    padding: 1.25rem;
+}
+.modal-footer {
+    padding: 1rem 1.25rem 1.25rem;
+    display: flex;
+    gap: 0.75rem;
+}
+.modal-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.85rem;
+}
+.modal-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+.modal-field.full { grid-column: 1 / -1; }
+.modal-field label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #475569;
+}
+.modal-field input,
+.modal-field select {
+    width: 100%;
+    border: 1px solid #d1d5db;
+    border-radius: 10px;
+    padding: 9px 12px;
+    font-size: 0.9rem;
+}
+.receive-po-summary {
+    margin-bottom: 1rem;
+    padding: 0.9rem 1rem;
+    border-radius: 14px;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+}
+.receive-po-summary .line-1 {
+    font-weight: 700;
+    color: #1e3a8a;
+}
+.receive-po-summary .line-2 {
+    margin-top: 0.2rem;
+    font-size: 0.82rem;
+    color: #475569;
+}
+.inline-status-select {
+    font-size: 0.75rem;
+    padding: 3px 8px;
+    border-radius: 999px;
+    border: 1px solid #e2e8f0;
+    cursor: pointer;
+    font-weight: 600;
+    background: #fff;
+}
+.inline-status-select:focus {
+    outline: none;
+    border-color: #2563eb;
+}
+.helper-copy {
+    margin-top: 0.35rem;
+    font-size: 0.76rem;
+    color: #64748b;
+}
+@media (max-width: 900px) {
+    .modal-grid {
+        grid-template-columns: 1fr;
+    }
+    .coming-product {
+        max-width: 180px;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+{% include 'core/includes/sidebar.html' with active='purchase' %}
+
+<div class="inv-main">
+    <div class="inv-header">
+        <div>
+            <h2><i class="bi bi-truck me-2" style="color:#2563eb;"></i>Arrivals</h2>
+            <span class="sub" id="totalCount">0 purchases expected and received</span>
+        </div>
+        <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+            <button class="btn-inv-outline" onclick="clearFilters()"><i class="bi bi-arrow-counterclockwise me-1"></i>Clear</button>
+            <button class="btn-inv-primary" onclick="openNewPO()"><i class="bi bi-plus me-1"></i>New Purchase</button>
+        </div>
+    </div>
+
+    <div class="coming-toolbar">
+        <div class="coming-toolbar-left">
+            <input type="text" class="search-box" id="searchBox" placeholder="Search purchase number, vendor, buyer..." oninput="debounceSearch()">
+            <select class="coming-filter" id="vendorFilter" onchange="applyFilters()">
+                <option value="">All vendors</option>
+            </select>
+            <select class="coming-filter" id="receiveStatusFilter" onchange="applyFilters()">
+                <option value="">All receive statuses</option>
+                <option value="not_received">Not Received</option>
+                <option value="partial">Partial</option>
+                <option value="received">Received</option>
+            </select>
+        </div>
+        <div class="coming-toolbar-right">
+            <div class="helper-copy">What am I expecting, and what did I get?</div>
+        </div>
+    </div>
+
+    <div class="inv-table-card">
+        <div style="overflow-x:auto;">
+            <table class="inv-table">
+                <thead>
+                    <tr>
+                        <th>Purchase Number</th>
+                        <th>Receive Status</th>
+                        <th>Vendor</th>
+                        <th style="text-align:right;">Total</th>
+                        <th style="text-align:right;">Expected</th>
+                        <th style="text-align:right;">Arrived</th>
+                        <th>Unit Type</th>
+                        <th>Order Date</th>
+                        <th>Product</th>
+                        <th style="width:260px; text-align:right;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="comingTbody">
+                    <tr><td colspan="10" class="text-center text-muted py-4">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="inv-pagination">
+            <span id="paginationInfo">Showing 0 items</span>
+            <div class="page-btns" id="paginationBtns"></div>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="newPOOverlay" onclick="closeNewPO()">
+    <div class="modal-card" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <h5>Create Purchase</h5>
+            <button class="modal-close" onclick="closeNewPO()"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <div class="modal-body">
+            <div class="modal-field">
+                <label for="new-vendor-select">Vendor</label>
+                <select id="new-vendor-select" class="coming-input" onchange="toggleNewVendorField()">
+                    <option value="">Choose a vendor</option>
+                </select>
+                <input id="new-vendor-name" class="coming-input" type="text" placeholder="Enter new vendor name" style="display:none; margin-top:0.75rem;">
+                <div class="helper-copy">This creates the purchase and opens it so you can add items.</div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-inv-primary" onclick="createPO()" style="flex:1;">Create Purchase</button>
+            <button class="btn-inv-outline" onclick="closeNewPO()" style="flex:1;">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="receiveOverlay" onclick="closeReceiveModal()">
+    <div class="modal-card" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <h5>Receive Purchase</h5>
+            <button class="modal-close" onclick="closeReceiveModal()"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <div class="modal-body">
+            <div id="receiveError" class="alert alert-danger" style="display:none;"></div>
+            <div class="receive-po-summary">
+                <div class="line-1" id="receiveSummaryTitle">Purchase</div>
+                <div class="line-2" id="receiveSummaryMeta"></div>
+            </div>
+            <div class="modal-grid">
+                <div class="modal-field full">
+                    <label for="receiveItem">Product</label>
+                    <select id="receiveItem" onchange="syncReceiveItemSelection()"></select>
+                </div>
+                <div class="modal-field">
+                    <label for="receiveQty">Quantity</label>
+                    <input type="number" min="0" step="0.01" id="receiveQty">
+                </div>
+                <div class="modal-field">
+                    <label for="receiveUnit">Unit</label>
+                    <input type="text" id="receiveUnit" readonly>
+                </div>
+                <div class="modal-field">
+                    <label for="receiveDate">Receive Date</label>
+                    <input type="date" id="receiveDate">
+                </div>
+                <div class="modal-field">
+                    <label for="receiveTime">Receive Time</label>
+                    <input type="time" id="receiveTime">
+                </div>
+                <div class="modal-field full">
+                    <label for="receiveLocation">Location</label>
+                    <input type="text" id="receiveLocation" placeholder="Optional">
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-inv-primary" onclick="submitReceive()" style="flex:1;">Receive</button>
+            <button class="btn-inv-outline" onclick="closeReceiveModal()" style="flex:1;">Cancel</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let allOrders = [];
+let openPOsCache = [];
+let currentPage = 1;
+let totalItems = 0;
+let searchTimeout;
+let currentReceivePO = null;
+const PAGE_SIZE = 100;
+
+document.addEventListener('DOMContentLoaded', async () => {
+    setOrdersMessage('Loading...');
+    try {
+        await loadVendors();
+        await loadOrders();
+    } catch (error) {
+        console.error('Arrivals failed to load', error);
+        setOrdersMessage('Unable to load purchases.');
+    }
+});
+
+function safeEsc(value) {
+    if (typeof esc === 'function') {
+        return esc(value);
+    }
+    const text = value == null ? '' : String(value);
+    return text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function setOrdersMessage(message) {
+    const tbody = document.getElementById('comingTbody');
+    if (!tbody) return;
+    tbody.innerHTML = `<tr><td colspan="10"><div class="coming-empty">${safeEsc(message)}</div></td></tr>`;
+}
+
+function currentDateString() {
+    return new Date().toISOString().split('T')[0];
+}
+
+function applyFilters() {
+    currentPage = 1;
+    loadOrders();
+}
+
+function clearFilters() {
+    document.getElementById('searchBox').value = '';
+    document.getElementById('vendorFilter').value = '';
+    document.getElementById('receiveStatusFilter').value = '';
+    currentPage = 1;
+    loadOrders();
+}
+
+function debounceSearch() {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+        currentPage = 1;
+        loadOrders();
+    }, 250);
+}
+
+async function loadVendors() {
+    const res = await fetch('/api/receiving/vendors/');
+    if (!res.ok) {
+        throw new Error('Unable to load vendors.');
+    }
+    const data = await res.json();
+    const vendors = data.vendors || [];
+    const options = vendors.map(v => `<option value="${safeEsc(v.name)}">${safeEsc(v.name)}</option>`).join('');
+    document.getElementById('vendorFilter').innerHTML = '<option value="">All vendors</option>' + options;
+    document.getElementById('new-vendor-select').innerHTML =
+        '<option value="">Choose a vendor</option>' +
+        options +
+        '<option value="__new__">+ Add new vendor</option>';
+}
+
+async function loadOrders() {
+    try {
+        const params = new URLSearchParams({
+            page: currentPage,
+            page_size: PAGE_SIZE,
+        });
+        const search = document.getElementById('searchBox').value.trim();
+        const vendor = document.getElementById('vendorFilter').value;
+        const receiveStatus = document.getElementById('receiveStatusFilter').value;
+
+        if (search) params.set('search', search);
+        if (vendor) params.set('vendor', vendor);
+        if (receiveStatus) params.set('receive_status', receiveStatus);
+
+        const res = await fetch(`/api/purchasing/orders/?${params.toString()}`);
+        if (!res.ok) {
+            throw new Error(`Unable to load purchases (${res.status}).`);
+        }
+        const data = await res.json();
+        allOrders = data.orders || [];
+        totalItems = data.total || 0;
+        renderTable();
+    } catch (error) {
+        console.error('loadOrders failed', error);
+        allOrders = [];
+        totalItems = 0;
+        document.getElementById('totalCount').textContent = '0 purchases expected and received';
+        document.getElementById('paginationInfo').textContent = '0 items';
+        document.getElementById('paginationBtns').innerHTML = '';
+        setOrdersMessage('Unable to load purchases.');
+    }
+}
+
+function renderTable() {
+    const tbody = document.getElementById('comingTbody');
+    document.getElementById('totalCount').textContent = `${totalItems} purchases expected and received`;
+
+    if (!allOrders.length) {
+        tbody.innerHTML = '<tr><td colspan="10"><div class="coming-empty">No purchases found.</div></td></tr>';
+        document.getElementById('paginationInfo').textContent = '0 items';
+        document.getElementById('paginationBtns').innerHTML = '';
+        return;
+    }
+
+    tbody.innerHTML = allOrders.map(po => {
+        const canReceive = po.order_status !== 'cancelled' && po.receive_status !== 'received';
+        return `
+        <tr onclick="window.location='/operations/purchases/${po.id}/'">
+            <td style="font-weight:700; color:#2563eb;">${safeEsc(po.po_number)}</td>
+            <td><span class="badge-status badge-${po.receive_status}">${safeEsc(po.receive_status_display)}</span></td>
+            <td>${safeEsc(po.vendor_name || '--')}</td>
+            <td style="text-align:right;">$${Number(po.total || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+            <td style="text-align:right;">${po.expected ? Number(po.expected).toLocaleString(undefined, { maximumFractionDigits: 2 }) : '--'}</td>
+            <td style="text-align:right;">${po.arrived ? Number(po.arrived).toLocaleString(undefined, { maximumFractionDigits: 2 }) : '0'}</td>
+            <td>${safeEsc(po.unit_type || '--')}</td>
+            <td>${safeEsc(po.order_date || '--')}</td>
+            <td class="coming-product" title="${safeEsc(po.products || '')}">${safeEsc(po.products || '--')}</td>
+            <td onclick="event.stopPropagation();">
+                <div class="coming-actions">
+                    ${canReceive ? `<button class="btn-inv-outline" onclick="openReceiveModalForPO(${po.id})">Receive Part</button>` : ''}
+                    ${canReceive ? `<button class="btn-inv-primary" onclick="receiveAll(${po.id})">Receive All</button>` : ''}
+                    <button class="del-btn" title="Delete" onclick="deleteRecord('/api/purchasing/orders/${po.id}/delete/', 'Delete PO ${safeEsc(po.po_number)}? This cannot be undone.', () => loadOrders())"><i class="bi bi-trash"></i></button>
+                </div>
+            </td>
+        </tr>`;
+    }).join('');
+
+    renderPagination();
+}
+
+function renderPagination() {
+    const totalPages = Math.ceil(totalItems / PAGE_SIZE);
+    const start = totalItems ? ((currentPage - 1) * PAGE_SIZE) + 1 : 0;
+    const end = Math.min(currentPage * PAGE_SIZE, totalItems);
+    document.getElementById('paginationInfo').textContent = `Showing ${start} to ${end} of ${totalItems}`;
+
+    let html = '';
+    if (totalPages > 1 && currentPage > 1) html += `<button class="page-btn" onclick="goPage(1)">&laquo;</button>`;
+    if (currentPage > 1) html += `<button class="page-btn" onclick="goPage(${currentPage - 1})">&lt;</button>`;
+    const startP = Math.max(1, currentPage - 2);
+    const endP = Math.min(totalPages, startP + 4);
+    for (let page = startP; page <= endP; page++) {
+        html += `<button class="page-btn ${page === currentPage ? 'active' : ''}" onclick="goPage(${page})">${page}</button>`;
+    }
+    if (currentPage < totalPages) html += `<button class="page-btn" onclick="goPage(${currentPage + 1})">&gt;</button>`;
+    document.getElementById('paginationBtns').innerHTML = html;
+}
+
+function goPage(page) {
+    currentPage = page;
+    loadOrders();
+}
+
+function openNewPO() {
+    document.getElementById('newPOOverlay').classList.add('open');
+    document.getElementById('new-vendor-select').focus();
+}
+
+function closeNewPO() {
+    document.getElementById('newPOOverlay').classList.remove('open');
+    document.getElementById('new-vendor-select').value = '';
+    document.getElementById('new-vendor-name').value = '';
+    toggleNewVendorField();
+}
+
+function toggleNewVendorField() {
+    const select = document.getElementById('new-vendor-select');
+    const input = document.getElementById('new-vendor-name');
+    const showingNew = select.value === '__new__';
+    input.style.display = showingNew ? '' : 'none';
+    if (showingNew) {
+        input.focus();
+    }
+}
+
+async function createPO() {
+    const vendorSelect = document.getElementById('new-vendor-select').value;
+    const newVendorName = document.getElementById('new-vendor-name').value.trim();
+    let vendor = vendorSelect;
+
+    if (vendorSelect === '__new__') {
+        vendor = newVendorName;
+    }
+
+    if (!vendor) {
+        alert('Please choose a vendor or enter a new vendor name.');
+        return;
+    }
+
+    if (vendorSelect === '__new__') {
+        const createVendorRes = await fetch('/api/vendors/create/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+            body: JSON.stringify({ name: vendor }),
+        });
+        const vendorData = await createVendorRes.json();
+        if (!createVendorRes.ok || vendorData.error) {
+            alert(vendorData.error || 'Unable to create vendor.');
+            return;
+        }
+        await loadVendors();
+    }
+
+    const res = await fetch('/api/purchasing/orders/create/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+        body: JSON.stringify({ vendor_name: vendor }),
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) {
+        alert(data.error || 'Unable to create purchase.');
+        return;
+    }
+    closeNewPO();
+    window.location.href = `/operations/purchases/${data.id}/`;
+}
+
+async function ensureOpenPOs() {
+    const res = await fetch('/api/receiving/open-pos/');
+    const data = await res.json();
+    openPOsCache = data.purchase_orders || [];
+}
+
+function showReceiveError(message) {
+    const el = document.getElementById('receiveError');
+    el.textContent = message;
+    el.style.display = '';
+}
+
+function clearReceiveError() {
+    const el = document.getElementById('receiveError');
+    el.style.display = 'none';
+    el.textContent = '';
+}
+
+async function openReceiveModalForPO(poId) {
+    clearReceiveError();
+    await ensureOpenPOs();
+    currentReceivePO = openPOsCache.find(po => po.id === poId);
+    if (!currentReceivePO || !(currentReceivePO.items || []).length) {
+        alert('This purchase has no remaining items to receive.');
+        return;
+    }
+
+    document.getElementById('receiveSummaryTitle').textContent = `Purchase ${currentReceivePO.po_number}`;
+    document.getElementById('receiveSummaryMeta').textContent = `${currentReceivePO.vendor_name || 'Vendor not set'}${currentReceivePO.vendor_type ? ' | ' + currentReceivePO.vendor_type : ''}`;
+    document.getElementById('receiveDate').value = currentDateString();
+    document.getElementById('receiveTime').value = '';
+    document.getElementById('receiveLocation').value = '';
+
+    const select = document.getElementById('receiveItem');
+    select.innerHTML = currentReceivePO.items.map(item => `
+        <option value="${item.id}">
+            ${safeEsc(item.description || item.product_id || 'Item')} | remaining ${Number(item.remaining_qty || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })} ${safeEsc(item.unit_type || '')}
+        </option>
+    `).join('');
+    syncReceiveItemSelection();
+    document.getElementById('receiveOverlay').classList.add('open');
+}
+
+function syncReceiveItemSelection() {
+    if (!currentReceivePO) return;
+    const itemId = Number(document.getElementById('receiveItem').value);
+    const item = currentReceivePO.items.find(entry => entry.id === itemId) || currentReceivePO.items[0];
+    if (!item) return;
+    document.getElementById('receiveItem').value = item.id;
+    document.getElementById('receiveQty').value = item.remaining_qty || '';
+    document.getElementById('receiveUnit').value = item.unit_type || '';
+}
+
+function closeReceiveModal() {
+    document.getElementById('receiveOverlay').classList.remove('open');
+    currentReceivePO = null;
+}
+
+function buildReceiveTime(timeValue) {
+    if (!timeValue) return '';
+    const [hourString, minute] = timeValue.split(':');
+    const hour = parseInt(hourString, 10);
+    const suffix = hour >= 12 ? 'pm' : 'am';
+    const displayHour = hour % 12 || 12;
+    return `${displayHour}:${minute} ${suffix}`;
+}
+
+async function submitReceive() {
+    clearReceiveError();
+    if (!currentReceivePO) return;
+
+    const itemId = Number(document.getElementById('receiveItem').value);
+    const item = currentReceivePO.items.find(entry => entry.id === itemId);
+    const quantity = parseFloat(document.getElementById('receiveQty').value);
+    if (!item) {
+        showReceiveError('Select a product to receive.');
+        return;
+    }
+    if (!quantity || quantity <= 0) {
+        showReceiveError('Enter a valid quantity.');
+        return;
+    }
+
+    const payload = {
+        product_id: item.product_id || '',
+        description: item.description || '',
+        quantity,
+        unit_type: item.unit_type || '',
+        vendor: currentReceivePO.vendor_name || '',
+        vendor_type: currentReceivePO.vendor_type || '',
+        purchase_order_id: currentReceivePO.id,
+        po_item_id: item.id,
+        receive_date: document.getElementById('receiveDate').value || currentDateString(),
+        receive_time: buildReceiveTime(document.getElementById('receiveTime').value),
+        location: document.getElementById('receiveLocation').value.trim(),
+        cost: item.unit_price || null,
+    };
+
+    const res = await fetch('/api/receiving/lots/create/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+        body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) {
+        showReceiveError(data.error || 'Unable to receive this item.');
+        return;
+    }
+
+    closeReceiveModal();
+    await loadOrders();
+}
+
+async function receiveAll(poId) {
+    await ensureOpenPOs();
+    const po = openPOsCache.find(entry => entry.id === poId);
+    if (!po || !(po.items || []).length) {
+        alert('This purchase has no remaining items to receive.');
+        return;
+    }
+    const confirmed = window.confirm(`Receive all remaining items for purchase ${po.po_number}?`);
+    if (!confirmed) return;
+
+    for (const item of po.items) {
+        const res = await fetch('/api/receiving/lots/create/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+            body: JSON.stringify({
+                product_id: item.product_id || '',
+                description: item.description || '',
+                quantity: item.remaining_qty,
+                unit_type: item.unit_type || '',
+                vendor: po.vendor_name || '',
+                vendor_type: po.vendor_type || '',
+                purchase_order_id: po.id,
+                po_item_id: item.id,
+                receive_date: currentDateString(),
+                cost: item.unit_price || null,
+            }),
+        });
+        const data = await res.json();
+        if (!res.ok || data.error) {
+            alert(data.error || `Unable to receive item on purchase ${po.po_number}.`);
+            break;
+        }
+    }
+
+    await loadOrders();
+}
+</script>
+{% endblock %}

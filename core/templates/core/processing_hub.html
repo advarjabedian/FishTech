@@ -3,234 +3,597 @@
 
 {% block extra_css %}
 <style>
-/* ── Process type grid ─────────────────────────────────────────── */
-.proc-grid {
-    display: grid;
-    grid-template-columns: repeat(7, minmax(0, 1fr));
-    gap: 1rem;
-    align-items: stretch;
+.inv-table-card { margin-top: 1rem; }
+
+.process-lot-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.86rem;
+    table-layout: fixed;
 }
-.proc-card {
-    background: #fff;
-    border: 1px solid #e2e8f0;
-    border-radius: 16px;
-    padding: 1.5rem 1rem;
-    text-align: center;
+
+.process-lot-table th {
+    background: #f8fafc;
+    color: #64748b;
+    font-size: 0.73rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    padding: 10px 14px;
+    border-bottom: 1px solid #e2e8f0;
+    white-space: nowrap;
+}
+
+.process-lot-table td {
+    padding: 12px 14px;
+    border-bottom: 1px solid #f1f5f9;
+    color: #334155;
+    vertical-align: middle;
+}
+
+.process-row-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.4rem;
+    flex-wrap: nowrap;
+    white-space: nowrap;
+}
+
+.process-row-btn {
+    border: 1px solid #dbeafe;
+    background: #eff6ff;
+    color: #2563eb;
+    border-radius: 999px;
+    padding: 0.35rem 0.75rem;
+    font-size: 0.76rem;
+    font-weight: 700;
     cursor: pointer;
-    transition: all 0.2s;
-    text-decoration: none;
-    color: inherit;
-    min-width: 0;
 }
-.proc-card:hover {
-    border-color: #2563eb;
-    box-shadow: 0 4px 16px rgba(37,99,235,0.12);
-    transform: translateY(-2px);
+
+.process-row-btn:hover { background: #dbeafe; }
+
+.process-result-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.86rem;
 }
-.proc-card .icon-circle {
-    width: 64px;
-    height: 64px;
-    border-radius: 50%;
-    display: inline-flex;
+
+.process-result-table th {
+    background: #f8fafc;
+    color: #64748b;
+    font-size: 0.73rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    padding: 10px 14px;
+    border-bottom: 1px solid #e2e8f0;
+    white-space: nowrap;
+}
+
+.process-result-table td {
+    padding: 12px 14px;
+    border-bottom: 1px solid #f1f5f9;
+    color: #334155;
+    vertical-align: middle;
+}
+
+.result-row-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.4rem;
+    white-space: nowrap;
+}
+
+.result-row-btn {
+    border: 1px solid #cbd5e1;
+    background: #fff;
+    color: #1e293b;
+    border-radius: 999px;
+    padding: 0.35rem 0.75rem;
+    font-size: 0.76rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.result-row-btn:hover { background: #f8fafc; }
+
+.result-row-btn.delete {
+    color: #dc2626;
+    border-color: #fecaca;
+}
+
+.edit-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.35);
+    display: none;
     align-items: center;
     justify-content: center;
-    font-size: 1.6rem;
-    color: #fff;
-    margin-bottom: 0.75rem;
-}
-.proc-card .proc-label {
-    font-size: 0.9rem;
-    font-weight: 600;
-    color: #1e293b;
-    line-height: 1.25;
+    z-index: 1050;
+    padding: 1rem;
 }
 
-/* icon colors matching mobile app */
-.ic-cutting   { background: #3b82f6; }
-.ic-commingle { background: #22d3ee; }
-.ic-renaming  { background: #a78bfa; }
-.ic-freeze    { background: #38bdf8; }
-.ic-breaking  { background: #f59e0b; }
-.ic-shucking  { background: #34d399; }
-.ic-wetstore  { background: #60a5fa; }
+.edit-modal.open { display: flex; }
 
-/* ── Recent batches table top margin ──────────────────────────── */
-.inv-table-card { margin-top: 2rem; }
-
-@media (max-width: 1400px) {
-    .proc-grid {
-        overflow-x: auto;
-        padding-bottom: 0.25rem;
-    }
-    .proc-card {
-        min-width: 160px;
-    }
+.edit-modal-card {
+    width: min(640px, 100%);
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 20px 45px rgba(15, 23, 42, 0.18);
+    overflow: hidden;
 }
 
-@media (max-width: 900px) {
-    .proc-grid {
-        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-        overflow-x: visible;
-    }
-    .proc-card {
-        min-width: 0;
+.edit-modal-head,
+.edit-modal-actions {
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.edit-modal-actions {
+    border-bottom: none;
+    border-top: 1px solid #e2e8f0;
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.6rem;
+}
+
+.edit-modal-body {
+    padding: 1.1rem 1.25rem 1.25rem;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.85rem 1rem;
+}
+
+.edit-field label {
+    display: block;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #475569;
+    margin-bottom: 0.35rem;
+    text-transform: uppercase;
+}
+
+.edit-field input {
+    width: 100%;
+    border: 1px solid #cbd5e1;
+    border-radius: 10px;
+    padding: 0.65rem 0.75rem;
+    font-size: 0.92rem;
+}
+
+.edit-field.full { grid-column: 1 / -1; }
+
+@media (max-width: 720px) {
+    .edit-modal-body {
+        grid-template-columns: 1fr;
     }
 }
 </style>
 {% endblock %}
 
 {% block content %}
-
 {% include 'core/includes/sidebar.html' with active='process' %}
 
-<!-- Main content -->
 <div class="inv-main">
     <div class="inv-header">
         <div>
             <h2><i class="bi bi-gear me-2" style="color:#2563eb;"></i>Processing</h2>
-            <div class="sub">Choose a process type to start a new batch, or view recent batches below.</div>
+            <div class="sub">
+                {% if sale_mode %}
+                Cut the selected lot before creating the sale.
+                {% else %}
+                Cut received lots and review the sold results below.
+                {% endif %}
+            </div>
         </div>
+        {% if not sale_mode %}
         <div style="display:flex; gap:0.5rem;">
             <a href="/api/processing/batches/export/" class="btn-inv-outline"><i class="bi bi-download me-1"></i>Export</a>
-            <button class="btn-inv-outline" onclick="openImportCSV('/api/processing/batches/import/', () => loadBatches(), ['batch_number','process_type','status','notes'])"><i class="bi bi-upload me-1"></i>Import</button>
+            <button class="btn-inv-outline" onclick="openImportCSV('/api/processing/batches/import/', () => loadReadyLots(), ['batch_number','process_type','status','notes'])"><i class="bi bi-upload me-1"></i>Import</button>
         </div>
+        {% endif %}
     </div>
 
-    <!-- Process type cards -->
-    <div class="proc-grid">
-        <a class="proc-card" href="{% url 'processing_new' %}?type=fish_cutting">
-            <div class="icon-circle ic-cutting"><i class="bi bi-scissors"></i></div>
-            <div class="proc-label">Fish Cutting</div>
-        </a>
-        <a class="proc-card" href="{% url 'processing_new' %}?type=commingle">
-            <div class="icon-circle ic-commingle"><i class="bi bi-arrow-left-right"></i></div>
-            <div class="proc-label">Commingle</div>
-        </a>
-        <a class="proc-card" href="{% url 'processing_new' %}?type=renaming">
-            <div class="icon-circle ic-renaming"><i class="bi bi-pencil-square"></i></div>
-            <div class="proc-label">Renaming</div>
-        </a>
-        <a class="proc-card" href="{% url 'processing_new' %}?type=freeze">
-            <div class="icon-circle ic-freeze"><i class="bi bi-snow"></i></div>
-            <div class="proc-label">Freeze</div>
-        </a>
-        <a class="proc-card" href="{% url 'processing_new' %}?type=lot_breaking">
-            <div class="icon-circle ic-breaking"><i class="bi bi-share"></i></div>
-            <div class="proc-label">Bag or Lot Breaking</div>
-        </a>
-        <a class="proc-card" href="{% url 'processing_new' %}?type=shucking">
-            <div class="icon-circle ic-shucking"><i class="bi bi-box-arrow-right"></i></div>
-            <div class="proc-label">Shucking</div>
-        </a>
-        <a class="proc-card" href="{% url 'processing_new' %}?type=wet_store">
-            <div class="icon-circle ic-wetstore"><i class="bi bi-droplet-half"></i></div>
-            <div class="proc-label">Wet Store</div>
-        </a>
-    </div>
-
-    <!-- Recent batches -->
     <div class="inv-table-card">
         <div style="padding: 14px 18px; border-bottom: 1px solid #f1f5f9;">
-            <h6 style="margin:0; font-weight:700; font-size:0.95rem;">Recent Batches</h6>
+            <h6 style="margin:0; font-weight:700; font-size:0.95rem;">Received Lots Ready To Process</h6>
         </div>
         <div class="inv-toolbar" style="padding: 8px 14px 0;">
             <div class="inv-toolbar-left">
-                <select class="filter-select" id="statusFilter" onchange="loadBatches()">
-                    <option value="">All Statuses</option>
-                    <option value="draft">Draft</option>
-                    <option value="in_progress">In Progress</option>
-                    <option value="completed">Completed</option>
-                    <option value="cancelled">Cancelled</option>
-                </select>
-                <input type="text" class="search-box" id="batchSearch" placeholder="Search batches..." oninput="debounceSearch()">
+                <input type="text" class="search-box" id="lotSearch" placeholder="Search received lots..." oninput="debounceLotSearch()">
             </div>
         </div>
-        <div style="overflow-x: auto;">
-            <table class="inv-table">
+        <div style="overflow-x:auto;">
+            <table class="process-lot-table">
                 <thead>
                     <tr>
-                        <th>Batch #</th>
-                        <th>Product(s)</th>
-                        <th>Process Type</th>
-                        <th>Status</th>
-                        <th>Started</th>
-                        <th>Completed</th>
-                        <th>Created By</th>
-                        <th></th>
+                        <th>Product</th>
+                        <th>Lot</th>
+                        <th>Received</th>
+                        <th style="text-align:right;">On Hand</th>
+                        <th>Unit</th>
+                        <th style="text-align:right;">Cost</th>
+                        <th style="text-align:right; width:360px;">Process</th>
                     </tr>
                 </thead>
-                <tbody id="batchTbody">
-                    <tr><td colspan="8" class="text-center text-muted py-4">Loading...</td></tr>
+                <tbody id="readyLotTbody">
+                    <tr><td colspan="7" class="text-center text-muted py-4">Loading received lots...</td></tr>
                 </tbody>
             </table>
         </div>
         <div class="inv-pagination">
-            <span id="paginationInfo">Showing 0 batches</span>
+            <span id="readyLotInfo">0 lots</span>
+        </div>
+    </div>
+
+    <div class="inv-table-card">
+        <div style="padding: 14px 18px; border-bottom: 1px solid #f1f5f9;">
+            <h6 style="margin:0; font-weight:700; font-size:0.95rem;">Processed And Sold</h6>
+        </div>
+        <div style="overflow-x:auto;">
+            <table class="process-result-table">
+                <thead>
+                    <tr>
+                        <th>Product</th>
+                        <th>Source Lot</th>
+                        <th style="text-align:right;">Sold</th>
+                        <th>Unit</th>
+                        <th style="text-align:right;">Unit Price</th>
+                        <th>Customer</th>
+                        <th style="text-align:right;">Amount</th>
+                        <th style="text-align:right; width:180px;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="processedSoldTbody">
+                    <tr><td colspan="8" class="text-center text-muted py-4">Loading processed sales...</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="inv-pagination">
+            <span id="processedSoldInfo">0 sold rows</span>
         </div>
     </div>
 </div>
 
+<div class="edit-modal" id="lotEditModal" onclick="closeModalOnBackdrop(event, 'lotEditModal')">
+    <div class="edit-modal-card">
+        <div class="edit-modal-head">
+            <h5 style="margin:0; font-weight:700;">Edit Received Lot</h5>
+        </div>
+        <div class="edit-modal-body">
+            <div class="edit-field full">
+                <label for="lotEditProduct">Product</label>
+                <input id="lotEditProduct" type="text">
+            </div>
+            <div class="edit-field">
+                <label for="lotEditVendor">Vendor</label>
+                <input id="lotEditVendor" type="text">
+            </div>
+            <div class="edit-field">
+                <label for="lotEditDate">Receive Date</label>
+                <input id="lotEditDate" type="date">
+            </div>
+            <div class="edit-field">
+                <label for="lotEditIncoming">Incoming</label>
+                <input id="lotEditIncoming" type="number" step="0.01" min="0">
+            </div>
+            <div class="edit-field">
+                <label for="lotEditOnHand">On Hand</label>
+                <input id="lotEditOnHand" type="number" step="0.01" min="0">
+            </div>
+            <div class="edit-field">
+                <label for="lotEditUnit">Unit</label>
+                <input id="lotEditUnit" type="text">
+            </div>
+            <div class="edit-field">
+                <label for="lotEditCost">Cost</label>
+                <input id="lotEditCost" type="number" step="0.01" min="0">
+            </div>
+        </div>
+        <div class="edit-modal-actions">
+            <button class="result-row-btn" type="button" onclick="closeLotEditModal()">Cancel</button>
+            <button class="process-row-btn" type="button" onclick="saveLotEdit()">Save</button>
+        </div>
+    </div>
+</div>
+
+<div class="edit-modal" id="soldEditModal" onclick="closeModalOnBackdrop(event, 'soldEditModal')">
+    <div class="edit-modal-card">
+        <div class="edit-modal-head">
+            <h5 style="margin:0; font-weight:700;">Edit Processed Sale</h5>
+        </div>
+        <div class="edit-modal-body">
+            <div class="edit-field full">
+                <label for="soldEditProduct">Product</label>
+                <input id="soldEditProduct" type="text">
+            </div>
+            <div class="edit-field">
+                <label for="soldEditCustomer">Customer</label>
+                <input id="soldEditCustomer" type="text">
+            </div>
+            <div class="edit-field">
+                <label for="soldEditDate">Sold Date</label>
+                <input id="soldEditDate" type="date">
+            </div>
+            <div class="edit-field">
+                <label for="soldEditQty">Sold Qty</label>
+                <input id="soldEditQty" type="number" step="0.01" min="0.01">
+            </div>
+            <div class="edit-field">
+                <label for="soldEditUnit">Unit</label>
+                <input id="soldEditUnit" type="text">
+            </div>
+            <div class="edit-field">
+                <label for="soldEditUnitPrice">Unit Price</label>
+                <input id="soldEditUnitPrice" type="number" step="0.01" min="0">
+            </div>
+        </div>
+        <div class="edit-modal-actions">
+            <button class="result-row-btn" type="button" onclick="closeSoldEditModal()">Cancel</button>
+            <button class="process-row-btn" type="button" onclick="saveSoldEdit()">Save</button>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-let allBatches = [];
-let searchTimeout;
+let lotSearchTimeout;
+let readyLots = [];
+let processedSoldRows = [];
+let editingLotId = null;
+let editingSoldRow = null;
 
-document.addEventListener('DOMContentLoaded', loadBatches);
+document.addEventListener('DOMContentLoaded', () => {
+    loadReadyLots();
+    loadProcessedSold();
+    maybeOpenRequestedEditor();
+});
 
-async function loadBatches() {
-    const status = document.getElementById('statusFilter').value;
-    const search = document.getElementById('batchSearch').value.trim();
-    let url = '/api/processing/batches/?';
-    if (status) url += `status=${status}&`;
-    if (search) url += `search=${encodeURIComponent(search)}&`;
+function debounceLotSearch() {
+    clearTimeout(lotSearchTimeout);
+    lotSearchTimeout = setTimeout(loadReadyLots, 250);
+}
+
+async function loadReadyLots() {
+    const search = document.getElementById('lotSearch').value.trim();
+    let url = '/api/processing/source-lots/?';
+    if (search) url += `search=${encodeURIComponent(search)}`;
 
     try {
         const res = await fetch(url);
         const data = await res.json();
-        allBatches = data.batches || [];
-        renderBatches();
+        readyLots = (data.lots || []).filter(lot => Number(lot.on_hand || 0) > 0);
+        renderReadyLots();
     } catch {
-        document.getElementById('batchTbody').innerHTML =
-            '<tr><td colspan="8" class="text-center text-muted py-4">Failed to load batches.</td></tr>';
+        document.getElementById('readyLotTbody').innerHTML =
+            '<tr><td colspan="7" class="text-center text-muted py-4">Failed to load received lots.</td></tr>';
+        document.getElementById('readyLotInfo').textContent = '0 lots';
     }
 }
 
-function renderBatches() {
-    const tbody = document.getElementById('batchTbody');
-
-    if (!allBatches.length) {
-        tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">No batches yet. Start a new process above.</td></tr>';
-        document.getElementById('paginationInfo').textContent = '0 batches';
+function renderReadyLots() {
+    const tbody = document.getElementById('readyLotTbody');
+    if (!readyLots.length) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">No received lots ready to process.</td></tr>';
+        document.getElementById('readyLotInfo').textContent = '0 lots';
         return;
     }
 
-    const typeLabels = {
-        fish_cutting: 'Fish Cutting', commingle: 'Commingle', renaming: 'Renaming',
-        freeze: 'Freeze', lot_breaking: 'Bag or Lot Breaking', shucking: 'Shucking',
-        wet_store: 'Wet Store',
-    };
-
-    tbody.innerHTML = allBatches.map(b => `
-        <tr style="cursor:pointer;" onclick="window.location='/operations/processing/${b.id}/'">
-            <td style="font-weight:600;">${esc(b.batch_number)}</td>
-            <td style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${esc(b.products || '--')}</td>
-            <td>${esc(typeLabels[b.process_type] || b.process_type)}</td>
-            <td><span class="badge-status badge-${b.status}">${esc(b.status_display)}</span></td>
-            <td>${b.started_at || '--'}</td>
-            <td>${b.completed_at || '--'}</td>
-            <td>${esc(b.created_by || '--')}</td>
-            <td onclick="event.stopPropagation();"><button class="del-btn" title="Delete" onclick="deleteRecord('/api/processing/batches/${b.id}/delete/', 'Delete batch ${esc(b.batch_number)}? This cannot be undone.', () => loadBatches())"><i class="bi bi-trash"></i></button></td>
+    tbody.innerHTML = readyLots.map(lot => `
+        <tr>
+            <td style="font-weight:700; color:#0f172a;">${esc(lot.item_name || lot.product || '--')}</td>
+            <td style="font-weight:600; color:#2563eb;">${esc(lot.lot_id || lot.trace_lot || '--')}</td>
+            <td>${esc(lot.receive_date || '--')}</td>
+            <td style="text-align:right; font-weight:700;">${Number(lot.on_hand || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</td>
+            <td>${esc(lot.unit_type || '')}</td>
+            <td style="text-align:right;">$${Number(lot.cost || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+            <td>
+                <div class="process-row-actions">
+                    <button class="result-row-btn" onclick="openLotEditModal(${lot.id})">Edit</button>
+                    <button class="process-row-btn" onclick="startProcessForLot('fish_cutting', ${lot.id})">Fish Cutting</button>
+                </div>
+            </td>
         </tr>
     `).join('');
 
-    document.getElementById('paginationInfo').textContent = `${allBatches.length} batch${allBatches.length !== 1 ? 'es' : ''}`;
+    document.getElementById('readyLotInfo').textContent = `${readyLots.length} lot${readyLots.length === 1 ? '' : 's'} ready to process`;
+    maybeOpenRequestedEditor();
 }
 
-function debounceSearch() {
-    clearTimeout(searchTimeout);
-    searchTimeout = setTimeout(loadBatches, 300);
+function startProcessForLot(processType, lotId) {
+    const saleMode = {% if sale_mode %}'&mode=sale'{% else %}''{% endif %};
+    window.location.href = `/operations/processing/new/?type=${encodeURIComponent(processType)}&lot_id=${lotId}${saleMode}`;
+}
+
+function maybeOpenRequestedEditor() {
+    const params = new URLSearchParams(window.location.search);
+    const editLot = params.get('edit_lot');
+    const editSale = params.get('edit_sale');
+
+    if (editLot) {
+        const openLot = () => {
+            const lot = readyLots.find((item) => String(item.id) === String(editLot));
+            if (lot) {
+                openLotEditModal(lot.id);
+                params.delete('edit_lot');
+                window.history.replaceState({}, '', `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ''}`);
+            }
+        };
+        setTimeout(openLot, 150);
+    }
+
+    if (editSale) {
+        const [batchId, orderId] = editSale.split(':');
+        const openSale = () => {
+            const row = processedSoldRows.find((item) => String(item.batch_id) === String(batchId) && String(item.order_id) === String(orderId));
+            if (row) {
+                openSoldEditModal(row.batch_id, row.order_id);
+                params.delete('edit_sale');
+                window.history.replaceState({}, '', `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ''}`);
+            }
+        };
+        setTimeout(openSale, 150);
+    }
+}
+
+async function loadProcessedSold() {
+    try {
+        const res = await fetch('/api/processing/sold-results/');
+        const data = await res.json();
+        processedSoldRows = data.results || [];
+        renderProcessedSold();
+    } catch {
+        document.getElementById('processedSoldTbody').innerHTML =
+            '<tr><td colspan="8" class="text-center text-muted py-4">Failed to load processed sales.</td></tr>';
+        document.getElementById('processedSoldInfo').textContent = '0 sold rows';
+    }
+}
+
+function renderProcessedSold() {
+    const tbody = document.getElementById('processedSoldTbody');
+    if (!processedSoldRows.length) {
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">No processed sales yet.</td></tr>';
+        document.getElementById('processedSoldInfo').textContent = '0 sold rows';
+        return;
+    }
+
+    tbody.innerHTML = processedSoldRows.map(row => `
+        <tr>
+            <td style="font-weight:700; color:#0f172a;">${esc(row.product || row.source_product || '--')}</td>
+            <td style="font-weight:600; color:#2563eb;">${esc(row.source_lot || '--')}</td>
+            <td style="text-align:right; font-weight:700;">${Number(row.sold_qty || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</td>
+            <td>${esc(row.unit_type || '')}</td>
+            <td style="text-align:right;">$${Number(row.unit_price || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+            <td>${esc(row.customer_name || '--')}</td>
+            <td style="text-align:right;">$${Number(row.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+            <td>
+                <div class="result-row-actions">
+                    <button class="result-row-btn" onclick="openSoldEditModal(${row.batch_id}, ${row.order_id})">Edit</button>
+                    <button class="result-row-btn delete" onclick="deleteProcessedSold(${row.batch_id}, ${row.order_id})">Delete</button>
+                </div>
+            </td>
+        </tr>
+    `).join('');
+
+    document.getElementById('processedSoldInfo').textContent = `${processedSoldRows.length} sold row${processedSoldRows.length === 1 ? '' : 's'}`;
+    maybeOpenRequestedEditor();
+}
+
+function closeModalOnBackdrop(event, modalId) {
+    if (event.target.id === modalId) {
+        document.getElementById(modalId).classList.remove('open');
+    }
+}
+
+function openLotEditModal(lotId) {
+    const lot = readyLots.find((item) => Number(item.id) === Number(lotId));
+    if (!lot) return;
+    editingLotId = lot.id;
+    document.getElementById('lotEditProduct').value = lot.item_name || lot.product || '';
+    document.getElementById('lotEditVendor').value = lot.vendor || '';
+    document.getElementById('lotEditDate').value = lot.receive_date || '';
+    document.getElementById('lotEditIncoming').value = lot.incoming ?? lot.on_hand ?? '';
+    document.getElementById('lotEditOnHand').value = lot.on_hand ?? '';
+    document.getElementById('lotEditUnit').value = lot.unit_type || '';
+    document.getElementById('lotEditCost').value = lot.cost ?? '';
+    document.getElementById('lotEditModal').classList.add('open');
+}
+
+function closeLotEditModal() {
+    editingLotId = null;
+    document.getElementById('lotEditModal').classList.remove('open');
+}
+
+async function saveLotEdit() {
+    if (!editingLotId) return;
+    try {
+        const res = await fetch(`/api/receiving/lots/${editingLotId}/update/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken'),
+            },
+            body: JSON.stringify({
+                product_name: document.getElementById('lotEditProduct').value.trim(),
+                vendor: document.getElementById('lotEditVendor').value.trim(),
+                receive_date: document.getElementById('lotEditDate').value,
+                incoming: document.getElementById('lotEditIncoming').value,
+                on_hand: document.getElementById('lotEditOnHand').value,
+                unit_type: document.getElementById('lotEditUnit').value.trim(),
+                cost: document.getElementById('lotEditCost').value,
+            }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || 'Unable to update the lot.');
+        closeLotEditModal();
+        await Promise.all([loadReadyLots(), loadProcessedSold()]);
+    } catch (error) {
+        alert(error.message || 'Unable to update the lot.');
+    }
+}
+
+function openSoldEditModal(batchId, orderId) {
+    const row = processedSoldRows.find((item) => Number(item.batch_id) === Number(batchId) && Number(item.order_id) === Number(orderId));
+    if (!row) return;
+    editingSoldRow = row;
+    document.getElementById('soldEditProduct').value = row.product || '';
+    document.getElementById('soldEditCustomer').value = row.customer_name || '';
+    document.getElementById('soldEditDate').value = row.sold_at || '';
+    document.getElementById('soldEditQty').value = row.sold_qty ?? '';
+    document.getElementById('soldEditUnit').value = row.unit_type || '';
+    document.getElementById('soldEditUnitPrice').value = row.unit_price ?? '';
+    document.getElementById('soldEditModal').classList.add('open');
+}
+
+function closeSoldEditModal() {
+    editingSoldRow = null;
+    document.getElementById('soldEditModal').classList.remove('open');
+}
+
+async function saveSoldEdit() {
+    if (!editingSoldRow) return;
+    try {
+        const res = await fetch(`/api/processing/sold-results/${editingSoldRow.batch_id}/${editingSoldRow.order_id}/update/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken'),
+            },
+            body: JSON.stringify({
+                product: document.getElementById('soldEditProduct').value.trim(),
+                customer_name: document.getElementById('soldEditCustomer').value.trim(),
+                sold_at: document.getElementById('soldEditDate').value,
+                sold_qty: document.getElementById('soldEditQty').value,
+                unit_type: document.getElementById('soldEditUnit').value.trim(),
+                unit_price: document.getElementById('soldEditUnitPrice').value,
+            }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || 'Unable to update the processed sale.');
+        closeSoldEditModal();
+        await Promise.all([loadReadyLots(), loadProcessedSold()]);
+    } catch (error) {
+        alert(error.message || 'Unable to update the processed sale.');
+    }
+}
+
+async function deleteProcessedSold(batchId, orderId) {
+    if (!confirm('Delete this processed sale? This will remove the sale, remove the processed output, and put the quantity back on the source lot.')) {
+        return;
+    }
+
+    try {
+        const res = await fetch(`/api/processing/sold-results/${batchId}/${orderId}/delete/`, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': getCookie('csrftoken') },
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+            throw new Error(data.error || 'Unable to delete the processed sale.');
+        }
+        await Promise.all([loadReadyLots(), loadProcessedSold()]);
+    } catch (error) {
+        alert(error.message || 'Unable to delete the processed sale.');
+    }
 }
 </script>
 {% endblock %}

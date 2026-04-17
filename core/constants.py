@@ -4,88 +4,6 @@ Import these in models.py and views instead of defining inline choices.
 """
 
 # =============================================================================
-# SUBSCRIPTION & TENANT
-# =============================================================================
-
-SUBSCRIPTION_STATUS_CHOICES = [
-    ('trialing', 'Trial'),
-    ('active', 'Active'),
-    ('past_due', 'Past Due'),
-    ('canceled', 'Canceled'),
-    ('unpaid', 'Unpaid'),
-]
-
-LEAD_STAGE_CHOICES = [
-    ('prospect', 'Prospect'),
-    ('contacted', 'Contacted'),
-    ('demo', 'Demo Scheduled'),
-    ('proposal', 'Proposal Sent'),
-    ('negotiation', 'Negotiation'),
-    ('won', 'Won'),
-    ('lost', 'Lost'),
-]
-
-TENANT_DOCUMENT_TYPES = [
-    ('subscription_agreement', 'Subscription Agreement'),
-    ('privacy_policy', 'Privacy Policy'),
-    ('sla', 'Service Level Agreement'),
-]
-
-
-# =============================================================================
-# HACCP & COMPLIANCE
-# =============================================================================
-
-HACCP_STATUS_CHOICES = [
-    ('not_started', 'Not Started'),
-    ('in_progress', 'In Progress'),
-    ('completed', 'Completed'),
-]
-
-# HACCP document subtypes
-HACCP_DOC_PRODUCT_DESCRIPTION = 'product_description'
-HACCP_DOC_FLOW_CHART = 'flow_chart'
-HACCP_DOC_HAZARD_ANALYSIS = 'hazard_analysis'
-HACCP_DOC_CCP_SUMMARY = 'ccp_summary'
-
-HACCP_DOCUMENT_TYPES = [
-    HACCP_DOC_PRODUCT_DESCRIPTION,
-    HACCP_DOC_FLOW_CHART,
-    HACCP_DOC_HAZARD_ANALYSIS,
-    HACCP_DOC_CCP_SUMMARY,
-]
-
-HACCP_DOCUMENT_TYPE_LABELS = {
-    HACCP_DOC_PRODUCT_DESCRIPTION: 'Product Description',
-    HACCP_DOC_FLOW_CHART: 'Flow Chart',
-    HACCP_DOC_HAZARD_ANALYSIS: 'Hazard Analysis',
-    HACCP_DOC_CCP_SUMMARY: 'CCP Summary',
-}
-
-CERTIFICATE_TYPE_CHOICES = [
-    ('haccp_certificate', 'HACCP Certificate'),
-    ('letter_of_guarantee', 'Letter of Guarantee'),
-]
-
-
-# =============================================================================
-# OPERATIONS / INSPECTIONS
-# =============================================================================
-
-SHIFT_PRE_OP = 'Pre-Op'
-SHIFT_MID_DAY = 'Mid-Day'
-SHIFT_POST_OP = 'Post-Op'
-
-SHIFT_CHOICES = [
-    (SHIFT_PRE_OP, 'Pre-Op'),
-    (SHIFT_MID_DAY, 'Mid-Day'),
-    (SHIFT_POST_OP, 'Post-Op'),
-]
-
-SHIFT_NAMES = [SHIFT_PRE_OP, SHIFT_MID_DAY, SHIFT_POST_OP]
-
-
-# =============================================================================
 # DOCUMENTS & CONTACTS
 # =============================================================================
 
@@ -103,13 +21,6 @@ DOCUMENT_FILE_TYPE_CHOICES = [
     ('vendor', 'Vendor'),
     ('receipt', 'Receipt'),
 ]
-
-MESSAGE_SOURCE_CHOICES = [
-    ('email', 'Email'),
-    ('voicemail', 'Voicemail'),
-    ('sms', 'SMS/Text'),
-]
-
 
 # =============================================================================
 # ORDERS (SALES & PURCHASE)
@@ -154,12 +65,6 @@ ORDER_ITEM_TYPE_CHOICES = [
 
 PROCESS_TYPE_CHOICES = [
     ('fish_cutting', 'Fish Cutting'),
-    ('commingle', 'Commingle'),
-    ('renaming', 'Renaming'),
-    ('freeze', 'Freeze'),
-    ('lot_breaking', 'Bag or Lot Breaking'),
-    ('shucking', 'Shucking'),
-    ('wet_store', 'Wet Store'),
 ]
 
 PROCESS_STATUS_CHOICES = [

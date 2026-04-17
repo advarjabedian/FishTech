@@ -3,288 +3,394 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FishTeck – Sign In</title>
+    <title>FishTeck - Sign In</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🐟</text></svg>">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
-    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;600;700;800&display=swap" rel="stylesheet">
     <style>
         :root {
-            --navy: #0a1628;
-            --deep: #0d1f3c;
-            --teal: #00b4d8;
-            --seafoam: #48cae4;
+            --page-bg: #f5f8fc;
+            --panel-bg: #ffffff;
+            --panel-border: #dbe7f3;
+            --muted: #64748b;
+            --ink: #0f172a;
+            --blue: #2563eb;
+            --blue-dark: #1d4ed8;
+            --blue-soft: #eff6ff;
+            --shadow: 0 24px 50px rgba(37, 99, 235, 0.08);
         }
 
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        * { box-sizing: border-box; }
 
         body {
-            font-family: 'Sora', sans-serif;
-            background: var(--navy);
+            margin: 0;
+            min-height: 100vh;
+            font-family: Inter, "Segoe UI", sans-serif;
+            color: var(--ink);
+            background:
+                radial-gradient(circle at top left, rgba(37, 99, 235, 0.1), transparent 32%),
+                linear-gradient(180deg, #f8fbff 0%, var(--page-bg) 100%);
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            background-image:
+                linear-gradient(rgba(37, 99, 235, 0.04) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(37, 99, 235, 0.04) 1px, transparent 1px);
+            background-size: 56px 56px;
+        }
+
+        .login-shell {
+            position: relative;
             min-height: 100vh;
             display: flex;
             flex-direction: column;
         }
 
-        /* Grid background */
-        body::before {
-            content: '';
-            position: fixed;
-            inset: 0;
-            background-image: linear-gradient(rgba(0,180,216,0.04) 1px, transparent 1px),
-                              linear-gradient(90deg, rgba(0,180,216,0.04) 1px, transparent 1px);
-            background-size: 60px 60px;
-            pointer-events: none;
-        }
-
-        /* Glow */
-        body::after {
-            content: '';
-            position: fixed;
-            top: -20%;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 800px;
-            height: 600px;
-            background: radial-gradient(ellipse, rgba(0,180,216,0.1) 0%, transparent 70%);
-            pointer-events: none;
-        }
-
-        /* NAV */
-        nav {
+        .topbar {
             position: relative;
-            z-index: 10;
-            padding: 20px 32px;
+            z-index: 1;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            border-bottom: 1px solid rgba(0,180,216,0.1);
+            padding: 1rem 1.5rem;
+            background: #f0f6ff;
+            border-bottom: 1px solid #d6e4f0;
         }
-        .nav-logo {
-            font-size: 1.4rem;
-            font-weight: 800;
-            color: white;
-            text-decoration: none;
-            letter-spacing: -0.5px;
-        }
-        .nav-logo span { color: var(--teal); }
-        .nav-back {
-            font-size: 0.85rem;
-            color: rgba(255,255,255,0.5);
-            text-decoration: none;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            transition: color 0.2s;
-        }
-        .nav-back:hover { color: var(--teal); }
 
-        /* MAIN */
-        main {
+        .brand {
+            font-size: 1.55rem;
+            font-weight: 700;
+            color: #1e3a5f;
+            text-decoration: none;
+        }
+
+        .brand span { color: #0ea5e9; }
+
+        .back-link {
+            color: #5a7ba6;
+            text-decoration: none;
+            font-size: 0.92rem;
+            font-weight: 500;
+        }
+
+        .back-link:hover { color: var(--blue); }
+
+        .login-main {
+            position: relative;
+            z-index: 1;
             flex: 1;
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 40px 20px;
-            position: relative;
-            z-index: 1;
+            padding: 3rem 1.5rem;
         }
 
-        .login-wrapper {
-            width: 100%;
-            max-width: 440px;
+        .login-layout {
+            width: min(1080px, 100%);
+            display: grid;
+            grid-template-columns: minmax(280px, 0.95fr) minmax(360px, 420px);
+            gap: 2rem;
+            align-items: center;
         }
 
-        .login-header {
-            text-align: center;
-            margin-bottom: 36px;
+        .login-copy {
+            padding: 1rem 1rem 1rem 0;
         }
-        .login-header .fish-icon {
-            font-size: 2.5rem;
-            margin-bottom: 16px;
+
+        .eyebrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.45rem 0.8rem;
+            border-radius: 999px;
+            background: rgba(37, 99, 235, 0.1);
+            color: var(--blue);
+            font-size: 0.8rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            margin-bottom: 1.25rem;
         }
-        .login-header h1 {
-            font-size: 1.9rem;
+
+        .login-copy h1 {
+            font-size: clamp(2.2rem, 4vw, 3.4rem);
+            line-height: 1.02;
             font-weight: 800;
-            color: white;
-            letter-spacing: -0.5px;
-            margin-bottom: 8px;
+            letter-spacing: -0.04em;
+            margin: 0 0 1rem;
         }
-        .login-header p {
-            font-size: 0.875rem;
-            color: rgba(255,255,255,0.5);
+
+        .login-copy p {
+            margin: 0 0 1.5rem;
+            max-width: 520px;
+            color: var(--muted);
+            font-size: 1rem;
+            line-height: 1.65;
+        }
+
+        .copy-points {
+            display: grid;
+            gap: 0.85rem;
+            max-width: 520px;
+        }
+
+        .copy-point {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            padding: 0.9rem 1rem;
+            border: 1px solid rgba(219, 231, 243, 0.9);
+            border-radius: 14px;
+            background: rgba(255, 255, 255, 0.72);
+            box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
+        }
+
+        .copy-point i {
+            width: 2rem;
+            height: 2rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 10px;
+            background: var(--blue-soft);
+            color: var(--blue);
+            font-size: 1rem;
+        }
+
+        .copy-point span {
+            color: #334155;
+            font-size: 0.92rem;
+            font-weight: 500;
         }
 
         .login-card {
-            background: var(--deep);
-            border: 1px solid rgba(0,180,216,0.2);
-            border-radius: 14px;
-            padding: 40px;
-            box-shadow: 0 40px 80px rgba(0,0,0,0.4);
-            position: relative;
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            border-radius: 24px;
+            box-shadow: var(--shadow);
             overflow: hidden;
         }
-        .login-card::before {
-            content: '';
-            position: absolute;
-            top: 0; left: 0; right: 0;
-            height: 2px;
-            background: linear-gradient(90deg, var(--teal), var(--seafoam), transparent);
+
+        .login-card-head {
+            padding: 1.4rem 1.5rem 1.15rem;
+            border-bottom: 1px solid #eef4fb;
+            background: linear-gradient(180deg, #f9fbff 0%, #f3f8ff 100%);
         }
 
-        /* ALERTS */
+        .login-card-head h2 {
+            margin: 0;
+            font-size: 1.35rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+        }
+
+        .login-card-head p {
+            margin: 0.35rem 0 0;
+            color: var(--muted);
+            font-size: 0.92rem;
+        }
+
+        .login-card-body {
+            padding: 1.5rem;
+        }
+
         .alert-custom {
-            background: rgba(220, 53, 69, 0.1);
-            border: 1px solid rgba(220, 53, 69, 0.3);
-            border-radius: 8px;
-            padding: 12px 16px;
-            font-size: 0.875rem;
-            color: #ff8080;
-            margin-bottom: 24px;
             display: flex;
             align-items: flex-start;
-            gap: 10px;
-        }
-        .alert-custom i { margin-top: 1px; flex-shrink: 0; }
-
-        /* FORM */
-        .form-group { margin-bottom: 20px; }
-        .form-label-custom {
-            display: block;
-            font-size: 0.8rem;
-            font-weight: 600;
-            color: rgba(255,255,255,0.7);
-            margin-bottom: 8px;
-            letter-spacing: 0.2px;
-        }
-        .form-input {
-            width: 100%;
-            background: rgba(255,255,255,0.05);
-            border: 1px solid rgba(255,255,255,0.12);
-            border-radius: 8px;
-            padding: 13px 16px;
-            color: white;
-            font-family: 'Sora', sans-serif;
+            gap: 0.65rem;
+            margin-bottom: 1rem;
+            padding: 0.9rem 1rem;
+            border-radius: 14px;
+            border: 1px solid #fecaca;
+            background: #fff1f2;
+            color: #b91c1c;
             font-size: 0.9rem;
+        }
+
+        .field {
+            margin-bottom: 1rem;
+        }
+
+        .field label {
+            display: block;
+            margin-bottom: 0.45rem;
+            color: #475569;
+            font-size: 0.8rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+
+        .field input {
+            width: 100%;
+            border: 1px solid #cfd9e6;
+            border-radius: 14px;
+            background: #f8fbff;
+            padding: 0.9rem 1rem;
+            color: var(--ink);
+            font-size: 0.96rem;
+            transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+        }
+
+        .field input:focus {
             outline: none;
-            transition: border-color 0.2s, background 0.2s;
+            border-color: #93c5fd;
+            background: #ffffff;
+            box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
         }
-        .form-input:focus {
-            border-color: var(--teal);
-            background: rgba(0,180,216,0.05);
-        }
-        .form-input::placeholder { color: rgba(255,255,255,0.25); }
+
+        .field input::placeholder { color: #94a3b8; }
 
         .btn-login {
             width: 100%;
-            background: var(--teal);
-            color: var(--navy);
-            padding: 14px;
             border: none;
-            border-radius: 8px;
-            font-weight: 700;
+            border-radius: 14px;
+            padding: 0.95rem 1rem;
+            background: var(--blue);
+            color: #fff;
             font-size: 1rem;
-            font-family: 'Sora', sans-serif;
-            cursor: pointer;
-            transition: all 0.2s;
-            margin-top: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
+            font-weight: 700;
+            transition: background 0.15s ease, transform 0.15s ease;
         }
+
         .btn-login:hover {
-            background: var(--seafoam);
+            background: var(--blue-dark);
             transform: translateY(-1px);
         }
 
-        .login-footer {
+        .login-help {
+            margin-top: 1rem;
+            color: var(--muted);
+            font-size: 0.9rem;
             text-align: center;
-            margin-top: 24px;
-            font-size: 0.85rem;
-            color: rgba(255,255,255,0.45);
         }
-        .login-footer a {
-            color: var(--teal);
-            text-decoration: none;
-            font-weight: 600;
-        }
-        .login-footer a:hover { text-decoration: underline; }
 
-        /* PAGE FOOTER */
-        footer {
+        .login-help a {
+            color: var(--blue);
+            text-decoration: none;
+            font-weight: 700;
+        }
+
+        .login-help a:hover { text-decoration: underline; }
+
+        .login-footer {
             position: relative;
             z-index: 1;
             text-align: center;
-            padding: 24px;
-            font-size: 0.75rem;
-            color: rgba(255,255,255,0.2);
-            border-top: 1px solid rgba(255,255,255,0.04);
+            padding: 1.25rem 1.5rem 1.5rem;
+            color: #64748b;
+            font-size: 0.82rem;
         }
-        footer a { color: rgba(255,255,255,0.35); text-decoration: none; }
-        footer a:hover { color: var(--teal); }
 
-        @keyframes fadeUp {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
+        .login-footer a {
+            color: #5a7ba6;
+            text-decoration: none;
         }
-        .login-wrapper { animation: fadeUp 0.5s ease both; }
+
+        .login-footer a:hover { color: var(--blue); }
+
+        @media (max-width: 900px) {
+            .login-layout {
+                grid-template-columns: 1fr;
+                width: min(520px, 100%);
+            }
+
+            .login-copy {
+                padding: 0;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .topbar {
+                padding: 0.9rem 1rem;
+            }
+
+            .login-main {
+                padding: 2rem 1rem;
+            }
+
+            .login-card-head,
+            .login-card-body {
+                padding-left: 1.1rem;
+                padding-right: 1.1rem;
+            }
+        }
     </style>
 </head>
 <body>
-
-<nav>
-    <a href="/" class="nav-logo">Fish<span>Teck</span></a>
-    <a href="/" class="nav-back"><i class="bi bi-arrow-left"></i> Back to home</a>
-</nav>
-
-<main>
-    <div class="login-wrapper">
-        <div class="login-header">
-            <div class="fish-icon">🐟</div>
-            <h1>Welcome back</h1>
-            <p>Sign in to your FishTeck account</p>
+    <div class="login-shell">
+        <div class="topbar">
+            <a href="/" class="brand">Fish<span>Teck</span></a>
+            <a href="/" class="back-link"><i class="bi bi-arrow-left"></i> Back to home</a>
         </div>
 
-        <div class="login-card">
+        <main class="login-main">
+            <div class="login-layout">
+                <section class="login-copy">
+                    <div class="eyebrow"><i class="bi bi-grid-1x2-fill"></i> Operations Platform</div>
+                    <h1>Sign in to the same workspace your team runs every day.</h1>
+                    <p>The login experience now matches the rest of FishTeck: clean cards, lighter surfaces, strong blue actions, and a layout that feels like the app you land in after signing in.</p>
+                    <div class="copy-points">
+                        <div class="copy-point">
+                            <i class="bi bi-box-seam"></i>
+                            <span>Track purchases, receiving, inventory, processing, and shipping in one place.</span>
+                        </div>
+                        <div class="copy-point">
+                            <i class="bi bi-shield-check"></i>
+                            <span>Stay aligned with the same operational and compliance workflow your facility already uses.</span>
+                        </div>
+                        <div class="copy-point">
+                            <i class="bi bi-people"></i>
+                            <span>Give sales, warehouse, and operations a consistent experience from login through fulfillment.</span>
+                        </div>
+                    </div>
+                </section>
 
-            {% if messages %}
-                {% for message in messages %}
-                <div class="alert-custom">
-                    <i class="bi bi-exclamation-circle"></i>
-                    {{ message }}
-                </div>
-                {% endfor %}
-            {% endif %}
+                <section class="login-card">
+                    <div class="login-card-head">
+                        <h2>Welcome back</h2>
+                        <p>Enter your credentials to continue into FishTeck.</p>
+                    </div>
+                    <div class="login-card-body">
+                        {% if messages %}
+                            {% for message in messages %}
+                            <div class="alert-custom">
+                                <i class="bi bi-exclamation-circle"></i>
+                                <div>{{ message }}</div>
+                            </div>
+                            {% endfor %}
+                        {% endif %}
 
-            <form method="post">
-                {% csrf_token %}
-                <div class="form-group">
-                    <label for="username" class="form-label-custom">Username</label>
-                    <input type="text" class="form-input" id="username" name="username" placeholder="Enter your username" required autofocus>
-                </div>
-                <div class="form-group">
-                    <label for="password" class="form-label-custom">Password</label>
-                    <input type="password" class="form-input" id="password" name="password" placeholder="Enter your password" required>
-                </div>
-                <button type="submit" class="btn-login">
-                    Sign In <i class="bi bi-arrow-right"></i>
-                </button>
-            </form>
+                        <form method="post">
+                            {% csrf_token %}
+                            <div class="field">
+                                <label for="username">Username</label>
+                                <input type="text" id="username" name="username" placeholder="Enter your username" required autofocus>
+                            </div>
+                            <div class="field">
+                                <label for="password">Password</label>
+                                <input type="password" id="password" name="password" placeholder="Enter your password" required>
+                            </div>
+                            <button type="submit" class="btn-login">Sign In</button>
+                        </form>
 
-            <div class="login-footer">
-                New company? <a href="{% url 'register' %}">Start your free trial</a>
+                        <div class="login-help">
+                            New company? <a href="{% url 'register' %}">Start your free trial</a>
+                        </div>
+                    </div>
+                </section>
             </div>
-        </div>
+        </main>
+
+        <footer class="login-footer">
+            © 2025 FishTeck
+        </footer>
     </div>
-</main>
 
-<footer>
-    <a href="/privacy-policy/">Privacy Policy</a> &nbsp;·&nbsp;
-    <a href="/terms-of-service/">Terms of Service</a> &nbsp;·&nbsp;
-    © 2025 FishTeck
-</footer>
-
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

@@ -26,8 +26,8 @@ def login_view(request):
                 
                 login(request, user)
                 
-                # Redirect to next or HACCP dashboard
-                next_url = request.GET.get('next', 'haccp')
+                # Redirect to next or Operations dashboard
+                next_url = request.GET.get('next', 'operations_hub')
                 return redirect(next_url)
             except TenantUser.DoesNotExist:
                 messages.error(request, 'User not associated with any tenant.')
@@ -60,14 +60,6 @@ def operations_hub(request):
     return render(request, 'core/operations_hub.html', {
         'is_admin': is_admin
     })
-
-
-@login_required
-def platform_admin_redirect(request):
-    """Redirect superusers to Django admin"""
-    if not request.user.is_superuser:
-        return redirect('home')
-    return redirect('admin:index')
 
 
 def register_view(request):
@@ -111,16 +103,10 @@ def register_view(request):
             return render(request, 'core/register.html')
         
         try:
-            from django.utils import timezone
-            from datetime import timedelta
-            
-            # Create tenant with 30-day trial
             tenant = Tenant.objects.create(
                 name=company_name,
                 subdomain=subdomain,
                 is_active=True,
-                subscription_status='trialing',
-                trial_ends_at=timezone.now() + timedelta(days=30)
             )
             
             # Create admin user

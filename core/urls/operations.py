@@ -1,17 +1,9 @@
 from django.urls import path
 from ..views.auth import operations_hub
-from ..views.operations_reports import (
-    generate_operational_report,
-    generate_deviations_report,
-    generate_bulk_report,
-)
 from ..views.operations_pages import (
-    compliance_hub,
     customer_list_page,
     inventory_item_detail_page,
     inventory_item_library,
-    operations_admin,
-    operations_dashboard,
     processing_detail,
     processing_hub,
     processing_new,
@@ -47,10 +39,4 @@ urlpatterns = [
     path('vendors/', vendor_list_page, name='vendor_list_page'),
     path('customers/', customer_list_page, name='customer_list_page'),
     path('trace/', trace_page, name='trace_page'),
-    path('compliance/', compliance_hub, name='compliance_hub'),
-    path('compliance/dashboard/', operations_dashboard, name='operations_dashboard'),
-    path('compliance/admin/', operations_admin, name='operations_admin'),
-    path('report/operational/<int:parent_id>/', generate_operational_report, name='generate_operational_report'),
-    path('report/deviations/<int:parent_id>/', generate_deviations_report, name='generate_deviations_report'),
-    path('bulk-report/', generate_bulk_report, name='generate_bulk_report'),
 ]

@@ -72,13 +72,6 @@
         
         {% if request.tenant %}
         <div class="d-flex align-items-center ms-auto">
-            <!-- Platform Admin (superusers only) -->
-            {% if request.user.is_superuser %}
-            <a href="{% url 'platform_admin' %}" class="nav-link nav-icon-link me-2" title="Platform Admin">
-                <i class="bi bi-speedometer2"></i>
-            </a>
-            {% endif %}
-            
             <!-- Tenant Dropdown -->
             <div class="dropdown">
                 <a class="nav-link dropdown-toggle tenant-link" href="#" role="button" id="tenantDropdown" data-bs-toggle="dropdown" aria-expanded="false">

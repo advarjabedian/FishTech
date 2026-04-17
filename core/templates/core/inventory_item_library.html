@@ -29,19 +29,30 @@
     max-width: 320px;
 }
 .inv-table .actions-cell {
-    width: 40px;
-    text-align: center;
+    width: 96px;
+    text-align: right;
+    white-space: nowrap;
+}
+.inv-table .actions-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
 }
 .inv-table .actions-cell button {
-    background: none;
-    border: none;
-    color: #94a3b8;
+    background: #fff;
+    border: 1px solid #d1d5db;
+    color: #475569;
     cursor: pointer;
-    font-size: 1rem;
-    padding: 2px 4px;
-    border-radius: 4px;
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
-.inv-table .actions-cell button:hover { color: #2563eb; background: #eff6ff; }
+.inv-table .actions-cell button:hover { color: #2563eb; background: #eff6ff; border-color: #bfdbfe; }
+.inv-table .actions-cell .btn-delete:hover { color: #dc2626; background: #fef2f2; border-color: #fecaca; }
 
 /* ── Pagination page buttons ───────────────────────────────────── */
 .inv-pagination .page-btns { display: flex; gap: 4px; }
@@ -152,6 +163,30 @@
     outline: none;
 }
 .form-group-inv { margin-bottom: 1.1rem; }
+.inventory-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.85rem;
+    margin-bottom: 1.1rem;
+}
+.inventory-stat-card {
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 0.9rem 1rem;
+    background: #f8fafc;
+}
+.inventory-stat-card .label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #64748b;
+}
+.inventory-stat-card .value {
+    margin-top: 0.3rem;
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: #0f172a;
+}
 
 /* ── Filter panel (right-side modal) ────────────────────────────── */
 .filter-overlay {
@@ -236,25 +271,12 @@
         <span class="item-count" id="itemCount">0 items</span>
     </div>
 
-    <!-- Tabs -->
-    <div class="inv-tabs" style="display:flex; gap:0; margin-bottom:1rem; border-bottom:2px solid #e5e7eb;">
-        <button class="inv-tab active" id="tab-inventory" onclick="switchTab('inventory')">
-            <i class="bi bi-box-seam me-1"></i>Inventory
-        </button>
-        <button class="inv-tab" id="tab-rejected" onclick="switchTab('rejected')">
-            <i class="bi bi-exclamation-triangle me-1"></i>Rejected / Hold
-            <span class="rejected-count" id="rejectedCount" style="display:none;"></span>
-        </button>
-    </div>
-
-    <!-- INVENTORY TAB -->
-    <div id="panel-inventory">
     <!-- Toolbar -->
     <div class="inv-toolbar">
         <div class="inv-toolbar-left">
             <select class="filter-select" id="showFilter" onchange="onShowFilterChange()">
-                <option value="active">In Stock</option>
                 <option value="active_all">All Active Items</option>
+                <option value="active">In Stock</option>
                 <option value="inactive">Inactive Items</option>
             </select>
             <input type="text" class="search-box" id="searchBox" placeholder="Search..." oninput="debounceSearch()">
@@ -278,51 +300,22 @@
             <table class="inv-table">
                 <thead>
                     <tr>
-                        <th style="width:30px;"></th>
-                        <th>Item Name</th>
-                        <th>SKU</th>
-                        <th>Expected</th>
-                        <th>Allocated</th>
+                        <th>Product</th>
+                        <th>Unit Type</th>
+                        <th>Arriving</th>
                         <th>On Hand</th>
-                        <th>List Price</th>
-                        <th>Wholesale</th>
+                        <th>Cost</th>
                         <th></th>
                     </tr>
                 </thead>
                 <tbody id="itemsTbody">
-                    <tr><td colspan="9" class="text-center text-muted py-4">Loading...</td></tr>
+                    <tr><td colspan="6" class="text-center text-muted py-4">Loading...</td></tr>
                 </tbody>
             </table>
         </div>
         <div class="inv-pagination">
             <span id="paginationInfo">Showing 0 items</span>
             <div class="page-btns" id="paginationBtns"></div>
-        </div>
-    </div>
-    </div><!-- /panel-inventory -->
-
-    <!-- REJECTED TAB -->
-    <div id="panel-rejected" style="display:none;">
-        <div class="inv-table-card">
-            <div style="overflow-x:auto;">
-                <table class="inv-table">
-                    <thead>
-                        <tr>
-                            <th>Trace Lot</th>
-                            <th>Product</th>
-                            <th>Vendor</th>
-                            <th>Receive Date</th>
-                            <th>QC Status</th>
-                            <th>QC Notes</th>
-                            <th>Checked At</th>
-                            <th style="text-align:right;">On Hand</th>
-                        </tr>
-                    </thead>
-                    <tbody id="rejectedTbody">
-                        <tr><td colspan="8" class="text-center text-muted py-4">Loading...</td></tr>
-                    </tbody>
-                </table>
-            </div>
         </div>
     </div>
 </div>
@@ -358,9 +351,9 @@
         </div>
 
         <div class="form-group-inv">
-            <label class="form-label-inv">Quantity Description</label>
+            <label class="form-label-inv">Pack / Size</label>
             <select class="form-control-inv" id="ff-qty-desc">
-                <option value="">Choose Quantity Description</option>
+                <option value="">Choose Pack / Size</option>
             </select>
         </div>
 
@@ -440,113 +433,14 @@
         <input type="hidden" id="editId">
 
         <div class="form-group-inv">
-            <label class="form-label-inv">Item Group</label>
-            <div class="d-flex gap-2">
-                <select class="form-control-inv" id="f-group" style="flex:1;">
-                    <option value="">Choose item group</option>
-                </select>
-                <button class="btn btn-sm btn-outline-secondary" onclick="promptNewGroup()" title="Add group" style="border-radius:8px;">
-                    <i class="bi bi-plus"></i>
-                </button>
-            </div>
-        </div>
-
-        <div class="form-group-inv">
             <label class="form-label-inv">Item Name</label>
-            <input type="text" class="form-control-inv" id="f-item-name" disabled placeholder="Auto-generated">
-            <span class="form-hint">Naming method is AUTOMATIC. Name will appear as the form is completed.</span>
+            <input type="text" class="form-control-inv" id="f-item-name" placeholder="e.g. Atlantic Salmon Fillet">
         </div>
 
         <div class="form-group-inv">
-            <label class="form-label-inv">QuickBooks Item Name</label>
-            <input type="text" class="form-control-inv" id="f-qb-name" oninput="updatePreviewName()">
-        </div>
-
-        <div class="form-group-inv">
-            <label class="form-label-inv">Item Friendly Name</label>
-            <input type="text" class="form-control-inv" id="f-friendly-name" oninput="updatePreviewName()">
-        </div>
-
-        <div class="form-group-inv">
-            <label class="form-label-inv">Item Description</label>
-            <textarea class="form-control-inv" id="f-description" rows="2"></textarea>
-        </div>
-
-        <div class="form-group-inv">
-            <label class="form-label-inv">Size/Cull</label>
-            <select class="form-control-inv" id="f-size-cull" oninput="updatePreviewName()">
-                <option value="">Choose Size/Cull</option>
-                <option value="Small">Small</option>
-                <option value="Medium">Medium</option>
-                <option value="Large">Large</option>
-                <option value="Jumbo">Jumbo</option>
-                <option value="Mixed">Mixed</option>
-                <option value="Choice">Choice</option>
-                <option value="Select">Select</option>
-                <option value="1x">1x</option>
-                <option value="1+ Per Lb">1+ Per Lb</option>
-                <option value="2-3 Per Lb">2-3 Per Lb</option>
-                <option value="10 Dozen">10 Dozen</option>
-                <option value="50 CT Bag">50 CT Bag</option>
-                <option value="100 Ct Bag">100 Ct Bag</option>
-                <option value="10 # Bag">10 # Bag</option>
-            </select>
-        </div>
-
-        <div class="form-group-inv">
-            <label class="form-label-inv">SKU or Internal Code</label>
-            <input type="text" class="form-control-inv" id="f-sku">
-        </div>
-
-        <div class="form-group-inv">
-            <label class="form-label-inv">Tasting Notes</label>
-            <textarea class="form-control-inv" id="f-tasting-notes" rows="2"></textarea>
-        </div>
-
-        <hr class="my-3">
-
-        <div class="form-group-inv">
-            <label class="form-label-inv">Quantity Description</label>
-            <input type="text" class="form-control-inv" id="f-qty-desc" placeholder="e.g. Bag, Box, Case" oninput="updatePreviewName()">
-        </div>
-
-        <div class="form-group-inv">
-            <label class="form-label-inv">Country of Origin</label>
-            <select class="form-control-inv" id="f-origin" oninput="updatePreviewName()">
-                <option value="">Choose Country</option>
-                <option value="USA">USA</option>
-                <option value="Canada">Canada</option>
-                <option value="Mexico">Mexico</option>
-                <option value="Chile">Chile</option>
-                <option value="Ecuador">Ecuador</option>
-                <option value="Japan">Japan</option>
-                <option value="China">China</option>
-                <option value="Vietnam">Vietnam</option>
-                <option value="Thailand">Thailand</option>
-                <option value="Indonesia">Indonesia</option>
-                <option value="India">India</option>
-                <option value="Norway">Norway</option>
-                <option value="Iceland">Iceland</option>
-                <option value="Spain">Spain</option>
-                <option value="Portugal">Portugal</option>
-                <option value="UK">UK</option>
-                <option value="Australia">Australia</option>
-                <option value="New Zealand">New Zealand</option>
-            </select>
-        </div>
-
-        <div class="form-group-inv">
-            <label class="form-label-inv">Brand</label>
-            <input type="text" class="form-control-inv" id="f-brand" oninput="updatePreviewName()">
-        </div>
-
-        <hr class="my-3">
-        <h6 class="fw-bold mb-3">Inventory Quantity</h6>
-
-        <div class="form-group-inv">
-            <label class="form-label-inv">Inventory Unit of Measure</label>
+            <label class="form-label-inv">Unit Type</label>
             <select class="form-control-inv" id="f-uom">
-                <option value="">Choose Inventory Unit of Measure</option>
+                <option value="">Choose Unit Type</option>
                 <option value="Lbs">Lbs</option>
                 <option value="Each">Each</option>
                 <option value="Bags">Bags</option>
@@ -557,53 +451,21 @@
                 <option value="Dozens">Dozens</option>
                 <option value="Gallons">Gallons</option>
             </select>
-            <span class="form-hint">Choose the inventory unit of measure to determine how the item is stocked.</span>
         </div>
 
         <div class="form-group-inv">
-            <label class="form-label-inv">Habitat/Production Method</label>
-            <select class="form-control-inv" id="f-habitat">
-                <option value="">Choose Method</option>
-                <option value="Wild">Wild</option>
-                <option value="Farm Raised">Farm Raised</option>
-                <option value="Aquaculture">Aquaculture</option>
-                <option value="Line Caught">Line Caught</option>
-                <option value="Net Caught">Net Caught</option>
-                <option value="Dredged">Dredged</option>
-                <option value="Dive Harvested">Dive Harvested</option>
-            </select>
+            <label class="form-label-inv">Cost</label>
+            <input type="number" step="0.01" class="form-control-inv" id="f-cost" placeholder="0.00">
         </div>
 
-        <div class="form-group-inv">
-            <label class="form-label-inv">Species</label>
-            <input type="text" class="form-control-inv" id="f-species" placeholder="e.g. Eastern Oyster">
-        </div>
-
-        <div class="form-group-inv">
-            <label class="form-label-inv">Department</label>
-            <input type="text" class="form-control-inv" id="f-department" placeholder="e.g. US Oysters">
-        </div>
-
-        <div class="form-group-inv">
-            <label class="form-label-inv">UPC</label>
-            <input type="text" class="form-control-inv" id="f-upc">
-        </div>
-
-        <hr class="my-3">
-        <h6 class="fw-bold mb-3">Pricing</h6>
-
-        <div class="row g-3">
-            <div class="col-6">
-                <div class="form-group-inv">
-                    <label class="form-label-inv">List Price (USD)</label>
-                    <input type="number" step="0.01" class="form-control-inv" id="f-list-price">
-                </div>
+        <div class="inventory-stats">
+            <div class="inventory-stat-card">
+                <div class="label">On Hand</div>
+                <div class="value" id="f-on-hand">0</div>
             </div>
-            <div class="col-6">
-                <div class="form-group-inv">
-                    <label class="form-label-inv">Wholesale Price (USD)</label>
-                    <input type="number" step="0.01" class="form-control-inv" id="f-wholesale-price">
-                </div>
+            <div class="inventory-stat-card">
+                <div class="label">Arriving</div>
+                <div class="value" id="f-arriving">0</div>
             </div>
         </div>
     </div>
@@ -625,59 +487,14 @@ let currentPage = 1;
 const PAGE_SIZE = 100;
 let searchTimeout;
 let activeFilters = {};
+let currentEditItem = null;
 
 // ── Data loading ────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', () => {
     loadGroups();
     loadItems();
-    loadRejectedCount();
 });
-
-let currentTab = 'inventory';
-
-function switchTab(tab) {
-    currentTab = tab;
-    document.getElementById('tab-inventory').classList.toggle('active', tab === 'inventory');
-    document.getElementById('tab-rejected').classList.toggle('active', tab === 'rejected');
-    document.getElementById('panel-inventory').style.display = tab === 'inventory' ? '' : 'none';
-    document.getElementById('panel-rejected').style.display = tab === 'rejected' ? '' : 'none';
-    if (tab === 'rejected') loadRejectedLots();
-}
-
-async function loadRejectedCount() {
-    try {
-        const res = await fetch('/api/inventory/rejected/');
-        const data = await res.json();
-        const count = (data.lots || []).length;
-        const el = document.getElementById('rejectedCount');
-        if (count > 0) { el.textContent = count; el.style.display = ''; }
-        else { el.style.display = 'none'; }
-    } catch {}
-}
-
-async function loadRejectedLots() {
-    const res = await fetch('/api/inventory/rejected/');
-    const data = await res.json();
-    const lots = data.lots || [];
-    const tbody = document.getElementById('rejectedTbody');
-    if (!lots.length) {
-        tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">No rejected or held lots.</td></tr>';
-        return;
-    }
-    tbody.innerHTML = lots.map(lot => `
-        <tr>
-            <td style="font-weight:600;">${esc(lot.trace_lot)}</td>
-            <td>${esc(lot.product)}</td>
-            <td>${esc(lot.vendor)}</td>
-            <td>${esc(lot.receive_date)}</td>
-            <td><span class="qc-badge-sm qc-${lot.qc_status}">${lot.qc_status === 'hold' ? '<i class="bi bi-pause-circle-fill me-1"></i>Hold' : '<i class="bi bi-x-circle-fill me-1"></i>Reject'}</span></td>
-            <td style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${esc(lot.qc_notes || '--')}</td>
-            <td>${esc(lot.checked_at)}</td>
-            <td style="text-align:right;">${lot.on_hand} ${esc(lot.unit_type)}</td>
-        </tr>
-    `).join('');
-}
 
 function onShowFilterChange() {
     const val = document.getElementById('showFilter').value;
@@ -696,8 +513,10 @@ async function loadGroups() {
     const data = await res.json();
     itemGroups = data.groups || [];
     const sel = document.getElementById('f-group');
-    sel.innerHTML = '<option value="">Choose item group</option>' +
-        itemGroups.map(g => `<option value="${g.id}">${g.name}</option>`).join('');
+    if (sel) {
+        sel.innerHTML = '<option value="">Choose item group</option>' +
+            itemGroups.map(g => `<option value="${g.id}">${g.name}</option>`).join('');
+    }
     // Also populate filter group dropdown
     const fgSel = document.getElementById('ff-group');
     fgSel.innerHTML = '<option value="">Choose Group</option>' +
@@ -720,9 +539,6 @@ async function loadItems() {
 
 function applyClientFilters() {
     filteredItems = allItems.filter(item => {
-        // Hide items with no inventory unless "In Stock" filter is explicitly off
-        const hasInventory = item.expected > 0 || item.allocated > 0 || item.on_hand > 0;
-        if (!hasInventory && !activeFilters.showAll) return false;
         if (activeFilters.instock && item.on_hand <= 0) return false;
         if (activeFilters.group && item.item_group !== activeFilters.group) return false;
         if (activeFilters.department && item.department !== activeFilters.department) return false;
@@ -743,7 +559,7 @@ function applyClientFilters() {
 function populateFilterDropdowns() {
     const unique = (arr, key) => [...new Set(arr.map(i => i[key]).filter(Boolean))].sort();
     populateSelect('ff-department', 'Choose Department', unique(allItems, 'department'));
-    populateSelect('ff-qty-desc', 'Choose Quantity Description', unique(allItems, 'quantity_description'));
+    populateSelect('ff-qty-desc', 'Choose Pack / Size', unique(allItems, 'quantity_description'));
     populateSelect('ff-upc', 'Choose UPC', unique(allItems, 'upc'));
     populateSelect('ff-size-cull', 'Choose Size/Cull', unique(allItems, 'size_cull'));
     populateSelect('ff-sku', 'Choose SKU or Internal Code', unique(allItems, 'sku'));
@@ -766,9 +582,10 @@ function debounceSearch() {
 }
 
 function clearFilters() {
-    document.getElementById('showFilter').value = 'active';
+    document.getElementById('showFilter').value = 'active_all';
+    document.getElementById('showFilter').dataset.apiValue = 'active';
     document.getElementById('searchBox').value = '';
-    activeFilters = {};
+    activeFilters = { showAll: true };
     // Reset filter panel inputs
     document.getElementById('ff-instock').checked = false;
     ['ff-group','ff-department','ff-qty-desc','ff-upc','ff-size-cull','ff-sku','ff-habitat','ff-species','ff-country','ff-brand'].forEach(id => {
@@ -816,7 +633,7 @@ function renderTable() {
     document.getElementById('itemCount').textContent = filteredItems.length + ' items';
 
     if (!page.length) {
-        tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted py-4">No items found.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">No items found.</td></tr>';
         document.getElementById('paginationInfo').textContent = 'No items';
         document.getElementById('paginationBtns').innerHTML = '';
         return;
@@ -824,28 +641,17 @@ function renderTable() {
 
     tbody.innerHTML = page.map((item, i) => `
         <tr class="clickable-row" onclick="goToItem(${item.id})" style="cursor:pointer;">
-            <td class="actions-cell" onclick="event.stopPropagation();">
-                <button onclick="openEditPanel(${item.id})" title="Edit"><i class="bi bi-pencil-square"></i></button>
+            <td class="item-name">
+                <div>${esc(item.display_name || item.item_name || '--')}</div>
             </td>
-            <td class="item-name">${esc(item.item_name)}</td>
-            <td>${esc(item.sku || '--')}</td>
-            <td>${fmt(item.expected)} ${esc(item.unit_type)}</td>
-            <td>${fmt(item.allocated)} ${esc(item.unit_type)}</td>
-            <td>${fmt(item.on_hand)} ${esc(item.unit_type)}</td>
-            <td>${item.list_price != null ? '$' + Number(item.list_price).toFixed(2) : '--'}</td>
-            <td>${item.wholesale_price != null ? '$' + Number(item.wholesale_price).toFixed(2) : '--'}</td>
+            <td>${esc(item.inventory_unit_of_measure || item.unit_type || '--')}</td>
+            <td>${fmt(item.expected)} ${esc(item.unit_type || '')}</td>
+            <td>${fmt(item.on_hand)} ${esc(item.unit_type || '')}</td>
+            <td>${item.raw_cost != null ? '$' + Number(item.raw_cost).toFixed(2) : '--'}</td>
             <td class="actions-cell" onclick="event.stopPropagation();">
-                <div class="dropdown">
-                    <button class="btn btn-sm" data-bs-toggle="dropdown" style="background:none;border:none;color:#94a3b8;">
-                        <i class="bi bi-three-dots-vertical"></i>
-                    </button>
-                    <ul class="dropdown-menu dropdown-menu-end">
-                        <li><a class="dropdown-item" href="/operations/inventory/${item.id}/"><i class="bi bi-eye me-2"></i>View Details</a></li>
-                        <li><a class="dropdown-item" href="#" onclick="openEditPanel(${item.id}); return false;"><i class="bi bi-pencil me-2"></i>Edit</a></li>
-                        <li><a class="dropdown-item" href="#" onclick="toggleActive(${item.id}); return false;"><i class="bi bi-toggle-on me-2"></i>${item.is_active ? 'Deactivate' : 'Activate'}</a></li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item text-danger" href="#" onclick="deleteItem(${item.id}); return false;"><i class="bi bi-trash me-2"></i>Delete</a></li>
-                    </ul>
+                <div class="actions-wrap">
+                    <button onclick="openEditPanel(${item.id})" title="Edit" aria-label="Edit product"><i class="bi bi-pencil-square"></i></button>
+                    <button class="btn-delete" onclick="deleteItem(${item.id})" title="Delete" aria-label="Delete product"><i class="bi bi-trash"></i></button>
                 </div>
             </td>
         </tr>
@@ -867,10 +673,15 @@ function renderTable() {
 
 function goPage(p) { currentPage = p; renderTable(); }
 function goToItem(id) { window.location.href = '/operations/inventory/' + id + '/'; }
+function formatProductSpec(item) {
+    const parts = [item.quantity_description, item.size_cull].filter(Boolean);
+    return parts.length ? parts.join(' · ') : '--';
+}
 // ── Panel ───────────────────────────────────────────────────────
 
 function openPanel() {
     clearForm();
+    currentEditItem = null;
     document.getElementById('panelTitle').textContent = 'Add an item';
     document.getElementById('slideOverlay').classList.add('open');
     document.getElementById('slidePanel').classList.add('open');
@@ -880,27 +691,14 @@ function openEditPanel(id) {
     clearForm();
     const item = allItems.find(x => x.id === id);
     if (!item) return;
+    currentEditItem = item;
 
     document.getElementById('panelTitle').textContent = 'Edit Item';
     document.getElementById('editId').value = id;
-    document.getElementById('f-group').value = item.item_group_id || '';
-    document.getElementById('f-qb-name').value = item.qb_item_name || '';
-    document.getElementById('f-friendly-name').value = item.friendly_name || '';
-    document.getElementById('f-description').value = item.description || '';
-    document.getElementById('f-size-cull').value = item.size_cull || '';
-    document.getElementById('f-sku').value = item.sku || '';
-    document.getElementById('f-tasting-notes').value = item.tasting_notes || '';
-    document.getElementById('f-qty-desc').value = item.quantity_description || '';
-    document.getElementById('f-origin').value = item.country_of_origin || item.origin || '';
-    document.getElementById('f-brand').value = item.brand || '';
+    document.getElementById('f-item-name').value = item.description || item.item_name || '';
     document.getElementById('f-uom').value = item.inventory_unit_of_measure || '';
-    document.getElementById('f-list-price').value = item.list_price || '';
-    document.getElementById('f-wholesale-price').value = item.wholesale_price || '';
-    document.getElementById('f-habitat').value = item.habitat_production_method || '';
-    document.getElementById('f-species').value = item.species || '';
-    document.getElementById('f-department').value = item.department || '';
-    document.getElementById('f-upc').value = item.upc || '';
-    updatePreviewName();
+    document.getElementById('f-cost').value = item.raw_cost || '';
+    updateInventorySnapshot(item);
 
     document.getElementById('slideOverlay').classList.add('open');
     document.getElementById('slidePanel').classList.add('open');
@@ -912,57 +710,52 @@ function closePanel() {
 }
 
 function clearForm() {
-    const ids = ['f-group','f-item-name','f-qb-name','f-friendly-name','f-description',
-                 'f-size-cull','f-sku','f-tasting-notes','f-qty-desc','f-origin',
-                 'f-brand','f-uom','f-list-price','f-wholesale-price',
-                 'f-habitat','f-species','f-department','f-upc'];
+    const ids = ['f-item-name', 'f-uom', 'f-cost'];
     ids.forEach(id => {
         const el = document.getElementById(id);
         if (el) el.value = '';
     });
     document.getElementById('editId').value = '';
     document.getElementById('panelError').style.display = 'none';
+    updateInventorySnapshot();
 }
 
-function updatePreviewName() {
-    const parts = [];
-    const groupSel = document.getElementById('f-group');
-    if (groupSel.value) parts.push(groupSel.options[groupSel.selectedIndex].text);
-    const friendly = document.getElementById('f-friendly-name').value.trim();
-    const qb = document.getElementById('f-qb-name').value.trim();
-    if (friendly) parts.push(friendly);
-    else if (qb) parts.push(qb);
-    const origin = document.getElementById('f-origin').value;
-    if (origin) parts.push(origin);
-    const size = document.getElementById('f-size-cull').value;
-    if (size) parts.push(size);
-    const qty = document.getElementById('f-qty-desc').value.trim();
-    if (qty) parts.push(qty);
-    document.getElementById('f-item-name').value = parts.length ? parts.join(' \u00b7 ') : '';
+function updateInventorySnapshot(item = null) {
+    document.getElementById('f-on-hand').textContent = item ? `${fmt(item.on_hand)} ${item.unit_type || ''}`.trim() : '0';
+    document.getElementById('f-arriving').textContent = item ? `${fmt(item.expected)} ${item.unit_type || ''}`.trim() : '0';
 }
 
 // ── CRUD ────────────────────────────────────────────────────────
 
 async function saveItem() {
     const id = document.getElementById('editId').value;
+    const itemName = document.getElementById('f-item-name').value.trim();
+    if (!itemName) {
+        document.getElementById('panelError').textContent = 'Item name is required.';
+        document.getElementById('panelError').style.display = '';
+        return;
+    }
     const payload = {
-        item_group_id: document.getElementById('f-group').value || null,
-        qb_item_name: document.getElementById('f-qb-name').value.trim(),
-        friendly_name: document.getElementById('f-friendly-name').value.trim(),
-        description: document.getElementById('f-description').value.trim(),
-        size_cull: document.getElementById('f-size-cull').value,
-        sku: document.getElementById('f-sku').value.trim(),
-        tasting_notes: document.getElementById('f-tasting-notes').value.trim(),
-        quantity_description: document.getElementById('f-qty-desc').value.trim(),
-        country_of_origin: document.getElementById('f-origin').value,
-        brand: document.getElementById('f-brand').value.trim(),
+        item_group_id: null,
+        qb_item_name: '',
+        friendly_name: '',
+        description: itemName,
+        size_cull: '',
+        sku: '',
+        tasting_notes: '',
+        quantity_description: '',
+        country_of_origin: '',
+        brand: '',
         inventory_unit_of_measure: document.getElementById('f-uom').value,
-        list_price: document.getElementById('f-list-price').value || null,
-        wholesale_price: document.getElementById('f-wholesale-price').value || null,
-        habitat_production_method: document.getElementById('f-habitat').value,
-        species: document.getElementById('f-species').value.trim(),
-        department: document.getElementById('f-department').value.trim(),
-        upc: document.getElementById('f-upc').value.trim(),
+        buying_unit_of_measure: '',
+        selling_unit_of_measure: '',
+        raw_cost: document.getElementById('f-cost').value || null,
+        list_price: null,
+        wholesale_price: null,
+        habitat_production_method: '',
+        species: '',
+        department: '',
+        upc: '',
     };
 
     const url = id ? `/api/inventory/items/${id}/update/` : '/api/inventory/items/create/';
@@ -973,14 +766,26 @@ async function saveItem() {
             headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
             body: JSON.stringify(payload),
         });
-        const data = await res.json();
-        if (data.error) {
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || data.error) {
             document.getElementById('panelError').textContent = data.error;
             document.getElementById('panelError').style.display = '';
             return;
         }
+        const showFilter = document.getElementById('showFilter');
+        showFilter.value = 'active_all';
+        showFilter.dataset.apiValue = 'active';
+        activeFilters.showAll = true;
+        if (data.item) {
+            if (id) {
+                allItems = allItems.map(item => item.id === data.item.id ? data.item : item);
+            } else {
+                allItems = [data.item, ...allItems];
+            }
+            applyClientFilters();
+        }
         closePanel();
-        loadItems();
+        await loadItems();
     } catch (e) {
         document.getElementById('panelError').textContent = 'Failed to save item.';
         document.getElementById('panelError').style.display = '';
@@ -989,18 +794,15 @@ async function saveItem() {
 
 async function deleteItem(id) {
     if (!confirm('Delete this item? This cannot be undone.')) return;
-    await fetch(`/api/inventory/items/${id}/delete/`, {
+    const res = await fetch(`/api/inventory/items/${id}/delete/`, {
         method: 'POST',
         headers: { 'X-CSRFToken': getCookie('csrftoken') },
     });
-    loadItems();
-}
-
-async function toggleActive(id) {
-    await fetch(`/api/inventory/items/${id}/toggle-active/`, {
-        method: 'POST',
-        headers: { 'X-CSRFToken': getCookie('csrftoken') },
-    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || data.error) {
+        alert(data.error || 'Failed to delete this product.');
+        return;
+    }
     loadItems();
 }
 
@@ -1015,8 +817,8 @@ async function promptNewGroup() {
     const data = await res.json();
     if (data.error) { alert(data.error); return; }
     await loadGroups();
-    document.getElementById('f-group').value = data.id;
-    updatePreviewName();
+    const field = document.getElementById('f-group');
+    if (field) field.value = data.id;
 }
 </script>
 {% endblock %}

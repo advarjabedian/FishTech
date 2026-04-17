@@ -1,5 +1,5 @@
 {% extends 'core/base.html' %}
-{% block title %}{{ product.item_name|default:product.description }} - FishTeck{% endblock %}
+{% block title %}{{ product.description|default:product.item_name }} - FishTeck{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -358,7 +358,7 @@
 
         <!-- Item avatar & name -->
         <div class="item-avatar" id="itemAvatar">{{ initials }}</div>
-        <div class="item-full-name" id="itemFullName">{{ product.item_name|default:product.description }}</div>
+        <div class="item-full-name" id="itemFullName">{{ product.description|default:product.item_name }}</div>
 
         <div class="item-tags">
             {% if product.item_group %}
@@ -386,7 +386,7 @@
                 <div class="prop-value">{{ product.friendly_name|default:"--" }}</div>
             </div>
             <div class="prop-row">
-                <div class="prop-label">Item Description</div>
+                <div class="prop-label">Product Description</div>
                 <div class="prop-value">{{ product.description|default:"--" }}</div>
             </div>
             <div class="prop-row">
@@ -410,8 +410,20 @@
                 <div class="prop-value">{{ product.department|default:"--" }}</div>
             </div>
             <div class="prop-row">
-                <div class="prop-label">Quantity Description</div>
+                <div class="prop-label">Pack / Size</div>
                 <div class="prop-value">{{ product.quantity_description|default:"--" }}</div>
+            </div>
+            <div class="prop-row">
+                <div class="prop-label">Inventory Unit</div>
+                <div class="prop-value">{{ product.inventory_unit_of_measure|default:"--" }}</div>
+            </div>
+            <div class="prop-row">
+                <div class="prop-label">Buying Unit</div>
+                <div class="prop-value">{{ product.buying_unit_of_measure|default:"--" }}</div>
+            </div>
+            <div class="prop-row">
+                <div class="prop-label">Selling Unit</div>
+                <div class="prop-value">{{ product.selling_unit_of_measure|default:"--" }}</div>
             </div>
             <div class="prop-row">
                 <div class="prop-label">Country of Origin</div>
@@ -442,7 +454,7 @@
                 <input type="text" class="inline-edit-input" id="e-friendly-name" value="{{ product.friendly_name }}">
             </div>
             <div class="form-group mb-2">
-                <label class="prop-label">Item Description</label>
+                <label class="prop-label">Product Description</label>
                 <input type="text" class="inline-edit-input" id="e-description" value="{{ product.description }}">
             </div>
             <div class="form-group mb-2">
@@ -476,7 +488,7 @@
                 <input type="text" class="inline-edit-input" id="e-department" value="{{ product.department }}">
             </div>
             <div class="form-group mb-2">
-                <label class="prop-label">Quantity Description</label>
+                <label class="prop-label">Pack / Size</label>
                 <input type="text" class="inline-edit-input" id="e-qty-desc" value="{{ product.quantity_description }}">
             </div>
             <div class="form-group mb-2">
@@ -668,6 +680,26 @@
 
         <!-- ═══ QUANTITY TAB ═══ -->
         <div class="tab-content-pane" id="tab-quantity" style="display:none;">
+            <div class="uom-section">
+                <div class="uom-header">
+                    <h6>Inventory Unit of Measure</h6>
+                </div>
+                <table class="uom-table">
+                    <tr>
+                        <td>Unit of Measure</td>
+                        <td>{{ product.inventory_unit_of_measure|default:"--" }}</td>
+                    </tr>
+                    <tr>
+                        <td>Pack / Size</td>
+                        <td>{{ product.quantity_description|default:"--" }}</td>
+                    </tr>
+                    <tr>
+                        <td>Size / Cull</td>
+                        <td>{{ product.size_cull|default:"--" }}</td>
+                    </tr>
+                </table>
+            </div>
+
             <!-- Selling UOM -->
             <div class="uom-section">
                 <div class="uom-header">

@@ -1,17 +1,12 @@
 from django.contrib.auth.decorators import login_required
+from django.conf import settings
 from django.shortcuts import get_object_or_404, redirect, render
 
-from core.models import ProcessBatch, Product, PurchaseOrder, SalesOrder, SalesOrderAllocation
+from core.models import ProcessBatch, Product, PurchaseOrder
 
 
 PROCESS_LABELS = {
     "fish_cutting": "Fish Cutting",
-    "commingle": "Commingle",
-    "renaming": "Renaming",
-    "freeze": "Freeze",
-    "lot_breaking": "Lot Breaking",
-    "shucking": "Shucking",
-    "wet_store": "Wet Store",
 }
 
 
@@ -27,26 +22,30 @@ def _tenant_page(template_name, extra_context=None):
 
 
 # ── Core workflow pages ──────────────────────────────────────────
-purchases_page = _tenant_page("core/purchases.html")
-receiving_page = _tenant_page("core/receiving.html")
+purchases_page = _tenant_page("core/arrivals.html")
+receiving_page = _tenant_page("core/arrivals.html")
 inventory_item_library = _tenant_page("core/inventory_item_library.html")
-processing_hub = _tenant_page("core/processing_hub.html")
-sales_orders_page = _tenant_page("core/sales_orders.html")
-shipping_hub = _tenant_page("core/shipping/shipping_log.html")
-shipping_picking = _tenant_page("core/shipping/picking.html")
-shipping_packing = _tenant_page("core/shipping/packing.html")
-shipping_loading = _tenant_page("core/shipping/loading.html")
-settings_page = _tenant_page("core/settings.html")
+@login_required
+def processing_hub(request):
+    if not getattr(request, "tenant", None):
+        return redirect("home")
+    sale_mode = request.GET.get("mode", "").strip() == "sale"
+    return render(
+        request,
+        "core/processing_hub.html",
+        {
+            "sale_mode": sale_mode,
+            "selected_lot_id": request.GET.get("lot_id", "").strip(),
+        },
+    )
+@login_required
+def sales_orders_page(request):
+    return redirect("processing_hub")
 vendor_list_page = _tenant_page("core/vendor_list.html")
 customer_list_page = _tenant_page("core/customer_list.html")
 trace_page = _tenant_page("core/trace.html")
 
 # ── Compliance / HACCP ───────────────────────────────────────────
-compliance_hub = _tenant_page("core/compliance_hub.html")
-operations_dashboard = _tenant_page("core/DailyInspections/operations_admin.html")
-operations_admin = _tenant_page("core/DailyInspections/operations_admin.html")
-
-
 @login_required
 def purchase_detail_page(request, po_id):
     if not getattr(request, "tenant", None):
@@ -86,43 +85,65 @@ def inventory_item_detail_page(request, item_id):
 
 
 @login_required
+def settings_page(request):
+    if not getattr(request, "tenant", None):
+        return redirect("home")
+    monthly_cents = getattr(settings, "STRIPE_MONTHLY_PRICE_CENTS", 60000) or 60000
+    return render(
+        request,
+        "core/settings.html",
+        {
+            "tenant": request.tenant,
+            "billing_checkout_ready": bool(
+                getattr(settings, "STRIPE_SECRET_KEY", "").strip()
+                and getattr(settings, "STRIPE_PRICE_ID", "").strip()
+            ),
+            "billing_amount_display": f"${monthly_cents / 100:,.2f}",
+            "billing_status": (request.GET.get("billing") or "").strip().lower(),
+        },
+    )
+
+
+@login_required
 def processing_new(request):
     if not getattr(request, "tenant", None):
         return redirect("home")
     process_type = request.GET.get("type", "").strip()
+    sale_mode = request.GET.get("mode", "").strip() == "sale"
     return render(
         request,
-        "core/processing_new.html",
+        "core/processing_sale_new.html" if sale_mode else "core/processing_new.html",
         {
             "process_type": process_type,
             "process_type_label": PROCESS_LABELS.get(process_type, "Process"),
+            "sale_mode": sale_mode,
         },
     )
 
 
 @login_required
 def sales_order_detail(request, order_id):
-    if not getattr(request, "tenant", None):
-        return redirect("home")
-    so = get_object_or_404(SalesOrder, id=order_id, tenant=request.tenant)
-    # Traceability: find allocated lots and their source POs
-    allocs = SalesOrderAllocation.objects.filter(
-        tenant=request.tenant, sales_order_item__sales_order=so
-    ).select_related("inventory__purchase_order")
-    trace_lots = {}
-    trace_pos = {}
-    for a in allocs:
-        inv = a.inventory
-        if inv and inv.id not in trace_lots:
-            trace_lots[inv.id] = {"trace_lot": inv.vendorlot or f"LOT-{inv.id}"}
-            po = inv.purchase_order
-            if po and po.id not in trace_pos:
-                trace_pos[po.id] = {"id": po.id, "po_number": po.po_number}
-    return render(request, "core/sales_order_detail.html", {
-        "so": so,
-        "trace_lots": list(trace_lots.values()),
-        "trace_pos": list(trace_pos.values()),
-    })
+    return redirect("processing_hub")
+
+
+@login_required
+def shipping_hub(request):
+    return redirect("sales_orders_page")
+
+
+@login_required
+def shipping_picking(request):
+    return redirect("sales_orders_page")
+
+
+@login_required
+def shipping_packing(request):
+    return redirect("sales_orders_page")
+
+
+@login_required
+def shipping_loading(request):
+    return redirect("sales_orders_page")
 
 
 @login_required

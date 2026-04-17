@@ -1,292 +1,705 @@
 {% extends 'core/base.html' %}
-{% block title %}Settings - FishTeck{% endblock %}
+{% block title %}Settings - FishTech{% endblock %}
 
 {% block extra_css %}
 <style>
-/* Override: settings page uses inv-main as flex container */
-.inv-main { display: flex; }
-
-/* Settings left nav */
-.settings-nav {
-    width: 260px; background: #fff; border-right: 1px solid #e2e8f0;
-    padding: 1.5rem 0; flex-shrink: 0; overflow-y: auto;
+.settings-shell {
+    min-height: calc(100vh - 56px);
+    padding: 2rem 2.5rem;
+    background: #f8fafc;
 }
-.settings-nav h3 { font-size: 1.2rem; font-weight: 700; padding: 0 1.25rem; margin-bottom: 1.25rem; color: #1e293b; }
 
-.settings-nav .nav-item {
-    display: flex; align-items: center; padding: 10px 1.25rem; font-size: 0.88rem;
-    font-weight: 500; color: #334155; cursor: pointer; text-decoration: none;
-    transition: all 0.1s; gap: 10px;
+.settings-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
 }
-.settings-nav .nav-item:hover { background: #f0f6ff; color: #2563eb; }
-.settings-nav .nav-item.active { background: #eff6ff; color: #2563eb; font-weight: 600; border-right: 3px solid #2563eb; }
-.settings-nav .nav-item i { font-size: 1.1rem; width: 20px; text-align: center; }
 
-.settings-nav .nav-section {
-    font-size: 0.88rem; font-weight: 600; color: #334155; padding: 10px 1.25rem;
-    display: flex; align-items: center; gap: 10px; cursor: pointer;
+.settings-head h1 {
+    margin: 0;
+    color: #0f172a;
+    font-size: 1.9rem;
+    font-weight: 800;
 }
-.settings-nav .nav-section i.icon { font-size: 1.1rem; width: 20px; text-align: center; }
-.settings-nav .nav-section i.arrow { margin-left: auto; font-size: 0.75rem; color: #94a3b8; transition: transform 0.2s; }
-.settings-nav .nav-section.open i.arrow { transform: rotate(90deg); }
-.settings-nav .nav-sub { display: none; }
-.settings-nav .nav-sub.open { display: block; }
-.settings-nav .nav-sub .nav-item { padding-left: 3rem; font-size: 0.84rem; }
 
-/* Settings content */
-.settings-content { flex: 1; padding: 2rem 2.5rem; background: #f8fafc; overflow-y: auto; }
-.settings-content h2 { font-size: 1.3rem; font-weight: 700; margin-bottom: 1.5rem; color: #1e293b; }
-.settings-card { background: #fff; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); padding: 1.5rem; margin-bottom: 1.5rem; max-width: 900px; }
-.settings-card h5 { font-weight: 700; font-size: 0.95rem; margin-bottom: 0.5rem; }
-.settings-card .hint { font-size: 0.8rem; color: #64748b; margin-bottom: 1rem; }
-
-.s-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem; }
-.s-field label { font-size: 0.8rem; font-weight: 600; color: #1e293b; display: block; margin-bottom: 4px; }
-.s-field input, .s-field select {
-    width: 100%; border: 1px solid #d1d5db; border-radius: 8px; padding: 9px 12px; font-size: 0.85rem;
+.settings-head p {
+    margin: 0.4rem 0 0;
+    color: #64748b;
+    font-size: 0.95rem;
 }
-.s-field input:focus, .s-field select:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.12); outline: none; }
-.s-field input[disabled] { background: #f1f5f9; color: #64748b; }
 
-.btn-submit { background: #10b981; color: #fff; border: none; border-radius: 8px; padding: 10px 28px; font-size: 0.85rem; font-weight: 600; cursor: pointer; margin-top: 1rem; }
-.btn-submit:hover { background: #059669; }
-/* Users table */
-.users-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
-.users-table th { text-align: left; color: #64748b; font-weight: 600; font-size: 0.73rem; text-transform: uppercase; padding: 8px 10px; border-bottom: 1px solid #e2e8f0; }
-.users-table td { padding: 10px; border-bottom: 1px solid #f1f5f9; }
-.users-table .user-avatar {
-    width: 36px; height: 36px; border-radius: 50%; background: #e2e8f0;
-    display: inline-flex; align-items: center; justify-content: center;
-    color: #64748b; font-size: 0.85rem; margin-right: 10px; vertical-align: middle;
+.users-card {
+    background: #ffffff;
+    border: 1px solid #dbe7f3;
+    border-radius: 18px;
+    box-shadow: 0 10px 28px rgba(15, 23, 42, 0.04);
+    overflow: hidden;
 }
-.users-table a { color: #2563eb; text-decoration: none; font-weight: 600; }
-.badge-active { background: #dcfce7; color: #16a34a; padding: 2px 8px; border-radius: 999px; font-size: 0.72rem; font-weight: 600; }
+
+.billing-card {
+    background: linear-gradient(135deg, #ffffff 0%, #f8fbff 100%);
+    border: 1px solid #dbe7f3;
+    border-radius: 18px;
+    box-shadow: 0 10px 28px rgba(15, 23, 42, 0.04);
+    padding: 1.25rem;
+    margin-bottom: 1.25rem;
+}
+
+.billing-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.billing-title {
+    margin: 0;
+    color: #0f172a;
+    font-size: 1.1rem;
+    font-weight: 800;
+}
+
+.billing-copy {
+    margin: 0.35rem 0 0;
+    color: #64748b;
+    font-size: 0.92rem;
+}
+
+.billing-price {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.35rem;
+    padding: 0.75rem 0.95rem;
+    border-radius: 14px;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    color: #1d4ed8;
+    font-weight: 800;
+}
+
+.billing-price strong {
+    font-size: 1.5rem;
+    line-height: 1;
+}
+
+.billing-note {
+    margin-top: 0.85rem;
+    color: #475569;
+    font-size: 0.88rem;
+}
+
+.billing-status {
+    margin-top: 0.9rem;
+}
+
+.users-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1.25rem;
+    border-bottom: 1px solid #e2e8f0;
+    flex-wrap: wrap;
+}
+
+.users-search {
+    width: min(340px, 100%);
+    border: 1px solid #d1d5db;
+    border-radius: 12px;
+    padding: 0.8rem 0.95rem;
+    font-size: 0.92rem;
+    background: #fff;
+}
+
+.users-search:focus,
+.settings-input:focus,
+.settings-select:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.settings-btn {
+    border: 1px solid transparent;
+    border-radius: 12px;
+    padding: 0.8rem 1.1rem;
+    font-size: 0.92rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 0.15s ease, opacity 0.15s ease, background 0.15s ease;
+}
+
+.settings-btn:hover {
+    transform: translateY(-1px);
+}
+
+.settings-btn:disabled {
+    cursor: wait;
+    opacity: 0.7;
+    transform: none;
+}
+
+.settings-btn-primary {
+    background: #2563eb;
+    color: #fff;
+}
+
+.settings-btn-secondary {
+    background: #fff;
+    color: #1e293b;
+    border-color: #cbd5e1;
+}
+
+.settings-btn-danger {
+    background: #fff;
+    color: #dc2626;
+    border-color: #fecaca;
+}
+
+.users-table-wrap {
+    overflow-x: auto;
+}
+
+.users-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 760px;
+}
+
+.users-table th {
+    color: #64748b;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 800;
+    text-align: left;
+    padding: 0.85rem 1rem;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.users-table td {
+    padding: 1rem;
+    border-bottom: 1px solid #f1f5f9;
+    color: #0f172a;
+    vertical-align: middle;
+}
+
+.user-name {
+    font-weight: 700;
+}
+
+.user-email {
+    color: #64748b;
+    font-size: 0.86rem;
+    margin-top: 0.2rem;
+}
+
+.pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.32rem 0.75rem;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
+.pill.active {
+    background: #dcfce7;
+    color: #16a34a;
+}
+
+.pill.inactive {
+    background: #e2e8f0;
+    color: #475569;
+}
+
+.pill.admin {
+    background: #dbeafe;
+    color: #2563eb;
+}
+
+.pill.user {
+    background: #f1f5f9;
+    color: #475569;
+}
+
+.row-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.55rem;
+}
+
+.settings-empty {
+    text-align: center;
+    color: #64748b;
+    padding: 2rem 1rem;
+}
+
+.settings-banner {
+    margin-bottom: 1rem;
+    padding: 0.9rem 1rem;
+    border-radius: 12px;
+    font-size: 0.92rem;
+    font-weight: 600;
+    display: none;
+}
+
+.settings-banner.show {
+    display: block;
+}
+
+.settings-banner.error {
+    background: #fef2f2;
+    color: #b91c1c;
+    border: 1px solid #fecaca;
+}
+
+.settings-banner.success {
+    background: #f0fdf4;
+    color: #166534;
+    border: 1px solid #bbf7d0;
+}
+
+.settings-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.35);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    z-index: 1200;
+}
+
+.settings-modal.open {
+    display: flex;
+}
+
+.settings-modal-card {
+    background: #fff;
+    width: min(640px, 100%);
+    border-radius: 18px;
+    border: 1px solid #dbe7f3;
+    box-shadow: 0 24px 44px rgba(15, 23, 42, 0.18);
+    overflow: hidden;
+}
+
+.settings-modal-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.35rem;
+    border-bottom: 1px solid #e5edf5;
+}
+
+.settings-modal-head h4 {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: #0f172a;
+}
+
+.settings-modal-close {
+    background: transparent;
+    border: none;
+    width: 42px;
+    height: 42px;
+    border-radius: 999px;
+    font-size: 1.15rem;
+    cursor: pointer;
+}
+
+.settings-modal-body {
+    padding: 1.35rem;
+}
+
+.settings-grid-2 {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+.settings-field label {
+    display: block;
+    color: #334155;
+    font-size: 0.8rem;
+    font-weight: 700;
+    margin-bottom: 0.45rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.settings-input {
+    width: 100%;
+    border: 1px solid #d1d5db;
+    border-radius: 10px;
+    padding: 0.8rem 0.95rem;
+    font-size: 0.92rem;
+    background: #fff;
+}
+
+.settings-modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.8rem;
+    margin-top: 1.1rem;
+}
+
+@media (max-width: 900px) {
+    .settings-shell {
+        padding: 1rem;
+    }
+
+    .settings-grid-2 {
+        grid-template-columns: 1fr;
+    }
+}
 </style>
 {% endblock %}
 
 {% block content %}
-
 {% include 'core/includes/sidebar.html' with active='settings' %}
-
 <div class="inv-main">
-    <!-- Settings left nav -->
-    <div class="settings-nav">
-        <h3>Settings</h3>
-
-        <a class="nav-item active" onclick="loadSection('profile')" id="nav-profile">
-            <i class="bi bi-person"></i> My Profile
-        </a>
-
-        <div class="nav-section" onclick="toggleSection('account')">
-            <i class="bi bi-people icon"></i> Account
-            <i class="bi bi-chevron-right arrow"></i>
-        </div>
-        <div class="nav-sub" id="sub-account">
-            <a class="nav-item" onclick="loadSection('account-info')" id="nav-account-info">Account Info</a>
-            <a class="nav-item" onclick="loadSection('users')" id="nav-users">Users</a>
+    <div class="settings-shell">
+        <div class="settings-head">
+            <div>
+                <h1>User Settings</h1>
+                <p>Manage the users who can access this workspace.</p>
+            </div>
+            <button class="settings-btn settings-btn-primary" type="button" onclick="openUserModal()">
+                Add User
+            </button>
         </div>
 
-        <div class="nav-section" onclick="toggleSection('items')">
-            <i class="bi bi-box-seam icon"></i> Items
-            <i class="bi bi-chevron-right arrow"></i>
+        <div class="settings-banner" id="settingsBanner"></div>
+
+        <div class="billing-card">
+            <div class="billing-head">
+                <div>
+                    <h2 class="billing-title">Billing</h2>
+                    <p class="billing-copy">Open secure Stripe Checkout to enter a card and start the monthly workspace subscription.</p>
+                </div>
+                <div class="billing-price">
+                    <strong>{{ billing_amount_display }}</strong>
+                    <span>/ month</span>
+                </div>
+            </div>
+            <div class="billing-note">
+                For security, card details are handled in the payment provider checkout instead of being typed directly into this app.
+            </div>
+            {% if billing_status == 'success' %}
+            <div class="settings-banner show success billing-status">
+                Billing checkout completed. If Stripe accepted the payment, the subscription is now active on their side.
+            </div>
+            {% elif billing_status == 'cancelled' %}
+            <div class="settings-banner show error billing-status">
+                Billing checkout was cancelled before payment was completed.
+            </div>
+            {% endif %}
+            <div style="margin-top: 1rem;">
+                {% if billing_checkout_ready %}
+                <button class="settings-btn settings-btn-primary" type="button" id="billingCheckoutButton" onclick="startBillingCheckout()">
+                    Open Secure Checkout
+                </button>
+                {% else %}
+                <div class="settings-banner show error" style="margin: 0;">
+                    Billing checkout is not configured yet. Add Stripe keys and a Stripe price ID in the environment to enable it.
+                </div>
+                {% endif %}
+            </div>
         </div>
-        <div class="nav-sub" id="sub-items">
-            <a class="nav-item" onclick="loadSection('item-groups')" id="nav-item-groups">Item Groups</a>
-            <a class="nav-item" onclick="loadSection('departments')" id="nav-departments">Departments</a>
+
+        <div class="users-card">
+            <div class="users-toolbar">
+                <input
+                    class="users-search"
+                    id="userSearch"
+                    type="text"
+                    placeholder="Search by username"
+                    oninput="filterUsers(this.value)"
+                >
+            </div>
+            <div class="users-table-wrap">
+                <table class="users-table">
+                    <thead>
+                        <tr>
+                            <th>Username</th>
+                            <th style="text-align: right;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usersTableBody">
+                        <tr>
+                            <td colspan="2" class="settings-empty">Loading users...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
-
-        <a class="nav-item" onclick="loadSection('processing')" id="nav-processing">
-            <i class="bi bi-gear"></i> Processing
-        </a>
-
-        <a class="nav-item" onclick="loadSection('vendors')" id="nav-vendors">
-            <i class="bi bi-building"></i> Vendors
-        </a>
-    </div>
-
-    <!-- Content area -->
-    <div class="settings-content" id="settingsContent">
-        <div class="text-center text-muted py-5">Loading...</div>
     </div>
 </div>
 
+<div class="settings-modal" id="userModal" onclick="handleModalBackdrop(event)">
+    <div class="settings-modal-card">
+        <div class="settings-modal-head">
+            <h4 id="userModalTitle">Add User</h4>
+            <button class="settings-modal-close" type="button" onclick="closeUserModal()">&times;</button>
+        </div>
+        <div class="settings-modal-body">
+            <div class="settings-grid-2" style="grid-template-columns: 1fr;">
+                <div class="settings-field">
+                    <label for="userUsername">Username</label>
+                    <input class="settings-input" id="userUsername" type="text">
+                </div>
+                <div class="settings-field">
+                    <label for="userPassword">Password</label>
+                    <input class="settings-input" id="userPassword" type="password" placeholder="Required for new users">
+                </div>
+            </div>
+            <div class="settings-modal-actions">
+                <button class="settings-btn settings-btn-secondary" type="button" onclick="closeUserModal()">Cancel</button>
+                <button class="settings-btn settings-btn-primary" id="userSaveButton" type="button" onclick="saveUser()">Save User</button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-let currentSection = 'profile';
+const settingsState = {
+    users: [],
+    filteredUsers: [],
+    editingUserId: null,
+};
 
-document.addEventListener('DOMContentLoaded', () => loadSection('profile'));
+document.addEventListener('DOMContentLoaded', () => {
+    loadUsers();
 
-function toggleSection(name) {
-    const sub = document.getElementById('sub-' + name);
-    const section = sub.previousElementSibling;
-    sub.classList.toggle('open');
-    section.classList.toggle('open');
-}
-
-function loadSection(section) {
-    currentSection = section;
-    // Highlight active nav
-    document.querySelectorAll('.settings-nav .nav-item').forEach(el => el.classList.remove('active'));
-    const navEl = document.getElementById('nav-' + section);
-    if (navEl) navEl.classList.add('active');
-
-    const content = document.getElementById('settingsContent');
-
-    if (section === 'profile') renderProfile(content);
-    else if (section === 'account-info') renderAccountInfo(content);
-    else if (section === 'users') renderUsers(content);
-    else if (section === 'item-groups') renderItemGroups(content);
-    else content.innerHTML = `<h2>${esc(section.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()))}</h2><div class="settings-card"><p class="text-muted">Coming soon.</p></div>`;
-}
-
-// ── Profile ─────────────────────────────────────────────────────
-
-async function renderProfile(el) {
-    const res = await fetch('/api/settings/profile/');
-    const data = await res.json();
-
-    el.innerHTML = `
-        <h2>My Profile</h2>
-        <div class="settings-card">
-            <h5>Personal Information</h5>
-            <div class="s-grid" style="margin-top:1rem;">
-                <div class="s-field"><label>First Name</label><input type="text" id="s-first" value="${esc(data.first_name)}"></div>
-                <div class="s-field"><label>Middle Name</label><input type="text" id="s-middle" value=""></div>
-                <div class="s-field"><label>Last Name</label><input type="text" id="s-last" value="${esc(data.last_name)}"></div>
-            </div>
-        </div>
-        <div class="settings-card">
-            <h5>Login Information</h5>
-            <div class="hint">Set preferences related to login and your personal account security.</div>
-            <div class="s-grid">
-                <div class="s-field"><label>Username</label><input type="text" value="${esc(data.username)}" disabled></div>
-                <div class="s-field"><label>Email</label><input type="text" id="s-email" value="${esc(data.email)}"></div>
-                <div class="s-field"><label>Password</label>
-                    <div style="display:flex;gap:0.5rem;">
-                        <input type="password" value="********" disabled style="flex:1;">
-                        <button class="btn-inv-outline">Reset Password</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <button class="btn-submit" onclick="withSpinner(this, () => saveProfile())">Submit</button>
-    `;
-}
-
-async function saveProfile() {
-    await fetch('/api/settings/profile/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
-        body: JSON.stringify({
-            first_name: document.getElementById('s-first').value,
-            last_name: document.getElementById('s-last').value,
-            email: document.getElementById('s-email').value,
-        }),
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+            closeUserModal();
+        }
     });
-    alert('Profile saved.');
+});
+
+function getCookie(name) {
+    const cookies = document.cookie ? document.cookie.split(';') : [];
+    for (const cookie of cookies) {
+        const trimmed = cookie.trim();
+        if (trimmed.startsWith(`${name}=`)) {
+            return decodeURIComponent(trimmed.slice(name.length + 1));
+        }
+    }
+    return '';
 }
 
-// ── Account Info ────────────────────────────────────────────────
-
-async function renderAccountInfo(el) {
-    const res = await fetch('/api/settings/account/');
-    const data = await res.json();
-
-    el.innerHTML = `
-        <h2>Account Info</h2>
-        <div class="settings-card">
-            <h5>Company Information</h5>
-            <div class="s-grid" style="margin-top:1rem;">
-                <div class="s-field"><label>Company Name</label><input type="text" id="a-name" value="${esc(data.name)}"></div>
-                <div class="s-field"><label>Address</label><input type="text" id="a-address" value="${esc(data.address)}"></div>
-                <div class="s-field"><label>City</label><input type="text" id="a-city" value="${esc(data.city)}"></div>
-                <div class="s-field"><label>State</label><input type="text" id="a-state" value="${esc(data.state)}"></div>
-                <div class="s-field"><label>Zip</label><input type="text" id="a-zip" value="${esc(data.zipcode)}"></div>
-                <div class="s-field"><label>Phone</label><input type="text" id="a-phone" value="${esc(data.phone)}"></div>
-            </div>
-        </div>
-        <button class="btn-submit" onclick="withSpinner(this, () => saveAccount())">Save</button>
-    `;
+function showBanner(message, type = 'error') {
+    const banner = document.getElementById('settingsBanner');
+    banner.textContent = message;
+    banner.className = `settings-banner show ${type}`;
 }
 
-async function saveAccount() {
-    await fetch('/api/settings/account/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
-        body: JSON.stringify({
-            name: document.getElementById('a-name').value,
-            address: document.getElementById('a-address').value,
-            city: document.getElementById('a-city').value,
-            state: document.getElementById('a-state').value,
-            zipcode: document.getElementById('a-zip').value,
-            phone: document.getElementById('a-phone').value,
-        }),
-    });
-    alert('Account saved.');
+function clearBanner() {
+    const banner = document.getElementById('settingsBanner');
+    banner.textContent = '';
+    banner.className = 'settings-banner';
 }
 
-// ── Users ───────────────────────────────────────────────────────
+async function loadUsers() {
+    clearBanner();
 
-async function renderUsers(el) {
-    let users = [];
     try {
-        const res = await fetch('/api/settings/users/');
-        const data = await res.json();
-        users = data.users || [];
-    } catch {}
+        const response = await fetch('/api/settings/users/');
+        const data = await response.json().catch(() => ({}));
 
-    // Fallback: use manage_users page link if API fails
-    el.innerHTML = `
-        <h2>Users</h2>
-        <div class="settings-card" style="max-width:1000px;">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
-                <input type="text" class="search-box" placeholder="Search..." style="border:1px solid #d1d5db;border-radius:8px;padding:6px 12px;font-size:0.85rem;width:220px;" oninput="filterUsers(this.value)">
-            </div>
-            <table class="users-table" id="usersTable">
-                <thead><tr><th>Name</th><th>Username</th><th>Permissions</th><th>Status</th></tr></thead>
-                <tbody>
-                    ${users.length ? users.map(u => `<tr>
-                        <td><span class="user-avatar"><i class="bi bi-person"></i></span><a href="#">${esc(u.name)}</a><br><span style="font-size:0.78rem;color:#94a3b8;">${esc(u.email)}</span></td>
-                        <td>${esc(u.username)}</td>
-                        <td style="font-size:0.78rem;color:#64748b;">${u.is_admin ? 'Admin' : 'User'}</td>
-                        <td><span class="badge-active">${u.is_active ? 'Active' : 'Inactive'}</span></td>
-                    </tr>`).join('') : '<tr><td colspan="4" class="text-center text-muted py-3"><a href="/manage-users/" style="color:#2563eb;">Manage users here</a></td></tr>'}
-                </tbody>
-            </table>
-        </div>
-    `;
+        if (!response.ok) {
+            throw new Error(data.error || 'Failed to load users.');
+        }
+
+        settingsState.users = data.users || [];
+        filterUsers(document.getElementById('userSearch').value);
+    } catch (error) {
+        document.getElementById('usersTableBody').innerHTML =
+            '<tr><td colspan="2" class="settings-empty">Failed to load users.</td></tr>';
+        showBanner(error.message || 'Failed to load users.');
+    }
 }
 
-function filterUsers(q) {
-    const rows = document.querySelectorAll('#usersTable tbody tr');
-    rows.forEach(r => { r.style.display = r.textContent.toLowerCase().includes(q.toLowerCase()) ? '' : 'none'; });
+async function startBillingCheckout() {
+    clearBanner();
+    const button = document.getElementById('billingCheckoutButton');
+    if (!button) return;
+
+    button.disabled = true;
+    button.textContent = 'Opening...';
+
+    try {
+        const response = await fetch('/api/settings/billing/checkout/', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+            },
+        });
+        const data = await response.json().catch(() => ({}));
+
+        if (!response.ok || !data.url) {
+            throw new Error(data.error || 'Unable to open billing checkout.');
+        }
+
+        window.location.href = data.url;
+    } catch (error) {
+        showBanner(error.message || 'Unable to open billing checkout.');
+        button.disabled = false;
+        button.textContent = 'Open Secure Checkout';
+    }
 }
 
-// ── Item Groups ─────────────────────────────────────────────────
+function filterUsers(query) {
+    const normalized = String(query || '').trim().toLowerCase();
+    settingsState.filteredUsers = settingsState.users.filter((user) =>
+        `${user.username}`.toLowerCase().includes(normalized)
+    );
+    renderUsers();
+}
 
-async function renderItemGroups(el) {
-    const res = await fetch('/api/inventory/groups/');
-    const data = await res.json();
-    const groups = data.groups || [];
+function renderUsers() {
+    const tbody = document.getElementById('usersTableBody');
+    const users = settingsState.filteredUsers;
 
-    el.innerHTML = `
-        <h2>Item Groups</h2>
-        <div class="settings-card" style="max-width:800px;">
-            <table class="users-table">
-                <thead><tr><th>Group Name</th><th>Sort Order</th><th></th></tr></thead>
-                <tbody>
-                    ${groups.map(g => `<tr>
-                        <td style="font-weight:600;">${esc(g.name)}</td>
-                        <td>${g.sort_order}</td>
-                        <td><button class="btn-inv-outline" style="padding:4px 12px;font-size:0.78rem;">Edit</button></td>
-                    </tr>`).join('')}
-                    ${!groups.length ? '<tr><td colspan="3" class="text-center text-muted py-3">No item groups.</td></tr>' : ''}
-                </tbody>
-            </table>
-        </div>
-    `;
+    if (!users.length) {
+        tbody.innerHTML = '<tr><td colspan="2" class="settings-empty">No users found.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = users.map((user) => `
+        <tr>
+            <td><div class="user-name">${esc(user.username)}</div></td>
+            <td>
+                <div class="row-actions">
+                    <button class="settings-btn settings-btn-secondary" type="button" onclick="openUserModal(${user.id})">Edit</button>
+                    <button class="settings-btn settings-btn-danger" type="button" onclick="deleteUser(${user.id})">Delete</button>
+                </div>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function openUserModal(userId = null) {
+    const user = settingsState.users.find((item) => item.id === userId) || null;
+    settingsState.editingUserId = user ? user.id : null;
+
+    document.getElementById('userModalTitle').textContent = user ? 'Edit User' : 'Add User';
+    document.getElementById('userUsername').value = user ? (user.username || '') : '';
+    document.getElementById('userPassword').value = '';
+    document.getElementById('userPassword').placeholder = user
+        ? 'Leave blank to keep current password'
+        : 'Required for new users';
+    document.getElementById('userModal').classList.add('open');
+    clearBanner();
+}
+
+function closeUserModal() {
+    settingsState.editingUserId = null;
+    document.getElementById('userModal').classList.remove('open');
+}
+
+function handleModalBackdrop(event) {
+    if (event.target.id === 'userModal') {
+        closeUserModal();
+    }
+}
+
+async function saveUser() {
+    clearBanner();
+
+    const userId = settingsState.editingUserId;
+    const saveButton = document.getElementById('userSaveButton');
+    const payload = {
+        username: document.getElementById('userUsername').value.trim(),
+        password: document.getElementById('userPassword').value,
+        first_name: '',
+        last_name: '',
+        email: '',
+        is_admin: false,
+        is_active: true,
+    };
+
+    if (!payload.username) {
+        showBanner('Username is required.');
+        return;
+    }
+
+    if (!userId && !payload.password) {
+        showBanner('Password is required for a new user.');
+        return;
+    }
+
+    saveButton.disabled = true;
+    saveButton.textContent = userId ? 'Saving...' : 'Creating...';
+
+    try {
+        const endpoint = userId ? `/api/settings/users/${userId}/update/` : '/api/settings/users/create/';
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken'),
+            },
+            body: JSON.stringify(payload),
+        });
+        const data = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+            throw new Error(data.error || 'Unable to save user.');
+        }
+
+        closeUserModal();
+        await loadUsers();
+        showBanner(userId ? 'User updated.' : 'User created.', 'success');
+    } catch (error) {
+        showBanner(error.message || 'Unable to save user.');
+    } finally {
+        saveButton.disabled = false;
+        saveButton.textContent = 'Save User';
+    }
+}
+
+async function deleteUser(userId) {
+    clearBanner();
+
+    const user = settingsState.users.find((item) => item.id === userId);
+    if (!user) {
+        return;
+    }
+
+    if (!window.confirm(`Delete ${user.name || user.username}?`)) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/settings/users/${userId}/delete/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+            },
+        });
+        const data = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+            throw new Error(data.error || 'Unable to delete user.');
+        }
+
+        await loadUsers();
+        showBanner('User deleted.', 'success');
+    } catch (error) {
+        showBanner(error.message || 'Unable to delete user.');
+    }
 }
 </script>
 {% endblock %}
