@@ -3,292 +3,749 @@
 
 {% block extra_css %}
 <style>
-/* Override: settings page uses inv-main as flex container */
 .inv-main { display: flex; }
 
-/* Settings left nav */
 .settings-nav {
-    width: 260px; background: #fff; border-right: 1px solid #e2e8f0;
-    padding: 1.5rem 0; flex-shrink: 0; overflow-y: auto;
+    width: 240px;
+    background: #fff;
+    border-right: 1px solid #e2e8f0;
+    padding: 1.5rem 0;
+    flex-shrink: 0;
 }
-.settings-nav h3 { font-size: 1.2rem; font-weight: 700; padding: 0 1.25rem; margin-bottom: 1.25rem; color: #1e293b; }
+
+.settings-nav h3 {
+    font-size: 1.2rem;
+    font-weight: 700;
+    padding: 0 1.25rem;
+    margin-bottom: 1.25rem;
+    color: #0f172a;
+}
 
 .settings-nav .nav-item {
-    display: flex; align-items: center; padding: 10px 1.25rem; font-size: 0.88rem;
-    font-weight: 500; color: #334155; cursor: pointer; text-decoration: none;
-    transition: all 0.1s; gap: 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0.9rem 1.25rem;
+    color: #334155;
+    font-size: 0.92rem;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    border-right: 3px solid transparent;
 }
-.settings-nav .nav-item:hover { background: #f0f6ff; color: #2563eb; }
-.settings-nav .nav-item.active { background: #eff6ff; color: #2563eb; font-weight: 600; border-right: 3px solid #2563eb; }
-.settings-nav .nav-item i { font-size: 1.1rem; width: 20px; text-align: center; }
 
-.settings-nav .nav-section {
-    font-size: 0.88rem; font-weight: 600; color: #334155; padding: 10px 1.25rem;
-    display: flex; align-items: center; gap: 10px; cursor: pointer;
+.settings-nav .nav-item:hover {
+    background: #f8fbff;
+    color: #2563eb;
 }
-.settings-nav .nav-section i.icon { font-size: 1.1rem; width: 20px; text-align: center; }
-.settings-nav .nav-section i.arrow { margin-left: auto; font-size: 0.75rem; color: #94a3b8; transition: transform 0.2s; }
-.settings-nav .nav-section.open i.arrow { transform: rotate(90deg); }
-.settings-nav .nav-sub { display: none; }
-.settings-nav .nav-sub.open { display: block; }
-.settings-nav .nav-sub .nav-item { padding-left: 3rem; font-size: 0.84rem; }
 
-/* Settings content */
-.settings-content { flex: 1; padding: 2rem 2.5rem; background: #f8fafc; overflow-y: auto; }
-.settings-content h2 { font-size: 1.3rem; font-weight: 700; margin-bottom: 1.5rem; color: #1e293b; }
-.settings-card { background: #fff; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); padding: 1.5rem; margin-bottom: 1.5rem; max-width: 900px; }
-.settings-card h5 { font-weight: 700; font-size: 0.95rem; margin-bottom: 0.5rem; }
-.settings-card .hint { font-size: 0.8rem; color: #64748b; margin-bottom: 1rem; }
-
-.s-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem; }
-.s-field label { font-size: 0.8rem; font-weight: 600; color: #1e293b; display: block; margin-bottom: 4px; }
-.s-field input, .s-field select {
-    width: 100%; border: 1px solid #d1d5db; border-radius: 8px; padding: 9px 12px; font-size: 0.85rem;
+.settings-nav .nav-item.active {
+    background: #eff6ff;
+    color: #2563eb;
+    border-right-color: #2563eb;
 }
-.s-field input:focus, .s-field select:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.12); outline: none; }
-.s-field input[disabled] { background: #f1f5f9; color: #64748b; }
 
-.btn-submit { background: #10b981; color: #fff; border: none; border-radius: 8px; padding: 10px 28px; font-size: 0.85rem; font-weight: 600; cursor: pointer; margin-top: 1rem; }
-.btn-submit:hover { background: #059669; }
-/* Users table */
-.users-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
-.users-table th { text-align: left; color: #64748b; font-weight: 600; font-size: 0.73rem; text-transform: uppercase; padding: 8px 10px; border-bottom: 1px solid #e2e8f0; }
-.users-table td { padding: 10px; border-bottom: 1px solid #f1f5f9; }
-.users-table .user-avatar {
-    width: 36px; height: 36px; border-radius: 50%; background: #e2e8f0;
-    display: inline-flex; align-items: center; justify-content: center;
-    color: #64748b; font-size: 0.85rem; margin-right: 10px; vertical-align: middle;
+.settings-content {
+    flex: 1;
+    padding: 2rem 2.5rem;
+    background: #f8fafc;
+    overflow-y: auto;
 }
-.users-table a { color: #2563eb; text-decoration: none; font-weight: 600; }
-.badge-active { background: #dcfce7; color: #16a34a; padding: 2px 8px; border-radius: 999px; font-size: 0.72rem; font-weight: 600; }
+
+.settings-title {
+    color: #0f172a;
+    font-size: 1.8rem;
+    font-weight: 800;
+    margin-bottom: 0.35rem;
+}
+
+.settings-subtitle {
+    color: #64748b;
+    font-size: 0.95rem;
+    margin-bottom: 1.5rem;
+}
+
+.settings-card {
+    background: #fff;
+    border: 1px solid #dbe7f3;
+    border-radius: 18px;
+    box-shadow: 0 10px 28px rgba(15, 23, 42, 0.04);
+    padding: 1.5rem;
+    margin-bottom: 1.25rem;
+    max-width: 1080px;
+}
+
+.settings-card h4 {
+    color: #0f172a;
+    font-size: 1.05rem;
+    font-weight: 800;
+    margin-bottom: 0.35rem;
+}
+
+.settings-hint {
+    color: #64748b;
+    font-size: 0.88rem;
+    margin-bottom: 1rem;
+}
+
+.settings-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+}
+
+.settings-search,
+.settings-field input,
+.settings-field select {
+    width: 100%;
+    border: 1px solid #d1d5db;
+    border-radius: 10px;
+    padding: 0.8rem 0.95rem;
+    font-size: 0.92rem;
+    background: #fff;
+}
+
+.settings-field input:focus,
+.settings-field select:focus,
+.settings-search:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.settings-btn {
+    border: 1px solid transparent;
+    border-radius: 12px;
+    padding: 0.85rem 1.15rem;
+    font-size: 0.92rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.settings-btn:hover { transform: translateY(-1px); }
+
+.settings-btn-primary {
+    background: #2563eb;
+    color: #fff;
+}
+
+.settings-btn-primary:hover { background: #1d4ed8; }
+
+.settings-btn-secondary {
+    background: #fff;
+    color: #1e293b;
+    border-color: #cbd5e1;
+}
+
+.settings-btn-danger {
+    background: #fff;
+    color: #dc2626;
+    border-color: #fecaca;
+}
+
+.settings-grid-2 {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+.settings-grid-3 {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+.settings-field label {
+    display: block;
+    color: #334155;
+    font-size: 0.8rem;
+    font-weight: 700;
+    margin-bottom: 0.45rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.settings-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    color: #334155;
+    font-size: 0.92rem;
+    font-weight: 600;
+}
+
+.settings-checkbox input {
+    width: 18px;
+    height: 18px;
+}
+
+.users-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.users-table th {
+    color: #64748b;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 800;
+    text-align: left;
+    padding: 0.8rem 0.7rem;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.users-table td {
+    padding: 0.95rem 0.7rem;
+    border-bottom: 1px solid #f1f5f9;
+    color: #0f172a;
+    vertical-align: middle;
+}
+
+.user-name {
+    font-weight: 700;
+}
+
+.user-email {
+    color: #64748b;
+    font-size: 0.86rem;
+    margin-top: 0.2rem;
+}
+
+.pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.32rem 0.75rem;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
+.pill.active {
+    background: #dcfce7;
+    color: #16a34a;
+}
+
+.pill.inactive {
+    background: #e2e8f0;
+    color: #475569;
+}
+
+.pill.admin {
+    background: #dbeafe;
+    color: #2563eb;
+}
+
+.pill.user {
+    background: #f1f5f9;
+    color: #475569;
+}
+
+.row-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    justify-content: flex-end;
+}
+
+.billing-stats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.billing-stat {
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 1rem;
+    background: #f8fbff;
+}
+
+.billing-stat label {
+    display: block;
+    color: #64748b;
+    font-size: 0.76rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.35rem;
+}
+
+.billing-stat strong {
+    color: #0f172a;
+    font-size: 1.05rem;
+    font-weight: 800;
+}
+
+.billing-note {
+    border: 1px solid #dbe7f3;
+    background: #f8fbff;
+    border-radius: 16px;
+    padding: 1rem 1.1rem;
+    color: #475569;
+    line-height: 1.6;
+    margin-bottom: 1rem;
+}
+
+.billing-actions {
+    display: flex;
+    gap: 0.8rem;
+    flex-wrap: wrap;
+}
+
+.settings-banner {
+    border-radius: 14px;
+    padding: 0.9rem 1rem;
+    font-size: 0.9rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+}
+
+.settings-banner.success {
+    background: #dcfce7;
+    color: #166534;
+    border: 1px solid #86efac;
+}
+
+.settings-empty {
+    text-align: center;
+    color: #64748b;
+    padding: 2rem 1rem;
+}
+
+.settings-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.42);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 1.25rem;
+    z-index: 1200;
+}
+
+.settings-modal.open { display: flex; }
+
+.settings-modal-card {
+    width: min(720px, 100%);
+    background: #fff;
+    border-radius: 22px;
+    border: 1px solid #dbe7f3;
+    box-shadow: 0 28px 80px rgba(15, 23, 42, 0.18);
+    overflow: hidden;
+}
+
+.settings-modal-head {
+    background: #2563eb;
+    color: #fff;
+    padding: 1.1rem 1.3rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.settings-modal-head h4 {
+    margin: 0;
+    font-size: 1.2rem;
+    font-weight: 800;
+}
+
+.settings-modal-close {
+    background: rgba(255, 255, 255, 0.16);
+    color: #fff;
+    border: none;
+    width: 42px;
+    height: 42px;
+    border-radius: 999px;
+    font-size: 1.15rem;
+    cursor: pointer;
+}
+
+.settings-modal-body {
+    padding: 1.35rem;
+}
+
+.settings-modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.8rem;
+    margin-top: 1.1rem;
+}
+
+@media (max-width: 980px) {
+    .billing-stats,
+    .settings-grid-2,
+    .settings-grid-3 {
+        grid-template-columns: 1fr;
+    }
+}
 </style>
 {% endblock %}
 
 {% block content %}
-
 {% include 'core/includes/sidebar.html' with active='settings' %}
 
 <div class="inv-main">
-    <!-- Settings left nav -->
     <div class="settings-nav">
         <h3>Settings</h3>
-
-        <a class="nav-item active" onclick="loadSection('profile')" id="nav-profile">
-            <i class="bi bi-person"></i> My Profile
+        <a class="nav-item" id="nav-users" onclick="loadSection('users')">
+            <i class="bi bi-people"></i> Users
         </a>
-
-        <div class="nav-section" onclick="toggleSection('account')">
-            <i class="bi bi-people icon"></i> Account
-            <i class="bi bi-chevron-right arrow"></i>
-        </div>
-        <div class="nav-sub" id="sub-account">
-            <a class="nav-item" onclick="loadSection('account-info')" id="nav-account-info">Account Info</a>
-            <a class="nav-item" onclick="loadSection('users')" id="nav-users">Users</a>
-        </div>
-
-        <div class="nav-section" onclick="toggleSection('items')">
-            <i class="bi bi-box-seam icon"></i> Items
-            <i class="bi bi-chevron-right arrow"></i>
-        </div>
-        <div class="nav-sub" id="sub-items">
-            <a class="nav-item" onclick="loadSection('item-groups')" id="nav-item-groups">Item Groups</a>
-            <a class="nav-item" onclick="loadSection('departments')" id="nav-departments">Departments</a>
-        </div>
-
-        <a class="nav-item" onclick="loadSection('processing')" id="nav-processing">
-            <i class="bi bi-gear"></i> Processing
-        </a>
-
-        <a class="nav-item" onclick="loadSection('vendors')" id="nav-vendors">
-            <i class="bi bi-building"></i> Vendors
-        </a>
-
-        <a class="nav-item" href="{% url 'billing_page' %}" id="nav-billing">
+        <a class="nav-item" id="nav-billing" onclick="loadSection('billing')">
             <i class="bi bi-credit-card"></i> Billing
         </a>
     </div>
 
-    <!-- Content area -->
-    <div class="settings-content" id="settingsContent">
-        <div class="text-center text-muted py-5">Loading...</div>
-    </div>
+    <div class="settings-content" id="settingsContent"></div>
 </div>
 
+<div class="settings-modal" id="userModal">
+    <div class="settings-modal-card">
+        <div class="settings-modal-head">
+            <h4 id="userModalTitle">Add User</h4>
+            <button class="settings-modal-close" onclick="closeUserModal()">&times;</button>
+        </div>
+        <div class="settings-modal-body">
+            <div class="settings-grid-2">
+                <div class="settings-field">
+                    <label>First Name</label>
+                    <input id="userFirstName" type="text">
+                </div>
+                <div class="settings-field">
+                    <label>Last Name</label>
+                    <input id="userLastName" type="text">
+                </div>
+                <div class="settings-field">
+                    <label>Username</label>
+                    <input id="userUsername" type="text">
+                </div>
+                <div class="settings-field">
+                    <label>Email</label>
+                    <input id="userEmail" type="email">
+                </div>
+                <div class="settings-field">
+                    <label>Password</label>
+                    <input id="userPassword" type="password" placeholder="Required for new users">
+                </div>
+            </div>
+            <div class="settings-grid-2" style="margin-top:1rem;">
+                <label class="settings-checkbox">
+                    <input id="userIsAdmin" type="checkbox">
+                    Admin access
+                </label>
+                <label class="settings-checkbox">
+                    <input id="userIsActive" type="checkbox" checked>
+                    Active user
+                </label>
+            </div>
+            <div class="settings-modal-actions">
+                <button class="settings-btn settings-btn-secondary" onclick="closeUserModal()">Cancel</button>
+                <button class="settings-btn settings-btn-primary" id="userSaveButton" onclick="saveUser()">Save User</button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-let currentSection = 'profile';
+const settingsState = {
+    section: 'users',
+    users: [],
+    editingUserId: null,
+};
 
-document.addEventListener('DOMContentLoaded', () => loadSection('profile'));
+const billingState = {
+    tenantName: '{{ tenant.name|default:""|escapejs }}',
+    stripeCustomerId: '{{ tenant.stripe_customer_id|default:""|escapejs }}',
+    stripeSubscriptionId: '{{ tenant.stripe_subscription_id|default:""|escapejs }}',
+    subscriptionStatus: '{{ tenant.subscription_status|default:"trialing"|escapejs }}',
+    trialEndsAt: '{{ tenant.trial_ends_at|date:"Y-m-d H:i"|default:""|escapejs }}',
+    subscriptionEndsAt: '{{ tenant.subscription_ends_at|date:"Y-m-d H:i"|default:""|escapejs }}',
+};
 
-function toggleSection(name) {
-    const sub = document.getElementById('sub-' + name);
-    const section = sub.previousElementSibling;
-    sub.classList.toggle('open');
-    section.classList.toggle('open');
+document.addEventListener('DOMContentLoaded', () => {
+    const params = new URLSearchParams(window.location.search);
+    const initialSection = params.get('section') || 'users';
+    loadSection(initialSection);
+});
+
+function escapeHtml(value) {
+    return String(value || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function formatStatusLabel(value) {
+    return String(value || 'trialing')
+        .replace(/_/g, ' ')
+        .replace(/\b\w/g, letter => letter.toUpperCase());
+}
+
+function updateUrlSection(section) {
+    const params = new URLSearchParams(window.location.search);
+    params.set('section', section);
+    const next = `${window.location.pathname}?${params.toString()}`;
+    window.history.replaceState({}, '', next);
 }
 
 function loadSection(section) {
-    currentSection = section;
-    // Highlight active nav
+    settingsState.section = section;
+    updateUrlSection(section);
     document.querySelectorAll('.settings-nav .nav-item').forEach(el => el.classList.remove('active'));
-    const navEl = document.getElementById('nav-' + section);
-    if (navEl) navEl.classList.add('active');
+    const nav = document.getElementById(`nav-${section}`);
+    if (nav) nav.classList.add('active');
 
+    if (section === 'billing') {
+        renderBilling();
+        return;
+    }
+
+    renderUsers();
+}
+
+function renderSectionHeader(title, subtitle) {
+    return `
+        <div class="settings-title">${escapeHtml(title)}</div>
+        <div class="settings-subtitle">${escapeHtml(subtitle)}</div>
+    `;
+}
+
+function renderQueryBanner() {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('checkout') === 'success') {
+        return `<div class="settings-banner success">Billing checkout completed. Your tenant billing record will update as Stripe finishes syncing.</div>`;
+    }
+    if (params.get('portal') === 'return') {
+        return `<div class="settings-banner success">Billing changes saved. Your tenant billing record has been refreshed.</div>`;
+    }
+    return '';
+}
+
+async function renderUsers() {
     const content = document.getElementById('settingsContent');
-
-    if (section === 'profile') renderProfile(content);
-    else if (section === 'account-info') renderAccountInfo(content);
-    else if (section === 'users') renderUsers(content);
-    else if (section === 'item-groups') renderItemGroups(content);
-    else content.innerHTML = `<h2>${esc(section.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()))}</h2><div class="settings-card"><p class="text-muted">Coming soon.</p></div>`;
-}
-
-// ── Profile ─────────────────────────────────────────────────────
-
-async function renderProfile(el) {
-    const res = await fetch('/api/settings/profile/');
-    const data = await res.json();
-
-    el.innerHTML = `
-        <h2>My Profile</h2>
-        <div class="settings-card">
-            <h5>Personal Information</h5>
-            <div class="s-grid" style="margin-top:1rem;">
-                <div class="s-field"><label>First Name</label><input type="text" id="s-first" value="${esc(data.first_name)}"></div>
-                <div class="s-field"><label>Middle Name</label><input type="text" id="s-middle" value=""></div>
-                <div class="s-field"><label>Last Name</label><input type="text" id="s-last" value="${esc(data.last_name)}"></div>
-            </div>
-        </div>
-        <div class="settings-card">
-            <h5>Login Information</h5>
-            <div class="hint">Set preferences related to login and your personal account security.</div>
-            <div class="s-grid">
-                <div class="s-field"><label>Username</label><input type="text" value="${esc(data.username)}" disabled></div>
-                <div class="s-field"><label>Email</label><input type="text" id="s-email" value="${esc(data.email)}"></div>
-                <div class="s-field"><label>Password</label>
-                    <div style="display:flex;gap:0.5rem;">
-                        <input type="password" value="********" disabled style="flex:1;">
-                        <button class="btn-inv-outline">Reset Password</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <button class="btn-submit" onclick="withSpinner(this, () => saveProfile())">Submit</button>
+    content.innerHTML = renderSectionHeader('Users', 'Create, update, and remove tenant users from one place.') + `
+        <div class="settings-card"><div class="settings-empty">Loading users...</div></div>
     `;
-}
 
-async function saveProfile() {
-    await fetch('/api/settings/profile/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
-        body: JSON.stringify({
-            first_name: document.getElementById('s-first').value,
-            last_name: document.getElementById('s-last').value,
-            email: document.getElementById('s-email').value,
-        }),
-    });
-    alert('Profile saved.');
-}
-
-// ── Account Info ────────────────────────────────────────────────
-
-async function renderAccountInfo(el) {
-    const res = await fetch('/api/settings/account/');
-    const data = await res.json();
-
-    el.innerHTML = `
-        <h2>Account Info</h2>
-        <div class="settings-card">
-            <h5>Company Information</h5>
-            <div class="s-grid" style="margin-top:1rem;">
-                <div class="s-field"><label>Company Name</label><input type="text" id="a-name" value="${esc(data.name)}"></div>
-                <div class="s-field"><label>Address</label><input type="text" id="a-address" value="${esc(data.address)}"></div>
-                <div class="s-field"><label>City</label><input type="text" id="a-city" value="${esc(data.city)}"></div>
-                <div class="s-field"><label>State</label><input type="text" id="a-state" value="${esc(data.state)}"></div>
-                <div class="s-field"><label>Zip</label><input type="text" id="a-zip" value="${esc(data.zipcode)}"></div>
-                <div class="s-field"><label>Phone</label><input type="text" id="a-phone" value="${esc(data.phone)}"></div>
-            </div>
-        </div>
-        <button class="btn-submit" onclick="withSpinner(this, () => saveAccount())">Save</button>
-    `;
-}
-
-async function saveAccount() {
-    await fetch('/api/settings/account/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
-        body: JSON.stringify({
-            name: document.getElementById('a-name').value,
-            address: document.getElementById('a-address').value,
-            city: document.getElementById('a-city').value,
-            state: document.getElementById('a-state').value,
-            zipcode: document.getElementById('a-zip').value,
-            phone: document.getElementById('a-phone').value,
-        }),
-    });
-    alert('Account saved.');
-}
-
-// ── Users ───────────────────────────────────────────────────────
-
-async function renderUsers(el) {
     let users = [];
     try {
         const res = await fetch('/api/settings/users/');
         const data = await res.json();
         users = data.users || [];
-    } catch {}
+    } catch (error) {
+        users = [];
+    }
 
-    // Fallback: use manage_users page link if API fails
-    el.innerHTML = `
-        <h2>Users</h2>
-        <div class="settings-card" style="max-width:1000px;">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
-                <input type="text" class="search-box" placeholder="Search..." style="border:1px solid #d1d5db;border-radius:8px;padding:6px 12px;font-size:0.85rem;width:220px;" oninput="filterUsers(this.value)">
+    settingsState.users = users;
+    drawUsers(users);
+}
+
+function drawUsers(users) {
+    const content = document.getElementById('settingsContent');
+    content.innerHTML = renderSectionHeader('Users', 'Create, update, and remove tenant users from one place.') + `
+        <div class="settings-card">
+            <div class="settings-toolbar">
+                <input class="settings-search" type="text" placeholder="Search users..." style="max-width:280px;" oninput="filterUsers(this.value)">
+                <button class="settings-btn settings-btn-primary" onclick="openUserModal()">+ Add User</button>
             </div>
-            <table class="users-table" id="usersTable">
-                <thead><tr><th>Name</th><th>Username</th><th>Permissions</th><th>Status</th></tr></thead>
-                <tbody>
-                    ${users.length ? users.map(u => `<tr>
-                        <td><span class="user-avatar"><i class="bi bi-person"></i></span><a href="#">${esc(u.name)}</a><br><span style="font-size:0.78rem;color:#94a3b8;">${esc(u.email)}</span></td>
-                        <td>${esc(u.username)}</td>
-                        <td style="font-size:0.78rem;color:#64748b;">${u.is_admin ? 'Admin' : 'User'}</td>
-                        <td><span class="badge-active">${u.is_active ? 'Active' : 'Inactive'}</span></td>
-                    </tr>`).join('') : '<tr><td colspan="4" class="text-center text-muted py-3"><a href="/manage-users/" style="color:#2563eb;">Manage users here</a></td></tr>'}
+            <table class="users-table">
+                <thead>
+                    <tr>
+                        <th>User</th>
+                        <th>Username</th>
+                        <th>Permissions</th>
+                        <th>Status</th>
+                        <th style="text-align:right;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="usersTableBody">
+                    ${users.length ? users.map(user => `
+                        <tr data-user-id="${user.id}">
+                            <td>
+                                <div class="user-name">${escapeHtml(user.name)}</div>
+                                <div class="user-email">${escapeHtml(user.email)}</div>
+                            </td>
+                            <td>${escapeHtml(user.username)}</td>
+                            <td><span class="pill ${user.is_admin ? 'admin' : 'user'}">${user.is_admin ? 'Admin' : 'User'}</span></td>
+                            <td><span class="pill ${user.is_active ? 'active' : 'inactive'}">${user.is_active ? 'Active' : 'Inactive'}</span></td>
+                            <td>
+                                <div class="row-actions">
+                                    <button class="settings-btn settings-btn-secondary" onclick="openUserModal(${user.id})">Edit</button>
+                                    <button class="settings-btn settings-btn-danger" onclick="deleteUser(${user.id})">Delete</button>
+                                </div>
+                            </td>
+                        </tr>
+                    `).join('') : `
+                        <tr>
+                            <td colspan="5" class="settings-empty">No users yet.</td>
+                        </tr>
+                    `}
                 </tbody>
             </table>
         </div>
     `;
 }
 
-function filterUsers(q) {
-    const rows = document.querySelectorAll('#usersTable tbody tr');
-    rows.forEach(r => { r.style.display = r.textContent.toLowerCase().includes(q.toLowerCase()) ? '' : 'none'; });
+function filterUsers(query) {
+    const normalized = String(query || '').trim().toLowerCase();
+    const filtered = settingsState.users.filter(user =>
+        `${user.name} ${user.email} ${user.username}`.toLowerCase().includes(normalized)
+    );
+    drawUsers(filtered);
 }
 
-// ── Item Groups ─────────────────────────────────────────────────
+function openUserModal(userId = null) {
+    settingsState.editingUserId = userId;
+    const user = settingsState.users.find(item => item.id === userId);
+    document.getElementById('userModalTitle').textContent = user ? 'Edit User' : 'Add User';
+    document.getElementById('userFirstName').value = user ? (user.first_name || '') : '';
+    document.getElementById('userLastName').value = user ? (user.last_name || '') : '';
+    document.getElementById('userUsername').value = user ? (user.username || '') : '';
+    document.getElementById('userEmail').value = user ? (user.email || '') : '';
+    document.getElementById('userPassword').value = '';
+    document.getElementById('userPassword').placeholder = user ? 'Leave blank to keep current password' : 'Required for new users';
+    document.getElementById('userIsAdmin').checked = user ? !!user.is_admin : false;
+    document.getElementById('userIsActive').checked = user ? !!user.is_active : true;
+    document.getElementById('userModal').classList.add('open');
+}
 
-async function renderItemGroups(el) {
-    const res = await fetch('/api/inventory/groups/');
-    const data = await res.json();
-    const groups = data.groups || [];
+function closeUserModal() {
+    settingsState.editingUserId = null;
+    document.getElementById('userModal').classList.remove('open');
+}
 
-    el.innerHTML = `
-        <h2>Item Groups</h2>
-        <div class="settings-card" style="max-width:800px;">
-            <table class="users-table">
-                <thead><tr><th>Group Name</th><th>Sort Order</th><th></th></tr></thead>
-                <tbody>
-                    ${groups.map(g => `<tr>
-                        <td style="font-weight:600;">${esc(g.name)}</td>
-                        <td>${g.sort_order}</td>
-                        <td><button class="btn-inv-outline" style="padding:4px 12px;font-size:0.78rem;">Edit</button></td>
-                    </tr>`).join('')}
-                    ${!groups.length ? '<tr><td colspan="3" class="text-center text-muted py-3">No item groups.</td></tr>' : ''}
-                </tbody>
-            </table>
+async function saveUser() {
+    const userId = settingsState.editingUserId;
+    const payload = {
+        first_name: document.getElementById('userFirstName').value.trim(),
+        last_name: document.getElementById('userLastName').value.trim(),
+        username: document.getElementById('userUsername').value.trim(),
+        email: document.getElementById('userEmail').value.trim(),
+        password: document.getElementById('userPassword').value,
+        is_admin: document.getElementById('userIsAdmin').checked,
+        is_active: document.getElementById('userIsActive').checked,
+    };
+
+    if (!payload.username) {
+        alert('Username is required.');
+        return;
+    }
+    if (!userId && !payload.password) {
+        alert('Password is required for a new user.');
+        return;
+    }
+
+    const button = document.getElementById('userSaveButton');
+    const endpoint = userId ? `/api/settings/users/${userId}/update/` : '/api/settings/users/create/';
+
+    await withSpinner(button, async () => {
+        const res = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken'),
+            },
+            body: JSON.stringify(payload),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+            throw new Error(data.error || 'Unable to save user.');
+        }
+        closeUserModal();
+        await renderUsers();
+    }).catch(error => {
+        alert(error.message || 'Unable to save user.');
+    });
+}
+
+async function deleteUser(userId) {
+    const user = settingsState.users.find(item => item.id === userId);
+    if (!user) return;
+    if (!confirm(`Delete ${user.name || user.username}?`)) return;
+
+    try {
+        const res = await fetch(`/api/settings/users/${userId}/delete/`, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': getCookie('csrftoken') },
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+            throw new Error(data.error || 'Unable to delete user.');
+        }
+        await renderUsers();
+    } catch (error) {
+        alert(error.message || 'Unable to delete user.');
+    }
+}
+
+function renderBilling() {
+    const content = document.getElementById('settingsContent');
+    const customerLabel = billingState.stripeCustomerId || 'Not linked yet';
+    const subscriptionLabel = billingState.stripeSubscriptionId || 'No subscription yet';
+    const endDateLabel = billingState.subscriptionEndsAt || billingState.trialEndsAt || 'Not set';
+
+    content.innerHTML = renderSectionHeader('Billing', 'Manage your card and subscription. Stripe updates flow back into the tenant record in system admin.') + `
+        ${renderQueryBanner()}
+        <div class="settings-card">
+            <h4>${escapeHtml(billingState.tenantName)} Billing</h4>
+            <div class="settings-hint">Card entry stays inside Stripe checkout, and the Stripe customer/subscription IDs sync back to your tenant record automatically.</div>
+            <div class="billing-stats">
+                <div class="billing-stat">
+                    <label>Status</label>
+                    <strong>${escapeHtml(formatStatusLabel(billingState.subscriptionStatus))}</strong>
+                </div>
+                <div class="billing-stat">
+                    <label>Stripe Customer</label>
+                    <strong>${escapeHtml(customerLabel)}</strong>
+                </div>
+                <div class="billing-stat">
+                    <label>Current Period / Trial End</label>
+                    <strong>${escapeHtml(endDateLabel)}</strong>
+                </div>
+            </div>
+            <div class="billing-note">
+                Use <strong>Add Card + Start Billing</strong> to enter the card and start the subscription. Use <strong>Manage Billing</strong> later to update the card or manage the subscription. Both actions keep the tenant billing view in system admin aligned with Stripe.
+            </div>
+            <div class="billing-actions">
+                <form method="post" action="{% url 'billing_checkout' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="next" value="{% url 'settings_page' %}?section=billing">
+                    <button type="submit" class="settings-btn settings-btn-primary">Add Card + Start Billing</button>
+                </form>
+                <form method="post" action="{% url 'billing_portal' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="next" value="{% url 'settings_page' %}?section=billing">
+                    <button type="submit" class="settings-btn settings-btn-secondary" ${billingState.stripeCustomerId ? '' : 'disabled'}>Manage Billing</button>
+                </form>
+            </div>
+        </div>
+        <div class="settings-card">
+            <h4>What Updates In System Admin</h4>
+            <div class="settings-hint">These are the fields your system admin tenant view uses.</div>
+            <div class="settings-grid-3">
+                <div class="billing-stat">
+                    <label>Subscription Status</label>
+                    <strong>${escapeHtml(formatStatusLabel(billingState.subscriptionStatus))}</strong>
+                </div>
+                <div class="billing-stat">
+                    <label>Stripe Customer ID</label>
+                    <strong>${escapeHtml(customerLabel)}</strong>
+                </div>
+                <div class="billing-stat">
+                    <label>Stripe Subscription ID</label>
+                    <strong>${escapeHtml(subscriptionLabel)}</strong>
+                </div>
+            </div>
         </div>
     `;
 }

@@ -44,7 +44,6 @@ def processing_hub(request):
         },
     )
 sales_orders_page = _tenant_page("core/sales_orders.html")
-settings_page = _tenant_page("core/settings.html")
 vendor_list_page = _tenant_page("core/vendor_list.html")
 customer_list_page = _tenant_page("core/customer_list.html")
 trace_page = _tenant_page("core/trace.html")
@@ -91,6 +90,13 @@ def inventory_item_detail_page(request, item_id):
             ],
         },
     )
+
+
+@login_required
+def settings_page(request):
+    if not getattr(request, "tenant", None):
+        return redirect("home")
+    return render(request, "core/settings.html", {"tenant": request.tenant})
 
 
 @login_required

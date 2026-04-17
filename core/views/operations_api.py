@@ -3,6 +3,7 @@ import io
 import json
 from decimal import Decimal
 
+from django.contrib.auth.models import User as DjangoUser
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.db.models import Q, Sum
@@ -45,6 +46,13 @@ def _require_tenant(request):
     if not tenant:
         return None, JsonResponse({"error": "No tenant context"}, status=400)
     return tenant, None
+
+
+def _require_tenant_admin(request, tenant):
+    tenant_user = TenantUser.objects.filter(tenant=tenant, user=request.user).first()
+    if not tenant_user or not tenant_user.is_admin:
+        return JsonResponse({"error": "Admin access is required."}, status=403)
+    return None
 
 
 def _lot_qc_status(lot):
@@ -1953,6 +1961,8 @@ def settings_users(request):
                         f"{tenant_user.user.first_name} {tenant_user.user.last_name}".strip()
                         or tenant_user.user.get_username()
                     ),
+                    "first_name": tenant_user.user.first_name or "",
+                    "last_name": tenant_user.user.last_name or "",
                     "email": tenant_user.user.email or "",
                     "username": tenant_user.user.get_username(),
                     "is_admin": tenant_user.is_admin,
@@ -1962,6 +1972,104 @@ def settings_users(request):
             ]
         }
     )
+
+
+@login_required
+@require_POST
+def settings_user_create(request):
+    tenant, error = _require_tenant(request)
+    if error:
+        return error
+    admin_error = _require_tenant_admin(request, tenant)
+    if admin_error:
+        return admin_error
+
+    data = _parse_json(request)
+    username = (data.get("username") or "").strip()
+    email = (data.get("email") or "").strip()
+    first_name = (data.get("first_name") or "").strip()
+    last_name = (data.get("last_name") or "").strip()
+    password = (data.get("password") or "").strip()
+    is_admin = bool(data.get("is_admin"))
+    is_active = data.get("is_active")
+    is_active = True if is_active is None else bool(is_active)
+
+    if not username:
+        return JsonResponse({"error": "Username is required."}, status=400)
+    if not password:
+        return JsonResponse({"error": "Password is required."}, status=400)
+    if DjangoUser.objects.filter(username__iexact=username).exists():
+        return JsonResponse({"error": "That username is already in use."}, status=400)
+
+    with transaction.atomic():
+        user = DjangoUser.objects.create_user(
+            username=username,
+            email=email,
+            password=password,
+            first_name=first_name,
+            last_name=last_name,
+            is_active=is_active,
+        )
+        TenantUser.objects.create(user=user, tenant=tenant, is_admin=is_admin)
+
+    return JsonResponse({"success": True})
+
+
+@login_required
+@require_POST
+def settings_user_update(request, user_id):
+    tenant, error = _require_tenant(request)
+    if error:
+        return error
+    admin_error = _require_tenant_admin(request, tenant)
+    if admin_error:
+        return admin_error
+
+    tenant_user = get_object_or_404(TenantUser.objects.select_related("user"), tenant=tenant, user_id=user_id)
+    data = _parse_json(request)
+    user = tenant_user.user
+
+    username = (data.get("username") or user.username).strip()
+    email = (data.get("email") or "").strip()
+    first_name = (data.get("first_name") or "").strip()
+    last_name = (data.get("last_name") or "").strip()
+    password = (data.get("password") or "").strip()
+
+    username_taken = DjangoUser.objects.filter(username__iexact=username).exclude(id=user.id).exists()
+    if username_taken:
+        return JsonResponse({"error": "That username is already in use."}, status=400)
+
+    user.username = username
+    user.email = email
+    user.first_name = first_name
+    user.last_name = last_name
+    user.is_active = bool(data.get("is_active"))
+    if password:
+        user.set_password(password)
+    user.save()
+
+    tenant_user.is_admin = bool(data.get("is_admin"))
+    tenant_user.save(update_fields=["is_admin"])
+
+    return JsonResponse({"success": True})
+
+
+@login_required
+@require_POST
+def settings_user_delete(request, user_id):
+    tenant, error = _require_tenant(request)
+    if error:
+        return error
+    admin_error = _require_tenant_admin(request, tenant)
+    if admin_error:
+        return admin_error
+
+    tenant_user = get_object_or_404(TenantUser.objects.select_related("user"), tenant=tenant, user_id=user_id)
+    if tenant_user.user_id == request.user.id:
+        return JsonResponse({"error": "You cannot delete your own user from Settings."}, status=400)
+
+    tenant_user.user.delete()
+    return JsonResponse({"success": True})
 
 
 @login_required

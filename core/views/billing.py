@@ -7,6 +7,7 @@ from django.contrib.auth.decorators import login_required
 from django.http import HttpResponseBadRequest, JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
@@ -95,6 +96,20 @@ def _build_checkout_line_item():
     }
 
 
+def _resolve_return_path(request, fallback_name="billing_page"):
+    candidate = (request.POST.get("next") or request.GET.get("next") or "").strip()
+    if candidate and url_has_allowed_host_and_scheme(candidate, allowed_hosts={request.get_host()}, require_https=request.is_secure()):
+        return candidate
+    if candidate.startswith("/"):
+        return candidate
+    return reverse(fallback_name)
+
+
+def _append_query_value(path, key, value):
+    joiner = "&" if "?" in path else "?"
+    return f"{path}{joiner}{key}={value}"
+
+
 @login_required
 def billing_page(request):
     tenant = getattr(request, "tenant", None)
@@ -137,8 +152,9 @@ def billing_checkout(request):
         return redirect("billing_page")
 
     customer_id = _get_or_create_customer(stripe, tenant, request.user.email)
-    success_url = request.build_absolute_uri(f"{reverse('billing_page')}?checkout=success")
-    cancel_url = request.build_absolute_uri(reverse("billing_page"))
+    return_path = _resolve_return_path(request)
+    success_url = request.build_absolute_uri(_append_query_value(return_path, "checkout", "success"))
+    cancel_url = request.build_absolute_uri(return_path)
 
     session = stripe.checkout.Session.create(
         mode="subscription",
@@ -175,7 +191,7 @@ def billing_portal(request):
 
     session = stripe.billing_portal.Session.create(
         customer=tenant.stripe_customer_id,
-        return_url=request.build_absolute_uri(f"{reverse('billing_page')}?portal=return"),
+        return_url=request.build_absolute_uri(_append_query_value(_resolve_return_path(request), "portal", "return")),
     )
     return redirect(session.url, permanent=False)
 
