@@ -62,6 +62,30 @@
     border-color: #ddd6fe;
     color: #7c3aed;
 }
+
+.process-result-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.86rem;
+}
+
+.process-result-table th {
+    background: #f8fafc;
+    color: #64748b;
+    font-size: 0.73rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    padding: 10px 14px;
+    border-bottom: 1px solid #e2e8f0;
+    white-space: nowrap;
+}
+
+.process-result-table td {
+    padding: 12px 14px;
+    border-bottom: 1px solid #f1f5f9;
+    color: #334155;
+    vertical-align: middle;
+}
 </style>
 {% endblock %}
 
@@ -76,7 +100,7 @@
                 {% if sale_mode %}
                 Choose how you're processing this lot before creating the sale and invoice.
                 {% else %}
-                Choose a received lot and start processing from that row.
+                See what came in, process and sell it from the row, and review the sold result below.
                 {% endif %}
             </div>
         </div>
@@ -119,6 +143,32 @@
             <span id="readyLotInfo">0 lots</span>
         </div>
     </div>
+
+    <div class="inv-table-card">
+        <div style="padding: 14px 18px; border-bottom: 1px solid #f1f5f9;">
+            <h6 style="margin:0; font-weight:700; font-size:0.95rem;">Processed And Sold</h6>
+        </div>
+        <div style="overflow-x:auto;">
+            <table class="process-result-table">
+                <thead>
+                    <tr>
+                        <th>Product</th>
+                        <th>Source Lot</th>
+                        <th style="text-align:right;">Sold</th>
+                        <th>Unit</th>
+                        <th>Customer</th>
+                        <th style="text-align:right;">Amount</th>
+                    </tr>
+                </thead>
+                <tbody id="processedSoldTbody">
+                    <tr><td colspan="6" class="text-center text-muted py-4">Loading processed sales...</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="inv-pagination">
+            <span id="processedSoldInfo">0 sold rows</span>
+        </div>
+    </div>
 </div>
 {% endblock %}
 
@@ -126,9 +176,11 @@
 <script>
 let lotSearchTimeout;
 let readyLots = [];
+let processedSoldRows = [];
 
 document.addEventListener('DOMContentLoaded', () => {
     loadReadyLots();
+    loadProcessedSold();
 });
 
 function debounceLotSearch() {
@@ -185,6 +237,41 @@ function renderReadyLots() {
 function startProcessForLot(processType, lotId) {
     const saleMode = {% if sale_mode %}'&mode=sale'{% else %}''{% endif %};
     window.location.href = `/operations/processing/new/?type=${encodeURIComponent(processType)}&lot_id=${lotId}${saleMode}`;
+}
+
+async function loadProcessedSold() {
+    try {
+        const res = await fetch('/api/processing/sold-results/');
+        const data = await res.json();
+        processedSoldRows = data.results || [];
+        renderProcessedSold();
+    } catch {
+        document.getElementById('processedSoldTbody').innerHTML =
+            '<tr><td colspan="6" class="text-center text-muted py-4">Failed to load processed sales.</td></tr>';
+        document.getElementById('processedSoldInfo').textContent = '0 sold rows';
+    }
+}
+
+function renderProcessedSold() {
+    const tbody = document.getElementById('processedSoldTbody');
+    if (!processedSoldRows.length) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">No processed sales yet.</td></tr>';
+        document.getElementById('processedSoldInfo').textContent = '0 sold rows';
+        return;
+    }
+
+    tbody.innerHTML = processedSoldRows.map(row => `
+        <tr>
+            <td style="font-weight:700; color:#0f172a;">${esc(row.product || row.source_product || '--')}</td>
+            <td style="font-weight:600; color:#2563eb;">${esc(row.source_lot || '--')}</td>
+            <td style="text-align:right; font-weight:700;">${Number(row.sold_qty || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</td>
+            <td>${esc(row.unit_type || '')}</td>
+            <td>${esc(row.customer_name || '--')}</td>
+            <td style="text-align:right;">$${Number(row.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+        </tr>
+    `).join('');
+
+    document.getElementById('processedSoldInfo').textContent = `${processedSoldRows.length} sold row${processedSoldRows.length === 1 ? '' : 's'}`;
 }
 </script>
 {% endblock %}

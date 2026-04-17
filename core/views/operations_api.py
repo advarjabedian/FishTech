@@ -1351,13 +1351,15 @@ def processing_products(request):
 
 @login_required
 def processing_source_lots(request):
-    """Return inventory lots available for processing (passed QC, on-hand > 0)."""
+    """Return original received inventory lots available for processing."""
     tenant, error = _require_tenant(request)
     if error:
         return error
     lots = Inventory.objects.filter(
         tenant=tenant,
         unitsonhand__gt=0,
+    ).filter(
+        Q(purchase_order__isnull=False) | ~Q(poid="")
     ).filter(
         Q(quality_check__status="pass") | Q(quality_check__isnull=True)
     ).select_related("quality_check").order_by("-id")
@@ -1398,6 +1400,75 @@ def processing_source_lots(request):
             for lot in processable_lots
         ]
     })
+
+
+@login_required
+def processing_sold_results(request):
+    tenant, error = _require_tenant(request)
+    if error:
+        return error
+
+    outputs = list(
+        ProcessBatchOutput.objects.filter(tenant=tenant, inventory__isnull=False)
+        .select_related("inventory", "batch", "product")
+        .order_by("-id")
+    )
+    if not outputs:
+        return JsonResponse({"results": []})
+
+    output_by_inventory = {output.inventory_id: output for output in outputs if output.inventory_id}
+    batch_ids = {output.batch_id for output in outputs if output.batch_id}
+
+    source_map = {}
+    for source in ProcessBatchSource.objects.filter(tenant=tenant, batch_id__in=batch_ids).select_related("inventory"):
+        source_map.setdefault(source.batch_id, []).append(source)
+
+    allocs = (
+        SalesOrderAllocation.objects.filter(tenant=tenant, inventory_id__in=output_by_inventory.keys())
+        .select_related("inventory", "sales_order_item__sales_order", "sales_order_item__product")
+        .order_by("-created_at", "-id")
+    )
+
+    results = []
+    for alloc in allocs:
+        output = output_by_inventory.get(alloc.inventory_id)
+        if not output or not alloc.sales_order_item_id or not alloc.sales_order_item.sales_order_id:
+            continue
+
+        sales_item = alloc.sales_order_item
+        order = sales_item.sales_order
+        batch_sources = source_map.get(output.batch_id, [])
+        source_lots = ", ".join(
+            dict.fromkeys(
+                (src.inventory.vendorlot or f"LOT-{src.inventory_id}")
+                for src in batch_sources if src.inventory_id and src.inventory
+            )
+        ) or (alloc.inventory.vendorlot or f"LOT-{alloc.inventory_id}")
+        source_product = ", ".join(
+            dict.fromkeys(
+                (src.inventory.desc or src.inventory.productid or "")
+                for src in batch_sources if src.inventory_id and src.inventory
+            )
+        ) or (alloc.inventory.desc or alloc.inventory.productid or "")
+
+        sold_qty = Decimal(str(alloc.quantity or 0))
+        unit_price = Decimal(str(sales_item.unit_price or 0))
+        results.append(
+            {
+                "id": alloc.id,
+                "product": sales_item.description or ((sales_item.product.description or sales_item.product.item_name) if sales_item.product_id and sales_item.product else (alloc.inventory.desc or alloc.inventory.productid or "")),
+                "source_product": source_product,
+                "source_lot": source_lots,
+                "sold_qty": _to_float(sold_qty) or 0,
+                "unit_type": alloc.unit_type or sales_item.unit_type or alloc.inventory.unittype or "",
+                "customer_name": order.customer_name or "",
+                "amount": _to_float(sold_qty * unit_price) or 0,
+                "order_number": order.order_number or "",
+                "sold_at": _date_str(order.order_date),
+            }
+        )
+
+    return JsonResponse({"results": results})
 
 
 @login_required
