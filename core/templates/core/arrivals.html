@@ -433,17 +433,12 @@ function renderTable() {
         return;
     }
 
-    const receiveStatusOpts = [['not_received', 'Not Received'], ['partial', 'Partial'], ['received', 'Received']];
     tbody.innerHTML = allOrders.map(po => {
         const canReceive = po.order_status !== 'cancelled' && po.receive_status !== 'received';
         return `
         <tr onclick="window.location='/operations/purchases/${po.id}/'">
             <td style="font-weight:700; color:#2563eb;">${safeEsc(po.po_number)}</td>
-            <td onclick="event.stopPropagation();">
-                <select class="inline-status-select badge-${po.receive_status}" onchange="updatePOReceiveStatus(${po.id}, this.value, this)">
-                    ${receiveStatusOpts.map(([value, label]) => `<option value="${value}" ${po.receive_status === value ? 'selected' : ''}>${label}</option>`).join('')}
-                </select>
-            </td>
+            <td><span class="badge-status badge-${po.receive_status}">${safeEsc(po.receive_status_display)}</span></td>
             <td>${safeEsc(po.vendor_name || '--')}</td>
             <td style="text-align:right;">$${Number(po.total || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
             <td style="text-align:right;">${po.expected ? Number(po.expected).toLocaleString(undefined, { maximumFractionDigits: 2 }) : '--'}</td>
@@ -485,21 +480,6 @@ function renderPagination() {
 function goPage(page) {
     currentPage = page;
     loadOrders();
-}
-
-async function updatePOReceiveStatus(poId, value, selectEl) {
-    const res = await fetch(`/api/purchasing/orders/${poId}/update/`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
-        body: JSON.stringify({ receive_status: value }),
-    });
-    if (!res.ok) {
-        alert('Failed to update receive status.');
-        loadOrders();
-        return;
-    }
-    selectEl.className = 'inline-status-select badge-' + value;
-    await loadOrders();
 }
 
 function openNewPO() {

@@ -282,7 +282,6 @@ function renderProcessedSold() {
             <td style="text-align:right;">$${Number(row.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
             <td>
                 <div class="result-row-actions">
-                    <button class="result-row-btn" onclick="editProcessedSold(${row.order_id})">Edit</button>
                     <button class="result-row-btn delete" onclick="deleteProcessedSold(${row.batch_id}, ${row.order_id})">Delete</button>
                 </div>
             </td>
@@ -290,10 +289,6 @@ function renderProcessedSold() {
     `).join('');
 
     document.getElementById('processedSoldInfo').textContent = `${processedSoldRows.length} sold row${processedSoldRows.length === 1 ? '' : 's'}`;
-}
-
-function editProcessedSold(orderId) {
-    window.location.href = `/sales/${orderId}/`;
 }
 
 async function deleteProcessedSold(batchId, orderId) {

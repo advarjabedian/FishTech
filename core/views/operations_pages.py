@@ -1,7 +1,7 @@
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
 
-from core.models import ProcessBatch, Product, PurchaseOrder, SalesOrder, SalesOrderAllocation
+from core.models import ProcessBatch, Product, PurchaseOrder
 
 
 PROCESS_LABELS = {
@@ -37,7 +37,9 @@ def processing_hub(request):
             "selected_lot_id": request.GET.get("lot_id", "").strip(),
         },
     )
-sales_orders_page = _tenant_page("core/sales_orders.html")
+@login_required
+def sales_orders_page(request):
+    return redirect("processing_hub")
 vendor_list_page = _tenant_page("core/vendor_list.html")
 customer_list_page = _tenant_page("core/customer_list.html")
 trace_page = _tenant_page("core/trace.html")
@@ -107,27 +109,7 @@ def processing_new(request):
 
 @login_required
 def sales_order_detail(request, order_id):
-    if not getattr(request, "tenant", None):
-        return redirect("home")
-    so = get_object_or_404(SalesOrder, id=order_id, tenant=request.tenant)
-    # Traceability: find allocated lots and their source POs
-    allocs = SalesOrderAllocation.objects.filter(
-        tenant=request.tenant, sales_order_item__sales_order=so
-    ).select_related("inventory__purchase_order")
-    trace_lots = {}
-    trace_pos = {}
-    for a in allocs:
-        inv = a.inventory
-        if inv and inv.id not in trace_lots:
-            trace_lots[inv.id] = {"trace_lot": inv.vendorlot or f"LOT-{inv.id}"}
-            po = inv.purchase_order
-            if po and po.id not in trace_pos:
-                trace_pos[po.id] = {"id": po.id, "po_number": po.po_number}
-    return render(request, "core/sales_order_detail.html", {
-        "so": so,
-        "trace_lots": list(trace_lots.values()),
-        "trace_pos": list(trace_pos.values()),
-    })
+    return redirect("processing_hub")
 
 
 @login_required

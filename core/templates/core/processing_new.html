@@ -556,7 +556,7 @@ async function submitAll() {
       headers:{'X-CSRFToken':getCookie('csrftoken')}
     });
 
-    location.href = `/sales/${orderId}/`;
+    location.href = `/operations/processing/`;
   } catch (err) {
     alert(err.message || 'Unable to complete processing and sale.');
     btn.disabled = false;

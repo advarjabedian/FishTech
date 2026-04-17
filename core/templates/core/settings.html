@@ -278,28 +278,13 @@
     letter-spacing: 0.03em;
 }
 
-.settings-input,
-.settings-select {
+.settings-input {
     width: 100%;
     border: 1px solid #d1d5db;
     border-radius: 10px;
     padding: 0.8rem 0.95rem;
     font-size: 0.92rem;
     background: #fff;
-}
-
-.settings-checkbox {
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-    color: #334155;
-    font-size: 0.92rem;
-    font-weight: 600;
-}
-
-.settings-checkbox input {
-    width: 18px;
-    height: 18px;
 }
 
 .settings-modal-actions {
@@ -343,7 +328,7 @@
                     class="users-search"
                     id="userSearch"
                     type="text"
-                    placeholder="Search by name, email, or username"
+                    placeholder="Search by username"
                     oninput="filterUsers(this.value)"
                 >
             </div>
@@ -351,16 +336,13 @@
                 <table class="users-table">
                     <thead>
                         <tr>
-                            <th>User</th>
                             <th>Username</th>
-                            <th>Role</th>
-                            <th>Status</th>
                             <th style="text-align: right;">Actions</th>
                         </tr>
                     </thead>
                     <tbody id="usersTableBody">
                         <tr>
-                            <td colspan="5" class="settings-empty">Loading users...</td>
+                            <td colspan="2" class="settings-empty">Loading users...</td>
                         </tr>
                     </tbody>
                 </table>
@@ -376,40 +358,15 @@
             <button class="settings-modal-close" type="button" onclick="closeUserModal()">&times;</button>
         </div>
         <div class="settings-modal-body">
-            <div class="settings-grid-2">
-                <div class="settings-field">
-                    <label for="userFirstName">First Name</label>
-                    <input class="settings-input" id="userFirstName" type="text">
-                </div>
-                <div class="settings-field">
-                    <label for="userLastName">Last Name</label>
-                    <input class="settings-input" id="userLastName" type="text">
-                </div>
+            <div class="settings-grid-2" style="grid-template-columns: 1fr;">
                 <div class="settings-field">
                     <label for="userUsername">Username</label>
                     <input class="settings-input" id="userUsername" type="text">
                 </div>
                 <div class="settings-field">
-                    <label for="userEmail">Email</label>
-                    <input class="settings-input" id="userEmail" type="email">
-                </div>
-                <div class="settings-field">
                     <label for="userPassword">Password</label>
                     <input class="settings-input" id="userPassword" type="password" placeholder="Required for new users">
                 </div>
-                <div class="settings-field">
-                    <label for="userRole">Role</label>
-                    <select class="settings-select" id="userRole">
-                        <option value="user">User</option>
-                        <option value="admin">Admin</option>
-                    </select>
-                </div>
-            </div>
-            <div style="margin-top: 1rem;">
-                <label class="settings-checkbox">
-                    <input id="userIsActive" type="checkbox" checked>
-                    Active user
-                </label>
             </div>
             <div class="settings-modal-actions">
                 <button class="settings-btn settings-btn-secondary" type="button" onclick="closeUserModal()">Cancel</button>
@@ -437,15 +394,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 });
-
-function escapeHtml(value) {
-    return String(value || '')
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
-}
 
 function getCookie(name) {
     const cookies = document.cookie ? document.cookie.split(';') : [];
@@ -485,16 +433,16 @@ async function loadUsers() {
         filterUsers(document.getElementById('userSearch').value);
     } catch (error) {
         document.getElementById('usersTableBody').innerHTML =
-            '<tr><td colspan="5" class="settings-empty">Failed to load users.</td></tr>';
+            '<tr><td colspan="2" class="settings-empty">Failed to load users.</td></tr>';
         showBanner(error.message || 'Failed to load users.');
     }
 }
 
 function filterUsers(query) {
     const normalized = String(query || '').trim().toLowerCase();
-    settingsState.filteredUsers = settingsState.users.filter((user) => {
-        return `${user.name} ${user.email} ${user.username}`.toLowerCase().includes(normalized);
-    });
+    settingsState.filteredUsers = settingsState.users.filter((user) =>
+        `${user.username}`.toLowerCase().includes(normalized)
+    );
     renderUsers();
 }
 
@@ -503,19 +451,13 @@ function renderUsers() {
     const users = settingsState.filteredUsers;
 
     if (!users.length) {
-        tbody.innerHTML = '<tr><td colspan="5" class="settings-empty">No users found.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="2" class="settings-empty">No users found.</td></tr>';
         return;
     }
 
     tbody.innerHTML = users.map((user) => `
         <tr>
-            <td>
-                <div class="user-name">${escapeHtml(user.name)}</div>
-                <div class="user-email">${escapeHtml(user.email || '')}</div>
-            </td>
-            <td>${escapeHtml(user.username)}</td>
-            <td><span class="pill ${user.is_admin ? 'admin' : 'user'}">${user.is_admin ? 'Admin' : 'User'}</span></td>
-            <td><span class="pill ${user.is_active ? 'active' : 'inactive'}">${user.is_active ? 'Active' : 'Inactive'}</span></td>
+            <td><div class="user-name">${esc(user.username)}</div></td>
             <td>
                 <div class="row-actions">
                     <button class="settings-btn settings-btn-secondary" type="button" onclick="openUserModal(${user.id})">Edit</button>
@@ -531,16 +473,11 @@ function openUserModal(userId = null) {
     settingsState.editingUserId = user ? user.id : null;
 
     document.getElementById('userModalTitle').textContent = user ? 'Edit User' : 'Add User';
-    document.getElementById('userFirstName').value = user ? (user.first_name || '') : '';
-    document.getElementById('userLastName').value = user ? (user.last_name || '') : '';
     document.getElementById('userUsername').value = user ? (user.username || '') : '';
-    document.getElementById('userEmail').value = user ? (user.email || '') : '';
     document.getElementById('userPassword').value = '';
     document.getElementById('userPassword').placeholder = user
         ? 'Leave blank to keep current password'
         : 'Required for new users';
-    document.getElementById('userRole').value = user && user.is_admin ? 'admin' : 'user';
-    document.getElementById('userIsActive').checked = user ? !!user.is_active : true;
     document.getElementById('userModal').classList.add('open');
     clearBanner();
 }
@@ -562,13 +499,13 @@ async function saveUser() {
     const userId = settingsState.editingUserId;
     const saveButton = document.getElementById('userSaveButton');
     const payload = {
-        first_name: document.getElementById('userFirstName').value.trim(),
-        last_name: document.getElementById('userLastName').value.trim(),
         username: document.getElementById('userUsername').value.trim(),
-        email: document.getElementById('userEmail').value.trim(),
         password: document.getElementById('userPassword').value,
-        is_admin: document.getElementById('userRole').value === 'admin',
-        is_active: document.getElementById('userIsActive').checked,
+        first_name: '',
+        last_name: '',
+        email: '',
+        is_admin: false,
+        is_active: true,
     };
 
     if (!payload.username) {
