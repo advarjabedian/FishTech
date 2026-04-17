@@ -86,6 +86,31 @@
     color: #334155;
     vertical-align: middle;
 }
+
+.result-row-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.4rem;
+    white-space: nowrap;
+}
+
+.result-row-btn {
+    border: 1px solid #cbd5e1;
+    background: #fff;
+    color: #1e293b;
+    border-radius: 999px;
+    padding: 0.35rem 0.75rem;
+    font-size: 0.76rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.result-row-btn:hover { background: #f8fafc; }
+
+.result-row-btn.delete {
+    color: #dc2626;
+    border-color: #fecaca;
+}
 </style>
 {% endblock %}
 
@@ -158,10 +183,11 @@
                         <th>Unit</th>
                         <th>Customer</th>
                         <th style="text-align:right;">Amount</th>
+                        <th style="text-align:right; width:180px;">Actions</th>
                     </tr>
                 </thead>
                 <tbody id="processedSoldTbody">
-                    <tr><td colspan="6" class="text-center text-muted py-4">Loading processed sales...</td></tr>
+                    <tr><td colspan="7" class="text-center text-muted py-4">Loading processed sales...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -255,7 +281,7 @@ async function loadProcessedSold() {
 function renderProcessedSold() {
     const tbody = document.getElementById('processedSoldTbody');
     if (!processedSoldRows.length) {
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">No processed sales yet.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">No processed sales yet.</td></tr>';
         document.getElementById('processedSoldInfo').textContent = '0 sold rows';
         return;
     }
@@ -268,10 +294,40 @@ function renderProcessedSold() {
             <td>${esc(row.unit_type || '')}</td>
             <td>${esc(row.customer_name || '--')}</td>
             <td style="text-align:right;">$${Number(row.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+            <td>
+                <div class="result-row-actions">
+                    <button class="result-row-btn" onclick="editProcessedSold(${row.order_id})">Edit</button>
+                    <button class="result-row-btn delete" onclick="deleteProcessedSold(${row.batch_id}, ${row.order_id})">Delete</button>
+                </div>
+            </td>
         </tr>
     `).join('');
 
     document.getElementById('processedSoldInfo').textContent = `${processedSoldRows.length} sold row${processedSoldRows.length === 1 ? '' : 's'}`;
+}
+
+function editProcessedSold(orderId) {
+    window.location.href = `/sales/${orderId}/`;
+}
+
+async function deleteProcessedSold(batchId, orderId) {
+    if (!confirm('Delete this processed sale? This will remove the sale, remove the processed output, and put the quantity back on the source lot.')) {
+        return;
+    }
+
+    try {
+        const res = await fetch(`/api/processing/sold-results/${batchId}/${orderId}/delete/`, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': getCookie('csrftoken') },
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+            throw new Error(data.error || 'Unable to delete the processed sale.');
+        }
+        await Promise.all([loadReadyLots(), loadProcessedSold()]);
+    } catch (error) {
+        alert(error.message || 'Unable to delete the processed sale.');
+    }
 }
 </script>
 {% endblock %}

@@ -55,6 +55,25 @@ def _require_tenant_admin(request, tenant):
     return None
 
 
+def _restore_and_delete_process_batch(batch):
+    tenant = batch.tenant
+
+    for source in batch.sources.select_related("inventory").all():
+        if source.inventory_id and source.inventory:
+            source.inventory.unitsonhand = (source.inventory.unitsonhand or 0) + source.quantity
+            source.inventory.save(update_fields=["unitsonhand"])
+
+    output_inventory_ids = [output.inventory_id for output in batch.outputs.all() if output.inventory_id]
+    if output_inventory_ids:
+        SalesOrderAllocation.objects.filter(tenant=tenant, inventory_id__in=output_inventory_ids).delete()
+        Inventory.objects.filter(tenant=tenant, id__in=output_inventory_ids).delete()
+
+    batch.sources.all().delete()
+    batch.outputs.all().delete()
+    batch.waste_entries.all().delete()
+    batch.delete()
+
+
 def _lot_qc_status(lot):
     try:
         return lot.quality_check.status
@@ -1456,6 +1475,8 @@ def processing_sold_results(request):
         results.append(
             {
                 "id": alloc.id,
+                "batch_id": output.batch_id,
+                "order_id": order.id,
                 "product": sales_item.description or ((sales_item.product.description or sales_item.product.item_name) if sales_item.product_id and sales_item.product else (alloc.inventory.desc or alloc.inventory.productid or "")),
                 "source_product": source_product,
                 "source_lot": source_lots,
@@ -3385,10 +3406,26 @@ def processing_batch_delete(request, batch_id):
     if error:
         return error
     batch = get_object_or_404(ProcessBatch.objects.filter(tenant=tenant), id=batch_id)
-    batch.sources.all().delete()
-    batch.outputs.all().delete()
-    batch.waste_entries.all().delete()
-    batch.delete()
+    _restore_and_delete_process_batch(batch)
+    return JsonResponse({"success": True})
+
+
+@login_required
+@require_POST
+def processing_sold_result_delete(request, batch_id, order_id):
+    tenant, error = _require_tenant(request)
+    if error:
+        return error
+
+    batch = get_object_or_404(ProcessBatch.objects.filter(tenant=tenant), id=batch_id)
+    so = get_object_or_404(SalesOrder.objects.filter(tenant=tenant), id=order_id)
+
+    with transaction.atomic():
+        SalesOrderAllocation.objects.filter(tenant=tenant, sales_order_item__sales_order=so).delete()
+        so.items.all().delete()
+        so.delete()
+        _restore_and_delete_process_batch(batch)
+
     return JsonResponse({"success": True})
 
 
