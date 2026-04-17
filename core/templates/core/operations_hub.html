@@ -3,59 +3,118 @@
 
 {% block extra_css %}
 <style>
-/* Welcome header */
 .dash-welcome { margin-bottom: 1.5rem; }
 .dash-welcome h2 { font-size: 1.4rem; font-weight: 700; margin: 0; color: #1e293b; }
 .dash-welcome .sub { font-size: 0.8rem; color: #64748b; margin-top: 2px; }
 
-/* Stat cards */
-.stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
-.stat-card {
-    background: #fff; border-radius: 12px; padding: 1.25rem 1.5rem;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.06); border-left: 4px solid #e2e8f0;
+.stat-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
 }
-.stat-card .stat-label { font-size: 0.75rem; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.03em; }
-.stat-card .stat-val { font-size: 1.6rem; font-weight: 700; color: #1e293b; margin-top: 4px; }
-.stat-card .stat-sub { font-size: 0.75rem; color: #94a3b8; margin-top: 2px; }
+
+.stat-card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 1.25rem 1.5rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    border-left: 4px solid #e2e8f0;
+}
+
+.stat-card .stat-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.stat-card .stat-val {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin-top: 6px;
+}
+
 .stat-card.blue { border-left-color: #2563eb; }
 .stat-card.green { border-left-color: #10b981; }
 .stat-card.amber { border-left-color: #f59e0b; }
-.stat-card.red { border-left-color: #ef4444; }
 
-/* Quick actions */
-.qa-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
-.qa-card {
-    background: #fff; border: 1px solid #e2e8f0; border-radius: 12px;
-    padding: 1.25rem 1rem; text-align: center; cursor: pointer;
-    transition: all 0.2s; text-decoration: none; color: inherit;
+.dash-card {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    margin-bottom: 1.25rem;
+    overflow: hidden;
 }
-.qa-card:hover { border-color: #2563eb; box-shadow: 0 4px 12px rgba(37,99,235,0.1); transform: translateY(-2px); }
-.qa-card i { font-size: 1.5rem; color: #2563eb; margin-bottom: 0.5rem; display: block; }
-.qa-card .qa-label { font-size: 0.82rem; font-weight: 600; color: #1e293b; }
 
-/* Recent activity */
-.dash-card { background: #fff; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); margin-bottom: 1.25rem; overflow: hidden; }
-.dash-card-header { padding: 14px 18px; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; justify-content: space-between; }
-.dash-card-header h6 { margin: 0; font-weight: 700; font-size: 0.95rem; }
-.dash-card-header a { font-size: 0.8rem; color: #2563eb; text-decoration: none; font-weight: 600; }
+.dash-card-header {
+    padding: 14px 18px;
+    border-bottom: 1px solid #f1f5f9;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
 
-.activity-table { width: 100%; border-collapse: collapse; font-size: 0.83rem; }
-.activity-table th { background: #f8fafc; color: #64748b; font-weight: 600; font-size: 0.73rem; text-transform: uppercase; padding: 8px 14px; }
-.activity-table td { padding: 9px 14px; border-bottom: 1px solid #f1f5f9; color: #334155; }
+.dash-card-header h6 {
+    margin: 0;
+    font-weight: 700;
+    font-size: 0.95rem;
+}
+
+.dash-card-header a {
+    font-size: 0.8rem;
+    color: #2563eb;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.activity-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.83rem;
+}
+
+.activity-table th {
+    background: #f8fafc;
+    color: #64748b;
+    font-weight: 600;
+    font-size: 0.73rem;
+    text-transform: uppercase;
+    padding: 8px 14px;
+    text-align: left;
+}
+
+.activity-table td {
+    padding: 9px 14px;
+    border-bottom: 1px solid #f1f5f9;
+    color: #334155;
+}
+
 .activity-table tr:hover { background: #f8fafc; }
 
-.badge-sm { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 0.7rem; font-weight: 600; }
+.badge-sm {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 0.7rem;
+    font-weight: 600;
+}
+
 .badge-blue { background: #dbeafe; color: #2563eb; }
 .badge-green { background: #dcfce7; color: #16a34a; }
 .badge-amber { background: #fef3c7; color: #d97706; }
 
-.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
-@media (max-width: 900px) { .two-col { grid-template-columns: 1fr; } }
+@media (max-width: 900px) {
+    .stat-grid {
+        grid-template-columns: 1fr;
+    }
+}
 </style>
 {% endblock %}
 
 {% block content %}
-
 {% include 'core/includes/sidebar.html' with active='dashboard' %}
 
 <div class="inv-main">
@@ -64,177 +123,165 @@
         <div class="sub">Welcome back, {{ request.user.first_name|default:request.user.username }}.</div>
     </div>
 
-    <!-- Stats -->
-    <div class="stat-grid" id="statGrid">
+    <div class="stat-grid">
         <div class="stat-card blue">
-            <div class="stat-label">Open Sales Orders</div>
-            <div class="stat-val" id="stat-sales">--</div>
+            <div class="stat-label">Expected Arrivals Count</div>
+            <div class="stat-val" id="stat-expected">--</div>
         </div>
         <div class="stat-card green">
-            <div class="stat-label">Items In Stock</div>
-            <div class="stat-val" id="stat-inventory">--</div>
+            <div class="stat-label">Arrived Count</div>
+            <div class="stat-val" id="stat-arrived">--</div>
         </div>
         <div class="stat-card amber">
-            <div class="stat-label">Ready To Sell Lots</div>
-            <div class="stat-val" id="stat-ship">--</div>
-        </div>
-        <div class="stat-card red">
-            <div class="stat-label">Open Purchase Orders</div>
-            <div class="stat-val" id="stat-po">--</div>
+            <div class="stat-label">Sold Count</div>
+            <div class="stat-val" id="stat-sold">--</div>
         </div>
     </div>
 
-    <!-- Quick actions -->
-    <div class="qa-grid">
-        <a class="qa-card" href="{% url 'sales_orders_page' %}"><i class="bi bi-plus-circle"></i><div class="qa-label">New Sale</div></a>
-        <a class="qa-card" href="{% url 'purchases_page' %}"><i class="bi bi-truck"></i><div class="qa-label">Arrivals</div></a>
-        <a class="qa-card" href="{% url 'purchases_page' %}"><i class="bi bi-box-arrow-in-down"></i><div class="qa-label">Receive on Arrivals</div></a>
-        <a class="qa-card" href="{% url 'sales_orders_page' %}"><i class="bi bi-gear"></i><div class="qa-label">Sell + Process</div></a>
-        <a class="qa-card" href="{% url 'inventory_item_library' %}"><i class="bi bi-box-seam"></i><div class="qa-label">Item Library</div></a>
+    <div class="dash-card">
+        <div class="dash-card-header">
+            <h6>Arrivals</h6>
+            <a href="{% url 'purchases_page' %}">View All</a>
+        </div>
+        <table class="activity-table">
+            <thead>
+                <tr>
+                    <th>Purchase #</th>
+                    <th>Vendor</th>
+                    <th style="text-align:right;">Expected</th>
+                    <th style="text-align:right;">Arrived</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody id="arrivalRows"><tr><td colspan="5" class="text-center text-muted py-3">Loading...</td></tr></tbody>
+        </table>
     </div>
 
-    <div class="two-col">
-        <!-- Recent Sales Orders -->
-        <div class="dash-card">
-            <div class="dash-card-header">
-                <h6>Recent Sales Orders</h6>
-                <a href="{% url 'sales_orders_page' %}">View All</a>
-            </div>
-            <table class="activity-table">
-                <thead><tr><th>Order</th><th>Customer</th><th>Product</th><th>Status</th><th style="text-align:right;">Total</th></tr></thead>
-                <tbody id="recentSales"><tr><td colspan="5" class="text-center text-muted py-3">Loading...</td></tr></tbody>
-            </table>
+    <div class="dash-card">
+        <div class="dash-card-header">
+            <h6>Received Lots Ready To Process</h6>
+            <a href="{% url 'processing_hub' %}">View All</a>
         </div>
-
-        <!-- Recent Purchase Orders -->
-        <div class="dash-card">
-            <div class="dash-card-header">
-                <h6>Recent Purchase Orders</h6>
-                <a href="{% url 'purchases_page' %}">View All</a>
-            </div>
-            <table class="activity-table">
-                <thead><tr><th>PO #</th><th>Vendor</th><th>Product</th><th>Status</th><th style="text-align:right;">Total</th></tr></thead>
-                <tbody id="recentPOs"><tr><td colspan="5" class="text-center text-muted py-3">Loading...</td></tr></tbody>
-            </table>
-        </div>
+        <table class="activity-table">
+            <thead>
+                <tr>
+                    <th>Product</th>
+                    <th>Lot</th>
+                    <th>Received</th>
+                    <th style="text-align:right;">On Hand</th>
+                    <th>Unit</th>
+                </tr>
+            </thead>
+            <tbody id="readyProcessRows"><tr><td colspan="5" class="text-center text-muted py-3">Loading...</td></tr></tbody>
+        </table>
     </div>
 
-    <div class="two-col">
-        <!-- Recent Receiving -->
-        <div class="dash-card">
-            <div class="dash-card-header">
-                <h6>Recently Received</h6>
-                <a href="{% url 'purchases_page' %}">View All</a>
-            </div>
-            <table class="activity-table">
-                <thead><tr><th>Lot</th><th>Vendor</th><th>Product</th><th>Date</th><th style="text-align:right;">Qty</th></tr></thead>
-                <tbody id="recentRecv"><tr><td colspan="5" class="text-center text-muted py-3">Loading...</td></tr></tbody>
-            </table>
+    <div class="dash-card">
+        <div class="dash-card-header">
+            <h6>Processed And Sold</h6>
+            <a href="{% url 'processing_hub' %}">View All</a>
         </div>
-
-        <div class="dash-card">
-            <div class="dash-card-header">
-                <h6>Ready To Sell</h6>
-                <a href="{% url 'sales_orders_page' %}">View All</a>
-            </div>
-            <table class="activity-table">
-                <thead><tr><th>Order</th><th>Customer</th><th>Product</th><th>Status</th><th style="text-align:right;">Total</th></tr></thead>
-                <tbody id="recentProc"><tr><td colspan="5" class="text-center text-muted py-3">Loading...</td></tr></tbody>
-            </table>
-        </div>
+        <table class="activity-table">
+            <thead>
+                <tr>
+                    <th>Product</th>
+                    <th>Source Lot</th>
+                    <th style="text-align:right;">Sold</th>
+                    <th>Unit</th>
+                    <th>Customer</th>
+                    <th style="text-align:right;">Amount</th>
+                </tr>
+            </thead>
+            <tbody id="processedSoldRows"><tr><td colspan="6" class="text-center text-muted py-3">Loading...</td></tr></tbody>
+        </table>
     </div>
 </div>
-
 {% endblock %}
 
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     loadStats();
-    loadRecentSales();
-    loadRecentPOs();
-    loadRecentRecv();
-    loadRecentProc();
+    loadArrivals();
+    loadReadyToProcess();
+    loadProcessedSold();
 });
+
+function statusBadgeClass(status) {
+    const value = String(status || '').toLowerCase();
+    if (value === 'received') return 'badge-green';
+    if (value === 'partial') return 'badge-amber';
+    return 'badge-blue';
+}
 
 async function loadStats() {
     try {
-        const [summaryRes, lotsRes] = await Promise.all([
-            fetch('/api/operations/summary/'),
-            fetch('/api/receiving/lots/?page_size=1'),
-        ]);
-        if (!summaryRes.ok) { console.error('loadStats HTTP', summaryRes.status); return; }
-        const data = await summaryRes.json();
-        const lotsData = lotsRes.ok ? await lotsRes.json() : {};
-        document.getElementById('stat-sales').textContent = data.open_sales_orders ?? '--';
-        document.getElementById('stat-inventory').textContent = data.items_in_stock ?? '--';
-        document.getElementById('stat-ship').textContent = lotsData.total ?? '--';
-        document.getElementById('stat-po').textContent = data.open_purchase_orders ?? '--';
-    } catch (e) { console.error('loadStats error', e); }
+        const response = await fetch('/api/operations/summary/');
+        const data = await response.json();
+        document.getElementById('stat-expected').textContent = data.expected_arrivals_count ?? '--';
+        document.getElementById('stat-arrived').textContent = data.arrived_count ?? '--';
+        document.getElementById('stat-sold').textContent = data.sold_count ?? '--';
+    } catch (error) {
+        console.error('loadStats error', error);
+    }
 }
 
-async function loadRecentSales() {
+async function loadArrivals() {
     try {
-        const data = await fetch('/api/sales/orders/?page_size=5').then(r => r.json());
+        const response = await fetch('/api/purchasing/orders/?page_size=5');
+        const data = await response.json();
         const orders = data.orders || [];
-        document.getElementById('recentSales').innerHTML = orders.length ? orders.map(o => `
-            <tr style="cursor:pointer;" onclick="window.location='/sales/${o.id}/'">
-                <td style="font-weight:600;color:#2563eb;">${esc(o.order_number)}</td>
-                <td>${esc(o.customer_name)}</td>
-                <td>${esc(o.products || '')}</td>
-                <td><span class="badge-sm badge-blue">${esc(o.order_status_display)}</span></td>
-                <td style="text-align:right;">$${Number(o.total).toFixed(2)}</td>
+        document.getElementById('arrivalRows').innerHTML = orders.length ? orders.map((order) => `
+            <tr style="cursor:pointer;" onclick="window.location='/operations/purchases/${order.id}/'">
+                <td style="font-weight:600;color:#2563eb;">${esc(order.po_number)}</td>
+                <td>${esc(order.vendor_name || '--')}</td>
+                <td style="text-align:right;">${Number(order.expected || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}</td>
+                <td style="text-align:right;">${Number(order.arrived || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}</td>
+                <td><span class="badge-sm ${statusBadgeClass(order.receive_status)}">${esc(order.receive_status_display || order.receive_status || '--')}</span></td>
             </tr>
-        `).join('') : '<tr><td colspan="5" class="text-center text-muted py-3">No orders yet.</td></tr>';
-    } catch {}
+        `).join('') : '<tr><td colspan="5" class="text-center text-muted py-3">No arrivals yet.</td></tr>';
+    } catch (error) {
+        console.error('loadArrivals error', error);
+    }
 }
 
-async function loadRecentPOs() {
+async function loadReadyToProcess() {
     try {
-        const data = await fetch('/api/purchasing/orders/?page_size=5').then(r => r.json());
-        const orders = data.orders || [];
-        document.getElementById('recentPOs').innerHTML = orders.length ? orders.map(o => `
-            <tr style="cursor:pointer;" onclick="window.location='/operations/purchases/${o.id}/'">
-                <td style="font-weight:600;color:#2563eb;">${esc(o.po_number)}</td>
-                <td>${esc(o.vendor_name)}</td>
-                <td>${esc(o.products || '')}</td>
-                <td><span class="badge-sm badge-green">${esc(o.order_status_display)}</span></td>
-                <td style="text-align:right;">$${Number(o.total).toFixed(2)}</td>
+        const response = await fetch('/api/processing/source-lots/');
+        const data = await response.json();
+        const lots = (data.lots || []).slice(0, 5);
+        document.getElementById('readyProcessRows').innerHTML = lots.length ? lots.map((lot) => `
+            <tr style="cursor:pointer;" onclick="window.location='/operations/processing/?lot_id=${lot.id}'">
+                <td style="font-weight:600;">${esc(lot.item_name || lot.product || '--')}</td>
+                <td style="color:#2563eb;">${esc(lot.lot_id || lot.trace_lot || '--')}</td>
+                <td>${esc(lot.receive_date || '--')}</td>
+                <td style="text-align:right;">${Number(lot.on_hand || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}</td>
+                <td>${esc(lot.unit_type || '')}</td>
             </tr>
-        `).join('') : '<tr><td colspan="5" class="text-center text-muted py-3">No POs yet.</td></tr>';
-    } catch {}
+        `).join('') : '<tr><td colspan="5" class="text-center text-muted py-3">No lots ready to process.</td></tr>';
+    } catch (error) {
+        console.error('loadReadyToProcess error', error);
+    }
 }
 
-async function loadRecentRecv() {
+async function loadProcessedSold() {
     try {
-        const data = await fetch('/api/receiving/lots/?page_size=5').then(r => r.json());
-        const lots = data.lots || [];
-        document.getElementById('recentRecv').innerHTML = lots.length ? lots.map(l => `
-            <tr style="cursor:pointer;" onclick="/* open detail */">
-                <td style="font-weight:600;">${esc(l.trace_lot)}</td>
-                <td>${esc(l.vendor)}</td>
-                <td>${esc(l.product_name || '')}</td>
-                <td>${esc(l.receive_date)}</td>
-                <td style="text-align:right;">${l.on_hand} ${esc(l.unit_type)}</td>
+        const response = await fetch('/api/processing/sold-results/');
+        const data = await response.json();
+        const rows = (data.results || []).slice(0, 5);
+        document.getElementById('processedSoldRows').innerHTML = rows.length ? rows.map((row) => `
+            <tr>
+                <td style="font-weight:600;">${esc(row.product || '--')}</td>
+                <td style="color:#2563eb;">${esc(row.source_lot || '--')}</td>
+                <td style="text-align:right;">${Number(row.sold_qty || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}</td>
+                <td>${esc(row.unit_type || '')}</td>
+                <td>${esc(row.customer_name || '--')}</td>
+                <td style="text-align:right;">$${Number(row.amount || 0).toFixed(2)}</td>
             </tr>
-        `).join('') : '<tr><td colspan="5" class="text-center text-muted py-3">No received lots yet.</td></tr>';
-    } catch {}
-}
-
-async function loadRecentProc() {
-    try {
-        const data = await fetch('/api/sales/orders/?page_size=5').then(r => r.json());
-        const orders = data.orders || [];
-        document.getElementById('recentProc').innerHTML = orders.length ? orders.map(o => `
-            <tr style="cursor:pointer;" onclick="window.location='/sales/${o.id}/'">
-                <td style="font-weight:600;color:#2563eb;">${esc(o.order_number)}</td>
-                <td>${esc(o.customer_name)}</td>
-                <td>${esc(o.products || '')}</td>
-                <td><span class="badge-sm badge-blue">${esc(o.order_status_display)}</span></td>
-                <td style="text-align:right;">$${Number(o.total).toFixed(2)}</td>
-            </tr>
-        `).join('') : '<tr><td colspan="5" class="text-center text-muted py-3">No sales ready yet.</td></tr>';
-    } catch {}
+        `).join('') : '<tr><td colspan="6" class="text-center text-muted py-3">No processed sales yet.</td></tr>';
+    } catch (error) {
+        console.error('loadProcessedSold error', error);
+    }
 }
 </script>
 {% endblock %}

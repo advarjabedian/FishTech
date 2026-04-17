@@ -626,14 +626,18 @@ def operations_summary(request):
 
     sales = SalesOrder.objects.filter(tenant=tenant)
     purchases = PurchaseOrder.objects.filter(tenant=tenant)
-    inventory = Inventory.objects.filter(tenant=tenant, unitsonhand__gt=0)
+    sold_output_inventory_ids = list(
+        ProcessBatchOutput.objects.filter(tenant=tenant, inventory__isnull=False).values_list("inventory_id", flat=True)
+    )
 
     return JsonResponse(
         {
-            "open_sales_orders": sales.filter(order_status__in=["open", "needs_review"]).count(),
-            "pending_shipments": sales.exclude(order_status__in=["closed", "cancelled"]).exclude(packed_status="packed").count(),
-            "open_purchase_orders": purchases.filter(order_status__in=["open", "draft"]).count(),
-            "items_in_stock": inventory.values("productid").exclude(productid="").distinct().count(),
+            "expected_arrivals_count": purchases.exclude(order_status="cancelled").exclude(receive_status="received").count(),
+            "arrived_count": purchases.filter(receive_status__in=["partial", "received"]).count(),
+            "sold_count": SalesOrderAllocation.objects.filter(
+                tenant=tenant,
+                inventory_id__in=sold_output_inventory_ids,
+            ).count(),
         }
     )
 
@@ -3171,7 +3175,12 @@ def trace_lookup(request):
 
     # Expand from POs → lots
     if po_ids:
-        po_lots = Inventory.objects.filter(tenant=tenant, purchase_order_id__in=po_ids)
+        po_numbers = set(
+            PurchaseOrder.objects.filter(tenant=tenant, id__in=po_ids).values_list("po_number", flat=True)
+        )
+        po_lots = Inventory.objects.filter(tenant=tenant).filter(
+            Q(purchase_order_id__in=po_ids) | Q(poid__in=po_numbers)
+        )
         lot_ids.update(po_lots.values_list("id", flat=True))
 
     # Now build the full chain from all discovered lots
@@ -3180,6 +3189,10 @@ def trace_lookup(request):
     for lot in all_lots:
         if lot.purchase_order_id:
             po_ids.add(lot.purchase_order_id)
+        elif lot.poid:
+            matched_po = PurchaseOrder.objects.filter(tenant=tenant, po_number=lot.poid).values_list("id", flat=True).first()
+            if matched_po:
+                po_ids.add(matched_po)
 
     # Expand lots → processing batches (forward)
     batch_sources = ProcessBatchSource.objects.filter(tenant=tenant, inventory_id__in=lot_ids).select_related("batch")
