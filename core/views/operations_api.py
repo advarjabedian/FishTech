@@ -1530,49 +1530,76 @@ def processing_sold_results(request):
         .select_related("inventory", "sales_order_item__sales_order", "sales_order_item__product")
         .order_by("-created_at", "-id")
     )
+    allocs_by_inventory = {}
+    for alloc in allocs:
+        allocs_by_inventory.setdefault(alloc.inventory_id, []).append(alloc)
 
     results = []
-    for alloc in allocs:
-        output = output_by_inventory.get(alloc.inventory_id)
-        if not output or not alloc.sales_order_item_id or not alloc.sales_order_item.sales_order_id:
-            continue
-
-        sales_item = alloc.sales_order_item
-        order = sales_item.sales_order
+    for output in outputs:
         batch_sources = source_map.get(output.batch_id, [])
         source_lots = ", ".join(
             dict.fromkeys(
                 (src.inventory.vendorlot or f"LOT-{src.inventory_id}")
                 for src in batch_sources if src.inventory_id and src.inventory
             )
-        ) or (alloc.inventory.vendorlot or f"LOT-{alloc.inventory_id}")
+        ) or ((output.inventory.vendorlot or f"LOT-{output.inventory_id}") if output.inventory_id and output.inventory else "")
         source_product = ", ".join(
             dict.fromkeys(
                 (src.inventory.desc or src.inventory.productid or "")
                 for src in batch_sources if src.inventory_id and src.inventory
             )
-        ) or (alloc.inventory.desc or alloc.inventory.productid or "")
+        ) or ((output.inventory.desc or output.inventory.productid or "") if output.inventory_id and output.inventory else "")
 
-        sold_qty = Decimal(str(alloc.quantity or 0))
-        unit_price = Decimal(str(sales_item.unit_price or 0))
-        results.append(
-            {
-                "id": alloc.id,
-                "batch_id": output.batch_id,
-                "order_id": order.id,
-                "sales_item_id": sales_item.id,
-                "product": sales_item.description or ((sales_item.product.description or sales_item.product.item_name) if sales_item.product_id and sales_item.product else (alloc.inventory.desc or alloc.inventory.productid or "")),
-                "source_product": source_product,
-                "source_lot": source_lots,
-                "sold_qty": _to_float(sold_qty) or 0,
-                "unit_type": alloc.unit_type or sales_item.unit_type or alloc.inventory.unittype or "",
-                "customer_name": order.customer_name or "",
-                "unit_price": _to_float(unit_price) or 0,
-                "amount": _to_float(sold_qty * unit_price) or 0,
-                "order_number": order.order_number or "",
-                "sold_at": _date_str(order.order_date),
-            }
-        )
+        linked_allocations = allocs_by_inventory.get(output.inventory_id, []) if output.inventory_id else []
+        if linked_allocations:
+            for alloc in linked_allocations:
+                if not alloc.sales_order_item_id or not alloc.sales_order_item.sales_order_id:
+                    continue
+                sales_item = alloc.sales_order_item
+                order = sales_item.sales_order
+                sold_qty = Decimal(str(alloc.quantity or 0))
+                unit_price = Decimal(str(sales_item.unit_price or 0))
+                results.append(
+                    {
+                        "id": alloc.id,
+                        "batch_id": output.batch_id,
+                        "order_id": order.id,
+                        "sales_item_id": sales_item.id,
+                        "product": sales_item.description or ((sales_item.product.description or sales_item.product.item_name) if sales_item.product_id and sales_item.product else ((output.inventory.desc or output.inventory.productid or "") if output.inventory_id and output.inventory else "")),
+                        "source_product": source_product,
+                        "source_lot": source_lots,
+                        "sold_qty": _to_float(sold_qty) or 0,
+                        "processed_qty": _to_float(output.quantity) or 0,
+                        "unit_type": alloc.unit_type or sales_item.unit_type or (output.inventory.unittype if output.inventory_id and output.inventory else "") or output.unit_type or "",
+                        "customer_name": order.customer_name or "",
+                        "unit_price": _to_float(unit_price) or 0,
+                        "amount": _to_float(sold_qty * unit_price) or 0,
+                        "order_number": order.order_number or "",
+                        "sold_at": _date_str(order.order_date),
+                        "is_sold": True,
+                    }
+                )
+        else:
+            results.append(
+                {
+                    "id": output.id,
+                    "batch_id": output.batch_id,
+                    "order_id": None,
+                    "sales_item_id": None,
+                    "product": (output.product.description or output.product.item_name or output.product.product_id) if output.product_id and output.product else ((output.inventory.desc or output.inventory.productid or "") if output.inventory_id and output.inventory else ""),
+                    "source_product": source_product,
+                    "source_lot": source_lots,
+                    "sold_qty": _to_float(output.quantity) or 0,
+                    "processed_qty": _to_float(output.quantity) or 0,
+                    "unit_type": (output.inventory.unittype if output.inventory_id and output.inventory else "") or output.unit_type or "",
+                    "customer_name": "Not Sold Yet",
+                    "unit_price": 0,
+                    "amount": 0,
+                    "order_number": "",
+                    "sold_at": _date_str(output.batch.started_at.date() if output.batch_id and output.batch and output.batch.started_at else None),
+                    "is_sold": False,
+                }
+            )
 
     return JsonResponse({"results": results})
 
@@ -2611,6 +2638,14 @@ def sales_order_item_add(request, order_id):
     product_id = (data.get("product_id") or "").strip()
     if product_id:
         product = Product.objects.filter(tenant=tenant, product_id=product_id).first()
+    linked_batch = None
+    linked_output_inventory = None
+    process_batch_id = data.get("process_batch_id")
+    output_inventory_id = data.get("output_inventory_id")
+    if process_batch_id:
+        linked_batch = ProcessBatch.objects.filter(tenant=tenant, id=process_batch_id).first()
+    if output_inventory_id:
+        linked_output_inventory = Inventory.objects.filter(tenant=tenant, id=output_inventory_id).first()
 
     quantity = _to_float(data.get("quantity")) or 0
     unit_price = _to_float(data.get("unit_price")) or 0
@@ -2627,13 +2662,26 @@ def sales_order_item_add(request, order_id):
         unit_type=(data.get("unit_type") or "").strip(),
         unit_price=data.get("unit_price") or None,
         amount=amount,
+        process_batch=linked_batch,
         process_type=_normalize_process_type(data.get("process_type")),
         process_source_lot_ids=",".join(str(lot_id) for lot_id in _selected_source_lot_ids(data)),
         sort_order=so.items.count(),
     )
+    if linked_output_inventory:
+        SalesOrderAllocation.objects.create(
+            tenant=tenant,
+            sales_order_item=item,
+            inventory=linked_output_inventory,
+            quantity=data.get("quantity") or None,
+            unit_type=(data.get("unit_type") or "").strip() or linked_output_inventory.unittype or "",
+            allocated_by=request.user,
+            allocated_by_name=request.user.get_full_name() or request.user.username,
+        )
     try:
-        _create_processing_batch_for_sales_item(request, tenant, item, data)
+        if not linked_batch:
+            _create_processing_batch_for_sales_item(request, tenant, item, data)
     except ValueError as exc:
+        SalesOrderAllocation.objects.filter(tenant=tenant, sales_order_item=item).delete()
         item.delete()
         return JsonResponse({"error": str(exc)}, status=400)
     return JsonResponse({"success": True, "id": item.id})
@@ -2812,6 +2860,7 @@ def processing_batches_create(request):
     # Create output entries with new inventory records
     total_output = Decimal("0")
     lot_counter = Inventory.objects.filter(tenant=tenant).count()
+    created_outputs = []
     for out in data.get("outputs") or []:
         product = None
         pid = out.get("product_id")
@@ -2858,6 +2907,16 @@ def processing_batches_create(request):
             lot_id=lot_id,
             yield_percent=Decimal(str(out["yield_percent"])) if out.get("yield_percent") else None,
         )
+        created_outputs.append(
+            {
+                "inventory_id": out_inv.id,
+                "lot_id": lot_id,
+                "product_id": pid or "",
+                "description": out_desc,
+                "quantity": _to_float(qty) or 0,
+                "unit_type": unit_type,
+            }
+        )
 
     # Auto-create waste entry for the difference
     waste_qty = total_input - total_output
@@ -2873,7 +2932,7 @@ def processing_batches_create(request):
             notes="Auto-calculated from input/output difference",
         )
 
-    return JsonResponse({"ok": True, "id": batch.id})
+    return JsonResponse({"ok": True, "id": batch.id, "outputs": created_outputs})
 
 
 def _apply_product_payload(product, tenant, data):

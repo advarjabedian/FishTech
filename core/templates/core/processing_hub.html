@@ -180,7 +180,7 @@
                 {% if sale_mode %}
                 Cut the selected lot before creating the sale.
                 {% else %}
-                Cut received lots and review the sold results below.
+                Cut received lots and review the sold rows below.
                 {% endif %}
             </div>
         </div>
@@ -226,7 +226,7 @@
 
     <div class="inv-table-card">
         <div style="padding: 14px 18px; border-bottom: 1px solid #f1f5f9;">
-            <h6 style="margin:0; font-weight:700; font-size:0.95rem;">Processed And Sold</h6>
+            <h6 style="margin:0; font-weight:700; font-size:0.95rem;">Sold</h6>
         </div>
         <div style="overflow-x:auto;">
             <table class="process-result-table">
@@ -243,7 +243,7 @@
                     </tr>
                 </thead>
                 <tbody id="processedSoldTbody">
-                    <tr><td colspan="8" class="text-center text-muted py-4">Loading processed sales...</td></tr>
+                    <tr><td colspan="8" class="text-center text-muted py-4">Loading sold rows...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -443,7 +443,7 @@ async function loadProcessedSold() {
         renderProcessedSold();
     } catch {
         document.getElementById('processedSoldTbody').innerHTML =
-            '<tr><td colspan="8" class="text-center text-muted py-4">Failed to load processed sales.</td></tr>';
+            '<tr><td colspan="8" class="text-center text-muted py-4">Failed to load sold rows.</td></tr>';
         document.getElementById('processedSoldInfo').textContent = '0 sold rows';
     }
 }
@@ -451,7 +451,7 @@ async function loadProcessedSold() {
 function renderProcessedSold() {
     const tbody = document.getElementById('processedSoldTbody');
     if (!processedSoldRows.length) {
-        tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">No processed sales yet.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">No sold rows yet.</td></tr>';
         document.getElementById('processedSoldInfo').textContent = '0 sold rows';
         return;
     }
@@ -467,8 +467,8 @@ function renderProcessedSold() {
             <td style="text-align:right;">$${Number(row.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
             <td>
                 <div class="result-row-actions">
-                    <button class="result-row-btn" onclick="openSoldEditModal(${row.batch_id}, ${row.order_id})">Edit</button>
-                    <button class="result-row-btn delete" onclick="deleteProcessedSold(${row.batch_id}, ${row.order_id})">Delete</button>
+                    ${row.order_id ? `<button class="result-row-btn" onclick="openSoldEditModal(${row.batch_id}, ${row.order_id})">Edit</button>` : `<span class="text-muted" style="font-size:0.8rem;">Processed</span>`}
+                    <button class="result-row-btn delete" onclick="deleteProcessedSold(${row.batch_id}, ${row.order_id === null ? 'null' : row.order_id})">${row.order_id ? 'Delete' : 'Delete Batch'}</button>
                 </div>
             </td>
         </tr>
@@ -577,12 +577,18 @@ async function saveSoldEdit() {
 }
 
 async function deleteProcessedSold(batchId, orderId) {
-    if (!confirm('Delete this processed sale? This will remove the sale, remove the processed output, and put the quantity back on the source lot.')) {
+    const isSoldRow = orderId !== null && orderId !== undefined && String(orderId) !== 'null';
+    if (!confirm(isSoldRow
+        ? 'Delete this processed sale? This will remove the sale, remove the processed output, and put the quantity back on the source lot.'
+        : 'Delete this processed batch? This will remove the processed output and put the quantity back on the source lot.')) {
         return;
     }
 
     try {
-        const res = await fetch(`/api/processing/sold-results/${batchId}/${orderId}/delete/`, {
+        const url = isSoldRow
+            ? `/api/processing/sold-results/${batchId}/${orderId}/delete/`
+            : `/api/processing/batches/${batchId}/delete/`;
+        const res = await fetch(url, {
             method: 'POST',
             headers: { 'X-CSRFToken': getCookie('csrftoken') },
         });
