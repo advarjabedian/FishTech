@@ -99,6 +99,73 @@
     color: #dc2626;
     border-color: #fecaca;
 }
+
+.edit-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.35);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1050;
+    padding: 1rem;
+}
+
+.edit-modal.open { display: flex; }
+
+.edit-modal-card {
+    width: min(640px, 100%);
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 20px 45px rgba(15, 23, 42, 0.18);
+    overflow: hidden;
+}
+
+.edit-modal-head,
+.edit-modal-actions {
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.edit-modal-actions {
+    border-bottom: none;
+    border-top: 1px solid #e2e8f0;
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.6rem;
+}
+
+.edit-modal-body {
+    padding: 1.1rem 1.25rem 1.25rem;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.85rem 1rem;
+}
+
+.edit-field label {
+    display: block;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #475569;
+    margin-bottom: 0.35rem;
+    text-transform: uppercase;
+}
+
+.edit-field input {
+    width: 100%;
+    border: 1px solid #cbd5e1;
+    border-radius: 10px;
+    padding: 0.65rem 0.75rem;
+    font-size: 0.92rem;
+}
+
+.edit-field.full { grid-column: 1 / -1; }
+
+@media (max-width: 720px) {
+    .edit-modal-body {
+        grid-template-columns: 1fr;
+    }
+}
 </style>
 {% endblock %}
 
@@ -169,18 +236,99 @@
                         <th>Source Lot</th>
                         <th style="text-align:right;">Sold</th>
                         <th>Unit</th>
+                        <th style="text-align:right;">Unit Price</th>
                         <th>Customer</th>
                         <th style="text-align:right;">Amount</th>
                         <th style="text-align:right; width:180px;">Actions</th>
                     </tr>
                 </thead>
                 <tbody id="processedSoldTbody">
-                    <tr><td colspan="7" class="text-center text-muted py-4">Loading processed sales...</td></tr>
+                    <tr><td colspan="8" class="text-center text-muted py-4">Loading processed sales...</td></tr>
                 </tbody>
             </table>
         </div>
         <div class="inv-pagination">
             <span id="processedSoldInfo">0 sold rows</span>
+        </div>
+    </div>
+</div>
+
+<div class="edit-modal" id="lotEditModal" onclick="closeModalOnBackdrop(event, 'lotEditModal')">
+    <div class="edit-modal-card">
+        <div class="edit-modal-head">
+            <h5 style="margin:0; font-weight:700;">Edit Received Lot</h5>
+        </div>
+        <div class="edit-modal-body">
+            <div class="edit-field full">
+                <label for="lotEditProduct">Product</label>
+                <input id="lotEditProduct" type="text">
+            </div>
+            <div class="edit-field">
+                <label for="lotEditVendor">Vendor</label>
+                <input id="lotEditVendor" type="text">
+            </div>
+            <div class="edit-field">
+                <label for="lotEditDate">Receive Date</label>
+                <input id="lotEditDate" type="date">
+            </div>
+            <div class="edit-field">
+                <label for="lotEditIncoming">Incoming</label>
+                <input id="lotEditIncoming" type="number" step="0.01" min="0">
+            </div>
+            <div class="edit-field">
+                <label for="lotEditOnHand">On Hand</label>
+                <input id="lotEditOnHand" type="number" step="0.01" min="0">
+            </div>
+            <div class="edit-field">
+                <label for="lotEditUnit">Unit</label>
+                <input id="lotEditUnit" type="text">
+            </div>
+            <div class="edit-field">
+                <label for="lotEditCost">Cost</label>
+                <input id="lotEditCost" type="number" step="0.01" min="0">
+            </div>
+        </div>
+        <div class="edit-modal-actions">
+            <button class="result-row-btn" type="button" onclick="closeLotEditModal()">Cancel</button>
+            <button class="process-row-btn" type="button" onclick="saveLotEdit()">Save</button>
+        </div>
+    </div>
+</div>
+
+<div class="edit-modal" id="soldEditModal" onclick="closeModalOnBackdrop(event, 'soldEditModal')">
+    <div class="edit-modal-card">
+        <div class="edit-modal-head">
+            <h5 style="margin:0; font-weight:700;">Edit Processed Sale</h5>
+        </div>
+        <div class="edit-modal-body">
+            <div class="edit-field full">
+                <label for="soldEditProduct">Product</label>
+                <input id="soldEditProduct" type="text">
+            </div>
+            <div class="edit-field">
+                <label for="soldEditCustomer">Customer</label>
+                <input id="soldEditCustomer" type="text">
+            </div>
+            <div class="edit-field">
+                <label for="soldEditDate">Sold Date</label>
+                <input id="soldEditDate" type="date">
+            </div>
+            <div class="edit-field">
+                <label for="soldEditQty">Sold Qty</label>
+                <input id="soldEditQty" type="number" step="0.01" min="0.01">
+            </div>
+            <div class="edit-field">
+                <label for="soldEditUnit">Unit</label>
+                <input id="soldEditUnit" type="text">
+            </div>
+            <div class="edit-field">
+                <label for="soldEditUnitPrice">Unit Price</label>
+                <input id="soldEditUnitPrice" type="number" step="0.01" min="0">
+            </div>
+        </div>
+        <div class="edit-modal-actions">
+            <button class="result-row-btn" type="button" onclick="closeSoldEditModal()">Cancel</button>
+            <button class="process-row-btn" type="button" onclick="saveSoldEdit()">Save</button>
         </div>
     </div>
 </div>
@@ -191,10 +339,13 @@
 let lotSearchTimeout;
 let readyLots = [];
 let processedSoldRows = [];
+let editingLotId = null;
+let editingSoldRow = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     loadReadyLots();
     loadProcessedSold();
+    maybeOpenRequestedEditor();
 });
 
 function debounceLotSearch() {
@@ -237,6 +388,7 @@ function renderReadyLots() {
             <td style="text-align:right;">$${Number(lot.cost || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
             <td>
                 <div class="process-row-actions">
+                    <button class="result-row-btn" onclick="openLotEditModal(${lot.id})">Edit</button>
                     <button class="process-row-btn" onclick="startProcessForLot('fish_cutting', ${lot.id})">Fish Cutting</button>
                 </div>
             </td>
@@ -244,11 +396,43 @@ function renderReadyLots() {
     `).join('');
 
     document.getElementById('readyLotInfo').textContent = `${readyLots.length} lot${readyLots.length === 1 ? '' : 's'} ready to process`;
+    maybeOpenRequestedEditor();
 }
 
 function startProcessForLot(processType, lotId) {
     const saleMode = {% if sale_mode %}'&mode=sale'{% else %}''{% endif %};
     window.location.href = `/operations/processing/new/?type=${encodeURIComponent(processType)}&lot_id=${lotId}${saleMode}`;
+}
+
+function maybeOpenRequestedEditor() {
+    const params = new URLSearchParams(window.location.search);
+    const editLot = params.get('edit_lot');
+    const editSale = params.get('edit_sale');
+
+    if (editLot) {
+        const openLot = () => {
+            const lot = readyLots.find((item) => String(item.id) === String(editLot));
+            if (lot) {
+                openLotEditModal(lot.id);
+                params.delete('edit_lot');
+                window.history.replaceState({}, '', `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ''}`);
+            }
+        };
+        setTimeout(openLot, 150);
+    }
+
+    if (editSale) {
+        const [batchId, orderId] = editSale.split(':');
+        const openSale = () => {
+            const row = processedSoldRows.find((item) => String(item.batch_id) === String(batchId) && String(item.order_id) === String(orderId));
+            if (row) {
+                openSoldEditModal(row.batch_id, row.order_id);
+                params.delete('edit_sale');
+                window.history.replaceState({}, '', `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ''}`);
+            }
+        };
+        setTimeout(openSale, 150);
+    }
 }
 
 async function loadProcessedSold() {
@@ -259,7 +443,7 @@ async function loadProcessedSold() {
         renderProcessedSold();
     } catch {
         document.getElementById('processedSoldTbody').innerHTML =
-            '<tr><td colspan="6" class="text-center text-muted py-4">Failed to load processed sales.</td></tr>';
+            '<tr><td colspan="8" class="text-center text-muted py-4">Failed to load processed sales.</td></tr>';
         document.getElementById('processedSoldInfo').textContent = '0 sold rows';
     }
 }
@@ -267,7 +451,7 @@ async function loadProcessedSold() {
 function renderProcessedSold() {
     const tbody = document.getElementById('processedSoldTbody');
     if (!processedSoldRows.length) {
-        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">No processed sales yet.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">No processed sales yet.</td></tr>';
         document.getElementById('processedSoldInfo').textContent = '0 sold rows';
         return;
     }
@@ -278,10 +462,12 @@ function renderProcessedSold() {
             <td style="font-weight:600; color:#2563eb;">${esc(row.source_lot || '--')}</td>
             <td style="text-align:right; font-weight:700;">${Number(row.sold_qty || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</td>
             <td>${esc(row.unit_type || '')}</td>
+            <td style="text-align:right;">$${Number(row.unit_price || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
             <td>${esc(row.customer_name || '--')}</td>
             <td style="text-align:right;">$${Number(row.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
             <td>
                 <div class="result-row-actions">
+                    <button class="result-row-btn" onclick="openSoldEditModal(${row.batch_id}, ${row.order_id})">Edit</button>
                     <button class="result-row-btn delete" onclick="deleteProcessedSold(${row.batch_id}, ${row.order_id})">Delete</button>
                 </div>
             </td>
@@ -289,6 +475,105 @@ function renderProcessedSold() {
     `).join('');
 
     document.getElementById('processedSoldInfo').textContent = `${processedSoldRows.length} sold row${processedSoldRows.length === 1 ? '' : 's'}`;
+    maybeOpenRequestedEditor();
+}
+
+function closeModalOnBackdrop(event, modalId) {
+    if (event.target.id === modalId) {
+        document.getElementById(modalId).classList.remove('open');
+    }
+}
+
+function openLotEditModal(lotId) {
+    const lot = readyLots.find((item) => Number(item.id) === Number(lotId));
+    if (!lot) return;
+    editingLotId = lot.id;
+    document.getElementById('lotEditProduct').value = lot.item_name || lot.product || '';
+    document.getElementById('lotEditVendor').value = lot.vendor || '';
+    document.getElementById('lotEditDate').value = lot.receive_date || '';
+    document.getElementById('lotEditIncoming').value = lot.incoming ?? lot.on_hand ?? '';
+    document.getElementById('lotEditOnHand').value = lot.on_hand ?? '';
+    document.getElementById('lotEditUnit').value = lot.unit_type || '';
+    document.getElementById('lotEditCost').value = lot.cost ?? '';
+    document.getElementById('lotEditModal').classList.add('open');
+}
+
+function closeLotEditModal() {
+    editingLotId = null;
+    document.getElementById('lotEditModal').classList.remove('open');
+}
+
+async function saveLotEdit() {
+    if (!editingLotId) return;
+    try {
+        const res = await fetch(`/api/receiving/lots/${editingLotId}/update/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken'),
+            },
+            body: JSON.stringify({
+                product_name: document.getElementById('lotEditProduct').value.trim(),
+                vendor: document.getElementById('lotEditVendor').value.trim(),
+                receive_date: document.getElementById('lotEditDate').value,
+                incoming: document.getElementById('lotEditIncoming').value,
+                on_hand: document.getElementById('lotEditOnHand').value,
+                unit_type: document.getElementById('lotEditUnit').value.trim(),
+                cost: document.getElementById('lotEditCost').value,
+            }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || 'Unable to update the lot.');
+        closeLotEditModal();
+        await Promise.all([loadReadyLots(), loadProcessedSold()]);
+    } catch (error) {
+        alert(error.message || 'Unable to update the lot.');
+    }
+}
+
+function openSoldEditModal(batchId, orderId) {
+    const row = processedSoldRows.find((item) => Number(item.batch_id) === Number(batchId) && Number(item.order_id) === Number(orderId));
+    if (!row) return;
+    editingSoldRow = row;
+    document.getElementById('soldEditProduct').value = row.product || '';
+    document.getElementById('soldEditCustomer').value = row.customer_name || '';
+    document.getElementById('soldEditDate').value = row.sold_at || '';
+    document.getElementById('soldEditQty').value = row.sold_qty ?? '';
+    document.getElementById('soldEditUnit').value = row.unit_type || '';
+    document.getElementById('soldEditUnitPrice').value = row.unit_price ?? '';
+    document.getElementById('soldEditModal').classList.add('open');
+}
+
+function closeSoldEditModal() {
+    editingSoldRow = null;
+    document.getElementById('soldEditModal').classList.remove('open');
+}
+
+async function saveSoldEdit() {
+    if (!editingSoldRow) return;
+    try {
+        const res = await fetch(`/api/processing/sold-results/${editingSoldRow.batch_id}/${editingSoldRow.order_id}/update/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken'),
+            },
+            body: JSON.stringify({
+                product: document.getElementById('soldEditProduct').value.trim(),
+                customer_name: document.getElementById('soldEditCustomer').value.trim(),
+                sold_at: document.getElementById('soldEditDate').value,
+                sold_qty: document.getElementById('soldEditQty').value,
+                unit_type: document.getElementById('soldEditUnit').value.trim(),
+                unit_price: document.getElementById('soldEditUnitPrice').value,
+            }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || 'Unable to update the processed sale.');
+        closeSoldEditModal();
+        await Promise.all([loadReadyLots(), loadProcessedSold()]);
+    } catch (error) {
+        alert(error.message || 'Unable to update the processed sale.');
+    }
 }
 
 async function deleteProcessedSold(batchId, orderId) {

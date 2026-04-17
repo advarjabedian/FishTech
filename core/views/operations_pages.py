@@ -94,8 +94,12 @@ def settings_page(request):
         "core/settings.html",
         {
             "tenant": request.tenant,
-            "billing_checkout_url": getattr(settings, "STRIPE_PAYMENT_LINK_URL", ""),
+            "billing_checkout_ready": bool(
+                getattr(settings, "STRIPE_SECRET_KEY", "").strip()
+                and getattr(settings, "STRIPE_PRICE_ID", "").strip()
+            ),
             "billing_amount_display": f"${monthly_cents / 100:,.2f}",
+            "billing_status": (request.GET.get("billing") or "").strip().lower(),
         },
     )
 

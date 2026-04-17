@@ -3,6 +3,9 @@ import io
 import json
 from decimal import Decimal
 
+import stripe
+from django.apps import apps
+from django.conf import settings
 from django.contrib.auth.models import User as DjangoUser
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
@@ -32,7 +35,6 @@ from core.models import (
     SalesOrderItem,
     TenantUser,
     Vendor,
-    ProcessBatchOutput,
 )
 
 
@@ -52,6 +54,34 @@ def _require_tenant_admin(request, tenant):
     if not tenant_user or not tenant_user.is_admin:
         return JsonResponse({"error": "Admin access is required."}, status=403)
     return None
+
+
+def _sync_purchase_order_receive_status(order):
+    if not order:
+        return
+
+    all_items = order.items.filter(item_type="item")
+    all_received = all((_to_float(item.remaining_quantity) or 0) <= 0 for item in all_items)
+    any_received = any((_to_float(item.received_quantity) or 0) > 0 for item in all_items)
+    if all_received:
+        receive_status = "received"
+    elif any_received:
+        receive_status = "partial"
+    else:
+        receive_status = "not_received"
+    order.receive_status = receive_status
+    order.save(update_fields=["receive_status"])
+
+
+def _editable_operational_models():
+    excluded = {"Tenant", "TenantUser", "User"}
+    models = []
+    for model in apps.get_app_config("core").get_models():
+        if model.__name__ in excluded:
+            continue
+        if any(field.name == "tenant" for field in model._meta.fields):
+            models.append(model)
+    return models
 
 
 def _restore_and_delete_process_batch(batch):
@@ -1187,6 +1217,66 @@ def receiving_lot_detail(request, lot_id):
 
 
 @login_required
+def receiving_lot_update(request, lot_id):
+    tenant, error = _require_tenant(request)
+    if error:
+        return error
+    if request.method != "POST":
+        return JsonResponse({"error": "GET not allowed"}, status=405)
+
+    lot = get_object_or_404(Inventory.objects.filter(tenant=tenant).select_related("purchase_order", "po_item"), id=lot_id)
+    data = _parse_json(request)
+
+    if "product_name" in data:
+        product_name = (data.get("product_name") or "").strip()
+        if product_name:
+            lot.desc = product_name
+            if not (lot.productid or "").strip():
+                lot.productid = product_name
+
+    if "vendor" in data:
+        lot.vendorid = (data.get("vendor") or "").strip()
+    if "receive_date" in data:
+        lot.receivedate = (data.get("receive_date") or "").strip()
+    if "unit_type" in data:
+        lot.unittype = (data.get("unit_type") or "").strip()
+    if "cost" in data:
+        lot.actualcost = data.get("cost") or None
+
+    previous_unitsin = Decimal(str(lot.unitsin or 0))
+    previous_unitsonhand = Decimal(str(lot.unitsonhand or 0))
+
+    if "incoming" in data:
+        incoming = Decimal(str(_to_float(data.get("incoming")) or 0))
+        if incoming < 0:
+            return JsonResponse({"error": "Incoming quantity cannot be negative."}, status=400)
+        lot.unitsin = incoming
+        if lot.po_item_id and lot.po_item:
+            lot.po_item.received_quantity = max(
+                Decimal("0"),
+                Decimal(str(lot.po_item.received_quantity or 0)) + (incoming - previous_unitsin),
+            )
+            lot.po_item.save(update_fields=["received_quantity"])
+
+    if "on_hand" in data:
+        on_hand = Decimal(str(_to_float(data.get("on_hand")) or 0))
+        if on_hand < 0:
+            return JsonResponse({"error": "On hand quantity cannot be negative."}, status=400)
+        lot.unitsonhand = on_hand
+        lot.unitsavailable = on_hand
+    elif "incoming" in data and previous_unitsonhand == previous_unitsin:
+        lot.unitsonhand = lot.unitsin
+        lot.unitsavailable = lot.unitsin
+
+    lot.save()
+
+    if lot.purchase_order_id and lot.purchase_order:
+        _sync_purchase_order_receive_status(lot.purchase_order)
+
+    return JsonResponse({"success": True})
+
+
+@login_required
 def receiving_open_pos(request):
     tenant, error = _require_tenant(request)
     if error:
@@ -1304,18 +1394,7 @@ def receiving_lot_create(request):
         po_item.received_quantity = (po_item.received_quantity or 0) + Decimal(str(quantity))
         po_item.save(update_fields=["received_quantity"])
         if purchase_order:
-            # Check all items on the PO to determine overall receive status
-            all_items = purchase_order.items.filter(item_type="item")
-            all_received = all((_to_float(i.remaining_quantity) or 0) <= 0 for i in all_items)
-            any_received = any((_to_float(i.received_quantity) or 0) > 0 for i in all_items)
-            if all_received:
-                receive_status = "received"
-            elif any_received:
-                receive_status = "partial"
-            else:
-                receive_status = "not_received"
-            purchase_order.receive_status = receive_status
-            purchase_order.save(update_fields=["receive_status"])
+            _sync_purchase_order_receive_status(purchase_order)
 
     return JsonResponse({"success": True, "id": lot.id})
 
@@ -1410,6 +1489,7 @@ def processing_source_lots(request):
                 ])),
                 "vendor": lot.vendorid or "",
                 "vendor_lot": lot.vendorlot or "",
+                "incoming": _to_float(lot.unitsin) or 0,
                 "on_hand": _to_float(lot.unitsonhand) or 0,
                 "unit_type": lot.unittype or "",
                 "cost": _to_float(lot.actualcost) or 0,
@@ -1479,12 +1559,14 @@ def processing_sold_results(request):
                 "id": alloc.id,
                 "batch_id": output.batch_id,
                 "order_id": order.id,
+                "sales_item_id": sales_item.id,
                 "product": sales_item.description or ((sales_item.product.description or sales_item.product.item_name) if sales_item.product_id and sales_item.product else (alloc.inventory.desc or alloc.inventory.productid or "")),
                 "source_product": source_product,
                 "source_lot": source_lots,
                 "sold_qty": _to_float(sold_qty) or 0,
                 "unit_type": alloc.unit_type or sales_item.unit_type or alloc.inventory.unittype or "",
                 "customer_name": order.customer_name or "",
+                "unit_price": _to_float(unit_price) or 0,
                 "amount": _to_float(sold_qty * unit_price) or 0,
                 "order_number": order.order_number or "",
                 "sold_at": _date_str(order.order_date),
@@ -1492,6 +1574,77 @@ def processing_sold_results(request):
         )
 
     return JsonResponse({"results": results})
+
+
+@login_required
+def processing_sold_result_update(request, batch_id, order_id):
+    tenant, error = _require_tenant(request)
+    if error:
+        return error
+    if request.method != "POST":
+        return JsonResponse({"error": "GET not allowed"}, status=405)
+
+    batch = get_object_or_404(
+        ProcessBatch.objects.filter(tenant=tenant).prefetch_related("outputs__inventory"),
+        id=batch_id,
+    )
+    order = get_object_or_404(SalesOrder.objects.filter(tenant=tenant), id=order_id)
+    sales_item = get_object_or_404(
+        SalesOrderItem.objects.filter(tenant=tenant, sales_order=order, process_batch=batch),
+        item_type="item",
+    )
+
+    allocation = SalesOrderAllocation.objects.filter(
+        tenant=tenant,
+        sales_order_item=sales_item,
+    ).select_related("inventory").first()
+    output = batch.outputs.select_related("inventory").first()
+    data = _parse_json(request)
+
+    if "customer_name" in data:
+        customer_name = (data.get("customer_name") or "").strip()
+        order.customer_name = customer_name
+        order.customer = Customer.objects.filter(tenant=tenant, name__iexact=customer_name).first() if customer_name else None
+    if "sold_at" in data:
+        order.order_date = data.get("sold_at") or None
+    order.save()
+
+    quantity = Decimal(str(data.get("sold_qty") if "sold_qty" in data else (sales_item.quantity or 0)))
+    if quantity <= 0:
+        return JsonResponse({"error": "Sold quantity must be greater than zero."}, status=400)
+
+    unit_type = (data.get("unit_type") if "unit_type" in data else sales_item.unit_type or "").strip()
+    unit_price = Decimal(str(data.get("unit_price") if "unit_price" in data else (sales_item.unit_price or 0)))
+    description = (data.get("product") if "product" in data else sales_item.description or "").strip()
+
+    sales_item.description = description
+    sales_item.quantity = quantity
+    sales_item.unit_type = unit_type
+    sales_item.unit_price = unit_price
+    sales_item.amount = quantity * unit_price
+    sales_item.save(update_fields=["description", "quantity", "unit_type", "unit_price", "amount"])
+
+    if allocation:
+        allocation.quantity = quantity
+        allocation.unit_type = unit_type
+        allocation.save(update_fields=["quantity", "unit_type"])
+
+    if output:
+        output.quantity = quantity
+        output.unit_type = unit_type
+        output.save(update_fields=["quantity", "unit_type"])
+        if output.inventory_id and output.inventory:
+            output.inventory.desc = description or output.inventory.desc
+            output.inventory.unittype = unit_type
+            output.inventory.unitsonhand = quantity
+            output.inventory.unitsavailable = quantity
+            output.inventory.unitsin = quantity
+            output.inventory.save(update_fields=["desc", "unittype", "unitsonhand", "unitsavailable", "unitsin"])
+
+    batch.calculate_yield()
+    batch.save(update_fields=["total_input_weight", "total_output_weight", "actual_yield_pct", "expected_yield_pct", "yield_variance_pct", "yield_flagged"])
+
+    return JsonResponse({"success": True})
 
 
 @login_required
@@ -2020,7 +2173,68 @@ def settings_users(request):
                 for tenant_user in tenant_users
             ]
         }
-    )
+      )
+
+
+@login_required
+@require_POST
+def settings_billing_checkout(request):
+    tenant, error = _require_tenant(request)
+    if error:
+        return error
+    admin_error = _require_tenant_admin(request, tenant)
+    if admin_error:
+        return admin_error
+
+    secret_key = getattr(settings, "STRIPE_SECRET_KEY", "").strip()
+    price_id = getattr(settings, "STRIPE_PRICE_ID", "").strip()
+    if not secret_key or not price_id:
+        return JsonResponse({"error": "Stripe billing is not configured."}, status=400)
+
+    stripe.api_key = secret_key
+    success_url = request.build_absolute_uri("/operations/settings/?billing=success")
+    cancel_url = request.build_absolute_uri("/operations/settings/?billing=cancelled")
+
+    try:
+        checkout_session = stripe.checkout.Session.create(
+            mode="subscription",
+            line_items=[{"price": price_id, "quantity": 1}],
+            success_url=success_url,
+            cancel_url=cancel_url,
+            customer_email=(request.user.email or None),
+            metadata={
+                "tenant_id": str(tenant.id),
+                "tenant_name": getattr(tenant, "name", "") or "",
+                "user_id": str(request.user.id),
+            },
+        )
+    except Exception as exc:
+        return JsonResponse({"error": f"Unable to start Stripe checkout: {exc}"}, status=400)
+
+    return JsonResponse({"url": checkout_session.url})
+
+
+@login_required
+@require_POST
+def settings_reset_operational_data(request):
+    tenant, error = _require_tenant(request)
+    if error:
+        return error
+    admin_error = _require_tenant_admin(request, tenant)
+    if admin_error:
+        return admin_error
+
+    deleted_summary = {}
+    with transaction.atomic():
+        for model in _editable_operational_models():
+            count = model.all_objects.filter(tenant=tenant).count() if hasattr(model, "all_objects") else model.objects.filter(tenant=tenant).count()
+            if not count:
+                continue
+            queryset = model.all_objects.filter(tenant=tenant) if hasattr(model, "all_objects") else model.objects.filter(tenant=tenant)
+            queryset.delete()
+            deleted_summary[model.__name__] = count
+
+    return JsonResponse({"success": True, "deleted": deleted_summary})
 
 
 @login_required

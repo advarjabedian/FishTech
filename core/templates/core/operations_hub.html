@@ -151,9 +151,10 @@
                     <th style="text-align:right;">Expected</th>
                     <th style="text-align:right;">Arrived</th>
                     <th>Status</th>
+                    <th style="text-align:right;">Actions</th>
                 </tr>
             </thead>
-            <tbody id="arrivalRows"><tr><td colspan="5" class="text-center text-muted py-3">Loading...</td></tr></tbody>
+            <tbody id="arrivalRows"><tr><td colspan="6" class="text-center text-muted py-3">Loading...</td></tr></tbody>
         </table>
     </div>
 
@@ -170,9 +171,10 @@
                     <th>Received</th>
                     <th style="text-align:right;">On Hand</th>
                     <th>Unit</th>
+                    <th style="text-align:right;">Actions</th>
                 </tr>
             </thead>
-            <tbody id="readyProcessRows"><tr><td colspan="5" class="text-center text-muted py-3">Loading...</td></tr></tbody>
+            <tbody id="readyProcessRows"><tr><td colspan="6" class="text-center text-muted py-3">Loading...</td></tr></tbody>
         </table>
     </div>
 
@@ -188,11 +190,13 @@
                     <th>Source Lot</th>
                     <th style="text-align:right;">Sold</th>
                     <th>Unit</th>
+                    <th style="text-align:right;">Unit Price</th>
                     <th>Customer</th>
                     <th style="text-align:right;">Amount</th>
+                    <th style="text-align:right;">Actions</th>
                 </tr>
             </thead>
-            <tbody id="processedSoldRows"><tr><td colspan="6" class="text-center text-muted py-3">Loading...</td></tr></tbody>
+            <tbody id="processedSoldRows"><tr><td colspan="8" class="text-center text-muted py-3">Loading...</td></tr></tbody>
         </table>
     </div>
 </div>
@@ -232,14 +236,15 @@ async function loadArrivals() {
         const data = await response.json();
         const orders = data.orders || [];
         document.getElementById('arrivalRows').innerHTML = orders.length ? orders.map((order) => `
-            <tr style="cursor:pointer;" onclick="window.location='/operations/purchases/${order.id}/'">
+            <tr>
                 <td style="font-weight:600;color:#2563eb;">${esc(order.po_number)}</td>
                 <td>${esc(order.vendor_name || '--')}</td>
                 <td style="text-align:right;">${Number(order.expected || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}</td>
                 <td style="text-align:right;">${Number(order.arrived || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}</td>
                 <td><span class="badge-sm ${statusBadgeClass(order.receive_status)}">${esc(order.receive_status_display || order.receive_status || '--')}</span></td>
+                <td style="text-align:right;"><a href="/operations/purchases/${order.id}/">Edit</a></td>
             </tr>
-        `).join('') : '<tr><td colspan="5" class="text-center text-muted py-3">No arrivals yet.</td></tr>';
+        `).join('') : '<tr><td colspan="6" class="text-center text-muted py-3">No arrivals yet.</td></tr>';
     } catch (error) {
         console.error('loadArrivals error', error);
     }
@@ -251,14 +256,15 @@ async function loadReadyToProcess() {
         const data = await response.json();
         const lots = (data.lots || []).slice(0, 5);
         document.getElementById('readyProcessRows').innerHTML = lots.length ? lots.map((lot) => `
-            <tr style="cursor:pointer;" onclick="window.location='/operations/processing/?lot_id=${lot.id}'">
+            <tr>
                 <td style="font-weight:600;">${esc(lot.item_name || lot.product || '--')}</td>
                 <td style="color:#2563eb;">${esc(lot.lot_id || lot.trace_lot || '--')}</td>
                 <td>${esc(lot.receive_date || '--')}</td>
                 <td style="text-align:right;">${Number(lot.on_hand || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}</td>
                 <td>${esc(lot.unit_type || '')}</td>
+                <td style="text-align:right;"><a href="/operations/processing/?edit_lot=${lot.id}">Edit</a></td>
             </tr>
-        `).join('') : '<tr><td colspan="5" class="text-center text-muted py-3">No lots ready to process.</td></tr>';
+        `).join('') : '<tr><td colspan="6" class="text-center text-muted py-3">No lots ready to process.</td></tr>';
     } catch (error) {
         console.error('loadReadyToProcess error', error);
     }
@@ -275,10 +281,12 @@ async function loadProcessedSold() {
                 <td style="color:#2563eb;">${esc(row.source_lot || '--')}</td>
                 <td style="text-align:right;">${Number(row.sold_qty || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}</td>
                 <td>${esc(row.unit_type || '')}</td>
+                <td style="text-align:right;">$${Number(row.unit_price || 0).toFixed(2)}</td>
                 <td>${esc(row.customer_name || '--')}</td>
                 <td style="text-align:right;">$${Number(row.amount || 0).toFixed(2)}</td>
+                <td style="text-align:right;"><a href="/operations/processing/?edit_sale=${row.batch_id}:${row.order_id}">Edit</a></td>
             </tr>
-        `).join('') : '<tr><td colspan="6" class="text-center text-muted py-3">No processed sales yet.</td></tr>';
+        `).join('') : '<tr><td colspan="8" class="text-center text-muted py-3">No processed sales yet.</td></tr>';
     } catch (error) {
         console.error('loadProcessedSold error', error);
     }

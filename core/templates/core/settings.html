@@ -92,6 +92,10 @@
     font-size: 0.88rem;
 }
 
+.billing-status {
+    margin-top: 0.9rem;
+}
+
 .users-toolbar {
     display: flex;
     align-items: center;
@@ -379,7 +383,7 @@
             <div class="billing-head">
                 <div>
                     <h2 class="billing-title">Billing</h2>
-                    <p class="billing-copy">Use a secure hosted checkout to manage the monthly workspace subscription.</p>
+                    <p class="billing-copy">Open secure Stripe Checkout to enter a card and start the monthly workspace subscription.</p>
                 </div>
                 <div class="billing-price">
                     <strong>{{ billing_amount_display }}</strong>
@@ -389,14 +393,23 @@
             <div class="billing-note">
                 For security, card details are handled in the payment provider checkout instead of being typed directly into this app.
             </div>
+            {% if billing_status == 'success' %}
+            <div class="settings-banner show success billing-status">
+                Billing checkout completed. If Stripe accepted the payment, the subscription is now active on their side.
+            </div>
+            {% elif billing_status == 'cancelled' %}
+            <div class="settings-banner show error billing-status">
+                Billing checkout was cancelled before payment was completed.
+            </div>
+            {% endif %}
             <div style="margin-top: 1rem;">
-                {% if billing_checkout_url %}
-                <a class="settings-btn settings-btn-primary" href="{{ billing_checkout_url }}" target="_blank" rel="noopener">
+                {% if billing_checkout_ready %}
+                <button class="settings-btn settings-btn-primary" type="button" id="billingCheckoutButton" onclick="startBillingCheckout()">
                     Open Secure Checkout
-                </a>
+                </button>
                 {% else %}
                 <div class="settings-banner show error" style="margin: 0;">
-                    Billing checkout is not configured yet. Add `STRIPE_PAYMENT_LINK_URL` in the environment to enable it.
+                    Billing checkout is not configured yet. Add Stripe keys and a Stripe price ID in the environment to enable it.
                 </div>
                 {% endif %}
             </div>
@@ -515,6 +528,35 @@ async function loadUsers() {
         document.getElementById('usersTableBody').innerHTML =
             '<tr><td colspan="2" class="settings-empty">Failed to load users.</td></tr>';
         showBanner(error.message || 'Failed to load users.');
+    }
+}
+
+async function startBillingCheckout() {
+    clearBanner();
+    const button = document.getElementById('billingCheckoutButton');
+    if (!button) return;
+
+    button.disabled = true;
+    button.textContent = 'Opening...';
+
+    try {
+        const response = await fetch('/api/settings/billing/checkout/', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+            },
+        });
+        const data = await response.json().catch(() => ({}));
+
+        if (!response.ok || !data.url) {
+            throw new Error(data.error || 'Unable to open billing checkout.');
+        }
+
+        window.location.href = data.url;
+    } catch (error) {
+        showBanner(error.message || 'Unable to open billing checkout.');
+        button.disabled = false;
+        button.textContent = 'Open Secure Checkout';
     }
 }
 
