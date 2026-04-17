@@ -61,6 +61,46 @@ class TenantUser(models.Model):
         return f"{self.user.username} - {self.tenant.name}"
 
 
+class TenantBillingProfile(models.Model):
+    """Stores Stripe billing linkage and the latest synced billing snapshot for a tenant."""
+    BILLING_STATUS_CHOICES = [
+        ("unknown", "Unknown"),
+        ("incomplete", "Incomplete"),
+        ("incomplete_expired", "Incomplete Expired"),
+        ("trialing", "Trialing"),
+        ("active", "Active"),
+        ("past_due", "Past Due"),
+        ("canceled", "Canceled"),
+        ("unpaid", "Unpaid"),
+        ("paused", "Paused"),
+    ]
+
+    tenant = models.OneToOneField(Tenant, on_delete=models.CASCADE, related_name="billing_profile")
+    stripe_customer_id = models.CharField(max_length=255, blank=True)
+    stripe_subscription_id = models.CharField(max_length=255, blank=True)
+    stripe_price_id = models.CharField(max_length=255, blank=True)
+    subscription_status = models.CharField(max_length=32, choices=BILLING_STATUS_CHOICES, default="unknown")
+    current_period_end = models.DateTimeField(null=True, blank=True)
+    cancel_at = models.DateTimeField(null=True, blank=True)
+    canceled_at = models.DateTimeField(null=True, blank=True)
+    latest_invoice_id = models.CharField(max_length=255, blank=True)
+    latest_invoice_status = models.CharField(max_length=64, blank=True)
+    latest_invoice_amount_due = models.IntegerField(null=True, blank=True)
+    latest_invoice_amount_paid = models.IntegerField(null=True, blank=True)
+    latest_invoice_currency = models.CharField(max_length=16, blank=True)
+    latest_invoice_created_at = models.DateTimeField(null=True, blank=True)
+    customer_email = models.EmailField(blank=True)
+    last_checkout_session_id = models.CharField(max_length=255, blank=True)
+    last_checkout_completed_at = models.DateTimeField(null=True, blank=True)
+    last_synced_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["tenant__name"]
+
+    def __str__(self):
+        return f"Billing profile for {self.tenant.name}"
+
+
 class User(TenantModel):
     """Custom user model for business logic"""
     userid = models.IntegerField(null=True, blank=True)

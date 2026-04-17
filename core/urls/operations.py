@@ -16,6 +16,7 @@ from ..views.operations_pages import (
     shipping_loading,
     shipping_packing,
     shipping_picking,
+    system_admin_page,
     trace_page,
     vendor_list_page,
 )
@@ -35,6 +36,7 @@ urlpatterns = [
     path('shipping/picking/', shipping_picking, name='shipping_picking'),
     path('shipping/packing/', shipping_packing, name='shipping_packing'),
     path('shipping/loading/', shipping_loading, name='shipping_loading'),
+    path('system-admin/', system_admin_page, name='system_admin_page'),
     path('settings/', settings_page, name='settings_page'),
     path('vendors/', vendor_list_page, name='vendor_list_page'),
     path('customers/', customer_list_page, name='customer_list_page'),

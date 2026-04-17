@@ -33,6 +33,7 @@ from core.models import (
     SalesOrder,
     SalesOrderAllocation,
     SalesOrderItem,
+    TenantBillingProfile,
     TenantUser,
     Vendor,
 )
@@ -2192,10 +2193,11 @@ def settings_billing_checkout(request):
         return JsonResponse({"error": "Stripe billing is not configured."}, status=400)
 
     stripe.api_key = secret_key
-    success_url = request.build_absolute_uri("/operations/settings/?billing=success")
+    success_url = request.build_absolute_uri("/operations/settings/?billing=success&session_id={CHECKOUT_SESSION_ID}")
     cancel_url = request.build_absolute_uri("/operations/settings/?billing=cancelled")
 
     try:
+        billing_profile, _ = TenantBillingProfile.objects.get_or_create(tenant=tenant)
         checkout_session = stripe.checkout.Session.create(
             mode="subscription",
             line_items=[{"price": price_id, "quantity": 1}],
@@ -2207,7 +2209,16 @@ def settings_billing_checkout(request):
                 "tenant_name": getattr(tenant, "name", "") or "",
                 "user_id": str(request.user.id),
             },
+            subscription_data={
+                "metadata": {
+                    "tenant_id": str(tenant.id),
+                    "tenant_name": getattr(tenant, "name", "") or "",
+                    "user_id": str(request.user.id),
+                }
+            },
         )
+        billing_profile.last_checkout_session_id = checkout_session.id
+        billing_profile.save(update_fields=["last_checkout_session_id", "last_synced_at"])
     except Exception as exc:
         return JsonResponse({"error": f"Unable to start Stripe checkout: {exc}"}, status=400)
 

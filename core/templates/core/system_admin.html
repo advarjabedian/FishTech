@@ -1,0 +1,255 @@
+{% extends 'core/base.html' %}
+{% block title %}System Admin - FishTech{% endblock %}
+
+{% block extra_css %}
+<style>
+.sys-shell {
+    padding: 2rem;
+    background: linear-gradient(180deg, #f8fbff 0%, #eef5fb 100%);
+    min-height: calc(100vh - 56px);
+}
+.sys-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+}
+.sys-head h1 {
+    margin: 0;
+    font-size: 2rem;
+    font-weight: 800;
+    color: #10233d;
+}
+.sys-head p {
+    margin: 0.4rem 0 0;
+    color: #5b708b;
+}
+.sys-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.7rem 1rem;
+    border-radius: 999px;
+    background: #fff;
+    border: 1px solid #d6e4f0;
+    color: #1e3a5f;
+    font-weight: 700;
+}
+.tenant-grid {
+    display: grid;
+    gap: 1rem;
+}
+.tenant-card {
+    background: rgba(255, 255, 255, 0.96);
+    border: 1px solid #d8e5f1;
+    border-radius: 20px;
+    box-shadow: 0 18px 40px rgba(16, 35, 61, 0.07);
+    overflow: hidden;
+}
+.tenant-top {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1.2rem 1.35rem 0.9rem;
+    flex-wrap: wrap;
+}
+.tenant-title {
+    margin: 0;
+    color: #0f172a;
+    font-size: 1.2rem;
+    font-weight: 800;
+}
+.tenant-sub {
+    margin-top: 0.25rem;
+    color: #64748b;
+    font-size: 0.92rem;
+}
+.status-row {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    flex-wrap: wrap;
+}
+.status-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    padding: 0.4rem 0.8rem;
+    font-size: 0.78rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+.status-pill.active, .status-pill.paid { background: #dcfce7; color: #166534; }
+.status-pill.past_due, .status-pill.open, .status-pill.incomplete { background: #fef3c7; color: #92400e; }
+.status-pill.canceled, .status-pill.unpaid, .status-pill.void, .status-pill.unknown { background: #e2e8f0; color: #475569; }
+.status-pill.trialing { background: #dbeafe; color: #1d4ed8; }
+.status-pill.default { background: #ede9fe; color: #6d28d9; }
+.tenant-body {
+    padding: 0 1.35rem 1.35rem;
+}
+.tenant-metrics {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.9rem;
+    margin-top: 0.5rem;
+}
+.metric {
+    border: 1px solid #e5edf5;
+    border-radius: 16px;
+    padding: 0.95rem;
+    background: #f8fbff;
+}
+.metric-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #64748b;
+    font-weight: 800;
+}
+.metric-value {
+    margin-top: 0.35rem;
+    color: #10233d;
+    font-size: 1.02rem;
+    font-weight: 700;
+    word-break: break-word;
+}
+.metric-help {
+    margin-top: 0.35rem;
+    color: #7b8ba1;
+    font-size: 0.82rem;
+}
+.sync-error {
+    margin-top: 1rem;
+    padding: 0.85rem 1rem;
+    border-radius: 14px;
+    border: 1px solid #fecaca;
+    background: #fff1f2;
+    color: #9f1239;
+    font-size: 0.9rem;
+}
+@media (max-width: 960px) {
+    .sys-shell { padding: 1rem; }
+    .tenant-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 640px) {
+    .tenant-metrics { grid-template-columns: 1fr; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="sys-shell">
+    <div class="sys-head">
+        <div>
+            <h1>Tenant Billing Overview</h1>
+            <p>All workspaces, their current subscription state, and the most recent billing snapshot we can sync from Stripe.</p>
+        </div>
+        <div class="sys-pill">
+            <span>Monthly price</span>
+            <strong>{{ billing_amount_display }}</strong>
+        </div>
+    </div>
+
+    {% if not billing_checkout_ready %}
+    <div class="sync-error" style="margin-bottom: 1rem;">
+        Stripe is not fully configured in the environment yet, so live billing sync is unavailable.
+    </div>
+    {% endif %}
+
+    <div class="tenant-grid">
+        {% for row in system_admin_rows %}
+        {% with tenant=row.tenant profile=row.profile %}
+        <section class="tenant-card">
+            <div class="tenant-top">
+                <div>
+                    <h2 class="tenant-title">{{ tenant.name }}</h2>
+                    <div class="tenant-sub">
+                        Subdomain: {{ tenant.subdomain }} | Tenant ID: {{ tenant.id }} | {% if tenant.is_active %}Active workspace{% else %}Inactive workspace{% endif %}
+                    </div>
+                </div>
+                <div class="status-row">
+                    <span class="status-pill {% if profile and profile.subscription_status %}{{ profile.subscription_status }}{% else %}unknown{% endif %}">
+                        {{ profile.subscription_status|default:"unknown" }}
+                    </span>
+                    <span class="status-pill {% if profile and profile.latest_invoice_status %}{{ profile.latest_invoice_status }}{% else %}unknown{% endif %}">
+                        Invoice: {{ profile.latest_invoice_status|default:"unknown" }}
+                    </span>
+                </div>
+            </div>
+            <div class="tenant-body">
+                <div class="tenant-metrics">
+                    <div class="metric">
+                        <div class="metric-label">Users</div>
+                        <div class="metric-value">{{ row.user_count }}</div>
+                        <div class="metric-help">{{ row.admin_count }} admins</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-label">Latest Invoice</div>
+                        <div class="metric-value">{{ row.amount_paid_display }}</div>
+                        <div class="metric-help">
+                            Due: {{ row.amount_due_display }}
+                        </div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-label">Current Period End</div>
+                        <div class="metric-value">
+                            {% if profile and profile.current_period_end %}{{ profile.current_period_end|date:"M j, Y g:i A" }}{% else %}--{% endif %}
+                        </div>
+                        <div class="metric-help">
+                            {% if profile and profile.cancel_at %}Cancels on {{ profile.cancel_at|date:"M j, Y g:i A" }}{% elif profile and profile.canceled_at %}Canceled {{ profile.canceled_at|date:"M j, Y g:i A" }}{% else %}No scheduled cancellation{% endif %}
+                        </div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-label">Stripe IDs</div>
+                        <div class="metric-value">{{ profile.stripe_customer_id|default:"--" }}</div>
+                        <div class="metric-help">{{ profile.stripe_subscription_id|default:"No subscription linked yet" }}</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-label">Customer Email</div>
+                        <div class="metric-value">{{ profile.customer_email|default:"--" }}</div>
+                        <div class="metric-help">Latest payer email from Stripe</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-label">Last Checkout</div>
+                        <div class="metric-value">
+                            {% if profile and profile.last_checkout_completed_at %}{{ profile.last_checkout_completed_at|date:"M j, Y g:i A" }}{% else %}--{% endif %}
+                        </div>
+                        <div class="metric-help">{{ profile.last_checkout_session_id|default:"No checkout session captured yet" }}</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-label">Last Invoice Sync</div>
+                        <div class="metric-value">
+                            {% if profile and profile.latest_invoice_created_at %}{{ profile.latest_invoice_created_at|date:"M j, Y g:i A" }}{% else %}--{% endif %}
+                        </div>
+                        <div class="metric-help">Invoice ID: {{ profile.latest_invoice_id|default:"--" }}</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-label">Profile Sync</div>
+                        <div class="metric-value">
+                            {% if profile and profile.last_synced_at %}{{ profile.last_synced_at|date:"M j, Y g:i A" }}{% else %}--{% endif %}
+                        </div>
+                        <div class="metric-help">Snapshot saved in FishTech</div>
+                    </div>
+                </div>
+                {% if row.sync_error %}
+                <div class="sync-error">
+                    Stripe sync error: {{ row.sync_error }}
+                </div>
+                {% endif %}
+            </div>
+        </section>
+        {% endwith %}
+        {% empty %}
+        <section class="tenant-card">
+            <div class="tenant-body" style="padding-top: 1.35rem;">
+                No tenants found yet.
+            </div>
+        </section>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

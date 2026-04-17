@@ -22,6 +22,24 @@
         .app-header .navbar-brand:hover {
             color: #2563eb;
         }
+        .system-admin-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+            margin-right: 0.75rem;
+            padding: 0.45rem 0.8rem;
+            border: 1px solid #bfdbfe;
+            border-radius: 999px;
+            background: #eff6ff;
+            color: #1d4ed8;
+            font-size: 0.85rem;
+            font-weight: 700;
+            text-decoration: none;
+        }
+        .system-admin-link:hover {
+            background: #dbeafe;
+            color: #1e40af;
+        }
         .nav-icon-link {
             font-size: 1.3rem;
             padding: 0.5rem 0.75rem !important;
@@ -63,6 +81,12 @@
 <body>
     <nav class="navbar navbar-expand-lg app-header">
     <div class="container-fluid">
+        {% if request.user.is_authenticated and request.user.username|lower == 'arevvarjabedian' or request.user.is_superuser %}
+        <a href="{% url 'system_admin_page' %}" class="system-admin-link">
+            <i class="bi bi-buildings"></i>
+            <span>System Admin</span>
+        </a>
+        {% endif %}
         {% if request.tenant and request.tenant.logo %}
         <a href="{% url 'operations_hub' %}" class="navbar-brand p-0 me-2">
             <img src="{{ request.tenant.logo }}" alt="{{ request.tenant.name }}" style="height: 40px; max-width: 100px; object-fit: contain;">
