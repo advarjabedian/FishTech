@@ -3,11 +3,23 @@ from django.conf import settings
 from django.shortcuts import get_object_or_404, redirect, render
 
 from core.models import ProcessBatch, Product, PurchaseOrder
+from core.services.billing import (
+    billing_is_configured,
+    format_money_from_cents,
+    sync_billing_profile_from_checkout_session,
+    system_admin_billing_rows,
+)
 
 
 PROCESS_LABELS = {
     "fish_cutting": "Fish Cutting",
 }
+
+
+def _is_system_admin(user):
+    if not user or not user.is_authenticated:
+        return False
+    return user.is_superuser or user.username.lower() == "arevvarjabedian"
 
 
 def _tenant_page(template_name, extra_context=None):
@@ -88,6 +100,12 @@ def inventory_item_detail_page(request, item_id):
 def settings_page(request):
     if not getattr(request, "tenant", None):
         return redirect("home")
+    session_id = (request.GET.get("session_id") or "").strip()
+    if session_id and billing_is_configured():
+        try:
+            sync_billing_profile_from_checkout_session(session_id)
+        except Exception:
+            pass
     monthly_cents = getattr(settings, "STRIPE_MONTHLY_PRICE_CENTS", 60000) or 60000
     return render(
         request,
@@ -100,6 +118,25 @@ def settings_page(request):
             ),
             "billing_amount_display": f"${monthly_cents / 100:,.2f}",
             "billing_status": (request.GET.get("billing") or "").strip().lower(),
+        },
+    )
+
+
+@login_required
+def system_admin_page(request):
+    if not _is_system_admin(request.user):
+        return redirect("operations_hub")
+
+    return render(
+        request,
+        "core/system_admin.html",
+        {
+            "system_admin_rows": system_admin_billing_rows(),
+            "billing_checkout_ready": billing_is_configured(),
+            "billing_amount_display": format_money_from_cents(
+                getattr(settings, "STRIPE_MONTHLY_PRICE_CENTS", 60000) or 60000,
+                getattr(settings, "STRIPE_CURRENCY", "usd"),
+            ),
         },
     )
 
