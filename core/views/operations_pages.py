@@ -1,4 +1,5 @@
 from django.contrib.auth.decorators import login_required
+from django.conf import settings
 from django.shortcuts import get_object_or_404, redirect, render
 
 from core.models import ProcessBatch, Product, PurchaseOrder
@@ -87,7 +88,16 @@ def inventory_item_detail_page(request, item_id):
 def settings_page(request):
     if not getattr(request, "tenant", None):
         return redirect("home")
-    return render(request, "core/settings.html", {"tenant": request.tenant})
+    monthly_cents = getattr(settings, "STRIPE_MONTHLY_PRICE_CENTS", 60000) or 60000
+    return render(
+        request,
+        "core/settings.html",
+        {
+            "tenant": request.tenant,
+            "billing_checkout_url": getattr(settings, "STRIPE_PAYMENT_LINK_URL", ""),
+            "billing_amount_display": f"${monthly_cents / 100:,.2f}",
+        },
+    )
 
 
 @login_required

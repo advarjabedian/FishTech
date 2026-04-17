@@ -39,6 +39,59 @@
     overflow: hidden;
 }
 
+.billing-card {
+    background: linear-gradient(135deg, #ffffff 0%, #f8fbff 100%);
+    border: 1px solid #dbe7f3;
+    border-radius: 18px;
+    box-shadow: 0 10px 28px rgba(15, 23, 42, 0.04);
+    padding: 1.25rem;
+    margin-bottom: 1.25rem;
+}
+
+.billing-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.billing-title {
+    margin: 0;
+    color: #0f172a;
+    font-size: 1.1rem;
+    font-weight: 800;
+}
+
+.billing-copy {
+    margin: 0.35rem 0 0;
+    color: #64748b;
+    font-size: 0.92rem;
+}
+
+.billing-price {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.35rem;
+    padding: 0.75rem 0.95rem;
+    border-radius: 14px;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    color: #1d4ed8;
+    font-weight: 800;
+}
+
+.billing-price strong {
+    font-size: 1.5rem;
+    line-height: 1;
+}
+
+.billing-note {
+    margin-top: 0.85rem;
+    color: #475569;
+    font-size: 0.88rem;
+}
+
 .users-toolbar {
     display: flex;
     align-items: center;
@@ -321,6 +374,33 @@
         </div>
 
         <div class="settings-banner" id="settingsBanner"></div>
+
+        <div class="billing-card">
+            <div class="billing-head">
+                <div>
+                    <h2 class="billing-title">Billing</h2>
+                    <p class="billing-copy">Use a secure hosted checkout to manage the monthly workspace subscription.</p>
+                </div>
+                <div class="billing-price">
+                    <strong>{{ billing_amount_display }}</strong>
+                    <span>/ month</span>
+                </div>
+            </div>
+            <div class="billing-note">
+                For security, card details are handled in the payment provider checkout instead of being typed directly into this app.
+            </div>
+            <div style="margin-top: 1rem;">
+                {% if billing_checkout_url %}
+                <a class="settings-btn settings-btn-primary" href="{{ billing_checkout_url }}" target="_blank" rel="noopener">
+                    Open Secure Checkout
+                </a>
+                {% else %}
+                <div class="settings-banner show error" style="margin: 0;">
+                    Billing checkout is not configured yet. Add `STRIPE_PAYMENT_LINK_URL` in the environment to enable it.
+                </div>
+                {% endif %}
+            </div>
+        </div>
 
         <div class="users-card">
             <div class="users-toolbar">

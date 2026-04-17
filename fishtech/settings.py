@@ -148,6 +148,7 @@ STRIPE_WEBHOOK_SECRET = os.environ.get('STRIPE_WEBHOOK_SECRET', '').strip()
 STRIPE_PRICE_ID = os.environ.get('STRIPE_PRICE_ID', '').strip()
 STRIPE_CURRENCY = os.environ.get('STRIPE_CURRENCY', 'usd').strip().lower()
 STRIPE_MONTHLY_PRICE_CENTS = int(os.environ.get('STRIPE_MONTHLY_PRICE_CENTS', '60000'))
+STRIPE_PAYMENT_LINK_URL = os.environ.get('STRIPE_PAYMENT_LINK_URL', '').strip()
 ENFORCE_SUBSCRIPTION_BILLING = os.environ.get('ENFORCE_SUBSCRIPTION_BILLING', 'false').lower() in {'1', 'true', 'yes', 'on'}
 
 # Default primary key field type
