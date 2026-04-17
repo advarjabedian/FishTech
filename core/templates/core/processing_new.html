@@ -114,12 +114,7 @@ const PAGE_PARAMS=new URLSearchParams(location.search);
 const PREFILL_LOT_ID=PAGE_PARAMS.get('lot_id')||'';
 const PREFILL_PRODUCT_ID=PAGE_PARAMS.get('product_id')||'';
 const HINTS={
-  fish_cutting:'Fish Cutting: choose the source lot, set the input, then define the cut output you are selling.',
-  commingle:'Commingle: combine the selected lots into one sale-ready output.',
-  renaming:'Renaming: re-label the selected lot under the sale product you need.',
-  freeze:'Freeze: move the lot into a frozen output before sale.',
-  lot_breaking:'Lot Breaking: split the lot into smaller sale-ready outputs.',
-  shucking:'Shucking: define the shucked output and sell from that output.'
+  fish_cutting:'Fish Cutting: choose the source lot, set the input, then define the cut output you are selling.'
 };
 
 let step=1,lots=[],products=[],customers=[],selected={},qtys={},outputs=[],searchTimer;
@@ -311,28 +306,15 @@ function initOutputs() {
   const first = selected[ids()[0]];
   const total = totalIn();
   const unit = sourceUnit();
-  if (['commingle','freeze','wet_store','renaming'].includes(PROCESS_TYPE)) {
-    outputs = [{
-      product_id:first?(first.product_id||PREFILL_PRODUCT_ID):PREFILL_PRODUCT_ID,
-      product_name:first?(first.item_name||first.product||''):'',
-      quantity:total,
-      unit_type:unit,
-      yield_percent:100,
-      unit_price:'',
-      lot_id:''
-    }];
-  } else {
-    const defaultYield = PROCESS_TYPE==='shucking' ? 15 : (PROCESS_TYPE==='fish_cutting' ? 65 : 100);
-    outputs = [{
-      product_id:PREFILL_PRODUCT_ID,
-      product_name:'',
-      quantity:Math.round(total*defaultYield)/100,
-      unit_type:unit,
-      yield_percent:defaultYield,
-      unit_price:'',
-      lot_id:''
-    }];
-  }
+  outputs = [{
+    product_id:PREFILL_PRODUCT_ID || (first ? (first.product_id || '') : ''),
+    product_name:'',
+    quantity:Math.round(total*65)/100,
+    unit_type:unit,
+    yield_percent:65,
+    unit_price:'',
+    lot_id:''
+  }];
   renderOutputs();
 }
 
@@ -374,7 +356,7 @@ function renderOutputs() {
         <strong>Output ${i+1}</strong>
         ${outputs.length>1?`<button class="rm" onclick="removeOutput(${i})">Remove</button>`:''}
       </div>
-      ${['fish_cutting','shucking','renaming'].includes(PROCESS_TYPE)?`
+      ${PROCESS_TYPE==='fish_cutting'?`
         <div class="grid two">
           <div><label class="lbl">Output Product</label><select onchange="setOutProduct(${i},this.value)">${productOptions(o.product_id)}</select></div>
           <div></div>
@@ -383,7 +365,7 @@ function renderOutputs() {
       <div class="grid three" style="margin-top:1rem;">
         <div><label class="lbl">Output Quantity</label><input type="number" step="0.01" min="0" value="${o.quantity||''}" oninput="outputs[${i}].quantity=parseFloat(this.value)||0"></div>
         <div><label class="lbl">Unit</label><input value="${esc(o.unit_type||'')}" oninput="outputs[${i}].unit_type=this.value"></div>
-        ${['fish_cutting','shucking','lot_breaking'].includes(PROCESS_TYPE)?`
+        ${PROCESS_TYPE==='fish_cutting'?`
           <div><label class="lbl">Yield %</label><input type="number" step="0.1" min="0" max="100" value="${o.yield_percent||''}" oninput="setYield(${i},this.value)"></div>
         `:`
           <div><label class="lbl">Output Lot ID</label><input value="${esc(o.lot_id||'')}" placeholder="Auto-generate if blank" oninput="outputs[${i}].lot_id=this.value"></div>
@@ -453,15 +435,7 @@ function renderSummary() {
   const customer = getChosenCustomerName();
   const od = document.getElementById('orderDate').value || '--';
   let total = 0;
-  const typeLabels = {
-    fish_cutting:'Fish Cutting',
-    commingle:'Commingle',
-    renaming:'Renaming',
-    freeze:'Freeze',
-    lot_breaking:'Bag or Lot Breaking',
-    shucking:'Shucking',
-    wet_store:'Wet Store'
-  };
+  const typeLabels = { fish_cutting:'Fish Cutting' };
 
   let html = `<div style="margin-bottom:1rem;"><strong>Process Type:</strong> ${esc(typeLabels[PROCESS_TYPE]||PROCESS_TYPE)}<br><strong>Customer:</strong> ${esc(customer)}<br><strong>Order Date:</strong> ${esc(od)}</div>`;
   html += `<table><tr><th>Source Lot</th><th>Product</th><th style="text-align:right;">Qty In</th></tr>`;
@@ -513,11 +487,10 @@ async function submitAll() {
     product_id:selected[id].product_id||''
   }));
 
-  const yieldDriven = ['fish_cutting','shucking','lot_breaking'];
   const batchOutputs = outputs.map((o,i) => ({
     product_id:o.product_id||'',
     description:fallbackName(o,i),
-    quantity:yieldDriven.includes(PROCESS_TYPE)&&o.yield_percent!==''&&o.yield_percent!=null ? (Math.round(totalIn()*Number(o.yield_percent||0))/100) : Number(o.quantity||0),
+    quantity:o.yield_percent!==''&&o.yield_percent!=null ? (Math.round(totalIn()*Number(o.yield_percent||0))/100) : Number(o.quantity||0),
     unit_type:o.unit_type||'',
     yield_percent:o.yield_percent||null,
     lot_id:o.lot_id||'',

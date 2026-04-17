@@ -304,6 +304,15 @@ def _selected_source_lot_ids(data):
     return list(dict.fromkeys(lot_ids))
 
 
+def _normalize_process_type(value):
+    process_type = (value or "").strip()
+    if not process_type:
+        return ""
+    if process_type != "fish_cutting":
+        raise ValueError("Only fish cutting is supported.")
+    return process_type
+
+
 def _rollback_process_batch(batch):
     source_rows = list(batch.sources.select_related("inventory").all())
     output_inventory_ids = [output.inventory_id for output in batch.outputs.all() if output.inventory_id]
@@ -322,7 +331,7 @@ def _rollback_process_batch(batch):
 
 
 def _create_processing_batch_for_sales_item(request, tenant, sales_item, data):
-    process_type = (data.get("process_type") or "").strip()
+    process_type = _normalize_process_type(data.get("process_type"))
     if not process_type or sales_item.item_type != "item":
         return None
 
@@ -2445,7 +2454,7 @@ def sales_order_item_add(request, order_id):
         unit_type=(data.get("unit_type") or "").strip(),
         unit_price=data.get("unit_price") or None,
         amount=amount,
-        process_type=(data.get("process_type") or "").strip(),
+        process_type=_normalize_process_type(data.get("process_type")),
         process_source_lot_ids=",".join(str(lot_id) for lot_id in _selected_source_lot_ids(data)),
         sort_order=so.items.count(),
     )
@@ -2587,7 +2596,10 @@ def processing_batches_create(request):
     if error:
         return error
     data = json.loads(request.body)
-    process_type = (data.get("process_type") or "").strip()
+    try:
+        process_type = _normalize_process_type(data.get("process_type"))
+    except ValueError as exc:
+        return JsonResponse({"error": str(exc)}, status=400)
     if not process_type:
         return JsonResponse({"error": "Process type is required."}, status=400)
     # Auto-generate batch number

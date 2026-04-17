@@ -444,15 +444,12 @@ function processTypeOptions(selected) {
     const opts = [
         ['', 'No Processing'],
         ['fish_cutting', 'Cut'],
-        ['renaming', 'Rename'],
-        ['commingle', 'Commingle'],
     ];
     return opts.map(([value, label]) => `<option value="${value}" ${value === (selected || '') ? 'selected' : ''}>${label}</option>`).join('');
 }
 
 function relevantLotsForItem(item) {
     if (!item || !item.product_id) return availableLots;
-    if (item.process_type === 'renaming') return availableLots;
     return availableLots.filter(lot => !lot.product_id || lot.product_id === item.product_id);
 }
 
@@ -608,12 +605,10 @@ function onItemSelect(idx, productId) {
     lineItems[idx].description = productDisplayName(product);
     lineItems[idx].product_spec = productSpec(product);
     lineItems[idx].unit_type = product.selling_unit_of_measure || product.inventory_unit_of_measure || product.unit_type || '';
-    if (lineItems[idx].process_type !== 'renaming') {
-        lineItems[idx].process_source_lot_ids = (lineItems[idx].process_source_lot_ids || []).filter(lotId => {
-            const lot = availableLots.find(entry => String(entry.id) === String(lotId));
-            return lot && lot.product_id === productId;
-        });
-    }
+    lineItems[idx].process_source_lot_ids = (lineItems[idx].process_source_lot_ids || []).filter(lotId => {
+        const lot = availableLots.find(entry => String(entry.id) === String(lotId));
+        return lot && lot.product_id === productId;
+    });
     renderItems();
 }
 

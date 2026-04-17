@@ -51,18 +51,6 @@
 
 .process-row-btn:hover { background: #dbeafe; }
 
-.process-row-btn.commingle {
-    background: #ecfeff;
-    border-color: #a5f3fc;
-    color: #0891b2;
-}
-
-.process-row-btn.rename {
-    background: #f5f3ff;
-    border-color: #ddd6fe;
-    color: #7c3aed;
-}
-
 .process-result-table {
     width: 100%;
     border-collapse: collapse;
@@ -123,9 +111,9 @@
             <h2><i class="bi bi-gear me-2" style="color:#2563eb;"></i>Processing</h2>
             <div class="sub">
                 {% if sale_mode %}
-                Choose how you're processing this lot before creating the sale and invoice.
+                Cut the selected lot before creating the sale.
                 {% else %}
-                See what came in, process and sell it from the row, and review the sold result below.
+                Cut received lots and review the sold results below.
                 {% endif %}
             </div>
         </div>
@@ -250,8 +238,6 @@ function renderReadyLots() {
             <td>
                 <div class="process-row-actions">
                     <button class="process-row-btn" onclick="startProcessForLot('fish_cutting', ${lot.id})">Fish Cutting</button>
-                    <button class="process-row-btn commingle" onclick="startProcessForLot('commingle', ${lot.id})">Commingle</button>
-                    <button class="process-row-btn rename" onclick="startProcessForLot('renaming', ${lot.id})">Rename</button>
                 </div>
             </td>
         </tr>

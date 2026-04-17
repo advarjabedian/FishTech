@@ -6,12 +6,6 @@ from core.models import ProcessBatch, Product, PurchaseOrder, SalesOrder, SalesO
 
 PROCESS_LABELS = {
     "fish_cutting": "Fish Cutting",
-    "commingle": "Commingle",
-    "renaming": "Renaming",
-    "freeze": "Freeze",
-    "lot_breaking": "Lot Breaking",
-    "shucking": "Shucking",
-    "wet_store": "Wet Store",
 }
 
 
@@ -49,11 +43,6 @@ customer_list_page = _tenant_page("core/customer_list.html")
 trace_page = _tenant_page("core/trace.html")
 
 # ── Compliance / HACCP ───────────────────────────────────────────
-compliance_hub = _tenant_page("core/compliance_hub.html")
-operations_dashboard = _tenant_page("core/DailyInspections/operations_admin.html")
-operations_admin = _tenant_page("core/DailyInspections/operations_admin.html")
-
-
 @login_required
 def purchase_detail_page(request, po_id):
     if not getattr(request, "tenant", None):
