@@ -1362,8 +1362,9 @@ def processing_source_lots(request):
     product_ids = list({lot.productid for lot in lots if lot.productid})
     product_map = {
         product.product_id: product
-        for product in Product.objects.filter(tenant=tenant, product_id__in=product_ids)
+        for product in Product.objects.filter(tenant=tenant, is_active=True, product_id__in=product_ids)
     }
+    processable_lots = [lot for lot in lots if not lot.productid or lot.productid in product_map]
     return JsonResponse({
         "lots": [
             {
@@ -1381,11 +1382,12 @@ def processing_source_lots(request):
                 "vendor_lot": lot.vendorlot or "",
                 "on_hand": _to_float(lot.unitsonhand) or 0,
                 "unit_type": lot.unittype or "",
+                "cost": _to_float(lot.actualcost) or 0,
                 "location": lot.location or "",
                 "origin": lot.origin or "",
                 "receive_date": lot.receivedate or "",
             }
-            for lot in lots
+            for lot in processable_lots
         ]
     })
 

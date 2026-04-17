@@ -1,738 +1,102 @@
 {% extends 'core/base.html' %}
-{% block title %}{{ process_type_label }} - New Batch{% endblock %}
+{% block title %}{{ process_type_label }} - New Process{% endblock %}
 
 {% block extra_css %}
 <style>
-/* Steps */
-.steps-bar {
-    display: flex; gap: 0; margin-bottom: 1.5rem; background: #fff;
-    border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.06);
-}
-.process-wizard-shell {
-    max-width: 920px;
-    margin: 0 auto;
-}
-.process-step-panel {
-    max-width: 820px;
-    margin: 0 auto;
-}
-.step {
-    flex: 1; padding: 14px 16px; text-align: center; font-size: 0.82rem;
-    font-weight: 600; color: #94a3b8; background: #fff;
-    border-bottom: 3px solid transparent; transition: all 0.2s;
-}
-.step.active { color: #2563eb; border-bottom-color: #2563eb; background: #eff6ff; }
-.step.done { color: #16a34a; border-bottom-color: #16a34a; }
-.step .step-num {
-    display: inline-flex; align-items: center; justify-content: center;
-    width: 24px; height: 24px; border-radius: 50%; background: #e2e8f0;
-    color: #64748b; font-size: 0.75rem; margin-right: 6px;
-}
-.step.active .step-num { background: #2563eb; color: #fff; }
-.step.done .step-num { background: #16a34a; color: #fff; }
-
-/* Lot cards */
-.lot-list { display: flex; flex-direction: column; gap: 0.75rem; max-width: 800px; margin: 0 auto; }
-.lot-card {
-    background: #fff; border: 1px solid #e2e8f0; border-radius: 12px;
-    padding: 1rem 1.25rem; display: flex; align-items: center; gap: 1rem;
-    cursor: pointer; transition: all 0.15s;
-}
-.lot-card:hover { border-color: #2563eb; box-shadow: 0 2px 8px rgba(37,99,235,0.08); }
-.lot-card.selected { border-color: #2563eb; background: #eff6ff; }
-.lot-card .lot-check {
-    width: 22px; height: 22px; border: 2px solid #d1d5db; border-radius: 6px;
-    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-    transition: all 0.15s;
-}
-.lot-card.selected .lot-check { background: #2563eb; border-color: #2563eb; color: #fff; }
-.lot-info { flex: 1; min-width: 0; }
-.lot-info .lot-name { font-weight: 600; color: #1e293b; font-size: 0.9rem; }
-.lot-info .lot-meta { font-size: 0.78rem; color: #64748b; margin-top: 2px; }
-.lot-qty { text-align: right; white-space: nowrap; }
-.lot-qty .qty-val { font-weight: 700; color: #2563eb; font-size: 1rem; }
-.lot-qty .qty-unit { font-size: 0.75rem; color: #64748b; }
-
-/* Quantity / Output cards */
-.qty-card {
-    background: #fff; border: 1px solid #e2e8f0; border-radius: 12px;
-    padding: 1.25rem; margin: 0 auto 1rem; max-width: 800px;
-}
-.qty-card .lot-label { font-weight: 600; color: #1e293b; margin-bottom: 0.5rem; }
-.qty-card .lot-sub { font-size: 0.78rem; color: #64748b; margin-bottom: 0.75rem; }
-.qty-input-row { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
-.qty-input-row input[type="number"] {
-    width: 140px; border: 1px solid #d1d5db; border-radius: 8px;
-    padding: 8px 12px; font-size: 1rem; font-weight: 600;
-}
-.qty-input-row input:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.12); outline: none; }
-.qty-input-row .unit-label { font-size: 0.85rem; color: #64748b; }
-.qty-input-row .max-btn {
-    background: none; border: 1px solid #d1d5db; border-radius: 6px;
-    padding: 4px 10px; font-size: 0.75rem; color: #2563eb; cursor: pointer; font-weight: 600;
-}
-.qty-input-row .max-btn:hover { background: #eff6ff; }
-
-/* Output section */
-.output-card {
-    background: #fff; border: 1px solid #e2e8f0; border-radius: 12px;
-    padding: 1.25rem; margin: 0 auto 1rem; max-width: 800px;
-}
-.output-card h6 { font-weight: 700; margin-bottom: 1rem; }
-.form-row { display: flex; gap: 1rem; margin-bottom: 0.75rem; flex-wrap: wrap; }
-.form-row .form-group { flex: 1; min-width: 180px; }
-.form-row label { font-weight: 600; font-size: 0.8rem; color: #1e293b; display: block; margin-bottom: 4px; }
-.form-row input, .form-row select {
-    width: 100%; border: 1px solid #d1d5db; border-radius: 8px;
-    padding: 8px 12px; font-size: 0.85rem;
-}
-.form-row input:focus, .form-row select:focus {
-    border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.12); outline: none;
-}
-
-.yield-badge {
-    display: inline-block; background: #dcfce7; color: #16a34a; padding: 2px 10px;
-    border-radius: 999px; font-size: 0.75rem; font-weight: 600;
-}
-.add-output-btn {
-    background: none; border: 1px dashed #d1d5db; border-radius: 12px; padding: 1rem;
-    width: 100%; max-width: 800px; margin: 0 auto; display: block; text-align: center; cursor: pointer;
-    color: #64748b; font-size: 0.85rem; font-weight: 600; transition: all 0.15s;
-}
-.add-output-btn:hover { border-color: #2563eb; color: #2563eb; background: #eff6ff; }
-
-/* Process-type hints */
-.type-hint {
-    background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px;
-    padding: 12px 16px; font-size: 0.82rem; color: #1e40af; margin-bottom: 1.25rem;
-    max-width: 800px; margin-left: auto; margin-right: auto;
-}
-.type-hint i { margin-right: 6px; }
-
-/* Buttons */
-.btn-inv-primary:disabled { opacity: 0.5; cursor: not-allowed; }
-.btn-danger-sm {
-    background: none; border: none; color: #dc2626; cursor: pointer;
-    font-size: 0.8rem; padding: 2px 6px;
-}
-.btn-danger-sm:hover { text-decoration: underline; }
-
-.wizard-nav {
-    max-width: 820px;
-    margin: 1.5rem auto 0;
-    padding: 1rem 0 0;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 1rem;
-    border-top: 1px solid #e5e7eb;
-}
-.wizard-nav-spacer {
-    flex: 1;
-}
-.wizard-nav .btn-inv-outline,
-.wizard-nav .btn-inv-primary {
-    min-width: 140px;
-    min-height: 50px;
-    padding: 12px 22px;
-    font-size: 0.98rem;
-    font-weight: 700;
-    border-radius: 12px;
-}
-.wizard-nav .btn-inv-primary {
-    box-shadow: 0 10px 24px rgba(37,99,235,0.16);
-}
-@media (max-width: 720px) {
-    .wizard-nav {
-        flex-direction: column-reverse;
-        align-items: stretch;
-    }
-    .wizard-nav-spacer {
-        display: none;
-    }
-    .wizard-nav .btn-inv-outline,
-    .wizard-nav .btn-inv-primary {
-        width: 100%;
-    }
-}
+.wiz{max-width:960px;margin:0 auto}.steps{display:flex;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.06);margin-bottom:1.5rem}.step{flex:1;padding:14px 10px;text-align:center;font-size:.82rem;font-weight:700;color:#94a3b8;border-bottom:3px solid transparent}.step.active{background:#eff6ff;color:#2563eb;border-bottom-color:#2563eb}.step.done{color:#16a34a;border-bottom-color:#16a34a}.cardx{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:1rem 1.1rem;margin-bottom:1rem}.lot{display:flex;justify-content:space-between;gap:1rem;align-items:center;cursor:pointer}.lot.sel{background:#eff6ff;border-color:#2563eb}.meta{font-size:.78rem;color:#64748b}.grid{display:grid;gap:1rem}.grid.two{grid-template-columns:repeat(2,minmax(0,1fr))}.grid.three{grid-template-columns:repeat(3,minmax(0,1fr))}.grid.five{grid-template-columns:2fr 1fr 1fr 1fr 1fr}.grid input,.grid select,textarea{width:100%;border:1px solid #d1d5db;border-radius:8px;padding:8px 10px}.lbl{display:block;font-size:.78rem;font-weight:700;color:#334155;margin-bottom:4px}.hint{background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:12px 14px;color:#1e40af;font-size:.82rem;margin-bottom:1rem}.actions{display:flex;justify-content:space-between;gap:1rem;padding-top:1rem;border-top:1px solid #e5e7eb}.tot{display:flex;justify-content:flex-end;gap:1rem;font-weight:700;margin-top:1rem}.sum table{width:100%;font-size:.84rem;border-collapse:collapse}.sum th,.sum td{padding:6px 8px;border-bottom:1px solid #e5e7eb}.sum th{text-align:left;color:#64748b;font-size:.73rem;text-transform:uppercase}.empty{color:#94a3b8;text-align:center;padding:1rem}.addbtn{border:1px dashed #cbd5e1;background:#fff;color:#2563eb;border-radius:10px;padding:.85rem 1rem;width:100%;font-weight:700}.rm{border:none;background:none;color:#dc2626;font-weight:700}.rowamt{text-align:right;font-weight:700;padding-top:28px}.pill{display:inline-block;background:#eff6ff;color:#1d4ed8;border-radius:999px;padding:.25rem .75rem;font-size:.78rem;font-weight:700}
+@media (max-width:800px){.grid.two,.grid.three,.grid.five{grid-template-columns:1fr}.steps{display:block}.actions{flex-direction:column-reverse}}
 </style>
 {% endblock %}
 
 {% block content %}
-
 {% include 'core/includes/sidebar.html' with active='process' %}
-
 <div class="inv-main">
-    <div class="inv-header">
-        <h2><i class="bi bi-gear me-2" style="color:#2563eb;"></i>{{ process_type_label }}</h2>
-        <div class="sub">Select source lots, configure output, and start processing.</div>
+  <div class="inv-header">
+    <h2><i class="bi bi-gear me-2" style="color:#2563eb;"></i>{{ process_type_label }}</h2>
+    <div class="sub">Select source lots, configure output, create the sale and invoice, then complete everything together.</div>
+  </div>
+  <div class="wiz">
+    <div class="steps">
+      <div class="step active" id="tab1">1. Source Lots</div>
+      <div class="step" id="tab2">2. Quantities</div>
+      <div class="step" id="tab3">3. Output</div>
+      <div class="step" id="tab4">4. Sale / Invoice</div>
+      <div class="step" id="tab5">5. Confirm</div>
     </div>
 
-    <div class="process-wizard-shell">
-        <!-- Steps -->
-        <div class="steps-bar">
-            <div class="step active" id="step1-tab">
-                <span class="step-num">1</span> Source Lots
-            </div>
-            <div class="step" id="step2-tab">
-                <span class="step-num">2</span> Quantities
-            </div>
-            <div class="step" id="step3-tab">
-                <span class="step-num">3</span> Output
-            </div>
-            <div class="step" id="step4-tab">
-                <span class="step-num">4</span> Confirm
-            </div>
+    <div id="step1">
+      <div class="hint" id="typeHint"></div>
+      <div class="cardx">
+        <div style="display:flex;gap:.75rem;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-bottom:1rem;">
+          <input type="text" class="search-box" id="lotSearch" placeholder="Search lots..." oninput="debounceSearch()">
+          <span class="meta" id="lotCount">0 lots</span>
         </div>
-
-        <div class="process-step-panel">
-            <!-- Step 1: Choose source lots -->
-            <div id="step1">
-                <div style="margin-bottom: 1rem; display:flex; gap:0.75rem; align-items:center; justify-content:center; flex-wrap:wrap;">
-                    <input type="text" class="search-box" id="lotSearch" placeholder="Search lots..." oninput="debounceLotSearch()">
-                    <span id="lotCount" style="font-size:0.8rem; color:#64748b;">0 lots</span>
-                </div>
-                <div class="lot-list" id="lotList">
-                    <div class="text-center text-muted py-4">Loading available lots...</div>
-                </div>
-            </div>
-
-            <!-- Step 2: Enter quantities -->
-            <div id="step2" style="display:none;">
-                <div id="qtyCards"></div>
-            </div>
-
-            <!-- Step 3: Configure output -->
-            <div id="step3" style="display:none;">
-                <div class="type-hint" id="typeHint"></div>
-                <div id="outputCards"></div>
-                <button class="add-output-btn" onclick="addOutput()">
-                    <i class="bi bi-plus-circle me-1"></i> Add Another Output Lot
-                </button>
-            </div>
-
-            <!-- Step 4: Confirm -->
-            <div id="step4" style="display:none;">
-                <div style="max-width:800px; margin:0 auto; background:#fff; border-radius:12px; padding:1.5rem; border:1px solid #e2e8f0;">
-                    <h5 style="font-weight:700; margin-bottom:1rem;">Batch Summary</h5>
-                    <div id="summaryContent"></div>
-                    <div style="margin-top:1rem;">
-                        <label style="font-weight:600; font-size:0.85rem;">Notes (optional)</label>
-                        <textarea id="batchNotes" class="form-control" rows="2" style="border-radius:8px; margin-top:4px;"></textarea>
-                    </div>
-                </div>
-            </div>
-
-            <div class="wizard-nav">
-                <button class="btn-inv-outline" id="backBtn" onclick="goBack()" style="display:none;">
-                    <i class="bi bi-arrow-left me-1"></i> Back
-                </button>
-                <div class="wizard-nav-spacer"></div>
-                <button class="btn-inv-primary" id="nextBtn" onclick="goNext()" disabled>
-                    Next <i class="bi bi-arrow-right ms-1"></i>
-                </button>
-            </div>
-        </div>
+        <div id="lotList"><div class="empty">Loading available lots...</div></div>
+      </div>
     </div>
+
+    <div id="step2" style="display:none;"><div id="qtyList"></div></div>
+    <div id="step3" style="display:none;"><div id="outputList"></div><button class="addbtn" onclick="addOutput()">Add Another Output</button></div>
+    <div id="step4" style="display:none;">
+      <div class="cardx">
+        <div class="grid three">
+          <div><label class="lbl">Customer</label><select id="customerSelect"></select></div>
+          <div><label class="lbl">Order Date</label><input type="date" id="orderDate"></div>
+          <div><label class="lbl">Delivery Date</label><input type="date" id="deliveryDate"></div>
+        </div>
+        <div class="grid two" style="margin-top:1rem;">
+          <div><label class="lbl">Air Bill Number</label><input type="text" id="airBill" placeholder="Optional"></div>
+          <div><label class="lbl">Notes</label><textarea id="saleNotes" rows="2" placeholder="Sale / invoice notes"></textarea></div>
+        </div>
+        <div style="margin-top:1rem;"><span class="pill">Output lines become the invoice lines</span></div>
+        <div id="saleLines" style="margin-top:1rem;"></div>
+        <div class="tot"><span>Total</span><span id="grandTotal">$0.00</span></div>
+      </div>
+    </div>
+    <div id="step5" style="display:none;"><div class="cardx sum" id="summaryBox"></div></div>
+
+    <div class="actions">
+      <button class="btn-inv-outline" id="backBtn" onclick="backStep()" style="display:none;">Back</button>
+      <div></div>
+      <button class="btn-inv-primary" id="nextBtn" onclick="nextStep()" disabled>Next</button>
+    </div>
+  </div>
 </div>
-
 {% endblock %}
 
 {% block extra_js %}
 <script>
-const PROCESS_TYPE = '{{ process_type }}';
-const TOTAL_STEPS = 4;
-let currentStep = 1;
-let allLots = [];
-let selectedLots = {};   // inv.id -> lot data
-let quantities = {};     // inv.id -> number
-let outputItems = [];    // [{product_id, product_name, quantity, unit_type, yield_percent, lot_id}]
-let allProducts = [];
-let searchTimeout;
-const PAGE_PARAMS = new URLSearchParams(window.location.search);
-const PREFILL_PRODUCT_ID = PAGE_PARAMS.get('product_id') || '';
-const PREFILL_LOT_ID = PAGE_PARAMS.get('lot_id') || '';
-const UNIT_OPTIONS = ['', 'Pcs', 'Lbs', 'Cs', 'Ea', 'Bag', 'Box', 'Tray', 'Doz'];
-
-const TYPE_HINTS = {
-    fish_cutting: '<i class="bi bi-scissors"></i> <strong>Fish Cutting:</strong> Source whole fish will be cut into portions. Define the output product(s) and expected yield %.',
-    commingle: '<i class="bi bi-arrow-left-right"></i> <strong>Commingle:</strong> Combine multiple source lots into a single output lot.',
-    renaming: '<i class="bi bi-pencil-square"></i> <strong>Renaming:</strong> Re-label source lots under a different product. Quantity stays the same.',
-    freeze: '<i class="bi bi-snow"></i> <strong>Freeze:</strong> Move source lots into frozen storage. Output is the same product in frozen form.',
-    lot_breaking: '<i class="bi bi-share"></i> <strong>Bag or Lot Breaking:</strong> Split a source lot into smaller output lots.',
-    shucking: '<i class="bi bi-box-arrow-right"></i> <strong>Shucking:</strong> Shuck shellfish from shell. Define yield % and output product.',
-    wet_store: '<i class="bi bi-droplet-half"></i> <strong>Wet Store:</strong> Move lots into wet storage. Output is the same product.',
-};
-
-document.addEventListener('DOMContentLoaded', () => {
-    if (PREFILL_PRODUCT_ID) {
-        document.getElementById('lotSearch').value = PREFILL_PRODUCT_ID;
-    }
-    loadLots();
-    loadProducts();
-});
-
-// ── Data loading ────────────────────────────────────────────────
-
-async function loadLots() {
-    const search = document.getElementById('lotSearch').value.trim();
-    let url = '/api/processing/source-lots/?';
-    if (search) url += `search=${encodeURIComponent(search)}&`;
-    const res = await fetch(url);
-    const data = await res.json();
-    allLots = data.lots || [];
-    if (PREFILL_LOT_ID && !selectedLots[PREFILL_LOT_ID]) {
-        const prefilledLot = allLots.find(lot => String(lot.id) === String(PREFILL_LOT_ID));
-        if (prefilledLot) {
-            selectedLots[prefilledLot.id] = prefilledLot;
-            quantities[prefilledLot.id] = prefilledLot.on_hand;
-        }
-    }
-    renderLots();
-}
-
-async function loadProducts() {
-    const res = await fetch('/api/processing/products/');
-    const data = await res.json();
-    allProducts = data.products || [];
-}
-
-function formatSpec(spec) {
-    return spec ? `<div class="lot-meta">${esc(spec)}</div>` : '';
-}
-
-function lotDisplayName(lot) {
-    return lot.item_name || lot.display_name || lot.product || 'Unknown Product';
-}
-
-function productDisplayName(product) {
-    return product.display_name || product.description || product.item_name || product.product_id || '';
-}
-
-function productSpec(product) {
-    return [product.quantity_description, product.size_cull].filter(Boolean).join(' · ');
-}
-
-function productOptionLabel(product) {
-    const spec = productSpec(product);
-    return spec ? `${productDisplayName(product)} · ${spec}` : productDisplayName(product);
-}
-
-function unitOptions(selected) {
-    return UNIT_OPTIONS.map(unit => `<option value="${esc(unit)}" ${unit === (selected || '') ? 'selected' : ''}>${esc(unit || 'Choose Unit')}</option>`).join('');
-}
-
-function renderLots() {
-    const container = document.getElementById('lotList');
-    document.getElementById('lotCount').textContent = allLots.length + ' lots';
-
-    if (!allLots.length) {
-        container.innerHTML = '<div class="text-center text-muted py-4">No lots with available inventory found.</div>';
-        return;
-    }
-
-    container.innerHTML = allLots.map(lot => `
-        <div class="lot-card ${selectedLots[lot.id] ? 'selected' : ''}" onclick="toggleLot(${lot.id})">
-            <div class="lot-check">${selectedLots[lot.id] ? '<i class="bi bi-check"></i>' : ''}</div>
-            <div class="lot-info">
-                <div class="lot-name">${esc(lotDisplayName(lot))}</div>
-                ${formatSpec(lot.product_spec)}
-                <div class="lot-meta">
-                    <span style="font-weight:600; color:#0ea5e9;">${esc(lot.lot_id || lot.trace_lot)}</span>
-                    &middot; ${esc(lot.vendor || '--')}
-                    ${lot.receive_date ? ' &middot; ' + esc(lot.receive_date) : ''}
-                </div>
-                ${lot.location || lot.origin ? `<div class="lot-meta">${lot.location ? 'Loc: ' + esc(lot.location) : ''}${lot.location && lot.origin ? ' &middot; ' : ''}${lot.origin ? 'Origin: ' + esc(lot.origin) : ''}</div>` : ''}
-            </div>
-            <div class="lot-qty">
-                <div class="qty-val">${fmt(lot.on_hand)}</div>
-                <div class="qty-unit">${esc(lot.unit_type)}</div>
-            </div>
-        </div>
-    `).join('');
-}
-
-function toggleLot(id) {
-    if (selectedLots[id]) {
-        delete selectedLots[id];
-        delete quantities[id];
-    } else {
-        const lot = allLots.find(l => l.id === id);
-        if (lot) { selectedLots[id] = lot; quantities[id] = lot.on_hand; }
-    }
-    renderLots();
-    updateButtons();
-}
-
-function debounceLotSearch() {
-    clearTimeout(searchTimeout);
-    searchTimeout = setTimeout(loadLots, 300);
-}
-
-// ── Step navigation ─────────────────────────────────────────────
-
-function updateButtons() {
-    const count = Object.keys(selectedLots).length;
-    const nextBtn = document.getElementById('nextBtn');
-    const backBtn = document.getElementById('backBtn');
-
-    backBtn.style.display = currentStep === 1 ? 'none' : '';
-
-    if (currentStep < TOTAL_STEPS) {
-        nextBtn.innerHTML = 'Next <i class="bi bi-arrow-right ms-1"></i>';
-        nextBtn.disabled = (currentStep === 1 && count === 0);
-    } else {
-        nextBtn.innerHTML = '<i class="bi bi-check-circle me-1"></i> Start Processing';
-        nextBtn.disabled = false;
-    }
-}
-
-function goNext() {
-    if (currentStep === 1) {
-        showStep(2);
-        renderQtyCards();
-    } else if (currentStep === 2) {
-        // Validate quantities
-        for (const id of Object.keys(selectedLots)) {
-            const q = parseFloat(quantities[id]) || 0;
-            if (q <= 0) { alert('Please enter a valid quantity for all selected lots.'); return; }
-            if (q > selectedLots[id].on_hand) {
-                alert(`Quantity for "${lotDisplayName(selectedLots[id])}" exceeds available (${selectedLots[id].on_hand}).`);
-                return;
-            }
-        }
-        showStep(3);
-        initOutputStep();
-    } else if (currentStep === 3) {
-        if (!validateOutputs()) return;
-        showStep(4);
-        renderSummary();
-    } else {
-        submitBatch();
-    }
-}
-
-function goBack() {
-    if (currentStep > 1) showStep(currentStep - 1);
-}
-
-function showStep(n) {
-    currentStep = n;
-    for (let i = 1; i <= TOTAL_STEPS; i++) {
-        document.getElementById('step' + i).style.display = i === n ? '' : 'none';
-    }
-    for (let i = 1; i <= TOTAL_STEPS; i++) {
-        const el = document.getElementById('step' + i + '-tab');
-        el.className = 'step';
-        if (i === n) el.classList.add('active');
-        else if (i < n) el.classList.add('done');
-    }
-    updateButtons();
-}
-
-// ── Step 2: Quantity cards ──────────────────────────────────────
-
-function renderQtyCards() {
-    const container = document.getElementById('qtyCards');
-    const ids = Object.keys(selectedLots);
-
-    container.innerHTML = ids.map((id, i) => {
-        const lot = selectedLots[id];
-        const q = quantities[id] || lot.on_hand;
-        return `
-            <div class="qty-card">
-                <div style="font-size:0.72rem; color:#64748b; text-transform:uppercase; font-weight:600; margin-bottom:4px;">
-                    Source Lot ${i + 1} of ${ids.length}
-                </div>
-                <div class="lot-label">${esc(lotDisplayName(lot))}</div>
-                ${lot.product_spec ? `<div class="lot-sub" style="margin-bottom:0.35rem;">${esc(lot.product_spec)}</div>` : ''}
-                <div class="lot-sub">
-                    ${esc(lot.vendor || '')} / ${esc(lot.lot_id)}
-                    &middot; On hand: <strong>${fmt(lot.on_hand)} ${esc(lot.unit_type)}</strong>
-                </div>
-                <div class="qty-input-row">
-                    <label style="font-weight:600; font-size:0.85rem; margin-right:4px;">Quantity</label>
-                    <input type="number" step="0.01" min="0" max="${lot.on_hand}" value="${q}"
-                           onchange="quantities[${id}]=parseFloat(this.value)||0"
-                           oninput="quantities[${id}]=parseFloat(this.value)||0">
-                    <span class="unit-label">${esc(lot.unit_type)}</span>
-                    <button class="max-btn" onclick="this.previousElementSibling.previousElementSibling.value=${lot.on_hand}; quantities[${id}]=${lot.on_hand};">
-                        Use All
-                    </button>
-                </div>
-            </div>
-        `;
-    }).join('');
-}
-
-// ── Step 3: Output configuration ────────────────────────────────
-
-function getTotalSourceQty() {
-    return Object.keys(selectedLots).reduce((sum, id) => sum + (parseFloat(quantities[id]) || 0), 0);
-}
-
-function getSourceUnitType() {
-    const ids = Object.keys(selectedLots);
-    return ids.length ? (selectedLots[ids[0]].unit_type || '') : '';
-}
-
-function deriveOutputQuantity(totalQty, yieldPercent) {
-    const qty = parseFloat(totalQty) || 0;
-    const pct = parseFloat(yieldPercent) || 0;
-    return Math.round(qty * pct) / 100;
-}
-
-function initOutputStep() {
-    document.getElementById('typeHint').innerHTML = TYPE_HINTS[PROCESS_TYPE] || '';
-
-    // Auto-generate a default output if empty
-    if (outputItems.length === 0) {
-        const totalQty = getTotalSourceQty();
-        const unitType = getSourceUnitType();
-
-        if (['commingle', 'freeze', 'wet_store', 'renaming'].includes(PROCESS_TYPE)) {
-            // Same product, same quantity (1:1 processes)
-            const firstLot = selectedLots[Object.keys(selectedLots)[0]];
-            const defaultProductId = PREFILL_PRODUCT_ID || (firstLot ? firstLot.product_id : '');
-            outputItems.push({
-                product_id: defaultProductId,
-                product_name: firstLot ? lotDisplayName(firstLot) : '',
-                quantity: totalQty,
-                unit_type: unitType,
-                yield_percent: 100,
-                lot_id: '',
-            });
-        } else {
-            // fish_cutting, shucking, lot_breaking — user needs to configure
-            const defaultYield = PROCESS_TYPE === 'shucking' ? 15 : (PROCESS_TYPE === 'fish_cutting' ? 65 : 100);
-            outputItems.push({
-                product_id: PREFILL_PRODUCT_ID,
-                product_name: '',
-                quantity: deriveOutputQuantity(totalQty, defaultYield),
-                unit_type: unitType,
-                yield_percent: defaultYield,
-                lot_id: '',
-            });
-        }
-    }
-    renderOutputCards();
-}
-
-function renderOutputCards() {
-    const container = document.getElementById('outputCards');
-    const totalQty = getTotalSourceQty();
-    const productOptions = allProducts.map(p =>
-        `<option value="${esc(p.product_id)}">${esc(productOptionLabel(p))}</option>`
-    ).join('');
-
-    container.innerHTML = outputItems.map((out, i) => {
-        const showYield = ['fish_cutting', 'shucking', 'lot_breaking'].includes(PROCESS_TYPE);
-        const showProduct = ['fish_cutting', 'shucking', 'renaming'].includes(PROCESS_TYPE);
-        return `
-        <div class="output-card">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
-                <h6 style="margin:0;">Output Lot ${i + 1}</h6>
-                ${outputItems.length > 1 ? `<button class="btn-danger-sm" onclick="removeOutput(${i})"><i class="bi bi-trash me-1"></i>Remove</button>` : ''}
-            </div>
-
-            ${showProduct ? `
-            <div class="form-row">
-                <div class="form-group">
-                    <label>Output Product</label>
-                    <select onchange="setOutputProduct(${i}, this)">
-                        <option value="">Same as source</option>
-                        ${productOptions}
-                    </select>
-                    <script>document.querySelectorAll('.output-card')[${i}].querySelector('select').value='${esc(out.product_id)}';<\/script>
-                </div>
-            </div>` : ''}
-
-            <div class="form-row">
-                ${showYield ? `
-                <div class="form-group" style="max-width:160px;">
-                    <label>Yield %</label>
-                    <input type="number" step="0.1" min="0" max="100" value="${out.yield_percent || ''}"
-                           oninput="updateOutputYield(${i}, this.value)">
-                </div>` : ''}
-                <div class="form-group" style="max-width:200px;">
-                    <label>Output Quantity</label>
-                    <input type="number" step="0.01" min="0" id="out-qty-${i}" value="${out.quantity || ''}"
-                           oninput="outputItems[${i}].quantity=parseFloat(this.value)||0">
-                </div>
-                <div class="form-group" style="max-width:140px;">
-                    <label>Unit</label>
-                    <select onchange="outputItems[${i}].unit_type=this.value">
-                        ${unitOptions(out.unit_type)}
-                    </select>
-                </div>
-            </div>
-
-            <div class="form-row">
-                <div class="form-group">
-                    <label>Output Lot ID (optional)</label>
-                    <input type="text" value="${esc(out.lot_id)}" placeholder="Auto-generated if blank"
-                           oninput="outputItems[${i}].lot_id=this.value">
-                </div>
-            </div>
-
-            ${showYield && out.yield_percent ? `
-            <div style="margin-top:4px;">
-                <span class="yield-badge">${out.yield_percent}% yield &rarr; ${fmt(totalQty * out.yield_percent / 100)} from ${fmt(totalQty)} input</span>
-            </div>` : ''}
-        </div>`;
-    }).join('');
-}
-
-function updateOutputYield(idx, val) {
-    const pct = parseFloat(val) || 0;
-    outputItems[idx].yield_percent = pct;
-    const totalQty = getTotalSourceQty();
-    outputItems[idx].quantity = Math.round(totalQty * pct / 100 * 100) / 100;
-    const qtyInput = document.getElementById('out-qty-' + idx);
-    if (qtyInput) qtyInput.value = outputItems[idx].quantity;
-    renderOutputCards();
-}
-
-function setOutputProduct(idx, selectEl) {
-    const option = selectEl.selectedOptions[0];
-    outputItems[idx].product_id = selectEl.value;
-    outputItems[idx].product_name = option ? option.text : '';
-    if (selectEl.value) {
-        const product = allProducts.find(p => p.product_id === selectEl.value);
-        if (product && !outputItems[idx].unit_type) {
-            outputItems[idx].unit_type = product.inventory_unit_of_measure || product.selling_unit_of_measure || product.buying_unit_of_measure || outputItems[idx].unit_type;
-            renderOutputCards();
-        }
-    }
-}
-
-function addOutput() {
-    const unitType = getSourceUnitType();
-    outputItems.push({
-        product_id: '', product_name: '', quantity: 0,
-        unit_type: unitType, yield_percent: '', lot_id: '',
-    });
-    renderOutputCards();
-}
-
-function removeOutput(idx) {
-    outputItems.splice(idx, 1);
-    renderOutputCards();
-}
-
-function validateOutputs() {
-    for (let i = 0; i < outputItems.length; i++) {
-        if (!outputItems[i].quantity || outputItems[i].quantity <= 0) {
-            alert(`Output lot ${i + 1}: please enter a valid quantity.`);
-            return false;
-        }
-    }
-    return true;
-}
-
-// ── Step 4: Summary ─────────────────────────────────────────────
-
-function renderSummary() {
-    const srcIds = Object.keys(selectedLots);
-    const typeLabels = {
-        fish_cutting: 'Fish Cutting', commingle: 'Commingle', renaming: 'Renaming',
-        freeze: 'Freeze', lot_breaking: 'Bag or Lot Breaking', shucking: 'Shucking',
-        wet_store: 'Wet Store',
-    };
-
-    let html = `<div style="margin-bottom:1rem;"><strong>Process Type:</strong> ${esc(typeLabels[PROCESS_TYPE] || PROCESS_TYPE)}</div>`;
-
-    // Sources
-    html += `<div style="margin-bottom:0.5rem; font-weight:600; color:#1e293b;">Source Lots (${srcIds.length})</div>`;
-    html += '<table style="width:100%; font-size:0.85rem; border-collapse:collapse; margin-bottom:1.25rem;">';
-    html += '<tr style="border-bottom:1px solid #e5e7eb;"><th style="text-align:left;padding:6px 8px;">Lot</th><th style="text-align:left;padding:6px 8px;">Item</th><th style="text-align:right;padding:6px 8px;">Qty In</th></tr>';
-    let totalIn = 0;
-    srcIds.forEach(id => {
-        const lot = selectedLots[id];
-        const q = quantities[id] || 0;
-        totalIn += q;
-        html += `<tr style="border-bottom:1px solid #f1f5f9;">
-            <td style="padding:6px 8px;">${esc(lot.lot_id)}</td>
-            <td style="padding:6px 8px;">${esc(lotDisplayName(lot))}${lot.product_spec ? `<div style="font-size:0.76rem; color:#94a3b8; font-weight:500;">${esc(lot.product_spec)}</div>` : ''}</td>
-            <td style="padding:6px 8px; text-align:right; font-weight:600;">${fmt(q)} ${esc(lot.unit_type)}</td>
-        </tr>`;
-    });
-    html += `<tr><td colspan="2" style="padding:6px 8px; font-weight:700;">Total Input</td><td style="padding:6px 8px; text-align:right; font-weight:700;">${fmt(totalIn)}</td></tr>`;
-    html += '</table>';
-
-    // Outputs
-    html += `<div style="margin-bottom:0.5rem; font-weight:600; color:#1e293b;">Output Lots (${outputItems.length})</div>`;
-    html += '<table style="width:100%; font-size:0.85rem; border-collapse:collapse; margin-bottom:1rem;">';
-    html += '<tr style="border-bottom:1px solid #e5e7eb;"><th style="text-align:left;padding:6px 8px;">Product</th><th style="text-align:right;padding:6px 8px;">Qty Out</th><th style="text-align:right;padding:6px 8px;">Yield</th></tr>';
-    let totalOut = 0;
-    outputItems.forEach(out => {
-        totalOut += (out.quantity || 0);
-        html += `<tr style="border-bottom:1px solid #f1f5f9;">
-            <td style="padding:6px 8px;">${esc(out.product_name || 'Same as source')}</td>
-            <td style="padding:6px 8px; text-align:right; font-weight:600;">${fmt(out.quantity)} ${esc(out.unit_type)}</td>
-            <td style="padding:6px 8px; text-align:right;">${out.yield_percent ? out.yield_percent + '%' : '--'}</td>
-        </tr>`;
-    });
-    html += `<tr><td style="padding:6px 8px; font-weight:700;">Total Output</td><td style="padding:6px 8px; text-align:right; font-weight:700;">${fmt(totalOut)}</td><td style="padding:6px 8px; text-align:right; font-weight:700;">${totalIn > 0 ? Math.round(totalOut / totalIn * 100) + '%' : '--'}</td></tr>`;
-    html += '</table>';
-
-    document.getElementById('summaryContent').innerHTML = html;
-}
-
-// ── Submit ───────────────────────────────────────────────────────
-
-async function submitBatch() {
-    const nextBtn = document.getElementById('nextBtn');
-    nextBtn.disabled = true;
-    nextBtn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i> Creating...';
-
-    const sources = Object.keys(selectedLots).map(id => ({
-        inventory_id: parseInt(id),
-        quantity: quantities[id] || 0,
-        unit_type: selectedLots[id].unit_type,
-        product_id: selectedLots[id].product_id,
-    }));
-
-    const totalInputQty = getTotalSourceQty();
-    const yieldDrivenProcesses = ['fish_cutting', 'shucking', 'lot_breaking'];
-    const outputs = outputItems.map(out => ({
-        product_id: out.product_id,
-        description: out.product_name,
-        quantity: yieldDrivenProcesses.includes(PROCESS_TYPE) && out.yield_percent !== '' && out.yield_percent != null
-            ? deriveOutputQuantity(totalInputQty, out.yield_percent)
-            : out.quantity,
-        unit_type: out.unit_type,
-        yield_percent: out.yield_percent || null,
-        lot_id: out.lot_id,
-        origin: '',
-    }));
-
-    try {
-        const res = await fetch('/api/processing/batches/create/', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
-            body: JSON.stringify({
-                process_type: PROCESS_TYPE,
-                sources,
-                outputs,
-                notes: document.getElementById('batchNotes').value.trim(),
-            }),
-        });
-        const data = await res.json();
-        if (data.error) {
-            alert(data.error);
-            nextBtn.disabled = false;
-            nextBtn.innerHTML = '<i class="bi bi-check-circle me-1"></i> Start Processing';
-            return;
-        }
-        window.location.href = '/operations/processing/' + data.id + '/';
-    } catch {
-        alert('Failed to create batch.');
-        nextBtn.disabled = false;
-        nextBtn.innerHTML = '<i class="bi bi-check-circle me-1"></i> Start Processing';
-    }
-}
-
-updateButtons();
+const PROCESS_TYPE='{{ process_type }}', PAGE_PARAMS=new URLSearchParams(location.search), PREFILL_LOT_ID=PAGE_PARAMS.get('lot_id')||'', PREFILL_PRODUCT_ID=PAGE_PARAMS.get('product_id')||'';
+const HINTS={fish_cutting:'Fish Cutting: choose the source lot, set the input, then define the cut output you are selling.',commingle:'Commingle: combine the selected lots into one sale-ready output.',renaming:'Renaming: re-label the selected lot under the sale product you need.',freeze:'Freeze: move the lot into a frozen output before sale.',lot_breaking:'Lot Breaking: split the lot into smaller sale-ready outputs.',shucking:'Shucking: define the shucked output and sell from that output.'};
+let step=1,lots=[],products=[],customers=[],selected={},qtys={},outputs=[],searchTimer;
+document.addEventListener('DOMContentLoaded',async()=>{document.getElementById('typeHint').textContent=HINTS[PROCESS_TYPE]||'';document.getElementById('orderDate').value=new Date().toISOString().slice(0,10);await Promise.all([loadLots(),loadProducts(),loadCustomers()]);refreshNav();});
+function debounceSearch(){clearTimeout(searchTimer);searchTimer=setTimeout(loadLots,250)}
+async function loadLots(){const q=document.getElementById('lotSearch').value.trim()||PREFILL_PRODUCT_ID;let url='/api/processing/source-lots/?';if(q)url+=`search=${encodeURIComponent(q)}&`;const r=await fetch(url),d=await r.json();lots=d.lots||[];if(PREFILL_LOT_ID&&!Object.keys(selected).length){const lot=lots.find(x=>String(x.id)===String(PREFILL_LOT_ID));if(lot){selected[lot.id]=lot;qtys[lot.id]=Number(lot.on_hand||0)}}renderLots();refreshNav()}
+async function loadProducts(){const r=await fetch('/api/processing/products/'),d=await r.json();products=d.products||[]}
+async function loadCustomers(){const r=await fetch('/api/sales/customers/'),d=await r.json();customers=d.customers||[];document.getElementById('customerSelect').innerHTML='<option value="">Choose customer</option>'+customers.map(c=>`<option value="${esc(c.name)}">${esc(c.name)}</option>`).join('')}
+function renderLots(){document.getElementById('lotCount').textContent=`${lots.length} lots`;const wrap=document.getElementById('lotList');if(!lots.length){wrap.innerHTML='<div class="empty">No lots with available inventory found.</div>';return}wrap.innerHTML=lots.map(l=>`<div class="cardx lot ${selected[l.id]?'sel':''}" onclick="toggleLot(${l.id})"><div><div><strong>${esc(l.item_name||l.product||'Unknown Product')}</strong></div><div class="meta">${esc(l.lot_id||l.trace_lot||'')} · ${esc(l.vendor||'--')} ${l.receive_date?'· '+esc(l.receive_date):''}</div></div><div style="text-align:right;"><div style="font-weight:700;color:#2563eb;">${fmt(l.on_hand)}</div><div class="meta">${esc(l.unit_type||'')}</div></div></div>`).join('')}
+function toggleLot(id){if(selected[id]){delete selected[id];delete qtys[id]}else{const lot=lots.find(x=>x.id===id);if(lot){selected[lot.id]=lot;qtys[lot.id]=Number(lot.on_hand||0)}}renderLots();refreshNav()}
+function ids(){return Object.keys(selected)} function totalIn(){return ids().reduce((s,id)=>s+Number(qtys[id]||0),0)} function sourceUnit(){const id=ids()[0];return id?(selected[id].unit_type||''):''}
+function refreshNav(){document.getElementById('backBtn').style.display=step===1?'none':'';const btn=document.getElementById('nextBtn');btn.disabled=(step===1&&!ids().length)||(step===4&&!document.getElementById('customerSelect').value);btn.textContent=step===5?'Complete Processing + Sale':'Next'}
+function showStep(n){step=n;for(let i=1;i<=5;i++){document.getElementById('step'+i).style.display=i===n?'':'none';const tab=document.getElementById('tab'+i);tab.className='step'+(i===n?' active':i<n?' done':'')}refreshNav()}
+function nextStep(){if(step===1){showStep(2);renderQtys();return}if(step===2){if(!validateQtys())return;showStep(3);initOutputs();return}if(step===3){if(!validateOutputs())return;showStep(4);renderSaleLines();return}if(step===4){if(!document.getElementById('customerSelect').value){alert('Choose a customer.');return}showStep(5);renderSummary();return}submitAll()}
+function backStep(){if(step>1)showStep(step-1)}
+function validateQtys(){for(const id of ids()){const lot=selected[id],q=Number(qtys[id]||0);if(q<=0){alert('Enter a quantity for each selected lot.');return false}if(q>Number(lot.on_hand||0)){alert(`Quantity for ${lot.item_name||lot.product||'lot'} is greater than on hand.`);return false}}return true}
+function renderQtys(){document.getElementById('qtyList').innerHTML=ids().map(id=>{const lot=selected[id];return`<div class="cardx"><div style="font-weight:700;margin-bottom:.35rem;">${esc(lot.item_name||lot.product||'')}</div><div class="meta" style="margin-bottom:.75rem;">${esc(lot.lot_id||'')} · On hand: ${fmt(lot.on_hand)} ${esc(lot.unit_type||'')}</div><div class="grid three"><div><label class="lbl">Quantity In</label><input type="number" step="0.01" min="0" max="${Number(lot.on_hand||0)}" value="${qtys[id]||''}" oninput="qtys[${id}]=parseFloat(this.value)||0"></div><div><label class="lbl">Unit</label><input value="${esc(lot.unit_type||'')}" disabled></div><div class="rowamt"><button class="btn-inv-outline" onclick="qtys[${id}]=${Number(lot.on_hand||0)};renderQtys()">Use All</button></div></div></div>`}).join('')}
+function initOutputs(){if(outputs.length){renderOutputs();return}const first=selected[ids()[0]],total=totalIn(),unit=sourceUnit();if(['commingle','freeze','wet_store','renaming'].includes(PROCESS_TYPE)){outputs=[{product_id:first?(first.product_id||PREFILL_PRODUCT_ID):PREFILL_PRODUCT_ID,product_name:first?(first.item_name||first.product||''):'',quantity:total,unit_type:unit,yield_percent:100,unit_price:'',lot_id:''}]}else{const defaultYield=PROCESS_TYPE==='shucking'?15:(PROCESS_TYPE==='fish_cutting'?65:100);outputs=[{product_id:PREFILL_PRODUCT_ID,product_name:'',quantity:Math.round(total*defaultYield)/100,unit_type:unit,yield_percent:defaultYield,unit_price:'',lot_id:''}]}renderOutputs()}
+function productOptions(selectedId){return '<option value="">Same as source</option>'+products.map(p=>{const name=(p.display_name||p.description||p.item_name||p.product_id||'');const spec=[p.quantity_description,p.size_cull].filter(Boolean).join(' · ');const label=spec?`${name} · ${spec}`:name;return`<option value="${esc(p.product_id)}" ${p.product_id===(selectedId||'')?'selected':''}>${esc(label)}</option>`}).join('')}
+function setOutProduct(i,val){outputs[i].product_id=val;const p=products.find(x=>x.product_id===val);outputs[i].product_name=p?(p.display_name||p.description||p.item_name||p.product_id):''}
+function setYield(i,val){outputs[i].yield_percent=val;outputs[i].quantity=Math.round(totalIn()*Number(val||0))/100;renderOutputs()}
+function addOutput(){outputs.push({product_id:'',product_name:'',quantity:0,unit_type:sourceUnit(),yield_percent:'',unit_price:'',lot_id:''});renderOutputs()}
+function removeOutput(i){outputs.splice(i,1);renderOutputs()}
+function renderOutputs(){document.getElementById('outputList').innerHTML=outputs.map((o,i)=>`<div class="cardx"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem;"><strong>Output ${i+1}</strong>${outputs.length>1?`<button class="rm" onclick="removeOutput(${i})">Remove</button>`:''}</div>${['fish_cutting','shucking','renaming'].includes(PROCESS_TYPE)?`<div class="grid two"><div><label class="lbl">Output Product</label><select onchange="setOutProduct(${i},this.value)">${productOptions(o.product_id)}</select></div><div></div></div>`:''}<div class="grid three" style="margin-top:1rem;"><div><label class="lbl">Output Quantity</label><input type="number" step="0.01" min="0" value="${o.quantity||''}" oninput="outputs[${i}].quantity=parseFloat(this.value)||0"></div><div><label class="lbl">Unit</label><input value="${esc(o.unit_type||'')}" oninput="outputs[${i}].unit_type=this.value"></div>${['fish_cutting','shucking','lot_breaking'].includes(PROCESS_TYPE)?`<div><label class="lbl">Yield %</label><input type="number" step="0.1" min="0" max="100" value="${o.yield_percent||''}" oninput="setYield(${i},this.value)"></div>`:`<div><label class="lbl">Output Lot ID</label><input value="${esc(o.lot_id||'')}" placeholder="Auto-generate if blank" oninput="outputs[${i}].lot_id=this.value"></div>`}</div></div>`).join('')}
+function validateOutputs(){if(!outputs.length){alert('Add at least one output line.');return false}for(let i=0;i<outputs.length;i++){const o=outputs[i];if(Number(o.quantity||0)<=0){alert(`Enter a valid quantity for output ${i+1}.`);return false}if(!o.unit_type){alert(`Choose a unit for output ${i+1}.`);return false}}return true}
+function fallbackName(o,i){const first=selected[ids()[0]];return o.product_name||o.product_id||(first?(first.item_name||first.product||`Output ${i+1}`):`Output ${i+1}`)}
+function renderSaleLines(){const wrap=document.getElementById('saleLines');wrap.innerHTML=`<div class="grid five">${outputs.map((o,i)=>`<div><label class="lbl">Product</label><input value="${esc(fallbackName(o,i))}" disabled></div><div><label class="lbl">Qty</label><input value="${fmt(o.quantity)}" disabled></div><div><label class="lbl">Unit</label><input value="${esc(o.unit_type||'')}" disabled></div><div><label class="lbl">Unit Price</label><input type="number" step="0.01" min="0" value="${o.unit_price||''}" oninput="outputs[${i}].unit_price=parseFloat(this.value)||0;updateTotal()"></div><div class="rowamt" id="amt${i}">$0.00</div>`).join('')}</div>`;updateTotal();refreshNav()}
+function updateTotal(){let total=0;outputs.forEach((o,i)=>{const amt=Number(o.quantity||0)*Number(o.unit_price||0);total+=amt;const el=document.getElementById('amt'+i);if(el)el.textContent='$'+amt.toFixed(2)});document.getElementById('grandTotal').textContent='$'+total.toFixed(2)}
+document.addEventListener('change',e=>{if(e.target&&e.target.id==='customerSelect')refreshNav()})
+function renderSummary(){const customer=document.getElementById('customerSelect').value,od=document.getElementById('orderDate').value||'--',dd=document.getElementById('deliveryDate').value||'--',ab=document.getElementById('airBill').value.trim()||'--';let total=0;const typeLabels={fish_cutting:'Fish Cutting',commingle:'Commingle',renaming:'Renaming',freeze:'Freeze',lot_breaking:'Bag or Lot Breaking',shucking:'Shucking',wet_store:'Wet Store'};let html=`<div style="margin-bottom:1rem;"><strong>Process Type:</strong> ${esc(typeLabels[PROCESS_TYPE]||PROCESS_TYPE)}<br><strong>Customer:</strong> ${esc(customer)}<br><strong>Order Date:</strong> ${esc(od)}<br><strong>Delivery Date:</strong> ${esc(dd)}<br><strong>Air Bill Number:</strong> ${esc(ab)}</div><table><tr><th>Source Lot</th><th>Product</th><th style="text-align:right;">Qty In</th></tr>`;ids().forEach(id=>{const lot=selected[id];html+=`<tr><td>${esc(lot.lot_id||'')}</td><td>${esc(lot.item_name||lot.product||'')}</td><td style="text-align:right;">${fmt(qtys[id])} ${esc(lot.unit_type||'')}</td></tr>`});html+=`</table><div style="height:1rem;"></div><table><tr><th>Output / Invoice Line</th><th style="text-align:right;">Qty</th><th style="text-align:right;">Price</th><th style="text-align:right;">Amount</th></tr>`;outputs.forEach((o,i)=>{const amt=Number(o.quantity||0)*Number(o.unit_price||0);total+=amt;html+=`<tr><td>${esc(fallbackName(o,i))}</td><td style="text-align:right;">${fmt(o.quantity)} ${esc(o.unit_type||'')}</td><td style="text-align:right;">$${Number(o.unit_price||0).toFixed(2)}</td><td style="text-align:right;">$${amt.toFixed(2)}</td></tr>`});html+=`</table><div class="tot"><span>Total</span><span>$${total.toFixed(2)}</span></div>`;document.getElementById('summaryBox').innerHTML=html}
+async function submitAll(){const btn=document.getElementById('nextBtn');btn.disabled=true;btn.textContent='Creating...';const sources=ids().map(id=>({inventory_id:Number(id),quantity:Number(qtys[id]||0),unit_type:selected[id].unit_type||'',product_id:selected[id].product_id||''}));const yieldDriven=['fish_cutting','shucking','lot_breaking'];const batchOutputs=outputs.map((o,i)=>({product_id:o.product_id||'',description:fallbackName(o,i),quantity:yieldDriven.includes(PROCESS_TYPE)&&o.yield_percent!==''&&o.yield_percent!=null?(Math.round(totalIn()*Number(o.yield_percent||0))/100):Number(o.quantity||0),unit_type:o.unit_type||'',yield_percent:o.yield_percent||null,lot_id:o.lot_id||'',origin:''}));try{const batchRes=await fetch('/api/processing/batches/create/',{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken')},body:JSON.stringify({process_type:PROCESS_TYPE,sources,outputs:batchOutputs,notes:document.getElementById('saleNotes').value.trim()})});const batchData=await batchRes.json();if(!batchRes.ok||batchData.error)throw new Error(batchData.error||'Unable to create the process batch.');const orderRes=await fetch('/api/sales/orders/create/',{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken')},body:JSON.stringify({customer_name:document.getElementById('customerSelect').value})});const orderData=await orderRes.json();if(!orderRes.ok||orderData.error)throw new Error(orderData.error||'Unable to create the sale.');const orderId=orderData.id;await fetch(`/api/sales/orders/${orderId}/update/`,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken')},body:JSON.stringify({order_status:'open',order_date:document.getElementById('orderDate').value||null,delivery_date:document.getElementById('deliveryDate').value||null,air_bill_number:document.getElementById('airBill').value.trim(),notes:document.getElementById('saleNotes').value.trim()})});for(let i=0;i<outputs.length;i++){const o=outputs[i];const itemRes=await fetch(`/api/sales/orders/${orderId}/items/add/`,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken')},body:JSON.stringify({item_type:'item',product_id:o.product_id||'',description:fallbackName(o,i),notes:'',quantity:Number(o.quantity||0),unit_type:o.unit_type||'',unit_price:Number(o.unit_price||0)})});const itemData=await itemRes.json();if(!itemRes.ok||itemData.error)throw new Error(itemData.error||'Unable to add an invoice line.')}await fetch(`/api/sales/orders/${orderId}/allocate-fifo/`,{method:'POST',headers:{'X-CSRFToken':getCookie('csrftoken')}});location.href=`/sales/${orderId}/`}catch(err){alert(err.message||'Unable to complete processing and sale.');btn.disabled=false;btn.textContent='Complete Processing + Sale'}}
+updateButtons=refreshNav;refreshNav();
 </script>
 {% endblock %}

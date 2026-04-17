@@ -265,7 +265,7 @@ function debounceLotSearch() {
 
 async function loadReadyLots() {
     const search = document.getElementById('lotSearch').value.trim();
-    let url = '/api/receiving/lots/?page_size=100';
+    let url = '/api/processing/source-lots/?';
     if (search) {
         url += `&search=${encodeURIComponent(search)}`;
     }
@@ -291,8 +291,8 @@ function renderReadyLots() {
 
     tbody.innerHTML = readyLots.map(lot => `
         <tr>
-            <td style="font-weight:700; color:#0f172a;">${esc(lot.product_name || '--')}</td>
-            <td style="font-weight:600; color:#2563eb;">${esc(lot.trace_lot || '--')}</td>
+            <td style="font-weight:700; color:#0f172a;">${esc(lot.item_name || lot.product || '--')}</td>
+            <td style="font-weight:600; color:#2563eb;">${esc(lot.lot_id || lot.trace_lot || '--')}</td>
             <td>${esc(lot.receive_date || '--')}</td>
             <td style="text-align:right; font-weight:700;">${Number(lot.on_hand || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</td>
             <td>${esc(lot.unit_type || '')}</td>
