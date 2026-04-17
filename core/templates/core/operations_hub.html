@@ -284,7 +284,7 @@ async function loadProcessedSold() {
                 <td style="text-align:right;">$${Number(row.unit_price || 0).toFixed(2)}</td>
                 <td>${esc(row.customer_name || '--')}</td>
                 <td style="text-align:right;">$${Number(row.amount || 0).toFixed(2)}</td>
-                <td style="text-align:right;"><a href="/operations/processing/?edit_sale=${row.batch_id}:${row.order_id}">Edit</a></td>
+                <td style="text-align:right;">${row.order_id ? `<a href="/operations/processing/?edit_sale=${row.batch_id}:${row.order_id}">Edit</a>` : `<a href="/operations/processing/">View</a>`}</td>
             </tr>
         `).join('') : '<tr><td colspan="8" class="text-center text-muted py-3">No processed sales yet.</td></tr>';
     } catch (error) {

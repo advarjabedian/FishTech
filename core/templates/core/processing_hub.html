@@ -467,8 +467,8 @@ function renderProcessedSold() {
             <td style="text-align:right;">$${Number(row.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
             <td>
                 <div class="result-row-actions">
-                    <button class="result-row-btn" onclick="openSoldEditModal(${row.batch_id}, ${row.order_id})">Edit</button>
-                    <button class="result-row-btn delete" onclick="deleteProcessedSold(${row.batch_id}, ${row.order_id})">Delete</button>
+                    ${row.order_id ? `<button class="result-row-btn" onclick="openSoldEditModal(${row.batch_id}, ${row.order_id})">Edit</button>` : `<span class="text-muted" style="font-size:0.8rem;">Processed</span>`}
+                    <button class="result-row-btn delete" onclick="deleteProcessedSold(${row.batch_id}, ${row.order_id === null ? 'null' : row.order_id})">${row.order_id ? 'Delete' : 'Delete Batch'}</button>
                 </div>
             </td>
         </tr>
@@ -577,12 +577,18 @@ async function saveSoldEdit() {
 }
 
 async function deleteProcessedSold(batchId, orderId) {
-    if (!confirm('Delete this processed sale? This will remove the sale, remove the processed output, and put the quantity back on the source lot.')) {
+    const isSoldRow = orderId !== null && orderId !== undefined && String(orderId) !== 'null';
+    if (!confirm(isSoldRow
+        ? 'Delete this processed sale? This will remove the sale, remove the processed output, and put the quantity back on the source lot.'
+        : 'Delete this processed batch? This will remove the processed output and put the quantity back on the source lot.')) {
         return;
     }
 
     try {
-        const res = await fetch(`/api/processing/sold-results/${batchId}/${orderId}/delete/`, {
+        const url = isSoldRow
+            ? `/api/processing/sold-results/${batchId}/${orderId}/delete/`
+            : `/api/processing/batches/${batchId}/delete/`;
+        const res = await fetch(url, {
             method: 'POST',
             headers: { 'X-CSRFToken': getCookie('csrftoken') },
         });

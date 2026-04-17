@@ -534,6 +534,7 @@ async function submitAll() {
 
     for (let i=0; i<outputs.length; i++) {
       const o = outputs[i];
+      const createdOutput = (batchData.outputs || [])[i] || {};
       const itemRes = await fetch(`/api/sales/orders/${orderId}/items/add/`, {
         method:'POST',
         headers:{'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken')},
@@ -544,17 +545,14 @@ async function submitAll() {
           notes:'',
           quantity:Number(o.quantity||0),
           unit_type:o.unit_type||'',
-          unit_price:Number(o.unit_price||0)
+          unit_price:Number(o.unit_price||0),
+          process_batch_id:batchData.id,
+          output_inventory_id:createdOutput.inventory_id || null
         })
       });
       const itemData = await itemRes.json();
       if (!itemRes.ok || itemData.error) throw new Error(itemData.error || 'Unable to add an invoice line.');
     }
-
-    await fetch(`/api/sales/orders/${orderId}/allocate-fifo/`, {
-      method:'POST',
-      headers:{'X-CSRFToken':getCookie('csrftoken')}
-    });
 
     location.href = `/operations/processing/`;
   } catch (err) {
