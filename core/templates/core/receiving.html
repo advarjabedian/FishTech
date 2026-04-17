@@ -6,13 +6,6 @@
 /* ── Page-specific table styles ───────────────────────────────── */
 .inv-table .lot-code { font-weight: 600; color: #1e293b; white-space: nowrap; }
 
-/* QC badges */
-.qc-badge { display: inline-flex; align-items: center; font-size: 0.73rem; font-weight: 600; padding: 3px 8px; border-radius: 20px; white-space: nowrap; }
-.qc-pass { background: #dcfce7; color: #166534; }
-.qc-hold { background: #fef3c7; color: #92400e; }
-.qc-reject { background: #fee2e2; color: #991b1b; }
-.qc-pending { background: #f1f5f9; color: #64748b; }
-
 /* ── Pagination page buttons ──────────────────────────────────── */
 .inv-pagination .page-btns { display: flex; gap: 4px; }
 .inv-pagination .page-btn {
@@ -105,16 +98,6 @@
 .form-control-r:focus { border-color: #0ea5e9; box-shadow: 0 0 0 3px rgba(14,165,233,0.12); outline: none; }
 .form-row-r { display: flex; gap: 1rem; }
 .form-row-r .form-group-r { flex: 1; }
-.quality-check-grid {
-    display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:0.5rem 1rem; margin-top:0.5rem;
-}
-.quality-check-item { display:flex; align-items:center; gap:0.45rem; font-size:0.82rem; color:#334155; }
-.quality-pill {
-    display:inline-block; padding:3px 10px; border-radius:999px; font-size:0.72rem; font-weight:700;
-}
-.quality-pass { background:#dcfce7; color:#166534; }
-.quality-hold { background:#fef3c7; color:#92400e; }
-.quality-reject { background:#fee2e2; color:#991b1b; }
 </style>
 {% endblock %}
 
@@ -199,7 +182,6 @@
                     <tr>
                         <th>Trace Lot Code</th>
                         <th>Product</th>
-                        <th>QC</th>
                         <th>Location</th>
                         <th>Received At</th>
                         <th>Purchase #</th>
@@ -210,7 +192,7 @@
                     </tr>
                 </thead>
                 <tbody id="lotsTbody">
-                    <tr><td colspan="10" class="text-center text-muted py-4">Loading...</td></tr>
+                    <tr><td colspan="9" class="text-center text-muted py-4">Loading...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -339,35 +321,6 @@
                 </div>
             </div>
 
-            <div style="margin-top:1rem; border-top:1px solid #e5e7eb; padding-top:1rem;">
-                <div style="font-weight:700; color:#0f172a; margin-bottom:0.25rem;">Quality Checklist</div>
-                <div style="font-size:0.8rem; color:#64748b; margin-bottom:0.75rem;">Optional at receive, but designed for freshness scoring and dock decisions.</div>
-                <div class="form-row-r">
-                    <div class="form-group-r">
-                        <label>Freshness Score</label>
-                        <input type="number" min="0" max="10" step="1" class="form-control-r" id="q-score" placeholder="0-10">
-                    </div>
-                    <div class="form-group-r">
-                        <label>Status</label>
-                        <select class="form-control-r" id="q-status">
-                            <option value="pass">Pass</option>
-                            <option value="hold">Hold</option>
-                            <option value="reject">Reject</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="quality-check-grid">
-                    <label class="quality-check-item"><input type="checkbox" id="q-appearance"> Appearance OK</label>
-                    <label class="quality-check-item"><input type="checkbox" id="q-odor"> Odor OK</label>
-                    <label class="quality-check-item"><input type="checkbox" id="q-texture"> Texture OK</label>
-                    <label class="quality-check-item"><input type="checkbox" id="q-packaging"> Packaging OK</label>
-                    <label class="quality-check-item"><input type="checkbox" id="q-temp"> Temp Compliant</label>
-                </div>
-                <div class="form-group-r" style="margin-top:0.75rem; margin-bottom:0;">
-                    <label>Quality Notes</label>
-                    <input type="text" class="form-control-r" id="q-notes" placeholder="Freshness notes, damage, exceptions, hold reason...">
-                </div>
-            </div>
         </div>
         <div class="recv-modal-footer">
             <button class="btn-inv-primary" onclick="submitReceive()" style="flex:1;">Receive</button>
@@ -380,15 +333,6 @@
 
 {% block extra_js %}
 <script>
-function qcBadge(status) {
-    const map = {
-        pass: '<span class="qc-badge qc-pass"><i class="bi bi-check-circle-fill me-1"></i>Pass</span>',
-        hold: '<span class="qc-badge qc-hold"><i class="bi bi-pause-circle-fill me-1"></i>Hold</span>',
-        reject: '<span class="qc-badge qc-reject"><i class="bi bi-x-circle-fill me-1"></i>Reject</span>',
-    };
-    return map[status] || '<span class="qc-badge qc-pending"><i class="bi bi-clock me-1"></i>Pending</span>';
-}
-
 let allLots = [];
 let currentPage = 1;
 let totalItems = 0;
@@ -599,7 +543,7 @@ function renderTable() {
     document.getElementById('totalCount').textContent = `${totalItems} total items`;
 
     if (!allLots.length) {
-        tbody.innerHTML = '<tr><td colspan="10" class="text-center text-muted py-4">No received lots found.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted py-4">No received lots found.</td></tr>';
         document.getElementById('paginationInfo').textContent = '0 items';
         document.getElementById('paginationBtns').innerHTML = '';
         return;
@@ -609,7 +553,6 @@ function renderTable() {
         <tr onclick="openDetail(${lot.id})">
             <td class="lot-code">${esc(lot.trace_lot)}</td>
             <td>${esc(lot.product_name || '--')}</td>
-            <td>${qcBadge(lot.qc_status)}</td>
             <td>${esc(lot.location || '--')}</td>
             <td>${esc(lot.received_at || lot.receive_date || '--')}</td>
             <td>${esc(lot.purchase_order || '--')}</td>
@@ -654,13 +597,6 @@ async function openDetail(id) {
     const lot = await res.json();
     currentLotVendor = lot.vendor || '';
     currentLotVendorType = lot.vendor_type || '';
-    const qc = lot.quality_check || null;
-    const statusOptions = (lot.quality_status_choices || []).map(opt =>
-        `<option value="${opt.value}" ${qc && qc.status === opt.value ? 'selected' : ''}>${esc(opt.label)}</option>`
-    ).join('');
-    const statusBadge = qc
-        ? `<span class="quality-pill quality-${qc.status}">${esc(qc.status_display)}</span>`
-        : '<span style="color:#94a3b8;">No checklist logged</span>';
 
     document.getElementById('detailBody').innerHTML = `
         <div class="lot-detail-header">
@@ -697,38 +633,6 @@ async function openDetail(id) {
                 ${lot.sales_orders.map(so => `<i class="bi bi-chevron-right" style="color:#cbd5e1; font-size:0.65rem;"></i><a href="/sales/${so.id}/" style="color:#10b981; text-decoration:none; font-weight:600;"><i class="bi bi-receipt me-1"></i>${esc(so.order_number)}</a>`).join('')}
             </div>
         </div>` : ''}
-
-        <div class="lot-detail-section" style="border-bottom:1px solid #f1f5f9;">
-            <h6>Receiving Quality</h6>
-            <div class="lot-detail-row"><span class="label">Checklist Status</span><span class="value">${statusBadge}</span></div>
-            <div class="lot-detail-row"><span class="label">Freshness Score</span><span class="value">${qc ? esc(String(qc.freshness_score)) + ' / 10' : '--'}</span></div>
-            <div class="lot-detail-row"><span class="label">Checked By</span><span class="value">${qc ? esc(qc.checked_by || '--') : '--'}</span></div>
-            <div class="lot-detail-row"><span class="label">Checked At</span><span class="value">${qc ? esc(qc.checked_at || '--') : '--'}</span></div>
-            <div style="margin-top:0.75rem; padding:12px; background:#f8fafc; border-radius:10px; border:1px solid #e2e8f0;">
-                <div class="form-row-r">
-                    <div class="form-group-r">
-                        <label>Freshness Score</label>
-                        <input type="number" min="0" max="10" step="1" class="form-control-r" id="d-q-score" value="${qc ? esc(String(qc.freshness_score)) : ''}">
-                    </div>
-                    <div class="form-group-r">
-                        <label>Status</label>
-                        <select class="form-control-r" id="d-q-status">${statusOptions}</select>
-                    </div>
-                </div>
-                <div class="quality-check-grid">
-                    <label class="quality-check-item"><input type="checkbox" id="d-q-appearance" ${qc && qc.appearance_ok ? 'checked' : ''}> Appearance OK</label>
-                    <label class="quality-check-item"><input type="checkbox" id="d-q-odor" ${qc && qc.odor_ok ? 'checked' : ''}> Odor OK</label>
-                    <label class="quality-check-item"><input type="checkbox" id="d-q-texture" ${qc && qc.texture_ok ? 'checked' : ''}> Texture OK</label>
-                    <label class="quality-check-item"><input type="checkbox" id="d-q-packaging" ${qc && qc.packaging_ok ? 'checked' : ''}> Packaging OK</label>
-                    <label class="quality-check-item"><input type="checkbox" id="d-q-temp" ${qc && qc.temp_ok ? 'checked' : ''}> Temp Compliant</label>
-                </div>
-                <div class="form-group-r" style="margin-top:0.75rem; margin-bottom:0.75rem;">
-                    <label>Quality Notes</label>
-                    <input type="text" class="form-control-r" id="d-q-notes" value="${qc ? esc(qc.notes || '') : ''}" placeholder="Freshness notes, exceptions, hold reason...">
-                </div>
-                <button class="btn-inv-primary" onclick="withSpinner(this, () => saveQualityCheck())">Save Quality Check</button>
-            </div>
-        </div>
 
         <div class="lot-detail-section" style="border-bottom:1px solid #f1f5f9;">
             <div style="display:flex; gap:0.5rem; margin-bottom:1rem;">
@@ -860,49 +764,6 @@ async function receiveFromDetail(poId, poItemId, productId, description, unitTyp
     loadLots();
 }
 
-function buildQualityPayload(prefix) {
-    return {
-        freshness_score: document.getElementById(`${prefix}-score`).value || 0,
-        status: document.getElementById(`${prefix}-status`).value,
-        appearance_ok: document.getElementById(`${prefix}-appearance`).checked,
-        odor_ok: document.getElementById(`${prefix}-odor`).checked,
-        texture_ok: document.getElementById(`${prefix}-texture`).checked,
-        packaging_ok: document.getElementById(`${prefix}-packaging`).checked,
-        temp_ok: document.getElementById(`${prefix}-temp`).checked,
-        notes: document.getElementById(`${prefix}-notes`).value.trim(),
-    };
-}
-
-function hasMeaningfulQualityInput(payload) {
-    return Boolean(
-        Number(payload.freshness_score || 0) > 0 ||
-        payload.appearance_ok ||
-        payload.odor_ok ||
-        payload.texture_ok ||
-        payload.packaging_ok ||
-        payload.temp_ok ||
-        (payload.notes || '').trim() ||
-        payload.status === 'hold' ||
-        payload.status === 'reject'
-    );
-}
-
-async function saveQualityCheck() {
-    if (!currentDetailLotId) return;
-    const res = await fetch(`/api/receiving/lots/${currentDetailLotId}/quality/`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
-        body: JSON.stringify(buildQualityPayload('d-q')),
-    });
-    const data = await res.json();
-    if (!res.ok || data.error) {
-        alert(data.error || 'Unable to save quality checklist.');
-        return;
-    }
-    await openDetail(currentDetailLotId);
-    await loadLots();
-}
-
 // ── Receive modal ───────────────────────────────────────────────
 
 let openPOsCache = [];
@@ -923,14 +784,6 @@ function resetReceiveForm() {
     document.getElementById('r-po-item-id').value = '';
     document.getElementById('r-cost').value = '';
     document.getElementById('r-origin').value = '';
-    document.getElementById('q-score').value = '';
-    document.getElementById('q-status').value = 'pass';
-    document.getElementById('q-appearance').checked = false;
-    document.getElementById('q-odor').checked = false;
-    document.getElementById('q-texture').checked = false;
-    document.getElementById('q-packaging').checked = false;
-    document.getElementById('q-temp').checked = false;
-    document.getElementById('q-notes').value = '';
 }
 
 async function openReceiveModal(prefill = null) {
@@ -1054,7 +907,6 @@ async function submitReceive() {
     const poSelect = document.getElementById('r-po');
     const poNumber = poSelect.value;
 
-    const qualityPayload = buildQualityPayload('q');
     const payload = {
         product_id: product,
         quantity: parseFloat(qty),
@@ -1069,7 +921,6 @@ async function submitReceive() {
         cost: document.getElementById('r-cost').value || null,
         origin: document.getElementById('r-origin').value.trim(),
     };
-    if (hasMeaningfulQualityInput(qualityPayload)) payload.quality_check = qualityPayload;
 
     try {
         const res = await fetch('/api/receiving/lots/create/', {

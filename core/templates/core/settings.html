@@ -1,90 +1,419 @@
 {% extends 'core/base.html' %}
-{% block title %}Settings - FishTeck{% endblock %}
+{% block title %}Settings - FishTech{% endblock %}
 
 {% block extra_css %}
 <style>
-.inv-main { display: flex; }
-.settings-nav { width: 240px; background: #fff; border-right: 1px solid #e2e8f0; padding: 1.5rem 0; flex-shrink: 0; }
-.settings-nav h3 { font-size: 1.2rem; font-weight: 700; padding: 0 1.25rem; margin-bottom: 1.25rem; color: #0f172a; }
-.settings-nav .nav-item { display: flex; align-items: center; gap: 10px; padding: 0.9rem 1.25rem; color: #334155; font-size: 0.92rem; font-weight: 600; cursor: pointer; text-decoration: none; border-right: 3px solid transparent; }
-.settings-nav .nav-item:hover { background: #f8fbff; color: #2563eb; }
-.settings-nav .nav-item.active { background: #eff6ff; color: #2563eb; border-right-color: #2563eb; }
-.settings-content { flex: 1; padding: 2rem 2.5rem; background: #f8fafc; overflow-y: auto; }
-.settings-title { color: #0f172a; font-size: 1.8rem; font-weight: 800; margin-bottom: 0.35rem; }
-.settings-subtitle { color: #64748b; font-size: 0.95rem; margin-bottom: 1.5rem; }
-.settings-card { background: #fff; border: 1px solid #dbe7f3; border-radius: 18px; box-shadow: 0 10px 28px rgba(15, 23, 42, 0.04); padding: 1.5rem; margin-bottom: 1.25rem; max-width: 1080px; }
-.settings-card h4 { color: #0f172a; font-size: 1.05rem; font-weight: 800; margin-bottom: 0.35rem; }
-.settings-hint { color: #64748b; font-size: 0.88rem; margin-bottom: 1rem; }
-.settings-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap; }
-.settings-search, .settings-field input { width: 100%; border: 1px solid #d1d5db; border-radius: 10px; padding: 0.8rem 0.95rem; font-size: 0.92rem; background: #fff; }
-.settings-field input:focus, .settings-search:focus { outline: none; border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12); }
-.settings-btn { border: 1px solid transparent; border-radius: 12px; padding: 0.85rem 1.15rem; font-size: 0.92rem; font-weight: 700; cursor: pointer; transition: all 0.15s ease; }
-.settings-btn:hover { transform: translateY(-1px); }
-.settings-btn-primary { background: #2563eb; color: #fff; }
-.settings-btn-secondary { background: #fff; color: #1e293b; border-color: #cbd5e1; }
-.settings-btn-danger { background: #fff; color: #dc2626; border-color: #fecaca; }
-.settings-grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
-.settings-field label { display: block; color: #334155; font-size: 0.8rem; font-weight: 700; margin-bottom: 0.45rem; text-transform: uppercase; letter-spacing: 0.03em; }
-.settings-checkbox { display: flex; align-items: center; gap: 0.6rem; color: #334155; font-size: 0.92rem; font-weight: 600; }
-.settings-checkbox input { width: 18px; height: 18px; }
-.users-table { width: 100%; border-collapse: collapse; }
-.users-table th { color: #64748b; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 800; text-align: left; padding: 0.8rem 0.7rem; border-bottom: 1px solid #e2e8f0; }
-.users-table td { padding: 0.95rem 0.7rem; border-bottom: 1px solid #f1f5f9; color: #0f172a; vertical-align: middle; }
-.user-name { font-weight: 700; }
-.user-email { color: #64748b; font-size: 0.86rem; margin-top: 0.2rem; }
-.pill { display: inline-flex; align-items: center; justify-content: center; padding: 0.32rem 0.75rem; border-radius: 999px; font-size: 0.78rem; font-weight: 700; }
-.pill.active { background: #dcfce7; color: #16a34a; }
-.pill.inactive { background: #e2e8f0; color: #475569; }
-.pill.admin { background: #dbeafe; color: #2563eb; }
-.pill.user { background: #f1f5f9; color: #475569; }
-.row-actions { display: flex; align-items: center; gap: 0.55rem; justify-content: flex-end; }
-.settings-empty { text-align: center; color: #64748b; padding: 2rem 1rem; }
-.settings-banner { margin-bottom: 1rem; border-radius: 14px; padding: 0.85rem 1rem; font-weight: 600; }
-.settings-banner.success { background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
-.settings-modal { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.32); display: none; align-items: center; justify-content: center; padding: 1rem; z-index: 1200; }
-.settings-modal.open { display: flex; }
-.settings-modal-card { background: #fff; width: min(640px, 100%); border-radius: 18px; border: 1px solid #dbe7f3; box-shadow: 0 24px 44px rgba(15, 23, 42, 0.18); overflow: hidden; }
-.settings-modal-head { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.35rem; border-bottom: 1px solid #e5edf5; }
-.settings-modal-head h4 { margin: 0; font-size: 1.05rem; font-weight: 800; color: #0f172a; }
-.settings-modal-close { background: transparent; border: none; width: 42px; height: 42px; border-radius: 999px; font-size: 1.15rem; cursor: pointer; }
-.settings-modal-body { padding: 1.35rem; }
-.settings-modal-actions { display: flex; justify-content: flex-end; gap: 0.8rem; margin-top: 1.1rem; }
-@media (max-width: 980px) { .settings-grid-2 { grid-template-columns: 1fr; } }
+.settings-shell {
+    min-height: calc(100vh - 56px);
+    padding: 2rem 2.5rem;
+    background: #f8fafc;
+}
+
+.settings-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.settings-head h1 {
+    margin: 0;
+    color: #0f172a;
+    font-size: 1.9rem;
+    font-weight: 800;
+}
+
+.settings-head p {
+    margin: 0.4rem 0 0;
+    color: #64748b;
+    font-size: 0.95rem;
+}
+
+.users-card {
+    background: #ffffff;
+    border: 1px solid #dbe7f3;
+    border-radius: 18px;
+    box-shadow: 0 10px 28px rgba(15, 23, 42, 0.04);
+    overflow: hidden;
+}
+
+.users-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1.25rem;
+    border-bottom: 1px solid #e2e8f0;
+    flex-wrap: wrap;
+}
+
+.users-search {
+    width: min(340px, 100%);
+    border: 1px solid #d1d5db;
+    border-radius: 12px;
+    padding: 0.8rem 0.95rem;
+    font-size: 0.92rem;
+    background: #fff;
+}
+
+.users-search:focus,
+.settings-input:focus,
+.settings-select:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.settings-btn {
+    border: 1px solid transparent;
+    border-radius: 12px;
+    padding: 0.8rem 1.1rem;
+    font-size: 0.92rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 0.15s ease, opacity 0.15s ease, background 0.15s ease;
+}
+
+.settings-btn:hover {
+    transform: translateY(-1px);
+}
+
+.settings-btn:disabled {
+    cursor: wait;
+    opacity: 0.7;
+    transform: none;
+}
+
+.settings-btn-primary {
+    background: #2563eb;
+    color: #fff;
+}
+
+.settings-btn-secondary {
+    background: #fff;
+    color: #1e293b;
+    border-color: #cbd5e1;
+}
+
+.settings-btn-danger {
+    background: #fff;
+    color: #dc2626;
+    border-color: #fecaca;
+}
+
+.users-table-wrap {
+    overflow-x: auto;
+}
+
+.users-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 760px;
+}
+
+.users-table th {
+    color: #64748b;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 800;
+    text-align: left;
+    padding: 0.85rem 1rem;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.users-table td {
+    padding: 1rem;
+    border-bottom: 1px solid #f1f5f9;
+    color: #0f172a;
+    vertical-align: middle;
+}
+
+.user-name {
+    font-weight: 700;
+}
+
+.user-email {
+    color: #64748b;
+    font-size: 0.86rem;
+    margin-top: 0.2rem;
+}
+
+.pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.32rem 0.75rem;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
+.pill.active {
+    background: #dcfce7;
+    color: #16a34a;
+}
+
+.pill.inactive {
+    background: #e2e8f0;
+    color: #475569;
+}
+
+.pill.admin {
+    background: #dbeafe;
+    color: #2563eb;
+}
+
+.pill.user {
+    background: #f1f5f9;
+    color: #475569;
+}
+
+.row-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.55rem;
+}
+
+.settings-empty {
+    text-align: center;
+    color: #64748b;
+    padding: 2rem 1rem;
+}
+
+.settings-banner {
+    margin-bottom: 1rem;
+    padding: 0.9rem 1rem;
+    border-radius: 12px;
+    font-size: 0.92rem;
+    font-weight: 600;
+    display: none;
+}
+
+.settings-banner.show {
+    display: block;
+}
+
+.settings-banner.error {
+    background: #fef2f2;
+    color: #b91c1c;
+    border: 1px solid #fecaca;
+}
+
+.settings-banner.success {
+    background: #f0fdf4;
+    color: #166534;
+    border: 1px solid #bbf7d0;
+}
+
+.settings-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.35);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    z-index: 1200;
+}
+
+.settings-modal.open {
+    display: flex;
+}
+
+.settings-modal-card {
+    background: #fff;
+    width: min(640px, 100%);
+    border-radius: 18px;
+    border: 1px solid #dbe7f3;
+    box-shadow: 0 24px 44px rgba(15, 23, 42, 0.18);
+    overflow: hidden;
+}
+
+.settings-modal-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.35rem;
+    border-bottom: 1px solid #e5edf5;
+}
+
+.settings-modal-head h4 {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: #0f172a;
+}
+
+.settings-modal-close {
+    background: transparent;
+    border: none;
+    width: 42px;
+    height: 42px;
+    border-radius: 999px;
+    font-size: 1.15rem;
+    cursor: pointer;
+}
+
+.settings-modal-body {
+    padding: 1.35rem;
+}
+
+.settings-grid-2 {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+.settings-field label {
+    display: block;
+    color: #334155;
+    font-size: 0.8rem;
+    font-weight: 700;
+    margin-bottom: 0.45rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.settings-input,
+.settings-select {
+    width: 100%;
+    border: 1px solid #d1d5db;
+    border-radius: 10px;
+    padding: 0.8rem 0.95rem;
+    font-size: 0.92rem;
+    background: #fff;
+}
+
+.settings-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    color: #334155;
+    font-size: 0.92rem;
+    font-weight: 600;
+}
+
+.settings-checkbox input {
+    width: 18px;
+    height: 18px;
+}
+
+.settings-modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.8rem;
+    margin-top: 1.1rem;
+}
+
+@media (max-width: 900px) {
+    .settings-shell {
+        padding: 1rem;
+    }
+
+    .settings-grid-2 {
+        grid-template-columns: 1fr;
+    }
+}
 </style>
 {% endblock %}
 
 {% block content %}
 {% include 'core/includes/sidebar.html' with active='settings' %}
 <div class="inv-main">
-    <div class="settings-nav">
-        <h3>Settings</h3>
-        <a class="nav-item" id="nav-business" onclick="loadSection('business')"><i class="bi bi-building"></i> Business</a>
-        <a class="nav-item" id="nav-users" onclick="loadSection('users')"><i class="bi bi-people"></i> Users</a>
+    <div class="settings-shell">
+        <div class="settings-head">
+            <div>
+                <h1>User Settings</h1>
+                <p>Manage the users who can access this workspace.</p>
+            </div>
+            <button class="settings-btn settings-btn-primary" type="button" onclick="openUserModal()">
+                Add User
+            </button>
+        </div>
+
+        <div class="settings-banner" id="settingsBanner"></div>
+
+        <div class="users-card">
+            <div class="users-toolbar">
+                <input
+                    class="users-search"
+                    id="userSearch"
+                    type="text"
+                    placeholder="Search by name, email, or username"
+                    oninput="filterUsers(this.value)"
+                >
+            </div>
+            <div class="users-table-wrap">
+                <table class="users-table">
+                    <thead>
+                        <tr>
+                            <th>User</th>
+                            <th>Username</th>
+                            <th>Role</th>
+                            <th>Status</th>
+                            <th style="text-align: right;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usersTableBody">
+                        <tr>
+                            <td colspan="5" class="settings-empty">Loading users...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
-    <div class="settings-content" id="settingsContent"></div>
 </div>
 
-<div class="settings-modal" id="userModal">
+<div class="settings-modal" id="userModal" onclick="handleModalBackdrop(event)">
     <div class="settings-modal-card">
         <div class="settings-modal-head">
             <h4 id="userModalTitle">Add User</h4>
-            <button class="settings-modal-close" onclick="closeUserModal()">&times;</button>
+            <button class="settings-modal-close" type="button" onclick="closeUserModal()">&times;</button>
         </div>
         <div class="settings-modal-body">
             <div class="settings-grid-2">
-                <div class="settings-field"><label>First Name</label><input id="userFirstName" type="text"></div>
-                <div class="settings-field"><label>Last Name</label><input id="userLastName" type="text"></div>
-                <div class="settings-field"><label>Username</label><input id="userUsername" type="text"></div>
-                <div class="settings-field"><label>Email</label><input id="userEmail" type="email"></div>
-                <div class="settings-field"><label>Password</label><input id="userPassword" type="password" placeholder="Required for new users"></div>
+                <div class="settings-field">
+                    <label for="userFirstName">First Name</label>
+                    <input class="settings-input" id="userFirstName" type="text">
+                </div>
+                <div class="settings-field">
+                    <label for="userLastName">Last Name</label>
+                    <input class="settings-input" id="userLastName" type="text">
+                </div>
+                <div class="settings-field">
+                    <label for="userUsername">Username</label>
+                    <input class="settings-input" id="userUsername" type="text">
+                </div>
+                <div class="settings-field">
+                    <label for="userEmail">Email</label>
+                    <input class="settings-input" id="userEmail" type="email">
+                </div>
+                <div class="settings-field">
+                    <label for="userPassword">Password</label>
+                    <input class="settings-input" id="userPassword" type="password" placeholder="Required for new users">
+                </div>
+                <div class="settings-field">
+                    <label for="userRole">Role</label>
+                    <select class="settings-select" id="userRole">
+                        <option value="user">User</option>
+                        <option value="admin">Admin</option>
+                    </select>
+                </div>
             </div>
-            <div class="settings-grid-2" style="margin-top:1rem;">
-                <label class="settings-checkbox"><input id="userIsAdmin" type="checkbox">Admin access</label>
-                <label class="settings-checkbox"><input id="userIsActive" type="checkbox" checked>Active user</label>
+            <div style="margin-top: 1rem;">
+                <label class="settings-checkbox">
+                    <input id="userIsActive" type="checkbox" checked>
+                    Active user
+                </label>
             </div>
             <div class="settings-modal-actions">
-                <button class="settings-btn settings-btn-secondary" onclick="closeUserModal()">Cancel</button>
-                <button class="settings-btn settings-btn-primary" id="userSaveButton" onclick="saveUser()">Save User</button>
+                <button class="settings-btn settings-btn-secondary" type="button" onclick="closeUserModal()">Cancel</button>
+                <button class="settings-btn settings-btn-primary" id="userSaveButton" type="button" onclick="saveUser()">Save User</button>
             </div>
         </div>
     </div>
@@ -93,53 +422,225 @@
 
 {% block extra_js %}
 <script>
-const settingsState = { section: 'business', users: [], editingUserId: null };
-document.addEventListener('DOMContentLoaded', () => loadSection(new URLSearchParams(window.location.search).get('section') || 'business'));
-function escapeHtml(value){return String(value||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}
-function updateUrlSection(section){const params=new URLSearchParams(window.location.search);params.set('section',section);window.history.replaceState({},'',`${window.location.pathname}?${params.toString()}`)}
-function renderSectionHeader(title, subtitle){return `<div class="settings-title">${escapeHtml(title)}</div><div class="settings-subtitle">${escapeHtml(subtitle)}</div>`}
-function loadSection(section){settingsState.section=section;updateUrlSection(section);document.querySelectorAll('.settings-nav .nav-item').forEach(el=>el.classList.remove('active'));const nav=document.getElementById(`nav-${section}`);if(nav)nav.classList.add('active');if(section==='users'){renderUsers();return}renderBusiness()}
+const settingsState = {
+    users: [],
+    filteredUsers: [],
+    editingUserId: null,
+};
 
-async function renderBusiness(){
-  const content=document.getElementById('settingsContent');
-  content.innerHTML=renderSectionHeader('Business','Basic tenant information used in the app.')+`<div class="settings-card"><div class="settings-empty">Loading business settings...</div></div>`;
-  const res=await fetch('/api/settings/account/'); const data=await res.json();
-  content.innerHTML=renderSectionHeader('Business','Basic tenant information used in the app.')+`
-    <div class="settings-card">
-      <h4>Business Details</h4>
-      <div class="settings-hint">Update the name and address shown across the core operations workflow.</div>
-      <div class="settings-grid-2">
-        <div class="settings-field"><label>Business Name</label><input id="bizName" type="text" value="${escapeHtml(data.name)}"></div>
-        <div class="settings-field"><label>Address</label><input id="bizAddress" type="text" value="${escapeHtml(data.address)}"></div>
-        <div class="settings-field"><label>City</label><input id="bizCity" type="text" value="${escapeHtml(data.city)}"></div>
-        <div class="settings-field"><label>State</label><input id="bizState" type="text" value="${escapeHtml(data.state)}"></div>
-        <div class="settings-field"><label>Zip Code</label><input id="bizZipcode" type="text" value="${escapeHtml(data.zipcode)}"></div>
-      </div>
-      <div style="margin-top:1rem;"><button class="settings-btn settings-btn-primary" onclick="saveBusiness()">Save Business</button></div>
-    </div>`;
+document.addEventListener('DOMContentLoaded', () => {
+    loadUsers();
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+            closeUserModal();
+        }
+    });
+});
+
+function escapeHtml(value) {
+    return String(value || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
 }
 
-async function saveBusiness(){
-  try{
-    const res=await fetch('/api/settings/account/',{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken')},body:JSON.stringify({name:document.getElementById('bizName').value.trim(),address:document.getElementById('bizAddress').value.trim(),city:document.getElementById('bizCity').value.trim(),state:document.getElementById('bizState').value.trim(),zipcode:document.getElementById('bizZipcode').value.trim()})});
-    const data=await res.json().catch(()=>({}));
-    if(!res.ok) throw new Error(data.error||'Unable to save business settings.');
-    const content=document.getElementById('settingsContent');
-    content.insertAdjacentHTML('afterbegin', '<div class="settings-banner success">Business settings updated.</div>');
-  }catch(error){alert(error.message||'Unable to save business settings.')}
+function getCookie(name) {
+    const cookies = document.cookie ? document.cookie.split(';') : [];
+    for (const cookie of cookies) {
+        const trimmed = cookie.trim();
+        if (trimmed.startsWith(`${name}=`)) {
+            return decodeURIComponent(trimmed.slice(name.length + 1));
+        }
+    }
+    return '';
 }
 
-async function renderUsers(){
-  const content=document.getElementById('settingsContent');
-  content.innerHTML=renderSectionHeader('Users','Create, update, and remove tenant users from one place.')+`<div class="settings-card"><div class="settings-empty">Loading users...</div></div>`;
-  let users=[]; try{const res=await fetch('/api/settings/users/'); const data=await res.json(); users=data.users||[]}catch(_){users=[]}
-  settingsState.users=users; drawUsers(users);
+function showBanner(message, type = 'error') {
+    const banner = document.getElementById('settingsBanner');
+    banner.textContent = message;
+    banner.className = `settings-banner show ${type}`;
 }
-function drawUsers(users){const content=document.getElementById('settingsContent');content.innerHTML=renderSectionHeader('Users','Create, update, and remove tenant users from one place.')+`<div class="settings-card"><div class="settings-toolbar"><input class="settings-search" type="text" placeholder="Search users..." style="max-width:280px;" oninput="filterUsers(this.value)"><button class="settings-btn settings-btn-primary" onclick="openUserModal()">+ Add User</button></div><table class="users-table"><thead><tr><th>User</th><th>Username</th><th>Permissions</th><th>Status</th><th style="text-align:right;">Actions</th></tr></thead><tbody id="usersTableBody">${users.length?users.map(user=>`<tr data-user-id="${user.id}"><td><div class="user-name">${escapeHtml(user.name)}</div><div class="user-email">${escapeHtml(user.email)}</div></td><td>${escapeHtml(user.username)}</td><td><span class="pill ${user.is_admin?'admin':'user'}">${user.is_admin?'Admin':'User'}</span></td><td><span class="pill ${user.is_active?'active':'inactive'}">${user.is_active?'Active':'Inactive'}</span></td><td><div class="row-actions"><button class="settings-btn settings-btn-secondary" onclick="openUserModal(${user.id})">Edit</button><button class="settings-btn settings-btn-danger" onclick="deleteUser(${user.id})">Delete</button></div></td></tr>`).join(''):`<tr><td colspan="5" class="settings-empty">No users yet.</td></tr>`}</tbody></table></div>`}
-function filterUsers(query){const normalized=String(query||'').trim().toLowerCase();drawUsers(settingsState.users.filter(user=>`${user.name} ${user.email} ${user.username}`.toLowerCase().includes(normalized)))}
-function openUserModal(userId=null){settingsState.editingUserId=userId;const user=settingsState.users.find(item=>item.id===userId);document.getElementById('userModalTitle').textContent=user?'Edit User':'Add User';document.getElementById('userFirstName').value=user?(user.first_name||''):'';document.getElementById('userLastName').value=user?(user.last_name||''):'';document.getElementById('userUsername').value=user?(user.username||''):'';document.getElementById('userEmail').value=user?(user.email||''):'';document.getElementById('userPassword').value='';document.getElementById('userPassword').placeholder=user?'Leave blank to keep current password':'Required for new users';document.getElementById('userIsAdmin').checked=user?!!user.is_admin:false;document.getElementById('userIsActive').checked=user?!!user.is_active:true;document.getElementById('userModal').classList.add('open')}
-function closeUserModal(){settingsState.editingUserId=null;document.getElementById('userModal').classList.remove('open')}
-async function saveUser(){const userId=settingsState.editingUserId;const payload={first_name:document.getElementById('userFirstName').value.trim(),last_name:document.getElementById('userLastName').value.trim(),username:document.getElementById('userUsername').value.trim(),email:document.getElementById('userEmail').value.trim(),password:document.getElementById('userPassword').value,is_admin:document.getElementById('userIsAdmin').checked,is_active:document.getElementById('userIsActive').checked};if(!payload.username){alert('Username is required.');return}if(!userId&&!payload.password){alert('Password is required for a new user.');return}const button=document.getElementById('userSaveButton');const endpoint=userId?`/api/settings/users/${userId}/update/`:'/api/settings/users/create/';await withSpinner(button,async()=>{const res=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken')},body:JSON.stringify(payload)});const data=await res.json().catch(()=>({}));if(!res.ok)throw new Error(data.error||'Unable to save user.');closeUserModal();await renderUsers()}).catch(error=>alert(error.message||'Unable to save user.'))}
-async function deleteUser(userId){const user=settingsState.users.find(item=>item.id===userId);if(!user)return;if(!confirm(`Delete ${user.name||user.username}?`))return;try{const res=await fetch(`/api/settings/users/${userId}/delete/`,{method:'POST',headers:{'X-CSRFToken':getCookie('csrftoken')}});const data=await res.json().catch(()=>({}));if(!res.ok)throw new Error(data.error||'Unable to delete user.');await renderUsers()}catch(error){alert(error.message||'Unable to delete user.')}}
+
+function clearBanner() {
+    const banner = document.getElementById('settingsBanner');
+    banner.textContent = '';
+    banner.className = 'settings-banner';
+}
+
+async function loadUsers() {
+    clearBanner();
+
+    try {
+        const response = await fetch('/api/settings/users/');
+        const data = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+            throw new Error(data.error || 'Failed to load users.');
+        }
+
+        settingsState.users = data.users || [];
+        filterUsers(document.getElementById('userSearch').value);
+    } catch (error) {
+        document.getElementById('usersTableBody').innerHTML =
+            '<tr><td colspan="5" class="settings-empty">Failed to load users.</td></tr>';
+        showBanner(error.message || 'Failed to load users.');
+    }
+}
+
+function filterUsers(query) {
+    const normalized = String(query || '').trim().toLowerCase();
+    settingsState.filteredUsers = settingsState.users.filter((user) => {
+        return `${user.name} ${user.email} ${user.username}`.toLowerCase().includes(normalized);
+    });
+    renderUsers();
+}
+
+function renderUsers() {
+    const tbody = document.getElementById('usersTableBody');
+    const users = settingsState.filteredUsers;
+
+    if (!users.length) {
+        tbody.innerHTML = '<tr><td colspan="5" class="settings-empty">No users found.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = users.map((user) => `
+        <tr>
+            <td>
+                <div class="user-name">${escapeHtml(user.name)}</div>
+                <div class="user-email">${escapeHtml(user.email || '')}</div>
+            </td>
+            <td>${escapeHtml(user.username)}</td>
+            <td><span class="pill ${user.is_admin ? 'admin' : 'user'}">${user.is_admin ? 'Admin' : 'User'}</span></td>
+            <td><span class="pill ${user.is_active ? 'active' : 'inactive'}">${user.is_active ? 'Active' : 'Inactive'}</span></td>
+            <td>
+                <div class="row-actions">
+                    <button class="settings-btn settings-btn-secondary" type="button" onclick="openUserModal(${user.id})">Edit</button>
+                    <button class="settings-btn settings-btn-danger" type="button" onclick="deleteUser(${user.id})">Delete</button>
+                </div>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function openUserModal(userId = null) {
+    const user = settingsState.users.find((item) => item.id === userId) || null;
+    settingsState.editingUserId = user ? user.id : null;
+
+    document.getElementById('userModalTitle').textContent = user ? 'Edit User' : 'Add User';
+    document.getElementById('userFirstName').value = user ? (user.first_name || '') : '';
+    document.getElementById('userLastName').value = user ? (user.last_name || '') : '';
+    document.getElementById('userUsername').value = user ? (user.username || '') : '';
+    document.getElementById('userEmail').value = user ? (user.email || '') : '';
+    document.getElementById('userPassword').value = '';
+    document.getElementById('userPassword').placeholder = user
+        ? 'Leave blank to keep current password'
+        : 'Required for new users';
+    document.getElementById('userRole').value = user && user.is_admin ? 'admin' : 'user';
+    document.getElementById('userIsActive').checked = user ? !!user.is_active : true;
+    document.getElementById('userModal').classList.add('open');
+    clearBanner();
+}
+
+function closeUserModal() {
+    settingsState.editingUserId = null;
+    document.getElementById('userModal').classList.remove('open');
+}
+
+function handleModalBackdrop(event) {
+    if (event.target.id === 'userModal') {
+        closeUserModal();
+    }
+}
+
+async function saveUser() {
+    clearBanner();
+
+    const userId = settingsState.editingUserId;
+    const saveButton = document.getElementById('userSaveButton');
+    const payload = {
+        first_name: document.getElementById('userFirstName').value.trim(),
+        last_name: document.getElementById('userLastName').value.trim(),
+        username: document.getElementById('userUsername').value.trim(),
+        email: document.getElementById('userEmail').value.trim(),
+        password: document.getElementById('userPassword').value,
+        is_admin: document.getElementById('userRole').value === 'admin',
+        is_active: document.getElementById('userIsActive').checked,
+    };
+
+    if (!payload.username) {
+        showBanner('Username is required.');
+        return;
+    }
+
+    if (!userId && !payload.password) {
+        showBanner('Password is required for a new user.');
+        return;
+    }
+
+    saveButton.disabled = true;
+    saveButton.textContent = userId ? 'Saving...' : 'Creating...';
+
+    try {
+        const endpoint = userId ? `/api/settings/users/${userId}/update/` : '/api/settings/users/create/';
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken'),
+            },
+            body: JSON.stringify(payload),
+        });
+        const data = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+            throw new Error(data.error || 'Unable to save user.');
+        }
+
+        closeUserModal();
+        await loadUsers();
+        showBanner(userId ? 'User updated.' : 'User created.', 'success');
+    } catch (error) {
+        showBanner(error.message || 'Unable to save user.');
+    } finally {
+        saveButton.disabled = false;
+        saveButton.textContent = 'Save User';
+    }
+}
+
+async function deleteUser(userId) {
+    clearBanner();
+
+    const user = settingsState.users.find((item) => item.id === userId);
+    if (!user) {
+        return;
+    }
+
+    if (!window.confirm(`Delete ${user.name || user.username}?`)) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/settings/users/${userId}/delete/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+            },
+        });
+        const data = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+            throw new Error(data.error || 'Unable to delete user.');
+        }
+
+        await loadUsers();
+        showBanner('User deleted.', 'success');
+    } catch (error) {
+        showBanner(error.message || 'Unable to delete user.');
+    }
+}
 </script>
 {% endblock %}

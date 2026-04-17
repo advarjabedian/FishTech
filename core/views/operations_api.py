@@ -26,7 +26,6 @@ from core.models import (
     ProductImage,
     PurchaseOrder,
     PurchaseOrderItem,
-    ReceivingQualityCheck,
     CustomerProfile,
     SalesOrder,
     SalesOrderAllocation,
@@ -72,15 +71,6 @@ def _restore_and_delete_process_batch(batch):
     batch.outputs.all().delete()
     batch.waste_entries.all().delete()
     batch.delete()
-
-
-def _lot_qc_status(lot):
-    try:
-        return lot.quality_check.status
-    except Exception:
-        return "pending"
-
-
 def _to_float(value):
     if value in (None, ""):
         return None
@@ -140,6 +130,75 @@ def _ensure_products_for_inventory_lots(tenant):
             unit_type=(lot.get("unittype") or "").strip(),
         )
         existing_product_ids.add(product_id)
+
+
+def _normalize_product_lookup(value):
+    return " ".join(str(value or "").strip().lower().split())
+
+
+def _build_product_lookup_maps(products):
+    products_by_id = {}
+    products_by_name = {}
+
+    for product in products:
+        product_id_key = _normalize_product_lookup(product.product_id)
+        if product_id_key:
+            products_by_id[product_id_key] = product
+
+        for candidate in [
+            product.description,
+            product.item_name,
+            product.friendly_name,
+            product.qb_item_name,
+        ]:
+            name_key = _normalize_product_lookup(candidate)
+            if name_key and name_key not in products_by_name:
+                products_by_name[name_key] = product
+
+    return products_by_id, products_by_name
+
+
+def _resolve_product_from_values(products_by_id, products_by_name, *values):
+    for value in values:
+        lookup_key = _normalize_product_lookup(value)
+        if not lookup_key:
+            continue
+        if lookup_key in products_by_id:
+            return products_by_id[lookup_key]
+        if lookup_key in products_by_name:
+            return products_by_name[lookup_key]
+    return None
+
+
+def _resolve_product_for_lot(lot, products_by_id, products_by_name):
+    po_item = getattr(lot, "po_item", None)
+    if po_item and po_item.product_id and po_item.product:
+        return po_item.product
+    return _resolve_product_from_values(
+        products_by_id,
+        products_by_name,
+        lot.productid,
+        lot.desc,
+    )
+
+
+def _inventory_totals_by_product(products, lots):
+    totals_by_product_id = {
+        product.id: {"expected": 0, "allocated": 0, "on_hand": 0}
+        for product in products
+    }
+    products_by_id, products_by_name = _build_product_lookup_maps(products)
+
+    for lot in lots:
+        product = _resolve_product_for_lot(lot, products_by_id, products_by_name)
+        if not product:
+            continue
+        totals = totals_by_product_id.setdefault(product.id, {"expected": 0, "allocated": 0, "on_hand": 0})
+        totals["expected"] += _to_float(lot.unitsin) or 0
+        totals["allocated"] += _to_float(lot.unitsallocated) or 0
+        totals["on_hand"] += _to_float(lot.unitsonhand) or 0
+
+    return totals_by_product_id, products_by_id, products_by_name
 
 
 def _paginate(request, queryset, default_page_size=100):
@@ -472,24 +531,6 @@ def _po_item_to_dict(item):
         "unit_type": item.unit_type or (item.product.unit_type if item.product_id and item.product else ""),
         "unit_price": _to_float(item.unit_price) or 0,
         "amount": _to_float(item.amount) or 0,
-    }
-
-
-def _quality_to_dict(check):
-    if not check:
-        return None
-    return {
-        "freshness_score": check.freshness_score,
-        "appearance_ok": check.appearance_ok,
-        "odor_ok": check.odor_ok,
-        "texture_ok": check.texture_ok,
-        "packaging_ok": check.packaging_ok,
-        "temp_ok": check.temp_ok,
-        "status": check.status,
-        "status_display": check.get_status_display(),
-        "notes": check.notes or "",
-        "checked_by": check.checked_by_name or (check.checked_by.get_username() if check.checked_by else ""),
-        "checked_at": check.checked_at.strftime("%Y-%m-%d %I:%M %p") if check.checked_at else "",
     }
 
 
@@ -1031,7 +1072,7 @@ def receiving_lots(request):
     if error:
         return error
 
-    lots = Inventory.objects.filter(tenant=tenant).select_related("purchase_order", "quality_check")
+    lots = Inventory.objects.filter(tenant=tenant).select_related("purchase_order")
 
     search = request.GET.get("search", "").strip()
     if search:
@@ -1074,7 +1115,6 @@ def receiving_lots(request):
                     "cost": _to_float(lot.actualcost),
                     "on_hand": _to_float(lot.unitsonhand) or 0,
                     "unit_type": lot.unittype or "",
-                    "qc_status": _lot_qc_status(lot),
                 }
                 for lot in paged
             ],
@@ -1090,11 +1130,10 @@ def receiving_lot_detail(request, lot_id):
         return error
 
     lot = get_object_or_404(
-        Inventory.objects.filter(tenant=tenant).select_related("purchase_order", "po_item", "quality_check"),
+        Inventory.objects.filter(tenant=tenant).select_related("purchase_order", "po_item"),
         id=lot_id,
     )
     vendor = Vendor.objects.filter(tenant=tenant, name=lot.vendorid).first()
-    qc = getattr(lot, "quality_check", None)
 
     # Traceability links
     batch_sources = ProcessBatchSource.objects.filter(tenant=tenant, inventory=lot).select_related("batch")
@@ -1122,10 +1161,6 @@ def receiving_lot_detail(request, lot_id):
             "location": lot.location or "",
             "origin": lot.origin or "",
             "cost": _to_float(lot.actualcost),
-            "quality_check": _quality_to_dict(qc),
-            "quality_status_choices": [
-                {"value": value, "label": label} for value, label in ReceivingQualityCheck.STATUS_CHOICES
-            ],
             "po_id": lot.purchase_order_id,
             "po_number": lot.purchase_order.po_number if lot.purchase_order_id and lot.purchase_order else (lot.poid or ""),
             "po_items": [
@@ -1145,37 +1180,6 @@ def receiving_lot_detail(request, lot_id):
             ],
         }
     )
-
-
-@login_required
-def receiving_lot_quality(request, lot_id):
-    tenant, error = _require_tenant(request)
-    if error:
-        return error
-    if request.method != "POST":
-        return JsonResponse({"error": "GET not allowed"}, status=405)
-
-    lot = get_object_or_404(Inventory.objects.filter(tenant=tenant), id=lot_id)
-    data = _parse_json(request)
-    quality_check, _ = ReceivingQualityCheck.objects.get_or_create(
-        tenant=tenant,
-        inventory=lot,
-        defaults={"checked_by": request.user, "checked_by_name": request.user.get_username()},
-    )
-
-    quality_check.freshness_score = int(data.get("freshness_score") or 0)
-    quality_check.status = (data.get("status") or "pass").strip() or "pass"
-    quality_check.appearance_ok = bool(data.get("appearance_ok"))
-    quality_check.odor_ok = bool(data.get("odor_ok"))
-    quality_check.texture_ok = bool(data.get("texture_ok"))
-    quality_check.packaging_ok = bool(data.get("packaging_ok"))
-    quality_check.temp_ok = bool(data.get("temp_ok"))
-    quality_check.notes = (data.get("notes") or "").strip()
-    quality_check.checked_by = request.user
-    quality_check.checked_by_name = request.user.get_username()
-    quality_check.save()
-
-    return JsonResponse({"success": True, "quality_check": _quality_to_dict(quality_check)})
 
 
 @login_required
@@ -1235,18 +1239,50 @@ def receiving_lot_create(request):
             po_number = purchase_order.po_number
     po_item_id = data.get("po_item_id")
     if po_item_id:
-        po_item = PurchaseOrderItem.objects.filter(tenant=tenant, id=po_item_id).first()
+        po_item = PurchaseOrderItem.objects.filter(tenant=tenant, id=po_item_id).select_related("product").first()
+
+    product = None
+    if po_item and po_item.product_id and po_item.product:
+        product = po_item.product
+    else:
+        product_candidates = list(Product.objects.filter(tenant=tenant))
+        products_by_id, products_by_name = _build_product_lookup_maps(product_candidates)
+        product = _resolve_product_from_values(products_by_id, products_by_name, product_id, description)
+
+    if not product and (product_id or description):
+        item_name = (description or product_id).strip()
+        product = Product.objects.create(
+            tenant=tenant,
+            is_active=True,
+            product_id=_next_product_id(tenant),
+            description=item_name,
+            item_name=item_name,
+            unit_type=((data.get("unit_type") or "").strip() or (po_item.unit_type if po_item else "")),
+        )
+
+    resolved_product_id = (product.product_id if product else (product_id or description)).strip()
+    resolved_description = (
+        (product.description or product.item_name or product.friendly_name or product.qb_item_name or product.product_id)
+        if product
+        else (description or product_id)
+    ).strip()
+    resolved_unit_type = (
+        (data.get("unit_type") or "").strip()
+        or (po_item.unit_type if po_item else "")
+        or (product.inventory_unit_of_measure if product and product.inventory_unit_of_measure else "")
+        or (product.unit_type if product else "")
+    ).strip()
 
     receive_time = (data.get("receive_time") or "").strip() or _time_str(timezone.localtime().time())
 
     lot = Inventory.objects.create(
         tenant=tenant,
-        productid=product_id or description,
-        desc=(Product.objects.filter(tenant=tenant, product_id=product_id).values_list("item_name", flat=True).first() if product_id else None) or description or product_id,
+        productid=resolved_product_id,
+        desc=resolved_description,
         vendorid=(data.get("vendor") or "").strip(),
         vendorlot=f"LOT-{timezone.now().strftime('%Y%m%d')}-{Inventory.objects.filter(tenant=tenant).count() + 1}",
         actualcost=data.get("cost") or None,
-        unittype=(data.get("unit_type") or "").strip(),
+        unittype=resolved_unit_type,
         unitsonhand=quantity,
         unitsavailable=quantity,
         unitsin=quantity,
@@ -1259,17 +1295,6 @@ def receiving_lot_create(request):
         receive_time=receive_time,
         vendor_type=(data.get("vendor_type") or "").strip(),
     )
-
-    if lot.productid and not Product.objects.filter(tenant=tenant, product_id=lot.productid).exists():
-        item_name = (lot.desc or lot.productid).strip()
-        Product.objects.create(
-            tenant=tenant,
-            is_active=True,
-            product_id=lot.productid,
-            description=item_name,
-            item_name=item_name,
-            unit_type=(lot.unittype or "").strip(),
-        )
 
     if po_item:
         po_item.received_quantity = (po_item.received_quantity or 0) + Decimal(str(quantity))
@@ -1288,28 +1313,6 @@ def receiving_lot_create(request):
             purchase_order.receive_status = receive_status
             purchase_order.save(update_fields=["receive_status"])
 
-    quality_data = data.get("quality_check") or {}
-    quality_check, _ = ReceivingQualityCheck.objects.get_or_create(
-        tenant=tenant,
-        inventory=lot,
-        defaults={
-            "checked_by": request.user,
-            "checked_by_name": request.user.get_username(),
-        },
-    )
-    if quality_data:
-        quality_check.freshness_score = int(quality_data.get("freshness_score") or 0)
-        quality_check.appearance_ok = bool(quality_data.get("appearance_ok"))
-        quality_check.odor_ok = bool(quality_data.get("odor_ok"))
-        quality_check.texture_ok = bool(quality_data.get("texture_ok"))
-        quality_check.packaging_ok = bool(quality_data.get("packaging_ok"))
-        quality_check.temp_ok = bool(quality_data.get("temp_ok"))
-        quality_check.status = (quality_data.get("status") or "pass").strip() or "pass"
-        quality_check.notes = (quality_data.get("notes") or "").strip()
-        quality_check.checked_by = request.user
-        quality_check.checked_by_name = request.user.get_username()
-        quality_check.save()
-
     return JsonResponse({"success": True, "id": lot.id})
 
 
@@ -1324,22 +1327,12 @@ def processing_products(request):
         .select_related("item_group")
         .order_by("sort_order", "description")[:1000]
     )
+    inventory_lots = list(
+        Inventory.objects.filter(tenant=tenant)
+        .select_related("po_item__product")
+    )
+    inventory_totals, _, _ = _inventory_totals_by_product(products, inventory_lots)
     product_ids = [product.product_id for product in products if product.product_id]
-    inventory_totals = {
-        row["productid"]: row
-        for row in Inventory.objects.filter(
-            tenant=tenant,
-            productid__in=product_ids,
-        ).filter(
-            Q(quality_check__status="pass") | Q(quality_check__isnull=True)
-        )
-        .values("productid")
-        .annotate(
-            expected=Sum("unitsin"),
-            allocated=Sum("unitsallocated"),
-            on_hand=Sum("unitsonhand"),
-        )
-    }
     recent_cutoff = timezone.now() - timezone.timedelta(days=14)
     recent_processed = {}
     outputs = (
@@ -1365,7 +1358,7 @@ def processing_products(request):
         {
             "products": [
                 {
-                    **_product_to_dict(product, inventory_totals.get(product.product_id)),
+                    **_product_to_dict(product, inventory_totals.get(product.id)),
                     "pack_size": _to_float(product.pack_size),
                     "default_price": _to_float(product.default_price),
                     "recently_processed": (recent_processed.get(product.product_id) or {}).get("recently_processed", False),
@@ -1388,33 +1381,28 @@ def processing_source_lots(request):
         unitsonhand__gt=0,
     ).filter(
         Q(purchase_order__isnull=False) | ~Q(poid="")
-    ).filter(
-        Q(quality_check__status="pass") | Q(quality_check__isnull=True)
-    ).select_related("quality_check").order_by("-id")
+    ).select_related("po_item__product").order_by("-id")
     search = request.GET.get("search", "").strip()
     if search:
         lots = lots.filter(
             Q(desc__icontains=search) | Q(vendorlot__icontains=search)
             | Q(vendorid__icontains=search) | Q(productid__icontains=search)
         )
-    product_ids = list({lot.productid for lot in lots if lot.productid})
-    product_map = {
-        product.product_id: product
-        for product in Product.objects.filter(tenant=tenant, is_active=True, product_id__in=product_ids)
-    }
-    processable_lots = [lot for lot in lots if not lot.productid or lot.productid in product_map]
+    products_by_id, products_by_name = _build_product_lookup_maps(
+        list(Product.objects.filter(tenant=tenant, is_active=True))
+    )
     return JsonResponse({
         "lots": [
             {
                 "id": lot.id,
                 "lot_id": lot.vendorlot or f"LOT-{lot.id}",
                 "trace_lot": lot.vendorlot or f"LOT-{lot.id}",
-                "item_name": ((product_map.get(lot.productid).description or product_map.get(lot.productid).item_name) if product_map.get(lot.productid) else (lot.desc or lot.productid or "")),
-                "product_id": lot.productid or "",
-                "product": ((product_map.get(lot.productid).description or product_map.get(lot.productid).item_name) if product_map.get(lot.productid) else (lot.desc or lot.productid or "")),
+                "item_name": ((resolved_product.description or resolved_product.item_name) if resolved_product else (lot.desc or lot.productid or "")),
+                "product_id": (resolved_product.product_id if resolved_product else (lot.productid or "")),
+                "product": ((resolved_product.description or resolved_product.item_name) if resolved_product else (lot.desc or lot.productid or "")),
                 "product_spec": " · ".join(filter(None, [
-                    (product_map.get(lot.productid).quantity_description if product_map.get(lot.productid) else ""),
-                    (product_map.get(lot.productid).size_cull if product_map.get(lot.productid) else ""),
+                    (resolved_product.quantity_description if resolved_product else ""),
+                    (resolved_product.size_cull if resolved_product else ""),
                 ])),
                 "vendor": lot.vendorid or "",
                 "vendor_lot": lot.vendorlot or "",
@@ -1425,7 +1413,8 @@ def processing_source_lots(request):
                 "origin": lot.origin or "",
                 "receive_date": lot.receivedate or "",
             }
-            for lot in processable_lots
+            for lot in lots
+            for resolved_product in [_resolve_product_for_lot(lot, products_by_id, products_by_name)]
         ]
     })
 
@@ -1758,56 +1747,13 @@ def inventory_items(request):
         )
 
     items = list(items.order_by("sort_order", "description")[:1000])
-    product_ids = [item.product_id for item in items if item.product_id]
-    # Only count lots that passed QC toward inventory totals
-    inventory_totals = {
-        row["productid"]: row
-        for row in Inventory.objects.filter(
-            tenant=tenant, productid__in=product_ids
-        ).filter(
-            Q(quality_check__status="pass") | Q(quality_check__isnull=True)
-        )
-        .values("productid")
-        .annotate(
-            expected=Sum("unitsin"),
-            allocated=Sum("unitsallocated"),
-            on_hand=Sum("unitsonhand"),
-        )
-    }
-
-    return JsonResponse({"items": [_product_to_dict(item, inventory_totals.get(item.product_id)) for item in items]})
-
-
-@login_required
-def inventory_rejected_lots(request):
-    """Return lots that failed QC (hold or reject status)."""
-    tenant, error = _require_tenant(request)
-    if error:
-        return error
-    lots = (
-        Inventory.objects.filter(tenant=tenant, quality_check__status__in=["hold", "reject"])
-        .select_related("quality_check")
-        .order_by("-id")
+    inventory_lots = list(
+        Inventory.objects.filter(tenant=tenant)
+        .select_related("po_item__product")
     )
-    return JsonResponse({
-        "lots": [
-            {
-                "id": lot.id,
-                "trace_lot": lot.vendorlot or f"LOT-{lot.id}",
-                "product": lot.desc or lot.productid or "",
-                "vendor": lot.vendorid or "",
-                "receive_date": lot.receivedate or "",
-                "on_hand": _to_float(lot.unitsonhand) or 0,
-                "unit_type": lot.unittype or "",
-                "qc_status": lot.quality_check.status,
-                "qc_notes": lot.quality_check.notes or "",
-                "checked_at": lot.quality_check.checked_at.strftime("%Y-%m-%d %H:%M") if lot.quality_check.checked_at else "",
-            }
-            for lot in lots
-        ]
-    })
+    inventory_totals, _, _ = _inventory_totals_by_product(items, inventory_lots)
 
-
+    return JsonResponse({"items": [_product_to_dict(item, inventory_totals.get(item.id)) for item in items]})
 @login_required
 def inventory_item_lots(request, item_id):
     """Return inventory lots for a product, with aggregate totals."""
@@ -1817,8 +1763,6 @@ def inventory_item_lots(request, item_id):
     product = get_object_or_404(Product, id=item_id, tenant=tenant)
     lots = Inventory.objects.filter(
         tenant=tenant, productid=product.product_id
-    ).filter(
-        Q(quality_check__status="pass") | Q(quality_check__isnull=True)
     ).order_by("-id")
     total_expected = 0
     total_allocated = 0
